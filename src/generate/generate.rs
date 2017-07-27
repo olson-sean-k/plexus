@@ -3,7 +3,7 @@
 
 use std::ops::Range;
 
-use super::topology::Polygonal;
+use generate::topology::Polygonal;
 
 pub struct Generate<'a, G, P>
 where
