@@ -1,5 +1,4 @@
 use num::Integer;
-use std::convert::From;
 use std::marker::PhantomData;
 use std::mem;
 
