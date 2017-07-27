@@ -1,9 +1,8 @@
 use num::Num;
 
 use generate::generate::{Generate, IndexedPolygonGenerator, VertexGenerator, PolygonGenerator,
-                         SpatialVertexGenerator, SpatialPolygonGenerator,
-                         TexturedPolygonGenerator};
-use generate::topology::{MapTopology, Quad};
+                         SpatialVertexGenerator, SpatialPolygonGenerator, TexturedPolygonGenerator};
+use generate::topology::{MapGeometry, Quad};
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
@@ -141,7 +140,7 @@ where
 
     fn spatial_polygon(&self, index: usize) -> Self::Output {
         self.indexed_polygon(index)
-            .map_topology(|index| self.spatial_vertex(index))
+            .map_geometry(|index| self.spatial_vertex(index))
     }
 }
 

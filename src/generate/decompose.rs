@@ -445,7 +445,11 @@ where
     T: Copy + Num + NumCast,
 {
     fn lerp(&self, other: &Self, f: f32) -> Self {
-        (lerp(self.0, other.0, f), lerp(self.1, other.1, f), lerp(self.2, other.2, f))
+        (
+            lerp(self.0, other.0, f),
+            lerp(self.1, other.1, f),
+            lerp(self.2, other.2, f),
+        )
     }
 }
 

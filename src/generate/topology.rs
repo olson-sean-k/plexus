@@ -9,14 +9,14 @@ pub trait Topological: Sized {
 
 pub trait Polygonal: Topological {}
 
-pub trait MapTopology<T, U>: Topological<Vertex = T>
+pub trait MapGeometry<T, U>: Topological<Vertex = T>
 where
     T: Clone,
     U: Clone,
 {
     type Output: Topological<Vertex = U>;
 
-    fn map_topology<F>(self, f: F) -> Self::Output
+    fn map_geometry<F>(self, f: F) -> Self::Output
     where
         F: FnMut(T) -> U;
 }
@@ -38,7 +38,7 @@ pub trait Rotate {
 impl<I, T, U, P, Q> MapVertices<T, U> for I
 where
     I: Iterator<Item = P>,
-    P: MapTopology<T, U, Output = Q>,
+    P: MapGeometry<T, U, Output = Q>,
     Q: Topological<Vertex = U>,
     T: Clone,
     U: Clone,
@@ -71,7 +71,7 @@ impl<I, T, U, F, P, Q> Iterator for Map<I, T, U, F>
 where
     I: Iterator<Item = P>,
     F: FnMut(T) -> U,
-    P: MapTopology<T, U, Output = Q>,
+    P: MapGeometry<T, U, Output = Q>,
     Q: Topological<Vertex = U>,
     T: Clone,
     U: Clone,
@@ -81,7 +81,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.topologies
             .next()
-            .map(|topology| topology.map_topology(&mut self.f))
+            .map(|topology| topology.map_geometry(&mut self.f))
     }
 }
 
@@ -103,14 +103,14 @@ impl<T> Line<T> {
     }
 }
 
-impl<T, U> MapTopology<T, U> for Line<T>
+impl<T, U> MapGeometry<T, U> for Line<T>
 where
     T: Clone,
     U: Clone,
 {
     type Output = Line<U>;
 
-    fn map_topology<F>(self, mut f: F) -> Self::Output
+    fn map_geometry<F>(self, mut f: F) -> Self::Output
     where
         F: FnMut(T) -> U,
     {
@@ -156,14 +156,14 @@ impl<T> Triangle<T> {
     }
 }
 
-impl<T, U> MapTopology<T, U> for Triangle<T>
+impl<T, U> MapGeometry<T, U> for Triangle<T>
 where
     T: Clone,
     U: Clone,
 {
     type Output = Triangle<U>;
 
-    fn map_topology<F>(self, mut f: F) -> Self::Output
+    fn map_geometry<F>(self, mut f: F) -> Self::Output
     where
         F: FnMut(T) -> U,
     {
@@ -227,14 +227,14 @@ impl<T> Quad<T> {
     }
 }
 
-impl<T, U> MapTopology<T, U> for Quad<T>
+impl<T, U> MapGeometry<T, U> for Quad<T>
 where
     T: Clone,
     U: Clone,
 {
     type Output = Quad<U>;
 
-    fn map_topology<F>(self, mut f: F) -> Self::Output
+    fn map_geometry<F>(self, mut f: F) -> Self::Output
     where
         F: FnMut(T) -> U,
     {
@@ -296,20 +296,20 @@ impl<T> From<Quad<T>> for Polygon<T> {
     }
 }
 
-impl<T, U> MapTopology<T, U> for Polygon<T>
+impl<T, U> MapGeometry<T, U> for Polygon<T>
 where
     T: Clone,
     U: Clone,
 {
     type Output = Polygon<U>;
 
-    fn map_topology<F>(self, f: F) -> Self::Output
+    fn map_geometry<F>(self, f: F) -> Self::Output
     where
         F: FnMut(T) -> U,
     {
         match self {
-            Polygon::Triangle(triangle) => Polygon::Triangle(triangle.map_topology(f)),
-            Polygon::Quad(quad) => Polygon::Quad(quad.map_topology(f)),
+            Polygon::Triangle(triangle) => Polygon::Triangle(triangle.map_geometry(f)),
+            Polygon::Quad(quad) => Polygon::Quad(quad.map_geometry(f)),
         }
     }
 }
