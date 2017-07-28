@@ -1,3 +1,24 @@
+//! Half-edge graph representation of meshes.
+//!
+//! This module provides a flexible representation of meshes as a [half-edge
+//! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list). Meshes
+//! can store arbitrary geometric data associated with any topological
+//! structure, including vertices, (bilateral) edges, and faces.
+//!
+//! These structures can be difficult to construct from individual components;
+//! the `generate` module can be used to produce primitive meshes that can be
+//! converted into a graph.
+//!
+//! # Examples
+//!
+//! Creating an empty mesh with no geometric data:
+//!
+//! ```
+//! use plexus::graph::{EmptyGeometry, Mesh};
+//!
+//! let mut mesh = Mesh::<EmptyGeometry>::new();
+//! ```
+
 mod geometry;
 mod mesh;
 mod storage;
