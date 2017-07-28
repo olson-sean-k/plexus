@@ -2,6 +2,13 @@
 name = "plexus"
 version = "0.0.0"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/olson-sean-k/plexus"
+description = "Mesh generation, manipulation, and buffering."
+
+[lib]
+name = "plexus"
 
 [dependencies]
 arrayvec = "0.3.*"
