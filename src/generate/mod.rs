@@ -30,10 +30,11 @@
 //! ```
 
 // TODO: Primitives are parameterized over the type of scalars used for spatial
-//       data. This can be interpreted as the vector space. Other data, like
-//       texture coordinates, are not parameterized. It may be more consistent
-//       to parameterize all of this data and to do so on the generator
-//       functions, if possible. For example, `cube.spatial_vertices::<f32>()`.
+//       data. This can be interpreted as the vector space and affects the
+//       internal data describing the primitive. Other data, like texture
+//       coordinates, are not parameterized at all. It may be more consistent
+//       to parameterize all of this data, either as individual type parameters
+//       or via a trait (like `Geometry`).
 
 pub mod cube;
 mod decompose;
