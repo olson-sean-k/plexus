@@ -8,7 +8,7 @@ where
     K: Key,
 {
     pub geometry: T,
-    pub(super) edge: EdgeKey<K>,
+    pub(super) edge: Option<EdgeKey<K>>,
 }
 
 #[derive(Clone, Debug)]
@@ -18,8 +18,8 @@ where
     K: Key,
 {
     pub geometry: T,
-    pub(super) opposite: EdgeKey<K>,
-    pub(super) next: EdgeKey<K>,
+    pub(super) opposite: Option<EdgeKey<K>>,
+    pub(super) next: Option<EdgeKey<K>>,
     pub(super) vertex: VertexKey<K>,
 }
 
@@ -59,7 +59,7 @@ where
     pub(crate) fn insert_vertex(&mut self, geometry: G::VertexData) -> VertexKey<K> {
         let vertex = Vertex {
             geometry: geometry,
-            edge: K::none().into(),
+            edge: None,
         };
         self.vertices.insert(vertex).into()
     }

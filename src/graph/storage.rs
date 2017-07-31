@@ -1,27 +1,16 @@
-use num::{Bounded, Integer};
+use num::Integer;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
 pub trait Key: Copy + Default + Eq + Hash + PartialEq {
-    fn none() -> Self;
     fn next(&self) -> Self;
-
-    #[inline(always)]
-    fn is_none(&self) -> bool {
-        *self == Self::none()
-    }
 }
 
 impl<K> Key for K
 where
-    K: Bounded + Copy + Default + Eq + Hash + Integer + PartialEq,
+    K: Copy + Default + Eq + Hash + Integer + PartialEq,
 {
-    #[inline(always)]
-    fn none() -> Self {
-        K::max_value()
-    }
-
     fn next(&self) -> Self {
         *self + Self::one()
     }
