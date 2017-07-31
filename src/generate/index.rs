@@ -70,29 +70,29 @@ where
     }
 }
 
-pub trait IndexTopology<T>: Sized
+pub trait IndexVertices<T>: Sized
 where
     T: IntoVertices + Topological,
 {
-    fn index_topology_with_key<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with_key<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
         N: Indexer<T, K>,
         F: Fn(&T::Vertex) -> &K;
 
-    fn index_topology<N>(self, indexer: N) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<T::Vertex>)
     where
         N: Indexer<T, T::Vertex>,
     {
-        self.index_topology_with_key::<N, T::Vertex, _>(indexer, |vertex| vertex)
+        self.index_vertices_with_key::<N, T::Vertex, _>(indexer, |vertex| vertex)
     }
 }
 
-impl<T, I> IndexTopology<T> for I
+impl<T, I> IndexVertices<T> for I
 where
     I: Iterator<Item = T>,
     T: IntoVertices + Topological,
 {
-    fn index_topology_with_key<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with_key<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
         N: Indexer<T, K>,
         F: Fn(&T::Vertex) -> &K,

@@ -45,6 +45,6 @@ mod topology;
 pub use self::decompose::{IntoLines, IntoVertices, IntoSubdivisions, IntoTetrahedrons,
                           IntoTriangles, Lines, Vertices, Subdivide, Tetrahedrons, Triangulate};
 pub use self::generate::{IndexedPolygons, SpatialVertices, SpatialPolygons, TexturedPolygons};
-pub use self::index::{HashIndexer, IndexTopology};
+pub use self::index::{HashIndexer, IndexVertices};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Rotate, Topological, Triangle,
                          Quad};
