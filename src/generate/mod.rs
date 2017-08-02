@@ -39,6 +39,7 @@
 pub mod cube;
 mod decompose;
 mod generate;
+mod geometry;
 mod index;
 pub mod sphere;
 mod topology;

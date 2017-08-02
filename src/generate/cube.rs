@@ -2,45 +2,8 @@ use num::Num;
 
 use generate::generate::{Generate, IndexedPolygonGenerator, VertexGenerator, PolygonGenerator,
                          SpatialVertexGenerator, SpatialPolygonGenerator, TexturedPolygonGenerator};
+use generate::geometry::Unit;
 use generate::topology::{MapGeometry, Quad};
-
-pub trait Unit: Copy + Num {
-    fn unit_radius() -> (Self, Self);
-    fn unit_width() -> (Self, Self);
-}
-
-macro_rules! unit {
-    (integer => $($t:ty),*) => {$(
-        impl Unit for $t {
-            fn unit_radius() -> (Self, Self) {
-                use num::{One, Zero};
-                (Self::zero(), Self::one() + Self::one())
-            }
-
-            fn unit_width() -> (Self, Self) {
-                use num::{One, Zero};
-                (Self::zero(), Self::one())
-            }
-        }
-    )*};
-    (real => $($t:ty),*) => {$(
-        impl Unit for $t {
-            fn unit_radius() -> (Self, Self) {
-                use num::One;
-                (-Self::one(), Self::one())
-            }
-
-            fn unit_width() -> (Self, Self) {
-                use num::One;
-                let half = Self::one() / (Self::one() + Self::one());
-                (-half, half)
-            }
-        }
-    )*};
-}
-
-unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
-unit!(real => f32, f64);
 
 #[derive(Clone, Copy)]
 pub enum Plane {

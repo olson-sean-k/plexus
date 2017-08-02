@@ -2,11 +2,11 @@
 //! topologies and tessellating polygons.
 
 use arrayvec::ArrayVec;
-use num::{self, Num, NumCast};
 use std::collections::{vec_deque, VecDeque};
 use std::iter::{Chain, IntoIterator, Rev};
 use std::vec;
 
+use generate::geometry::Interpolate;
 use generate::topology::{Line, Polygon, Polygonal, Topological, Triangle, Quad};
 
 pub struct Decompose<I, P, Q, R>
@@ -93,7 +93,7 @@ pub trait IntoTriangles: Polygonal {
 
 pub trait IntoSubdivisions: Polygonal
 where
-    Self::Vertex: Clone + Interpolate,
+    Self::Vertex: Clone + Interpolate<Output = Self::Vertex>,
 {
     type Output: IntoIterator<Item = Self>;
 
@@ -102,7 +102,7 @@ where
 
 pub trait IntoTetrahedrons: Polygonal
 where
-    Self::Vertex: Clone + Interpolate,
+    Self::Vertex: Clone + Interpolate<Output = Self::Vertex>,
 {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]>;
 }
@@ -257,7 +257,7 @@ where
 
 impl<T> IntoSubdivisions for Triangle<T>
 where
-    T: Clone + Interpolate,
+    T: Clone + Interpolate<Output = T>,
 {
     type Output = ArrayVec<[Triangle<Self::Vertex>; 2]>;
 
@@ -273,7 +273,7 @@ where
 
 impl<T> IntoSubdivisions for Quad<T>
 where
-    T: Clone + Interpolate,
+    T: Clone + Interpolate<Output = T>,
 {
     type Output = ArrayVec<[Quad<Self::Vertex>; 4]>;
 
@@ -295,7 +295,7 @@ where
 
 impl<T> IntoTetrahedrons for Quad<T>
 where
-    T: Clone + Interpolate,
+    T: Clone + Interpolate<Output = T>,
 {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]> {
         let Quad { a, b, c, d } = self;
@@ -311,7 +311,7 @@ where
 
 impl<T> IntoSubdivisions for Polygon<T>
 where
-    T: Clone + Interpolate,
+    T: Clone + Interpolate<Output = T>,
 {
     type Output = Vec<Self>;
 
@@ -391,7 +391,7 @@ where
 pub trait Subdivide<P>: Sized
 where
     P: IntoSubdivisions,
-    P::Vertex: Clone + Interpolate,
+    P::Vertex: Clone + Interpolate<Output = P::Vertex>,
 {
     fn subdivide(self) -> Decompose<Self, P, P, P::Output>;
 }
@@ -400,7 +400,7 @@ impl<I, P> Subdivide<P> for I
 where
     I: Iterator<Item = P>,
     P: IntoSubdivisions,
-    P::Vertex: Clone + Interpolate,
+    P::Vertex: Clone + Interpolate<Output = P::Vertex>,
 {
     fn subdivide(self) -> Decompose<Self, P, P, P::Output> {
         Decompose::new(self, P::into_subdivisions)
@@ -415,41 +415,11 @@ pub trait Tetrahedrons<T>: Sized {
 impl<I, T> Tetrahedrons<T> for I
 where
     I: Iterator<Item = Quad<T>>,
-    T: Clone + Interpolate,
+    T: Clone + Interpolate<Output = T>,
 {
     #[allow(type_complexity)]
     fn tetrahedrons(self) -> Decompose<Self, Quad<T>, Triangle<T>, ArrayVec<[Triangle<T>; 4]>> {
         Decompose::new(self, Quad::into_tetrahedrons)
-    }
-}
-
-pub trait Interpolate: Sized {
-    fn lerp(&self, other: &Self, f: f32) -> Self;
-
-    fn midpoint(&self, other: &Self) -> Self {
-        self.lerp(other, 0.5)
-    }
-}
-
-impl<T> Interpolate for (T, T)
-where
-    T: Copy + Num + NumCast,
-{
-    fn lerp(&self, other: &Self, f: f32) -> Self {
-        (lerp(self.0, other.0, f), lerp(self.1, other.1, f))
-    }
-}
-
-impl<T> Interpolate for (T, T, T)
-where
-    T: Copy + Num + NumCast,
-{
-    fn lerp(&self, other: &Self, f: f32) -> Self {
-        (
-            lerp(self.0, other.0, f),
-            lerp(self.1, other.1, f),
-            lerp(self.2, other.2, f),
-        )
     }
 }
 
@@ -464,14 +434,4 @@ where
         topologies = topologies.into_iter().flat_map(&f).collect();
     }
     topologies
-}
-
-fn lerp<T>(a: T, b: T, f: f32) -> T
-where
-    T: Num + NumCast,
-{
-    let f = num::clamp(f, 0.0, 1.0);
-    let af = <f32 as NumCast>::from(a).unwrap() * (1.0 - f);
-    let bf = <f32 as NumCast>::from(b).unwrap() * f;
-    <T as NumCast>::from(af + bf).unwrap()
 }
