@@ -13,3 +13,6 @@ name = "plexus"
 [dependencies]
 arrayvec = "0.3.*"
 num = "0.1.*"
+
+[dev-dependencies]
+ordered-float = "0.5.*"

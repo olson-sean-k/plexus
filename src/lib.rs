@@ -2,6 +2,8 @@
 
 extern crate arrayvec;
 extern crate num;
+#[cfg(test)]
+extern crate ordered_float;
 
 pub mod buffer;
 pub mod generate;
