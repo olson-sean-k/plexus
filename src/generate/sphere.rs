@@ -78,7 +78,7 @@ where
         }
         else {
             let index = index - 1;
-            self.spatial_vertex(index % self.nu, (index / self.nv) + 1)
+            self.spatial_vertex(index % self.nu, (index / self.nu) + 1)
         }
     }
 }
@@ -99,26 +99,31 @@ where
     type Output = Polygon<(T, T, T)>;
 
     fn spatial_polygon(&self, index: usize) -> Self::Output {
+        // Prevent floating point rounding errors by wrapping the incremented
+        // values for `(u, v)` into `(p, q)`. This is important for indexing
+        // geometry, because small differences in the computation of spatial
+        // vertices will produce unique output vertices.
         let (u, v) = self.map_polygon_index(index);
+        let (p, q) = (u + 1, (v + 1) % self.nv);
 
         // Generate the vertices at the requested meridian and parallel. The
         // upper and lower bounds of (u, v) are always used, so generate them
         // in advance (`low` and `high`). Emit triangles at the poles,
         // otherwise quads.
         let low = self.spatial_vertex(u, v);
-        let high = self.spatial_vertex(u + 1, v + 1);
+        let high = self.spatial_vertex(p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.spatial_vertex(u, v + 1), high))
+            Polygon::Triangle(Triangle::new(low, self.spatial_vertex(u, q), high))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.spatial_vertex(u + 1, v), low))
+            Polygon::Triangle(Triangle::new(high, self.spatial_vertex(p, v), low))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.spatial_vertex(u, v + 1),
+                self.spatial_vertex(u, q),
                 high,
-                self.spatial_vertex(u + 1, v),
+                self.spatial_vertex(p, v),
             ))
         }
     }
@@ -132,21 +137,22 @@ where
 
     fn indexed_polygon(&self, index: usize) -> <Self as IndexedPolygonGenerator>::Output {
         let (u, v) = self.map_polygon_index(index);
+        let (p, q) = (u + 1, v + 1);
 
         let low = self.indexed_vertex(u, v);
-        let high = self.indexed_vertex(u + 1, v + 1);
+        let high = self.indexed_vertex(p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.indexed_vertex(u, v + 1), high))
+            Polygon::Triangle(Triangle::new(low, self.indexed_vertex(u, q), high))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.indexed_vertex(u + 1, v), low))
+            Polygon::Triangle(Triangle::new(high, self.indexed_vertex(p, v), low))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.indexed_vertex(u, v + 1),
+                self.indexed_vertex(u, q),
                 high,
-                self.indexed_vertex(u + 1, v),
+                self.indexed_vertex(p, v),
             ))
         }
     }
