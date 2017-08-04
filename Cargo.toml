@@ -7,6 +7,9 @@ readme = "README.md"
 repository = "https://github.com/olson-sean-k/plexus"
 description = "3D mesh generation, manipulation, and buffering."
 
+[badges]
+travis-ci = { repository = "olson-sean-k/plexus" }
+
 [lib]
 name = "plexus"
 
