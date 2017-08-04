@@ -38,9 +38,9 @@ where
     G: Geometry,
     K: Key,
 {
-    pub(super) vertices: Storage<K, Vertex<G::VertexData, K>>,
-    pub(super) edges: Storage<K, Edge<G::EdgeData, K>>,
-    pub(super) faces: Storage<K, Face<G::FaceData, K>>,
+    pub(super) vertices: Storage<K, Vertex<G::Vertex, K>>,
+    pub(super) edges: Storage<K, Edge<G::Edge, K>>,
+    pub(super) faces: Storage<K, Face<G::Face, K>>,
 }
 
 impl<G, K> Mesh<G, K>
@@ -56,7 +56,7 @@ where
         }
     }
 
-    pub(crate) fn insert_vertex(&mut self, geometry: G::VertexData) -> VertexKey<K> {
+    pub(crate) fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey<K> {
         let vertex = Vertex {
             geometry: geometry,
             edge: None,

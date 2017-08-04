@@ -51,7 +51,7 @@ where
     G: Geometry,
     K: Key,
 {
-    type Target = mesh::Face<G::FaceData, K>;
+    type Target = mesh::Face<G::Face, K>;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().faces.get(&self.key.to_inner()).unwrap()
@@ -64,7 +64,7 @@ where
     G: Geometry,
     K: Key,
 {
-    type Target = mesh::Face<G::FaceData, K>;
+    type Target = mesh::Face<G::Face, K>;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().faces.get(&self.key.to_inner()).unwrap()

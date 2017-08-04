@@ -7,25 +7,25 @@ pub trait Attribute: Default {}
 impl Attribute for () {}
 
 pub trait Geometry: Sized {
-    type VertexData: Attribute;
-    type EdgeData: Attribute;
-    type FaceData: Attribute;
+    type Vertex: Attribute;
+    type Edge: Attribute;
+    type Face: Attribute;
 
-    fn compute_vertex_data<M, K>()
+    fn compute_vertex_geometry<M, K>()
     where
         M: AsRef<Mesh<Self, K>>,
         K: Key,
     {
     }
 
-    fn compute_edge_data<M, K>()
+    fn compute_edge_geometry<M, K>()
     where
         M: AsRef<Mesh<Self, K>>,
         K: Key,
     {
     }
 
-    fn compute_face_data<M, K>(face: &mut Face<M, Self, K>)
+    fn compute_face_geometry<M, K>(face: &mut Face<M, Self, K>)
     where
         M: AsRef<Mesh<Self, K>>,
         K: Key,
@@ -36,7 +36,7 @@ pub trait Geometry: Sized {
 pub struct EmptyGeometry;
 
 impl Geometry for EmptyGeometry {
-    type VertexData = ();
-    type EdgeData = ();
-    type FaceData = ();
+    type Vertex = ();
+    type Edge = ();
+    type Face = ();
 }
