@@ -15,6 +15,7 @@ name = "plexus"
 
 [dependencies]
 arrayvec = "0.3.*"
+itertools = "0.6.*"
 num = "0.1.*"
 
 [dev-dependencies]

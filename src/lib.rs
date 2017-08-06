@@ -4,6 +4,7 @@
 #![allow(unknown_lints)] // Allow clippy lints.
 
 extern crate arrayvec;
+extern crate itertools;
 extern crate num;
 #[cfg(test)]
 extern crate ordered_float;
