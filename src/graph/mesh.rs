@@ -125,10 +125,10 @@ where
         vertices: (VertexKey<K>, VertexKey<K>),
         geometry: G::Edge,
     ) -> Result<EdgeKey<K>, ()> {
-        let (i, j) = vertices;
-        let ij = self.edges.insert(Edge::with_geometry(j, geometry));
-        self.vertices.get_mut(&i.to_inner()).unwrap().edge = Some(ij.into());
-        Ok(ij.into())
+        let (a, b) = vertices;
+        let ab = self.edges.insert(Edge::with_geometry(b, geometry));
+        self.vertices.get_mut(&a.to_inner()).unwrap().edge = Some(ab.into());
+        Ok(ab.into())
     }
 
     fn connect_edges_in_face(&mut self, face: FaceKey<K>, edges: (EdgeKey<K>, EdgeKey<K>)) {
@@ -142,13 +142,13 @@ where
         edges: (EdgeKey<K>, EdgeKey<K>, EdgeKey<K>),
         geometry: G::Face,
     ) -> Result<FaceKey<K>, ()> {
-        let (ij, jk, ki) = edges;
+        let (ab, bc, ca) = edges;
         let face = self.faces
-            .insert(Face::with_geometry(ij.into(), geometry))
+            .insert(Face::with_geometry(ab.into(), geometry))
             .into();
-        self.connect_edges_in_face(face, (ij, jk));
-        self.connect_edges_in_face(face, (jk, ki));
-        self.connect_edges_in_face(face, (ki, ij));
+        self.connect_edges_in_face(face, (ab, bc));
+        self.connect_edges_in_face(face, (bc, ca));
+        self.connect_edges_in_face(face, (ca, ab));
         Ok(face)
     }
 }
@@ -196,17 +196,18 @@ where
         for mut triangle in &indeces.into_iter().chunks(3) {
             // Map from the indeces into the original buffers to the keys
             // referring to the vertices in the mesh.
-            let (i, j, k) = (
+            let (a, b, c) = (
                 vertices[triangle.next().unwrap()],
                 vertices[triangle.next().unwrap()],
                 vertices[triangle.next().unwrap()],
             );
-            let (ij, jk, ki) = (
-                mesh.insert_edge((i, j), G::Edge::default()).unwrap(),
-                mesh.insert_edge((j, k), G::Edge::default()).unwrap(),
-                mesh.insert_edge((k, i), G::Edge::default()).unwrap(),
+            let (ab, bc, ca) = (
+                mesh.insert_edge((a, b), G::Edge::default()).unwrap(),
+                mesh.insert_edge((b, c), G::Edge::default()).unwrap(),
+                mesh.insert_edge((c, a), G::Edge::default()).unwrap(),
             );
-            mesh.insert_triangle((ij, jk, ki), G::Face::default());
+            mesh.insert_triangle((ab, bc, ca), G::Face::default())
+                .unwrap();
         }
         mesh
     }
