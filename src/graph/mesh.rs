@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, Geometry};
-use graph::storage::{EdgeKey, FaceKey, Key, OpaqueKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, IndependentKey, Key, Storage, VertexKey};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<T, K>
@@ -96,17 +96,17 @@ where
 pub struct Mesh<G, K = u64>
 where
     G: Geometry,
-    K: Key,
+    K: IndependentKey,
 {
-    pub(super) vertices: Storage<K, Vertex<G::Vertex, K>>,
-    pub(super) edges: Storage<K, Edge<G::Edge, K>>,
-    pub(super) faces: Storage<K, Face<G::Face, K>>,
+    pub(super) vertices: Storage<VertexKey<K>, Vertex<G::Vertex, K>>,
+    pub(super) edges: Storage<EdgeKey<K>, Edge<G::Edge, K>>,
+    pub(super) faces: Storage<FaceKey<K>, Face<G::Face, K>>,
 }
 
 impl<G, K> Mesh<G, K>
 where
     G: Geometry,
-    K: Key,
+    K: IndependentKey,
 {
     pub fn new() -> Self {
         Mesh {
@@ -117,7 +117,7 @@ where
     }
 
     fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey<K> {
-        self.vertices.insert(Vertex::with_geometry(geometry)).into()
+        self.vertices.insert(Vertex::with_geometry(geometry))
     }
 
     fn insert_edge(
@@ -126,15 +126,22 @@ where
         geometry: G::Edge,
     ) -> Result<EdgeKey<K>, ()> {
         let (a, b) = vertices;
-        let ab = self.edges.insert(Edge::with_geometry(b, geometry));
-        self.vertices.get_mut(&a.to_inner()).unwrap().edge = Some(ab.into());
-        Ok(ab.into())
+        let ab = (a, b).into();
+        let ba = (b, a).into();
+        let mut edge = Edge::with_geometry(b, geometry);
+        if let Some(opposite) = self.edges.get_mut(ba) {
+            edge.opposite = Some(ba);
+            opposite.opposite = Some(ab);
+        }
+        self.edges.insert_with_key(ab, edge);
+        self.vertices.get_mut(a).unwrap().edge = Some(ab);
+        Ok(ab)
     }
 
     fn connect_edges_in_face(&mut self, face: FaceKey<K>, edges: (EdgeKey<K>, EdgeKey<K>)) {
-        let edge = self.edges.get_mut(&edges.0.to_inner()).unwrap();
-        edge.next = edges.1.into();
-        edge.face = face.into();
+        let edge = self.edges.get_mut(edges.0).unwrap();
+        edge.next = Some(edges.1);
+        edge.face = Some(face);
     }
 
     fn insert_triangle(
@@ -143,9 +150,7 @@ where
         geometry: G::Face,
     ) -> Result<FaceKey<K>, ()> {
         let (ab, bc, ca) = edges;
-        let face = self.faces
-            .insert(Face::with_geometry(ab.into(), geometry))
-            .into();
+        let face = self.faces.insert(Face::with_geometry(ab.into(), geometry));
         self.connect_edges_in_face(face, (ab, bc));
         self.connect_edges_in_face(face, (bc, ca));
         self.connect_edges_in_face(face, (ca, ab));
@@ -156,7 +161,7 @@ where
 impl<G, K> AsRef<Mesh<G, K>> for Mesh<G, K>
 where
     G: Geometry,
-    K: Key,
+    K: IndependentKey,
 {
     fn as_ref(&self) -> &Self {
         self
@@ -166,7 +171,7 @@ where
 impl<G, K> AsMut<Mesh<G, K>> for Mesh<G, K>
 where
     G: Geometry,
-    K: Key,
+    K: IndependentKey,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
@@ -176,7 +181,7 @@ where
 impl<G, K, T> FromIterator<T> for Mesh<G, K>
 where
     G: Geometry,
-    K: Key,
+    K: IndependentKey,
     T: IntoTriangles + IntoVertices + Topological,
     T::Vertex: Eq + Hash + Into<G::Vertex>,
 {
