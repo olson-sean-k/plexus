@@ -1,5 +1,4 @@
 use num::{self, Num, NumCast};
-use std::ops::{Add, Sub};
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);

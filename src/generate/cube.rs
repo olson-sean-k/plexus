@@ -1,5 +1,3 @@
-use num::Num;
-
 use generate::generate::{Generate, IndexedPolygonGenerator, PolygonGenerator,
                          SpatialPolygonGenerator, SpatialVertexGenerator,
                          TexturedPolygonGenerator, VertexGenerator};
