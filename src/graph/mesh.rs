@@ -40,9 +40,10 @@ where
     K: Key,
 {
     pub geometry: T,
+    pub(super) vertex: VertexKey<K>,
     pub(super) opposite: Option<EdgeKey<K>>,
     pub(super) next: Option<EdgeKey<K>>,
-    pub(super) vertex: VertexKey<K>,
+    pub(super) face: Option<FaceKey<K>>,
 }
 
 impl<T, K> Edge<T, K>
@@ -57,9 +58,10 @@ where
     fn with_geometry(vertex: VertexKey<K>, geometry: T) -> Self {
         Edge {
             geometry: geometry,
+            vertex: vertex,
             opposite: None,
             next: None,
-            vertex: vertex,
+            face: None,
         }
     }
 }
@@ -129,21 +131,25 @@ where
         Ok(ij.into())
     }
 
+    fn connect_edges_in_face(&mut self, face: FaceKey<K>, edges: (EdgeKey<K>, EdgeKey<K>)) {
+        let edge = self.edges.get_mut(&edges.0.to_inner()).unwrap();
+        edge.next = edges.1.into();
+        edge.face = face.into();
+    }
+
     fn insert_triangle(
         &mut self,
         edges: (EdgeKey<K>, EdgeKey<K>, EdgeKey<K>),
         geometry: G::Face,
     ) -> Result<FaceKey<K>, ()> {
         let (ij, jk, ki) = edges;
-        // Link each half-edge with its next half-edge.
-        self.edges.get_mut(&ij.to_inner()).unwrap().next = Some(jk.into());
-        self.edges.get_mut(&jk.to_inner()).unwrap().next = Some(ki.into());
-        self.edges.get_mut(&ki.to_inner()).unwrap().next = Some(ij.into());
-        Ok(
-            self.faces
-                .insert(Face::with_geometry(ij.into(), geometry))
-                .into(),
-        )
+        let face = self.faces
+            .insert(Face::with_geometry(ij.into(), geometry))
+            .into();
+        self.connect_edges_in_face(face, (ij, jk));
+        self.connect_edges_in_face(face, (jk, ki));
+        self.connect_edges_in_face(face, (ki, ij));
+        Ok(face)
     }
 }
 
