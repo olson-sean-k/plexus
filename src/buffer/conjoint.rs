@@ -2,7 +2,7 @@ use num::{Integer, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{HashIndexer, IndexVertices, IntoVertices, Topological};
+use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 
 pub struct ConjointBuffer<N, V>
 where
@@ -64,14 +64,17 @@ where
 
 impl<T, V> FromIterator<T> for ConjointBuffer<usize, V>
 where
-    T: IntoVertices + Topological,
+    T: IntoTriangles + IntoVertices + Topological,
     T::Vertex: Eq + Hash + Into<V>,
 {
     fn from_iter<I>(input: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
-        let (indeces, vertices) = input.into_iter().index_vertices(HashIndexer::default());
+        let (indeces, vertices) = input
+            .into_iter()
+            .triangulate()
+            .index_vertices(HashIndexer::default());
         let mut buffer = ConjointBuffer::new();
         buffer.extend(indeces, vertices.into_iter().map(|vertex| vertex.into()));
         buffer
