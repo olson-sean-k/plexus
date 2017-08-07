@@ -3,9 +3,9 @@ use num::traits::FloatConst;
 use std::cmp;
 use std::marker::PhantomData;
 
-use generate::generate::{IndexedPolygonGenerator, VertexGenerator, PolygonGenerator,
-                         SpatialVertexGenerator, SpatialPolygonGenerator};
-use generate::topology::{Polygon, Triangle, Quad};
+use generate::generate::{IndexedPolygonGenerator, PolygonGenerator, SpatialPolygonGenerator,
+                         SpatialVertexGenerator, VertexGenerator};
+use generate::topology::{Polygon, Quad, Triangle};
 
 #[derive(Clone)]
 pub struct UVSphere<T>

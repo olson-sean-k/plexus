@@ -1,7 +1,8 @@
 use num::Num;
 
-use generate::generate::{Generate, IndexedPolygonGenerator, VertexGenerator, PolygonGenerator,
-                         SpatialVertexGenerator, SpatialPolygonGenerator, TexturedPolygonGenerator};
+use generate::generate::{Generate, IndexedPolygonGenerator, PolygonGenerator,
+                         SpatialPolygonGenerator, SpatialVertexGenerator,
+                         TexturedPolygonGenerator, VertexGenerator};
 use generate::geometry::Unit;
 use generate::topology::{MapGeometry, Quad};
 

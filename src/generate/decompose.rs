@@ -7,7 +7,7 @@ use std::iter::{Chain, IntoIterator, Rev};
 use std::vec;
 
 use generate::geometry::Interpolate;
-use generate::topology::{Line, Polygon, Polygonal, Topological, Triangle, Quad};
+use generate::topology::{Line, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -317,19 +317,15 @@ where
 
     fn into_subdivisions(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => {
-                triangle
-                    .into_subdivisions()
-                    .into_iter()
-                    .map(|triangle| triangle.into())
-                    .collect()
-            }
-            Polygon::Quad(quad) => {
-                quad.into_subdivisions()
-                    .into_iter()
-                    .map(|quad| quad.into())
-                    .collect()
-            }
+            Polygon::Triangle(triangle) => triangle
+                .into_subdivisions()
+                .into_iter()
+                .map(|triangle| triangle.into())
+                .collect(),
+            Polygon::Quad(quad) => quad.into_subdivisions()
+                .into_iter()
+                .map(|quad| quad.into())
+                .collect(),
         }
     }
 }
