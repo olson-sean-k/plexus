@@ -10,8 +10,8 @@
 
 Meshes can be generated from primitives like cubes and spheres using iterator
 expressions. Primitives emit topological structures like `Triangle`s or
-`Quads`, which contain arbitrary geometric data in their vertices. These can be
-transformed and decomposed into other topologies and geometric data, including
+`Quad`s, which contain arbitrary geometric data in their vertices. These can be
+transformed and decomposed into other topologies and geometric data via
 triangulation, tesselation, and conversion into rendering pipeline data.
 
 ```rust
