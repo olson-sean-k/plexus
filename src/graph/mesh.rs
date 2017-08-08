@@ -4,13 +4,13 @@ use std::iter::FromIterator;
 
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, Geometry};
-use graph::storage::{AtomicKey, EdgeKey, FaceKey, Key, Storage, VertexKey};
+use graph::storage::{AtomicKey, EdgeKey, FaceKey, Storage, VertexKey};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     pub geometry: T,
     pub(super) edge: Option<EdgeKey<K>>,
@@ -19,7 +19,7 @@ where
 impl<T, K> Vertex<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     fn new() -> Self {
         Vertex::with_geometry(T::default())
@@ -37,7 +37,7 @@ where
 pub struct Edge<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     pub geometry: T,
     pub(super) vertex: VertexKey<K>,
@@ -49,7 +49,7 @@ where
 impl<T, K> Edge<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     fn new(vertex: VertexKey<K>) -> Self {
         Edge::with_geometry(vertex, T::default())
@@ -70,7 +70,7 @@ where
 pub struct Face<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     pub geometry: T,
     pub(super) edge: EdgeKey<K>,
@@ -79,7 +79,7 @@ where
 impl<T, K> Face<T, K>
 where
     T: Attribute,
-    K: Key,
+    K: AtomicKey,
 {
     fn new(edge: EdgeKey<K>) -> Self {
         Face::with_geometry(edge, T::default())

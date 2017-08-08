@@ -34,11 +34,11 @@ macro_rules! opaque_key {
         #[derive(Copy, Clone, Debug)]
         pub struct $t<$k>($i)
         where
-            $k: Key;
+            $k: AtomicKey;
 
         impl<$k> OpaqueKey for $t<$k>
         where
-            $k: Key,
+            $k: AtomicKey,
         {
             type Key = $i;
 
@@ -49,7 +49,7 @@ macro_rules! opaque_key {
 
         impl<$k> From<$i> for $t<$k>
         where
-            $k: Key,
+            $k: AtomicKey,
         {
             fn from(key: $i) -> Self {
                 $t(key)
@@ -61,7 +61,7 @@ opaque_key!(VertexKey => K for K, EdgeKey => K for (K, K), FaceKey => K for K);
 
 impl<K> From<(VertexKey<K>, VertexKey<K>)> for EdgeKey<K>
 where
-    K: Key,
+    K: AtomicKey,
 {
     fn from(key: (VertexKey<K>, VertexKey<K>)) -> Self {
         EdgeKey((key.0.to_inner(), key.1.to_inner()))
