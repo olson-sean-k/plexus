@@ -45,8 +45,9 @@ mod index;
 pub mod sphere;
 mod topology;
 
-pub use self::decompose::{IntoLines, IntoSubdivisions, IntoTetrahedrons, IntoTriangles,
-                          IntoVertices, Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
+pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
+
+pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{IndexedPolygons, SpatialPolygons, SpatialVertices, TexturedPolygons};
 pub use self::index::{HashIndexer, IndexVertices};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
