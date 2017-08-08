@@ -28,7 +28,7 @@ type r32 = OrderedFloat<f32>; // `f32` with `Eq` and `Hash` implementations.
 // `From` trait in this example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .spatial_polygons()
-    .map_verticies(|(x, y, z)| (r32(x), r32(y), r32(z)))
+    .map_verticies(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
     .map_verticies(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
     .collect::<ConjointBuffer<u64, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
