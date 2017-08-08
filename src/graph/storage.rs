@@ -4,17 +4,17 @@ use std::hash::Hash;
 
 pub trait Key: Copy + Default + Eq + Hash + PartialEq {}
 
-pub trait IndependentKey: Key {
-    fn next(&self) -> Self;
-}
-
 impl<K> Key for K
 where
     K: Copy + Default + Eq + Hash + PartialEq,
 {
 }
 
-impl<K> IndependentKey for K
+pub trait AtomicKey: Key {
+    fn next(&self) -> Self;
+}
+
+impl<K> AtomicKey for K
 where
     K: Integer + Key,
 {
@@ -96,7 +96,7 @@ where
 impl<K, T> Storage<K, T>
 where
     K: OpaqueKey,
-    K::Key: IndependentKey + Into<K>,
+    K::Key: AtomicKey + Into<K>,
 {
     pub fn insert(&mut self, item: T) -> K {
         let key = self.0;

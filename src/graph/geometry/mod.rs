@@ -1,6 +1,6 @@
 use graph::mesh::Mesh;
 use graph::topology::Face;
-use graph::storage::IndependentKey;
+use graph::storage::AtomicKey;
 
 pub trait Attribute: Default {}
 
@@ -14,21 +14,21 @@ pub trait Geometry: Sized {
     fn compute_vertex_geometry<M, K>()
     where
         M: AsRef<Mesh<Self, K>>,
-        K: IndependentKey,
+        K: AtomicKey,
     {
     }
 
     fn compute_edge_geometry<M, K>()
     where
         M: AsRef<Mesh<Self, K>>,
-        K: IndependentKey,
+        K: AtomicKey,
     {
     }
 
     fn compute_face_geometry<M, K>(face: &mut Face<M, Self, K>)
     where
         M: AsRef<Mesh<Self, K>>,
-        K: IndependentKey,
+        K: AtomicKey,
     {
     }
 }

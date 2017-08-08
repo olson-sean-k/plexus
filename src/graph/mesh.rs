@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, Geometry};
-use graph::storage::{EdgeKey, FaceKey, IndependentKey, Key, Storage, VertexKey};
+use graph::storage::{AtomicKey, EdgeKey, FaceKey, Key, Storage, VertexKey};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<T, K>
@@ -96,7 +96,7 @@ where
 pub struct Mesh<G, K = u64>
 where
     G: Geometry,
-    K: IndependentKey,
+    K: AtomicKey,
 {
     pub(super) vertices: Storage<VertexKey<K>, Vertex<G::Vertex, K>>,
     pub(super) edges: Storage<EdgeKey<K>, Edge<G::Edge, K>>,
@@ -106,7 +106,7 @@ where
 impl<G, K> Mesh<G, K>
 where
     G: Geometry,
-    K: IndependentKey,
+    K: AtomicKey,
 {
     pub fn new() -> Self {
         Mesh {
@@ -161,7 +161,7 @@ where
 impl<G, K> AsRef<Mesh<G, K>> for Mesh<G, K>
 where
     G: Geometry,
-    K: IndependentKey,
+    K: AtomicKey,
 {
     fn as_ref(&self) -> &Self {
         self
@@ -171,7 +171,7 @@ where
 impl<G, K> AsMut<Mesh<G, K>> for Mesh<G, K>
 where
     G: Geometry,
-    K: IndependentKey,
+    K: AtomicKey,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
@@ -181,7 +181,7 @@ where
 impl<G, K, T> FromIterator<T> for Mesh<G, K>
 where
     G: Geometry,
-    K: IndependentKey,
+    K: AtomicKey,
     T: IntoTriangles + IntoVertices + Topological,
     T::Vertex: Eq + Hash + Into<G::Vertex>,
 {
