@@ -150,7 +150,7 @@ where
         geometry: G::Face,
     ) -> Result<FaceKey<K>, ()> {
         let (ab, bc, ca) = edges;
-        let face = self.faces.insert(Face::with_geometry(ab.into(), geometry));
+        let face = self.faces.insert(Face::with_geometry(ab, geometry));
         self.connect_edges_in_face(face, (ab, bc));
         self.connect_edges_in_face(face, (bc, ca));
         self.connect_edges_in_face(face, (ca, ab));
