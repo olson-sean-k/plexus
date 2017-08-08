@@ -9,7 +9,7 @@ use generate::geometry::Unit;
 use generate::topology::{Polygon, Quad, Triangle};
 
 #[derive(Clone)]
-pub struct UVSphere<T>
+pub struct UVSphere<T = f32>
 where
     T: Float + FloatConst + Unit,
 {

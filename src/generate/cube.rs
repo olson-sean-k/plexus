@@ -15,7 +15,7 @@ pub enum Plane {
 }
 
 #[derive(Clone)]
-pub struct Cube<T>
+pub struct Cube<T = f32>
 where
     T: Unit,
 {

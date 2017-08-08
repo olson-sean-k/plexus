@@ -31,10 +31,11 @@
 
 // TODO: Primitives are parameterized over the type of scalars used for spatial
 //       data. This can be interpreted as the vector space and affects the
-//       internal data describing the primitive. Other data, like texture
-//       coordinates, are not parameterized at all. It may be more consistent
-//       to parameterize all of this data, either as individual type parameters
-//       or via a trait (like `Geometry`).
+//       internal data describing the primitive. See the `Unit` trait. Other
+//       data, like texture coordinates, are not parameterized at all. It may
+//       be more consistent to parameterize all of this data, either as
+//       individual type parameters or via a trait (like `Geometry`). Default
+//       type parameters are also provided.
 
 pub mod cube;
 mod decompose;
