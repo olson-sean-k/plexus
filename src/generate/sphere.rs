@@ -5,36 +5,51 @@ use std::marker::PhantomData;
 
 use generate::generate::{IndexedPolygonGenerator, PolygonGenerator, SpatialPolygonGenerator,
                          SpatialVertexGenerator, VertexGenerator};
+use generate::geometry::Unit;
 use generate::topology::{Polygon, Quad, Triangle};
 
 #[derive(Clone)]
 pub struct UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     nu: usize, // Meridians.
     nv: usize, // Parallels.
+    unit: T,
     phantom: PhantomData<T>,
 }
 
 impl<T> UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
-    pub fn with_unit_radius(nu: usize, nv: usize) -> Self {
+    fn new(nu: usize, nv: usize, upper: T) -> Self {
         let nu = cmp::max(3, nu);
         let nv = cmp::max(2, nv);
         UVSphere {
             nu: nu,
             nv: nv,
+            unit: upper,
             phantom: PhantomData,
         }
+    }
+
+    pub fn with_unit_radius(nu: usize, nv: usize) -> Self {
+        Self::new(nu, nv, T::unit_radius().1)
+    }
+
+    pub fn with_unit_width(nu: usize, nv: usize) -> Self {
+        Self::new(nu, nv, T::unit_width().1)
     }
 
     fn spatial_vertex(&self, u: usize, v: usize) -> (T, T, T) {
         let u = (T::from(u).unwrap() / T::from(self.nu).unwrap()) * T::PI() * (T::one() + T::one());
         let v = (T::from(v).unwrap() / T::from(self.nv).unwrap()) * T::PI();
-        (u.cos() * v.sin(), u.sin() * v.sin(), v.cos())
+        (
+            self.unit * u.cos() * v.sin(),
+            self.unit * u.sin() * v.sin(),
+            self.unit * v.cos(),
+        )
     }
 
     fn indexed_vertex(&self, u: usize, v: usize) -> usize {
@@ -56,7 +71,7 @@ where
 
 impl<T> VertexGenerator for UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     fn vertex_count(&self) -> usize {
         (self.nv - 1) * self.nu + 2
@@ -65,7 +80,7 @@ where
 
 impl<T> SpatialVertexGenerator for UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     type Output = (T, T, T);
 
@@ -85,7 +100,7 @@ where
 
 impl<T> PolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     fn polygon_count(&self) -> usize {
         self.nu * self.nv
@@ -94,7 +109,7 @@ where
 
 impl<T> SpatialPolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     type Output = Polygon<(T, T, T)>;
 
@@ -131,7 +146,7 @@ where
 
 impl<T> IndexedPolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst,
+    T: Float + FloatConst + Unit,
 {
     type Output = Polygon<usize>;
 
