@@ -5,7 +5,7 @@ authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/olson-sean-k/plexus"
-description = "3D mesh generation, manipulation, and buffering."
+description = "3D mesh generation and manipulation."
 
 [badges]
 travis-ci = { repository = "olson-sean-k/plexus" }
