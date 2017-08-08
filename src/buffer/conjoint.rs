@@ -1,4 +1,4 @@
-use num::{Integer, Unsigned};
+use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
@@ -40,13 +40,18 @@ where
 
 impl<N, V> ConjointBuffer<N, V>
 where
-    N: Copy + From<usize> + Integer + Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
 {
-    pub fn append(&mut self, other: &mut Self) {
-        let offset = N::from(self.vertices.len());
-        self.vertices.append(&mut other.vertices);
+    pub fn append<M, U>(&mut self, other: &mut ConjointBuffer<M, U>)
+    where
+        M: Copy + Integer + Into<N> + Unsigned,
+        U: Into<V>,
+    {
+        let offset = N::from(self.vertices.len()).unwrap();
+        self.vertices
+            .extend(other.vertices.drain(..).map(|vertex| vertex.into()));
         self.indeces
-            .extend(other.indeces.drain(..).map(|index| index + offset))
+            .extend(other.indeces.drain(..).map(|index| index.into() + offset))
     }
 }
 
@@ -62,10 +67,16 @@ where
     }
 }
 
-impl<T, V> FromIterator<T> for ConjointBuffer<usize, V>
+// TODO: The parameter N is constrained on `NumCast` instead of `From<usize>`,
+//       because `From<usize>` isn't very useful. However, `usize` probably
+//       isn't a great choice for index data to begin with. Consider an
+//       alternative, like a different type, type alias, or even a new type
+//       with conversion support. That could make `From` a good choice.
+impl<T, N, V> FromIterator<T> for ConjointBuffer<N, V>
 where
     T: IntoTriangles + IntoVertices + Topological,
     T::Vertex: Eq + Hash + Into<V>,
+    N: Integer + NumCast + Unsigned,
 {
     fn from_iter<I>(input: I) -> Self
     where
@@ -76,7 +87,10 @@ where
             .triangulate()
             .index_vertices(HashIndexer::default());
         let mut buffer = ConjointBuffer::new();
-        buffer.extend(indeces, vertices.into_iter().map(|vertex| vertex.into()));
+        buffer.extend(
+            indeces.into_iter().map(|index| N::from(index).unwrap()),
+            vertices.into_iter().map(|vertex| vertex.into()),
+        );
         buffer
     }
 }
@@ -97,7 +111,7 @@ mod tests {
                 (OrderedFloat(x), OrderedFloat(y), OrderedFloat(z))
             })
             .triangulate()
-            .collect::<ConjointBuffer<_, Point<f32>>>();
+            .collect::<ConjointBuffer<u64, Point<f32>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
