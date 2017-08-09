@@ -39,12 +39,10 @@ where
     I: Iterator<Item = P>,
     R: IntoIterator<Item = P>,
 {
-    // TODO: This is questionable, but acts as a replacement for optional
-    //       parameters used by the `Into*` traits. In particular,
-    //       `into_subdivisions` no longer accepts a parameter `n`, and `remap`
-    //       can be used to emulate that behavior. This is especially useful
-    //       for larger `n` values, where chaining calls to `subdivide` is not
-    //       practical.
+    // TODO: This is questionable, but allows operations whose inputs and
+    //       outputs are the same to recurse. This is especially useful for
+    //       larger `n` values, where chaining calls to operations like
+    //       `subdivide` is not practical.
     pub fn remap(self, n: usize) -> Decompose<Remap<P>, P, P, R> {
         let Decompose { input, output, f } = self;
         Decompose::new(output.into_iter().rev().chain(remap(n, input, f)), f)
