@@ -51,15 +51,15 @@ where
 }
 
 pub struct Map<I, T, U, F> {
-    topologies: I,
+    input: I,
     f: F,
     phantom: PhantomData<(T, U)>,
 }
 
 impl<I, T, U, F> Map<I, T, U, F> {
-    fn new(topologies: I, f: F) -> Self {
+    fn new(input: I, f: F) -> Self {
         Map {
-            topologies: topologies,
+            input: input,
             f: f,
             phantom: PhantomData,
         }
@@ -78,7 +78,7 @@ where
     type Item = Q;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.topologies
+        self.input
             .next()
             .map(|topology| topology.map_geometry(&mut self.f))
     }
