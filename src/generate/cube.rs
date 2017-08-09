@@ -2,7 +2,7 @@ use generate::generate::{Generate, IndexedPolygonGenerator, PolygonGenerator,
                          SpatialPolygonGenerator, SpatialVertexGenerator,
                          TexturedPolygonGenerator, VertexGenerator};
 use generate::geometry::Unit;
-use generate::topology::{MapGeometry, Quad};
+use generate::topology::{MapVerticesInto, Quad};
 
 #[derive(Clone, Copy)]
 pub enum Plane {
@@ -102,7 +102,7 @@ where
 
     fn spatial_polygon(&self, index: usize) -> Self::Output {
         self.indexed_polygon(index)
-            .map_geometry(|index| self.spatial_vertex(index))
+            .map_vertices_into(|index| self.spatial_vertex(index))
     }
 }
 
