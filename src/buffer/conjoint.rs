@@ -67,11 +67,6 @@ where
     }
 }
 
-// TODO: The parameter N is constrained on `NumCast` instead of `From<usize>`,
-//       because `From<usize>` isn't very useful. However, `usize` probably
-//       isn't a great choice for index data to begin with. Consider an
-//       alternative, like a different type, type alias, or even a new type
-//       with conversion support. That could make `From` a good choice.
 impl<T, N, V> FromIterator<T> for ConjointBuffer<N, V>
 where
     T: IntoTriangles + IntoVertices + Topological,
