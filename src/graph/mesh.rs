@@ -4,22 +4,20 @@ use std::iter::FromIterator;
 
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, Geometry};
-use graph::storage::{AtomicKey, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 
 #[derive(Clone, Debug)]
-pub struct Vertex<T, K>
+pub struct Vertex<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
     pub geometry: T,
-    pub(super) edge: Option<EdgeKey<K>>,
+    pub(super) edge: Option<EdgeKey>,
 }
 
-impl<T, K> Vertex<T, K>
+impl<T> Vertex<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
     fn new() -> Self {
         Vertex::with_geometry(T::default())
@@ -34,28 +32,26 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct Edge<T, K>
+pub struct Edge<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
     pub geometry: T,
-    pub(super) vertex: VertexKey<K>,
-    pub(super) opposite: Option<EdgeKey<K>>,
-    pub(super) next: Option<EdgeKey<K>>,
-    pub(super) face: Option<FaceKey<K>>,
+    pub(super) vertex: VertexKey,
+    pub(super) opposite: Option<EdgeKey>,
+    pub(super) next: Option<EdgeKey>,
+    pub(super) face: Option<FaceKey>,
 }
 
-impl<T, K> Edge<T, K>
+impl<T> Edge<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
-    fn new(vertex: VertexKey<K>) -> Self {
+    fn new(vertex: VertexKey) -> Self {
         Edge::with_geometry(vertex, T::default())
     }
 
-    fn with_geometry(vertex: VertexKey<K>, geometry: T) -> Self {
+    fn with_geometry(vertex: VertexKey, geometry: T) -> Self {
         Edge {
             geometry: geometry,
             vertex: vertex,
@@ -67,25 +63,23 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct Face<T, K>
+pub struct Face<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
     pub geometry: T,
-    pub(super) edge: EdgeKey<K>,
+    pub(super) edge: EdgeKey,
 }
 
-impl<T, K> Face<T, K>
+impl<T> Face<T>
 where
     T: Attribute,
-    K: AtomicKey,
 {
-    fn new(edge: EdgeKey<K>) -> Self {
+    fn new(edge: EdgeKey) -> Self {
         Face::with_geometry(edge, T::default())
     }
 
-    fn with_geometry(edge: EdgeKey<K>, geometry: T) -> Self {
+    fn with_geometry(edge: EdgeKey, geometry: T) -> Self {
         Face {
             geometry: geometry,
             edge: edge,
@@ -93,20 +87,18 @@ where
     }
 }
 
-pub struct Mesh<G, K = u64>
+pub struct Mesh<G = u64>
 where
     G: Geometry,
-    K: AtomicKey,
 {
-    pub(super) vertices: Storage<VertexKey<K>, Vertex<G::Vertex, K>>,
-    pub(super) edges: Storage<EdgeKey<K>, Edge<G::Edge, K>>,
-    pub(super) faces: Storage<FaceKey<K>, Face<G::Face, K>>,
+    pub(super) vertices: Storage<VertexKey, Vertex<G::Vertex>>,
+    pub(super) edges: Storage<EdgeKey, Edge<G::Edge>>,
+    pub(super) faces: Storage<FaceKey, Face<G::Face>>,
 }
 
-impl<G, K> Mesh<G, K>
+impl<G> Mesh<G>
 where
     G: Geometry,
-    K: AtomicKey,
 {
     pub fn new() -> Self {
         Mesh {
@@ -116,18 +108,31 @@ where
         }
     }
 
-    fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey<K> {
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len()
+    }
+
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
+    pub fn face_count(&self) -> usize {
+        self.faces.len()
+    }
+
+    fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.vertices.insert(Vertex::with_geometry(geometry))
     }
 
     fn insert_edge(
         &mut self,
-        vertices: (VertexKey<K>, VertexKey<K>),
+        vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
-    ) -> Result<EdgeKey<K>, ()> {
+    ) -> Result<EdgeKey, ()> {
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
+        //println!("{:?}", ab);
         let mut edge = Edge::with_geometry(b, geometry);
         if let Some(opposite) = self.edges.get_mut(ba) {
             edge.opposite = Some(ba);
@@ -138,7 +143,7 @@ where
         Ok(ab)
     }
 
-    fn connect_edges_in_face(&mut self, face: FaceKey<K>, edges: (EdgeKey<K>, EdgeKey<K>)) {
+    fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
         let edge = self.edges.get_mut(edges.0).unwrap();
         edge.next = Some(edges.1);
         edge.face = Some(face);
@@ -146,9 +151,9 @@ where
 
     fn insert_triangle(
         &mut self,
-        edges: (EdgeKey<K>, EdgeKey<K>, EdgeKey<K>),
+        edges: (EdgeKey, EdgeKey, EdgeKey),
         geometry: G::Face,
-    ) -> Result<FaceKey<K>, ()> {
+    ) -> Result<FaceKey, ()> {
         let (ab, bc, ca) = edges;
         let face = self.faces.insert(Face::with_geometry(ab, geometry));
         self.connect_edges_in_face(face, (ab, bc));
@@ -158,30 +163,27 @@ where
     }
 }
 
-impl<G, K> AsRef<Mesh<G, K>> for Mesh<G, K>
+impl<G> AsRef<Mesh<G>> for Mesh<G>
 where
     G: Geometry,
-    K: AtomicKey,
 {
     fn as_ref(&self) -> &Self {
         self
     }
 }
 
-impl<G, K> AsMut<Mesh<G, K>> for Mesh<G, K>
+impl<G> AsMut<Mesh<G>> for Mesh<G>
 where
     G: Geometry,
-    K: AtomicKey,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
     }
 }
 
-impl<G, K, T> FromIterator<T> for Mesh<G, K>
+impl<G, T> FromIterator<T> for Mesh<G>
 where
     G: Geometry,
-    K: AtomicKey,
     T: IntoTriangles + IntoVertices + Topological,
     T::Vertex: Eq + Hash + Into<G::Vertex>,
 {
