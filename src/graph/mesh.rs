@@ -132,7 +132,6 @@ where
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
-        //println!("{:?}", ab);
         let mut edge = Edge::with_geometry(b, geometry);
         if let Some(opposite) = self.edges.get_mut(ba) {
             edge.opposite = Some(ba);
