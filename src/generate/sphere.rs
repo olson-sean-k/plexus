@@ -117,27 +117,45 @@ where
         // Prevent floating point rounding errors by wrapping the incremented
         // values for `(u, v)` into `(p, q)`. This is important for indexing
         // geometry, because small differences in the computation of spatial
-        // vertices will produce unique output vertices.
+        // vertices will produce redundant output vertices. There should be
+        // exactly `(nv - 1) * nu + 2` unique values of `(u, v)` used to
+        // generate positions.
+        //
+        // There are two important observations:
+        //
+        //   1. `u` must wrap, but `v` need not. There are `nu` meridians of
+        //      points and polygons, but there are `nv` parallels of polygons
+        //      and `nv + 1` parallels of points.
+        //   2. `u`, which represents a meridian, is meaningless at the poles,
+        //      and can be normalized to zero.
         let (u, v) = self.map_polygon_index(index);
-        let (p, q) = (u + 1, (v + 1) % self.nv);
+        let (p, q) = ((u + 1) % self.nu, v + 1);
 
         // Generate the vertices at the requested meridian and parallel. The
-        // upper and lower bounds of (u, v) are always used, so generate them
-        // in advance (`low` and `high`). Emit triangles at the poles,
-        // otherwise quads.
-        let low = self.spatial_vertex(u, v);
-        let high = self.spatial_vertex(p, q);
+        // lower bound of `(u, v)` is always used, so compute that in advance
+        // (`lower`). Emit triangles at the poles, otherwise quads.
+        let lower = self.spatial_vertex(u, v);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.spatial_vertex(u, q), high))
+            Polygon::Triangle(Triangle::new(
+                lower,
+                self.spatial_vertex(u, q),
+                self.spatial_vertex(p, q),
+            ))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.spatial_vertex(p, v), low))
+            Polygon::Triangle(Triangle::new(
+                // Normalize `u` at the pole, using `(0, nv)` in place of
+                // `(p, q)`.
+                self.spatial_vertex(0, self.nv),
+                self.spatial_vertex(p, v),
+                lower,
+            ))
         }
         else {
             Polygon::Quad(Quad::new(
-                low,
+                lower,
                 self.spatial_vertex(u, q),
-                high,
+                self.spatial_vertex(p, q),
                 self.spatial_vertex(p, v),
             ))
         }
