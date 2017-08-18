@@ -196,7 +196,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
-    use super::super::*;
+    use generate::*;
 
     #[test]
     fn vertex_count() {
