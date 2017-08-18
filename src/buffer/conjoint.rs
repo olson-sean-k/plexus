@@ -92,15 +92,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use ordered_float::OrderedFloat;
-
+    use r32;
     use buffer::conjoint::*;
     use generate::*;
 
     #[test]
     fn collect_topology_into_buffer() {
-        #[allow(non_camel_case_types)]
-        type r32 = OrderedFloat<f32>;
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
             .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))

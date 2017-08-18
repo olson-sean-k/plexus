@@ -219,3 +219,23 @@ where
         mesh
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use r32;
+    use generate::*;
+    use graph::*;
+
+    #[test]
+    fn collect_topology_into_mesh() {
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .spatial_polygons() // 6 triangles, 18 vertices.
+            .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
+            .triangulate()
+            .collect::<Mesh<(r32, r32, r32)>>();
+
+        assert_eq!(5, mesh.vertex_count());
+        assert_eq!(18, mesh.edge_count());
+        assert_eq!(6, mesh.face_count());
+    }
+}

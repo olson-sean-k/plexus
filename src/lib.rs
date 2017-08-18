@@ -4,8 +4,14 @@
 extern crate arrayvec;
 extern crate itertools;
 extern crate num;
-#[cfg(test)]
 extern crate ordered_float;
+
+use ordered_float::OrderedFloat;
+
+#[allow(non_camel_case_types)]
+pub type r32 = OrderedFloat<f32>;
+#[allow(non_camel_case_types)]
+pub type r64 = OrderedFloat<f64>;
 
 pub mod buffer;
 pub mod generate;
