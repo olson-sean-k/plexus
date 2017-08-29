@@ -87,7 +87,7 @@ where
     }
 }
 
-pub struct Mesh<G = u64>
+pub struct Mesh<G = ()>
 where
     G: Geometry,
 {
@@ -142,12 +142,6 @@ where
         Ok(ab)
     }
 
-    fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
-        let edge = self.edges.get_mut(edges.0).unwrap();
-        edge.next = Some(edges.1);
-        edge.face = Some(face);
-    }
-
     fn insert_triangle(
         &mut self,
         edges: (EdgeKey, EdgeKey, EdgeKey),
@@ -159,6 +153,12 @@ where
         self.connect_edges_in_face(face, (bc, ca));
         self.connect_edges_in_face(face, (ca, ab));
         Ok(face)
+    }
+
+    fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
+        let edge = self.edges.get_mut(edges.0).unwrap();
+        edge.next = Some(edges.1);
+        edge.face = Some(face);
     }
 }
 
