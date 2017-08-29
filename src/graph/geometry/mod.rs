@@ -29,9 +29,7 @@ pub trait Geometry: Sized {
     }
 }
 
-pub struct EmptyGeometry;
-
-impl Geometry for EmptyGeometry {
+impl Geometry for () {
     type Vertex = ();
     type Edge = ();
     type Face = ();

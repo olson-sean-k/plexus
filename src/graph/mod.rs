@@ -14,9 +14,9 @@
 //! Creating an empty mesh with no geometric data:
 //!
 //! ```
-//! use plexus::graph::{EmptyGeometry, Mesh};
+//! use plexus::graph::Mesh;
 //!
-//! let mut mesh = Mesh::<EmptyGeometry>::new();
+//! let mut mesh = Mesh::<()>::new();
 //! ```
 
 mod geometry;
@@ -24,7 +24,7 @@ mod mesh;
 mod storage;
 mod topology;
 
-pub use self::geometry::{Attribute, EmptyGeometry, Geometry};
+pub use self::geometry::{Attribute, Geometry};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::Face;
