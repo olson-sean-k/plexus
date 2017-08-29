@@ -3,8 +3,6 @@ use graph::topology::Face;
 
 pub trait Attribute: Default {}
 
-impl Attribute for () {}
-
 pub trait Geometry: Sized {
     type Vertex: Attribute;
     type Edge: Attribute;
@@ -28,6 +26,8 @@ pub trait Geometry: Sized {
     {
     }
 }
+
+impl Attribute for () {}
 
 impl Geometry for () {
     type Vertex = ();
