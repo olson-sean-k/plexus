@@ -73,7 +73,7 @@ where
 pub trait Interpolate<T = Self>: Sized {
     type Output;
 
-    fn lerp(&self, other: &T, f: f32) -> Self::Output;
+    fn lerp(&self, other: &T, f: f64) -> Self::Output;
 
     fn midpoint(&self, other: &T) -> Self::Output {
         self.lerp(other, 0.5)
@@ -86,7 +86,7 @@ where
 {
     type Output = Self;
 
-    fn lerp(&self, other: &Self, f: f32) -> Self::Output {
+    fn lerp(&self, other: &Self, f: f64) -> Self::Output {
         (lerp(self.0, other.0, f), lerp(self.1, other.1, f))
     }
 }
@@ -97,7 +97,7 @@ where
 {
     type Output = Self;
 
-    fn lerp(&self, other: &Self, f: f32) -> Self::Output {
+    fn lerp(&self, other: &Self, f: f64) -> Self::Output {
         (
             lerp(self.0, other.0, f),
             lerp(self.1, other.1, f),
@@ -106,12 +106,12 @@ where
     }
 }
 
-fn lerp<T>(a: T, b: T, f: f32) -> T
+fn lerp<T>(a: T, b: T, f: f64) -> T
 where
     T: Num + NumCast,
 {
     let f = num::clamp(f, 0.0, 1.0);
-    let af = <f32 as NumCast>::from(a).unwrap() * (1.0 - f);
-    let bf = <f32 as NumCast>::from(b).unwrap() * f;
+    let af = <f64 as NumCast>::from(a).unwrap() * (1.0 - f);
+    let bf = <f64 as NumCast>::from(b).unwrap() * f;
     <T as NumCast>::from(af + bf).unwrap()
 }
