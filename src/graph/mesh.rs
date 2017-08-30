@@ -19,11 +19,7 @@ impl<T> Vertex<T>
 where
     T: Attribute,
 {
-    fn new() -> Self {
-        Vertex::with_geometry(T::default())
-    }
-
-    fn with_geometry(geometry: T) -> Self {
+    fn new(geometry: T) -> Self {
         Vertex {
             geometry: geometry,
             edge: None,
@@ -47,11 +43,7 @@ impl<T> Edge<T>
 where
     T: Attribute,
 {
-    fn new(vertex: VertexKey) -> Self {
-        Edge::with_geometry(vertex, T::default())
-    }
-
-    fn with_geometry(vertex: VertexKey, geometry: T) -> Self {
+    fn new(vertex: VertexKey, geometry: T) -> Self {
         Edge {
             geometry: geometry,
             vertex: vertex,
@@ -75,11 +67,7 @@ impl<T> Face<T>
 where
     T: Attribute,
 {
-    fn new(edge: EdgeKey) -> Self {
-        Face::with_geometry(edge, T::default())
-    }
-
-    fn with_geometry(edge: EdgeKey, geometry: T) -> Self {
+    fn new(edge: EdgeKey, geometry: T) -> Self {
         Face {
             geometry: geometry,
             edge: edge,
@@ -121,7 +109,7 @@ where
     }
 
     fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.vertices.insert(Vertex::with_geometry(geometry))
+        self.vertices.insert(Vertex::new(geometry))
     }
 
     fn insert_edge(
@@ -132,7 +120,7 @@ where
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
-        let mut edge = Edge::with_geometry(b, geometry);
+        let mut edge = Edge::new(b, geometry);
         if let Some(opposite) = self.edges.get_mut(ba) {
             edge.opposite = Some(ba);
             opposite.opposite = Some(ab);
@@ -148,7 +136,7 @@ where
         geometry: G::Face,
     ) -> Result<FaceKey, ()> {
         let (ab, bc, ca) = edges;
-        let face = self.faces.insert(Face::with_geometry(ab, geometry));
+        let face = self.faces.insert(Face::new(ab, geometry));
         self.connect_edges_in_face(face, (ab, bc));
         self.connect_edges_in_face(face, (bc, ca));
         self.connect_edges_in_face(face, (ca, ab));

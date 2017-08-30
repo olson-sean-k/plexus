@@ -138,8 +138,8 @@ where
         let lu = (0.0, 1.0);
         match index {
             0 | 4 | 5 => Quad::new(uu, ul, ll, lu), // front | bottom | back
-            1 => Quad::new(ul, ll, lu, uu), // right
-            2 | 3 => Quad::new(lu, uu, ul, ll), // top | left
+            1 => Quad::new(ul, ll, lu, uu),         // right
+            2 | 3 => Quad::new(lu, uu, ul, ll),     // top | left
             _ => panic!(),
         }
     }

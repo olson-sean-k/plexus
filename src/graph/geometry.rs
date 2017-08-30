@@ -1,5 +1,4 @@
-use graph::mesh::Mesh;
-use graph::topology::Face;
+use graph::topology::FaceMut;
 
 pub trait Attribute: Default {}
 
@@ -8,23 +7,11 @@ pub trait Geometry: Sized {
     type Edge: Attribute;
     type Face: Attribute;
 
-    fn compute_vertex_geometry<M>()
-    where
-        M: AsRef<Mesh<Self>>,
-    {
-    }
+    fn compute_vertex_geometry() {}
 
-    fn compute_edge_geometry<M>()
-    where
-        M: AsRef<Mesh<Self>>,
-    {
-    }
+    fn compute_edge_geometry() {}
 
-    fn compute_face_geometry<M>(face: &mut Face<M, Self>)
-    where
-        M: AsRef<Mesh<Self>>,
-    {
-    }
+    fn compute_face_geometry(_: FaceMut<Self>) {}
 }
 
 impl Attribute for () {}
