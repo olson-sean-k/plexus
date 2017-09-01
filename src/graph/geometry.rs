@@ -38,3 +38,20 @@ impl Geometry for () {
     type Edge = ();
     type Face = ();
 }
+
+pub trait Normalize {
+    fn normalize(&self) -> Self;
+}
+
+pub trait Cross<T = Self> {
+    type Output;
+
+    fn cross(&self, _: T) -> Self::Output;
+}
+
+pub trait AsPosition {
+    type Target;
+
+    fn as_position(&self) -> &Self::Target;
+    fn as_position_mut(&mut self) -> &mut Self::Target;
+}

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
-use graph::geometry::Geometry;
+use graph::geometry::{AsPosition, Cross, Geometry, Normalize};
 use graph::mesh::{Face, Mesh};
 use graph::storage::{EdgeKey, FaceKey};
 
@@ -14,6 +14,14 @@ use graph::storage::{EdgeKey, FaceKey};
 //       structure in the mesh are valid (hence the `unwrap` calls), which is
 //       very important for `Deref`. If these views can be used to mutate that
 //       data, then they can also invalidate this constraint and cause panics.
+//
+//       When mutations are implemented, they should consume (move) the
+//       `FaceView` and either emit a new `FaceView` with a valid key or
+//       nothing.
+
+pub trait ExtrudeFace: Sized {
+    fn extrude(self, distance: f64) -> Result<Self, ()>;
+}
 
 pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
 pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
@@ -106,6 +114,42 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.mesh.as_mut().faces.get_mut(&self.key).unwrap()
+    }
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<M, G> ExtrudeFace for FaceView<M, G>
+where
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
+    G: Geometry,
+    G::Vertex: AsPosition + Clone,
+    // Positions can be subtracted from each other. The result of the scaled
+    // cross product (below) can be added to a position to yield another
+    // position, which allows for translation of the positions.
+    <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<f64>>::Output, Output = <G::Vertex as AsPosition>::Target> + Clone + Sub,
+    // The output of the subtraction of two positions supports the cross
+    // product to compute the normal.
+    <<G::Vertex as AsPosition>::Target as Sub>::Output: Cross,
+    // The output of the cross product supports normalization  to compute the
+    // normal and multiplication with `f64` to scale it.
+    <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<f64> + Normalize,
+{
+    #[allow(unused_variables)]
+    fn extrude(self, distance: f64) -> Result<Self, ()> {
+        // TODO: Assuming that the face is complete and its edges are in the
+        //       `Vec` called `edges`, code like this can use the type
+        //       constraints to calculate a translation for the vertices in the
+        //       extruded face.
+        //
+        //   let (a, b, c) = (
+        //       mesh.vertices.get(&edges[0].vertex).unwrap(),
+        //       mesh.vertices.get(&edges[1].vertex).unwrap(),
+        //       mesh.vertices.get(&edges[2].vertex).unwrap(),
+        //   );
+        //   let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
+        //   let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
+        //   let translation = ab.cross(bc).normalize() * distance;
+        unimplemented!()
     }
 }
 
