@@ -110,18 +110,18 @@ where
     }
 
     pub fn face(&self, face: FaceKey) -> Option<FaceRef<G>> {
-        self.faces.get(face).map(|_| FaceRef::new(self, face))
+        self.faces.get(&face).map(|_| FaceRef::new(self, face))
     }
 
     pub fn face_mut(&mut self, face: FaceKey) -> Option<FaceMut<G>> {
-        match self.faces.contains_key(face) {
+        match self.faces.contains_key(&face) {
             true => Some(FaceMut::new(self, face)),
             _ => None,
         }
     }
 
     fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.vertices.insert(Vertex::new(geometry))
+        self.vertices.insert_with_generator(Vertex::new(geometry))
     }
 
     fn insert_edge(
@@ -133,12 +133,12 @@ where
         let ab = (a, b).into();
         let ba = (b, a).into();
         let mut edge = Edge::new(b, geometry);
-        if let Some(opposite) = self.edges.get_mut(ba) {
+        if let Some(opposite) = self.edges.get_mut(&ba) {
             edge.opposite = Some(ba);
             opposite.opposite = Some(ab);
         }
-        self.edges.insert_with_key(ab, edge);
-        self.vertices.get_mut(a).unwrap().edge = Some(ab);
+        self.edges.insert_with_key(&ab, edge);
+        self.vertices.get_mut(&a).unwrap().edge = Some(ab);
         Ok(ab)
     }
 
@@ -148,7 +148,7 @@ where
         geometry: G::Face,
     ) -> Result<FaceKey, ()> {
         let (ab, bc, ca) = edges;
-        let face = self.faces.insert(Face::new(ab, geometry));
+        let face = self.faces.insert_with_generator(Face::new(ab, geometry));
         self.connect_edges_in_face(face, (ab, bc));
         self.connect_edges_in_face(face, (bc, ca));
         // TODO: Connecting these edges creates a cycle. This means code must
@@ -158,7 +158,7 @@ where
     }
 
     fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
-        let edge = self.edges.get_mut(edges.0).unwrap();
+        let edge = self.edges.get_mut(&edges.0).unwrap();
         edge.next = Some(edges.1);
         edge.face = Some(face);
     }

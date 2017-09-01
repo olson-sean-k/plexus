@@ -95,7 +95,7 @@ where
     type Target = Face<G::Face>;
 
     fn deref(&self) -> &Self::Target {
-        self.mesh.as_ref().faces.get(self.key).unwrap()
+        self.mesh.as_ref().faces.get(&self.key).unwrap()
     }
 }
 
@@ -105,7 +105,7 @@ where
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.mesh.as_mut().faces.get_mut(self.key).unwrap()
+        self.mesh.as_mut().faces.get_mut(&self.key).unwrap()
     }
 }
 
@@ -135,14 +135,14 @@ where
 
     fn next(&mut self) -> Option<FaceKey> {
         let mesh = self.face.mesh.as_ref();
-        while let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(edge).unwrap())) {
+        while let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(&edge).unwrap())) {
             if self.breadcrumbs.contains(&key) {
                 return None;
             }
             self.breadcrumbs.insert(key);
             self.edge = edge.next;
             if let Some(face) = edge.opposite
-                .map(|opposite| mesh.edges.get(opposite).unwrap())
+                .map(|opposite| mesh.edges.get(&opposite).unwrap())
                 .and_then(|opposite| opposite.face)
             {
                 return Some(face);
@@ -195,7 +195,7 @@ where
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
                     let face = mem::transmute::<_, &'a mut Face<G::Face>>(
-                        self.face.mesh.faces.get_mut(face).unwrap(),
+                        self.face.mesh.faces.get_mut(&face).unwrap(),
                     );
                     &mut face.geometry
                 }

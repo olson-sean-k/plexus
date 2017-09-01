@@ -112,24 +112,24 @@ where
         Storage(K::Generator::default(), HashMap::new())
     }
 
-    pub fn insert_with_key(&mut self, key: K, item: T) {
+    #[inline(always)]
+    pub fn insert_with_key(&mut self, key: &K, item: T) {
         self.1.insert(key.to_inner(), item);
     }
 
-    pub fn contains_key(&self, key: K) -> bool {
+    #[inline(always)]
+    pub fn contains_key(&self, key: &K) -> bool {
         self.1.contains_key(&key.to_inner())
     }
 
-    pub fn get(&self, key: K) -> Option<&T> {
+    #[inline(always)]
+    pub fn get(&self, key: &K) -> Option<&T> {
         self.1.get(&key.to_inner())
     }
 
-    pub fn get_mut(&mut self, key: K) -> Option<&mut T> {
+    #[inline(always)]
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         self.1.get_mut(&key.to_inner())
-    }
-
-    pub fn len(&self) -> usize {
-        self.1.len()
     }
 }
 
@@ -137,10 +137,30 @@ impl<K, T> Storage<K, T>
 where
     K: From<Key> + OpaqueKey<Key = Key, Generator = Key>,
 {
-    pub fn insert(&mut self, item: T) -> K {
+    pub fn insert_with_generator(&mut self, item: T) -> K {
         let key = self.0;
         self.1.insert(key, item);
         self.0 = self.0.next();
         key.into()
+    }
+}
+
+impl<K, T> Deref for Storage<K, T>
+where
+    K: OpaqueKey,
+{
+    type Target = HashMap<K::Key, T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.1
+    }
+}
+
+impl<K, T> DerefMut for Storage<K, T>
+where
+    K: OpaqueKey,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.1
     }
 }
