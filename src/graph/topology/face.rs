@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -33,7 +34,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    pub(super) fn new(mesh: M, face: FaceKey) -> Self {
+    pub(crate) fn new(mesh: M, face: FaceKey) -> Self {
         FaceView {
             mesh: mesh,
             key: face,
@@ -126,6 +127,7 @@ where
 {
     face: FaceView<M, G>,
     edge: Option<EdgeKey>,
+    breadcrumbs: HashSet<EdgeKey>,
 }
 
 impl<M, G> FaceCirculator<M, G>
@@ -138,12 +140,17 @@ where
         FaceCirculator {
             face: face,
             edge: Some(edge),
+            breadcrumbs: HashSet::with_capacity(3),
         }
     }
 
     fn next(&mut self) -> Option<FaceKey> {
         let mesh = self.face.mesh.as_ref();
-        while let Some(edge) = self.edge.map(|edge| mesh.edges.get(edge).unwrap()) {
+        while let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(edge).unwrap())) {
+            if self.breadcrumbs.contains(&key) {
+                return None;
+            }
+            self.breadcrumbs.insert(key);
             self.edge = edge.next;
             if let Some(face) = edge.opposite
                 .map(|opposite| mesh.edges.get(opposite).unwrap())
@@ -206,5 +213,27 @@ where
             };
             (face, geometry)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use r32;
+    use generate::*;
+    use graph::*;
+
+    #[test]
+    fn circulate_over_faces() {
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .spatial_polygons() // 6 triangles, 18 vertices.
+            .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
+            .triangulate()
+            .collect::<Mesh<(r32, r32, r32)>>();
+        // TODO: Provide a way to get a key for the faces in the mesh. Using
+        //       `default` only works if the initial face has not been removed.
+        let face = mesh.face(FaceKey::default()).unwrap();
+
+        // No matter which face is selected, it should have three neighbors.
+        assert_eq!(3, face.faces().count());
     }
 }

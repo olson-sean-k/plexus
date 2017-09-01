@@ -5,6 +5,7 @@ use std::iter::FromIterator;
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, Geometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use graph::topology::{FaceMut, FaceRef};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<T>
@@ -108,6 +109,17 @@ where
         self.faces.len()
     }
 
+    pub fn face(&self, face: FaceKey) -> Option<FaceRef<G>> {
+        self.faces.get(face).map(|_| FaceRef::new(self, face))
+    }
+
+    pub fn face_mut(&mut self, face: FaceKey) -> Option<FaceMut<G>> {
+        match self.faces.contains_key(face) {
+            true => Some(FaceMut::new(self, face)),
+            _ => None,
+        }
+    }
+
     fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.vertices.insert(Vertex::new(geometry))
     }
@@ -139,6 +151,8 @@ where
         let face = self.faces.insert(Face::new(ab, geometry));
         self.connect_edges_in_face(face, (ab, bc));
         self.connect_edges_in_face(face, (bc, ca));
+        // TODO: Connecting these edges creates a cycle. This means code must
+        //       be able to detect these cycles. Is this okay?
         self.connect_edges_in_face(face, (ca, ab));
         Ok(face)
     }

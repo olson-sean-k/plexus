@@ -116,6 +116,10 @@ where
         self.1.insert(key.to_inner(), item);
     }
 
+    pub fn contains_key(&self, key: K) -> bool {
+        self.1.contains_key(&key.to_inner())
+    }
+
     pub fn get(&self, key: K) -> Option<&T> {
         self.1.get(&key.to_inner())
     }
