@@ -46,7 +46,7 @@ cannot.
 ```rust
 use plexus::r32;
 use plexus::generate::{sphere, MapVertices, SpatialPolygons};
-use plexus::graph::{FaceKey, FaceRef, Mesh};
+use plexus::graph::{FaceKey, Mesh};
 
 // Example module in the local crate that provides a custom mesh geometry.
 use render::MeshGeometry;
