@@ -42,17 +42,13 @@ where
         }
     }
 
-    fn with_mesh_ref(&self) -> FaceView<&Mesh<G>, G> {
-        FaceView::new(self.mesh.as_ref(), self.key)
-    }
-}
-
-impl<'a, G> FaceView<&'a Mesh<G>, G>
-where
-    G: Geometry,
-{
     pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
         FaceCirculator::new(self.with_mesh_ref())
+    }
+
+    // Resolve the `M` parameter to a concrete reference.
+    fn with_mesh_ref(&self) -> FaceView<&Mesh<G>, G> {
+        FaceView::new(self.mesh.as_ref(), self.key)
     }
 }
 
@@ -61,20 +57,13 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
+    pub fn faces_mut(&mut self) -> FaceCirculator<&mut Mesh<G>, G> {
+        FaceCirculator::new(self.with_mesh_mut())
+    }
+
+    // Resolve the `M` parameter to a concrete reference.
     fn with_mesh_mut(&mut self) -> FaceView<&mut Mesh<G>, G> {
         FaceView::new(self.mesh.as_mut(), self.key)
-    }
-}
-
-impl<'a, G> FaceView<&'a mut Mesh<G>, G>
-where
-    G: Geometry,
-{
-    // TODO: Should this be named `faces_mut`? This is mutually exclusive with
-    //       the non-mutable variant, but perhaps it would still be good to
-    //       mark this as mutable.
-    pub fn faces(&mut self) -> FaceCirculator<&mut Mesh<G>, G> {
-        FaceCirculator::new(self.with_mesh_mut())
     }
 }
 
