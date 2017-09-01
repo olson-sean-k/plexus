@@ -46,17 +46,19 @@ cannot.
 ```rust
 use plexus::r32;
 use plexus::generate::{sphere, MapVertices, SpatialPolygons};
-use plexus::graph::{FaceKey, Mesh};
+use plexus::graph::{FaceKey, IntoGeometry, Mesh};
 
 // Example module in the local crate that provides a custom mesh geometry.
 use render::MeshGeometry;
 
-// Construct a mesh from a sphere primitive.
-let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+// Construct a mesh from a sphere primitive. Note that the `(r32, r32, r32)`
+// geometry is convertible to `MeshGeometry` via the `FromGeometry` trait in
+// this example.
+let mesh: Mesh<MeshGeometry> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
     .spatial_polygons()
     .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
     .collect::<Mesh<(r32, r32, r32)>>()
-    .into_geometry::<MeshGeometry>();
+    .into_geometry();
 // Get one of the faces and iterate over its neighboring faces using a
 // "circulator".
 // TODO: Do not use `FaceKey::default()`.

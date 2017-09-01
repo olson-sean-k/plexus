@@ -112,6 +112,17 @@ where
         Storage(K::Generator::default(), HashMap::new())
     }
 
+    pub fn map_values<U, F>(self, mut f: F) -> Storage<K, U>
+    where
+        F: FnMut(T) -> U,
+    {
+        let mut hash = HashMap::new();
+        for (key, value) in self.1 {
+            hash.insert(key, f(value));
+        }
+        Storage(self.0, hash)
+    }
+
     #[inline(always)]
     pub fn insert_with_key(&mut self, key: &K, item: T) {
         self.1.insert(key.to_inner(), item);

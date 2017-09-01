@@ -24,7 +24,7 @@ mod mesh;
 mod storage;
 mod topology;
 
-pub use self::geometry::{Attribute, Geometry};
+pub use self::geometry::{Attribute, FromGeometry, Geometry, IntoGeometry};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{FaceMut, FaceRef};

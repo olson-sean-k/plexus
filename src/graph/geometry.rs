@@ -1,5 +1,22 @@
 use graph::topology::FaceMut;
 
+pub trait FromGeometry<T> {
+    fn from_geometry(_: T) -> Self;
+}
+
+pub trait IntoGeometry<T> {
+    fn into_geometry(self) -> T;
+}
+
+impl<T, U> IntoGeometry<U> for T
+where
+    U: FromGeometry<T>,
+{
+    fn into_geometry(self) -> U {
+        U::from_geometry(self)
+    }
+}
+
 pub trait Attribute: Default {}
 
 pub trait Geometry: Sized {

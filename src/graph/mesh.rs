@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
-use graph::geometry::{Attribute, Geometry};
+use graph::geometry::{Attribute, FromGeometry, Geometry, IntoGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{FaceMut, FaceRef};
 
@@ -24,6 +24,19 @@ where
         Vertex {
             geometry: geometry,
             edge: None,
+        }
+    }
+}
+
+impl<T, U> FromGeometry<Vertex<U>> for Vertex<T>
+where
+    T: Attribute + FromGeometry<U>,
+    U: Attribute,
+{
+    fn from_geometry(vertex: Vertex<U>) -> Self {
+        Vertex {
+            geometry: vertex.geometry.into_geometry(),
+            edge: vertex.edge,
         }
     }
 }
@@ -55,6 +68,22 @@ where
     }
 }
 
+impl<T, U> FromGeometry<Edge<U>> for Edge<T>
+where
+    T: Attribute + FromGeometry<U>,
+    U: Attribute,
+{
+    fn from_geometry(edge: Edge<U>) -> Self {
+        Edge {
+            geometry: edge.geometry.into_geometry(),
+            vertex: edge.vertex,
+            opposite: edge.opposite,
+            next: edge.next,
+            face: edge.face,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Face<T>
 where
@@ -72,6 +101,19 @@ where
         Face {
             geometry: geometry,
             edge: edge,
+        }
+    }
+}
+
+impl<T, U> FromGeometry<Face<U>> for Face<T>
+where
+    T: Attribute + FromGeometry<U>,
+    U: Attribute,
+{
+    fn from_geometry(face: Face<U>) -> Self {
+        Face {
+            geometry: face.geometry.into_geometry(),
+            edge: face.edge,
         }
     }
 }
@@ -179,6 +221,29 @@ where
 {
     fn as_mut(&mut self) -> &mut Self {
         self
+    }
+}
+
+impl<G, H> FromGeometry<Mesh<H>> for Mesh<G>
+where
+    G: Geometry,
+    G::Vertex: FromGeometry<H::Vertex>,
+    G::Edge: FromGeometry<H::Edge>,
+    G::Face: FromGeometry<H::Face>,
+    H: Geometry,
+{
+    fn from_geometry(mesh: Mesh<H>) -> Self {
+        let Mesh {
+            vertices,
+            edges,
+            faces,
+        } = mesh;
+        // TODO: The new geometry should be recomputed or finalized here.
+        Mesh {
+            vertices: vertices.map_values(|vertex| vertex.into_geometry()),
+            edges: edges.map_values(|edge| edge.into_geometry()),
+            faces: faces.map_values(|face| face.into_geometry()),
+        }
     }
 }
 
