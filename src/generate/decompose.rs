@@ -261,7 +261,7 @@ where
 
     fn into_subdivisions(self) -> Self::Output {
         let Triangle { a, b, c } = self;
-        let ac = a.midpoint(&c);
+        let ac = a.clone().midpoint(c.clone());
         ArrayVec::from([
             Triangle::new(b.clone(), ac.clone(), a),
             Triangle::new(c, ac, b),
@@ -277,11 +277,11 @@ where
 
     fn into_subdivisions(self) -> Self::Output {
         let Quad { a, b, c, d } = self;
-        let ab = a.midpoint(&b);
-        let bc = b.midpoint(&c);
-        let cd = c.midpoint(&d);
-        let da = d.midpoint(&a);
-        let ac = a.midpoint(&c); // Diagonal.
+        let ab = a.clone().midpoint(b.clone());
+        let bc = b.clone().midpoint(c.clone());
+        let cd = c.clone().midpoint(d.clone());
+        let da = d.clone().midpoint(a.clone());
+        let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
             Quad::new(a, ab.clone(), ac.clone(), da.clone()),
             Quad::new(ab, b, bc.clone(), ac.clone()),
@@ -297,7 +297,7 @@ where
 {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]> {
         let Quad { a, b, c, d } = self;
-        let ac = a.midpoint(&c); // Diagonal.
+        let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
             Triangle::new(a.clone(), b.clone(), ac.clone()),
             Triangle::new(b, c.clone(), ac.clone()),

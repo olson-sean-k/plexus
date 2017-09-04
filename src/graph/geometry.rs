@@ -40,13 +40,13 @@ impl Geometry for () {
 }
 
 pub trait Normalize {
-    fn normalize(&self) -> Self;
+    fn normalize(self) -> Self;
 }
 
 pub trait Cross<T = Self> {
     type Output;
 
-    fn cross(&self, _: T) -> Self::Output;
+    fn cross(self, other: T) -> Self::Output;
 }
 
 pub trait AsPosition {
