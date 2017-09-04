@@ -28,4 +28,4 @@ pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, Geometry, I
                          Normalize};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
-pub use self::topology::{FaceMut, FaceRef};
+pub use self::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef};

@@ -5,6 +5,7 @@ use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 use graph::geometry::{AsPosition, Cross, Geometry, Normalize};
 use graph::mesh::{Face, Mesh};
 use graph::storage::{EdgeKey, FaceKey};
+use graph::topology::EdgeView;
 
 // TODO: Generalize this pairing of a ref to a mesh and a key for topology
 //       within the mesh.
@@ -41,6 +42,10 @@ where
             key: face,
             phantom: PhantomData,
         }
+    }
+
+    pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
+        EdgeCirculator::new(self.with_mesh_ref())
     }
 
     pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
@@ -157,6 +162,57 @@ where
     }
 }
 
+pub struct EdgeCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    face: FaceView<M, G>,
+    edge: Option<EdgeKey>,
+    breadcrumbs: HashSet<EdgeKey>,
+}
+
+impl<M, G> EdgeCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    fn new(face: FaceView<M, G>) -> Self {
+        let edge = face.edge;
+        EdgeCirculator {
+            face: face,
+            edge: Some(edge),
+            breadcrumbs: HashSet::with_capacity(3),
+        }
+    }
+
+    fn next(&mut self) -> Option<EdgeKey> {
+        let mesh = self.face.mesh.as_ref();
+        if let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(&edge).unwrap())) {
+            if self.breadcrumbs.contains(&key) {
+                return None;
+            }
+            self.breadcrumbs.insert(key);
+            self.edge = edge.next;
+            Some(key)
+        }
+        else {
+            None
+        }
+    }
+}
+
+impl<'a, G> Iterator for EdgeCirculator<&'a Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = EdgeView<&'a Mesh<G>, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <EdgeCirculator<_, _>>::next(self).map(|edge| EdgeView::new(self.face.mesh, edge))
+    }
+}
+
 pub struct FaceCirculator<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -258,6 +314,21 @@ mod tests {
     use r32;
     use generate::*;
     use graph::*;
+
+    #[test]
+    fn circulate_over_edges() {
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .spatial_polygons() // 6 triangles, 18 vertices.
+            .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
+            .triangulate()
+            .collect::<Mesh<(r32, r32, r32)>>();
+        // TODO: Provide a way to get a key for the faces in the mesh. Using
+        //       `default` only works if the initial face has not been removed.
+        let face = mesh.face(FaceKey::default()).unwrap();
+
+        // All faces should be triangles and should have three edges.
+        assert_eq!(3, face.edges().count());
+    }
 
     #[test]
     fn circulate_over_faces() {
