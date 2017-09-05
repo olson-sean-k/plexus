@@ -100,23 +100,68 @@ where
     //
     // 1. Supports multiplication with `f64` and normalization.
     <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<f64> + Normalize,
+    // Constraints on the output of multiplication with `f64` of the cross
+    // product of subtraction of vertex geometry when converted to a position:
+    //
+    // 1. Supports cloning.
+    <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<f64>>::Output: Clone,
 {
-    #[allow(unused_variables)]
     pub fn extrude(self, distance: f64) -> Result<Self, ()> {
-        // TODO: Assuming that the face is complete and its edges are in the
-        //       `Vec` called `edges`, code like this can use the type
-        //       constraints to calculate a translation for the vertices in the
-        //       extruded face.
-        //
-        //   let (a, b, c) = (
-        //       mesh.vertices.get(&edges[0].vertex).unwrap(),
-        //       mesh.vertices.get(&edges[1].vertex).unwrap(),
-        //       mesh.vertices.get(&edges[2].vertex).unwrap(),
-        //   );
-        //   let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
-        //   let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
-        //   let translation = ab.cross(bc).normalize() * distance;
-        unimplemented!()
+        // Collect all the vertex keys of the face along with their translated
+        // geometries.
+        let vertices = {
+            let mesh = self.mesh.as_ref();
+            let edges = self.edges().collect::<Vec<_>>();
+            if edges.len() < 3 {
+                return Err(());
+            }
+            let (a, b, c) = (
+                mesh.vertices.get(&edges[0].vertex).unwrap(),
+                mesh.vertices.get(&edges[1].vertex).unwrap(),
+                mesh.vertices.get(&edges[2].vertex).unwrap(),
+            );
+            let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
+            let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
+            let translation = ab.cross(bc).normalize() * distance;
+            edges.into_iter().map(|edge| {
+                let mut geometry = mesh.vertices.get(&edge.vertex).unwrap().geometry.clone();
+                *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
+                (edge.vertex, geometry)
+            }).collect::<Vec<_>>()
+        };
+        // Begin topological mutations, starting by removing the originating
+        // face. These mutations invalidate the key used by the `FaceView`, so
+        // destructure `self` to prevent its use.
+        let FaceView { mut mesh, key, .. } = self;
+        mesh.as_mut().remove_face(key).unwrap();
+        // Use the keys for the existing vertices and the translated geometries
+        // to construct the extruded face and its connective faces.
+        let face = {
+            let mesh = mesh.as_mut();
+            let vertices = vertices.into_iter()
+                .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1))).collect::<Vec<_>>();
+            let edges = vertices.iter().enumerate().map(|(index, &(_, a))| {
+                let b = vertices[(index + 1) % vertices.len()].1;
+                // TODO: Copy the geometry of the edges in the originating face.
+                mesh.insert_edge((a, b), G::Edge::default()).unwrap()
+            }).collect::<Vec<_>>();
+            // TODO: Copy the geometry of the originating face.
+            let face = mesh.insert_face(&edges, G::Face::default()).unwrap();
+            for index in 0..vertices.len() {
+                let (a, b) = vertices[index];
+                let (d, c) = vertices[(index + 1) % vertices.len()];
+                let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
+                let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
+                let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
+                let da = mesh.insert_edge((d, a), G::Edge::default()).unwrap();
+                let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap(); // Diagonal.
+                let ac = mesh.insert_edge((a, c), G::Edge::default()).unwrap(); // Diagonal.
+                mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
+                mesh.insert_face(&[ac, cd, da], G::Face::default()).unwrap();
+            }
+            face
+        };
+        Ok(FaceView::new(mesh, face))
     }
 }
 

@@ -162,11 +162,11 @@ where
         }
     }
 
-    fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
+    pub(crate) fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.vertices.insert_with_generator(Vertex::new(geometry))
     }
 
-    fn insert_edge(
+    pub(crate) fn insert_edge(
         &mut self,
         vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
@@ -184,19 +184,68 @@ where
         Ok(ab)
     }
 
-    fn insert_triangle(
+    pub(crate) fn insert_face(
         &mut self,
-        edges: (EdgeKey, EdgeKey, EdgeKey),
+        edges: &[EdgeKey],
         geometry: G::Face,
     ) -> Result<FaceKey, ()> {
-        let (ab, bc, ca) = edges;
-        let face = self.faces.insert_with_generator(Face::new(ab, geometry));
-        self.connect_edges_in_face(face, (ab, bc));
-        self.connect_edges_in_face(face, (bc, ca));
-        // TODO: Connecting these edges creates a cycle. This means code must
-        //       be able to detect these cycles. Is this okay?
-        self.connect_edges_in_face(face, (ca, ab));
+        if edges.len() < 3 {
+            return Err(());
+        }
+        let face = self.faces
+            .insert_with_generator(Face::new(edges[0], geometry));
+        for index in 0..edges.len() {
+            // TODO: Connecting these edges creates a cycle. This means code
+            //       must be able to detect these cycles. Is this okay?
+            self.connect_edges_in_face(face, (edges[index], edges[(index + 1) % edges.len()]));
+        }
         Ok(face)
+    }
+
+    // TODO: This code orphans vertices; it does not remove vertices with no
+    //       remaining associated edges. `FaceView::extrude` relies on this
+    //       behavior.  Is this okay?
+    pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
+        // Get all of the edges forming the face.
+        let edges = {
+            self.face(face)
+                .unwrap()
+                .edges()
+                .map(|edge| edge.key)
+                .collect::<Vec<_>>()
+        };
+        // For each edge, disconnect its opposite edge and originating vertex,
+        // then remove it from the graph.
+        for edge in edges {
+            let (a, b) = {
+                let edge = self.edges.get(&edge).unwrap();
+                (
+                    edge.vertex,
+                    edge.next
+                        .map(|edge| self.edges.get(&edge).unwrap())
+                        .map(|edge| edge.vertex),
+                )
+            };
+            // Disconnect the opposite edge, if any.
+            if let Some(b) = b {
+                let ba = (b, a).into();
+                if let Some(opposite) = self.edges.get_mut(&ba) {
+                    opposite.opposite = None;
+                }
+            }
+            // Disconnect the originating vertex, if any.
+            let vertex = self.vertices.get_mut(&a).unwrap();
+            if vertex
+                .edge
+                .map(|outgoing| outgoing == edge)
+                .unwrap_or(false)
+            {
+                vertex.edge = None;
+            }
+            self.edges.remove(&edge);
+        }
+        self.faces.remove(&face);
+        Ok(())
     }
 
     fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
@@ -279,8 +328,7 @@ where
                 mesh.insert_edge((b, c), G::Edge::default()).unwrap(),
                 mesh.insert_edge((c, a), G::Edge::default()).unwrap(),
             );
-            mesh.insert_triangle((ab, bc, ca), G::Face::default())
-                .unwrap();
+            mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
         }
         mesh
     }

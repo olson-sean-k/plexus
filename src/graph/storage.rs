@@ -142,6 +142,11 @@ where
     pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
         self.1.get_mut(&key.to_inner())
     }
+
+    #[inline(always)]
+    pub fn remove(&mut self, key: &K) -> Option<T> {
+        self.1.remove(&key.to_inner())
+    }
 }
 
 impl<K, T> Storage<K, T>
