@@ -4,7 +4,7 @@ use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
 use graph::geometry::{AsPosition, Cross, Geometry, Normalize};
 use graph::mesh::{Face, Mesh};
-use graph::storage::{EdgeKey, FaceKey};
+use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::EdgeView;
 
 // TODO: Generalize this pairing of a ref to a mesh and a key for topology
@@ -109,36 +109,17 @@ where
     pub fn extrude(self, distance: f64) -> Result<Self, ()> {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
-        let vertices = {
-            let mesh = self.mesh.as_ref();
-            let edges = self.edges().collect::<Vec<_>>();
-            if edges.len() < 3 {
-                return Err(());
-            }
-            let (a, b, c) = (
-                mesh.vertices.get(&edges[0].vertex).unwrap(),
-                mesh.vertices.get(&edges[1].vertex).unwrap(),
-                mesh.vertices.get(&edges[2].vertex).unwrap(),
-            );
-            let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
-            let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
-            let translation = ab.cross(bc).normalize() * distance;
-            edges.into_iter().map(|edge| {
-                let mut geometry = mesh.vertices.get(&edge.vertex).unwrap().geometry.clone();
-                *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
-                (edge.vertex, geometry)
-            }).collect::<Vec<_>>()
-        };
+        let geometry = self.compute_extrusion_geometry(distance)?;
         // Begin topological mutations, starting by removing the originating
         // face. These mutations invalidate the key used by the `FaceView`, so
-        // destructure `self` to prevent its use.
+        // destructure `self` to avoid its reuse.
         let FaceView { mut mesh, key, .. } = self;
         mesh.as_mut().remove_face(key).unwrap();
         // Use the keys for the existing vertices and the translated geometries
         // to construct the extruded face and its connective faces.
-        let face = {
+        let extrusion = {
             let mesh = mesh.as_mut();
-            let vertices = vertices.into_iter()
+            let vertices = geometry.into_iter()
                 .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1))).collect::<Vec<_>>();
             let edges = vertices.iter().enumerate().map(|(index, &(_, a))| {
                 let b = vertices[(index + 1) % vertices.len()].1;
@@ -146,7 +127,7 @@ where
                 mesh.insert_edge((a, b), G::Edge::default()).unwrap()
             }).collect::<Vec<_>>();
             // TODO: Copy the geometry of the originating face.
-            let face = mesh.insert_face(&edges, G::Face::default()).unwrap();
+            let extrusion = mesh.insert_face(&edges, G::Face::default()).unwrap();
             for index in 0..vertices.len() {
                 let (a, b) = vertices[index];
                 let (d, c) = vertices[(index + 1) % vertices.len()];
@@ -159,9 +140,30 @@ where
                 mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
                 mesh.insert_face(&[ac, cd, da], G::Face::default()).unwrap();
             }
-            face
+            extrusion
         };
-        Ok(FaceView::new(mesh, face))
+        Ok(FaceView::new(mesh, extrusion))
+    }
+
+    fn compute_extrusion_geometry(&self, distance: f64) -> Result<Vec<(VertexKey, G::Vertex)>, ()> {
+        let mesh = self.mesh.as_ref();
+        let edges = self.edges().collect::<Vec<_>>();
+        if edges.len() < 3 {
+            return Err(());
+        }
+        let (a, b, c) = (
+            mesh.vertices.get(&edges[0].vertex).unwrap(),
+            mesh.vertices.get(&edges[1].vertex).unwrap(),
+            mesh.vertices.get(&edges[2].vertex).unwrap(),
+        );
+        let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
+        let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
+        let translation = ab.cross(bc).normalize() * distance;
+        Ok(edges.into_iter().map(|edge| {
+            let mut geometry = mesh.vertices.get(&edge.vertex).unwrap().geometry.clone();
+            *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
+            (edge.vertex, geometry)
+        }).collect::<Vec<_>>())
     }
 }
 
