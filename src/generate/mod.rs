@@ -46,6 +46,7 @@ pub mod sphere;
 mod topology;
 
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
+pub(crate) use self::geometry::Unit;
 
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{IndexedPolygons, SpatialPolygons, SpatialVertices, TexturedPolygons};

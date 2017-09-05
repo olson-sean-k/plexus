@@ -1,7 +1,4 @@
-use num::{self, Float, Num, NumCast};
-use ordered_float::OrderedFloat;
-
-use graph::{Attribute, Geometry};
+use num::{self, Num, NumCast};
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
@@ -39,36 +36,6 @@ macro_rules! unit {
 }
 unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
 unit!(real => f32, f64);
-
-impl<T> Attribute for (T, T, T)
-where
-    T: Default + Unit,
-{
-}
-
-impl<T> Attribute for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
-where
-    T: Default + Float + Unit,
-{
-}
-
-impl<T> Geometry for (T, T, T)
-where
-    T: Default + Unit,
-{
-    type Vertex = Self;
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> Geometry for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
-where
-    T: Default + Float + Unit,
-{
-    type Vertex = Self;
-    type Edge = ();
-    type Face = ();
-}
 
 pub trait Interpolate<T = Self>: Sized {
     type Output;
