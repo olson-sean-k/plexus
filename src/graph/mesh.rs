@@ -217,24 +217,12 @@ where
         // For each edge, disconnect its opposite edge and originating vertex,
         // then remove it from the graph.
         for edge in edges {
-            let (a, b) = {
+            let (a, opposite) = {
                 let edge = self.edges.get(&edge).unwrap();
-                (
-                    edge.vertex,
-                    // When the last edge is reached, its key for the next edge
-                    // will be invalid, so do not `unwrap` the result of the
-                    // lookup.
-                    edge.next
-                        .and_then(|edge| self.edges.get(&edge))
-                        .map(|edge| edge.vertex),
-                )
+                (edge.vertex, edge.opposite)
             };
-            // Disconnect the opposite edge, if any.
-            if let Some(b) = b {
-                let ba = (b, a).into();
-                if let Some(opposite) = self.edges.get_mut(&ba) {
-                    opposite.opposite = None;
-                }
+            if let Some(edge) = opposite.map(|opposite| self.edges.get_mut(&opposite).unwrap()) {
+                edge.opposite = None;
             }
             // Disconnect the originating vertex, if any.
             let vertex = self.vertices.get_mut(&a).unwrap();
