@@ -33,6 +33,7 @@ where
     }
 
     // Resolve the `M` parameter to a concrete reference.
+    #[allow(dead_code)]
     fn with_mesh_ref(&self) -> EdgeView<&Mesh<G>, G> {
         EdgeView::new(self.mesh.as_ref(), self.key)
     }
@@ -44,6 +45,7 @@ where
     G: Geometry,
 {
     // Resolve the `M` parameter to a concrete reference.
+    #[allow(dead_code)]
     fn with_mesh_mut(&mut self) -> EdgeView<&mut Mesh<G>, G> {
         EdgeView::new(self.mesh.as_mut(), self.key)
     }
