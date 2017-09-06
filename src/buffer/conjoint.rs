@@ -100,7 +100,7 @@ mod tests {
     fn collect_topology_into_buffer() {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
-            .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
+            .ordered::<(r32, r32, r32)>()
             .triangulate()
             .collect::<ConjointBuffer<u64, (r32, r32, r32)>>();
 
