@@ -82,3 +82,67 @@ where
     let bf = <f64 as NumCast>::from(b).unwrap() * f;
     <T as NumCast>::from(af + bf).unwrap()
 }
+
+#[cfg(feature = "geometry-nalgebra")]
+mod feature {
+    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
+
+    use super::*;
+
+    impl<T> Interpolate for Point2<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
+        }
+    }
+
+    impl<T> Interpolate for Point3<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point3::new(
+                lerp(self.x, other.x, f),
+                lerp(self.y, other.y, f),
+                lerp(self.z, other.z, f),
+            )
+        }
+    }
+
+    impl<T> Interpolate for Vector2<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
+        }
+    }
+
+    impl<T> Interpolate for Vector3<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector3::new(
+                lerp(self.x, other.x, f),
+                lerp(self.y, other.y, f),
+                lerp(self.z, other.z, f),
+            )
+        }
+    }
+}
+
+#[cfg(not(feature = "geometry-nalgebra"))]
+mod feature {}
+
+pub use self::feature::*;
