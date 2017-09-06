@@ -109,7 +109,7 @@ where
     pub fn extrude(self, distance: f64) -> Result<Self, ()> {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
-        let geometry = self.compute_extrusion_geometry(distance)?;
+        let geometry = self.extrusion_geometry(distance)?;
         // Begin topological mutations, starting by removing the originating
         // face. These mutations invalidate the key used by the `FaceView`, so
         // destructure `self` to avoid its reuse.
@@ -145,7 +145,7 @@ where
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn compute_extrusion_geometry(&self, distance: f64) -> Result<Vec<(VertexKey, G::Vertex)>, ()> {
+    fn extrusion_geometry(&self, distance: f64) -> Result<Vec<(VertexKey, G::Vertex)>, ()> {
         let mesh = self.mesh.as_ref();
         let edges = self.edges().collect::<Vec<_>>();
         if edges.len() < 3 {
