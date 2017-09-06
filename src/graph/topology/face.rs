@@ -1,3 +1,4 @@
+use num::Float;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul, Sub};
@@ -76,10 +77,7 @@ where
     //
     // 1. Supports cloning.
     // 2. Supports subtraction with itself.
-    // 3. Supports addition with the output of multiplication with `f64` of the
-    //    cross product of subtraction with itself.
-    // 4. The output of the above addition is itself.
-    <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<f64>>::Output, Output = <G::Vertex as AsPosition>::Target> + Clone + Sub,
+    <G::Vertex as AsPosition>::Target: Clone + Sub,
     // Constraints on the output of subtraction of vertex geometry when
     // converted to a position:
     //
@@ -88,15 +86,16 @@ where
     // Constraints on the output of the cross product of subtraction of vertex
     // geometry when converted to a position:
     //
-    // 1. Supports multiplication with `f64` and normalization.
-    <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<f64> + Normalize,
-    // Constraints on the output of multiplication with `f64` of the cross
-    // product of subtraction of vertex geometry when converted to a position:
-    //
-    // 1. Supports cloning.
-    <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<f64>>::Output: Clone,
+    // 1. Supports normalization.
+    <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Normalize,
 {
-    pub fn extrude(self, distance: f64) -> Result<Self, ()> {
+    pub fn extrude<F>(self, distance: F) -> Result<Self, ()>
+    where
+        F: Float,
+        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
+        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
+        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+    {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
         let geometry = self.extrusion_geometry(distance)?;
@@ -107,6 +106,9 @@ where
         mesh.as_mut().remove_face(key).unwrap();
         // Use the keys for the existing vertices and the translated geometries
         // to construct the extruded face and its connective faces.
+        //
+        // The winding of the faces is important; the extruded face must use
+        // opposing edges to its neighboring connective faces.
         let extrusion = {
             let mesh = mesh.as_mut();
             let vertices = geometry.into_iter()
@@ -119,8 +121,8 @@ where
             // TODO: Copy the geometry of the originating face.
             let extrusion = mesh.insert_face(&edges, G::Face::default()).unwrap();
             for index in 0..vertices.len() {
-                let (a, b) = vertices[index];
-                let (d, c) = vertices[(index + 1) % vertices.len()];
+                let (d, c) = vertices[index];
+                let (a, b) = vertices[(index + 1) % vertices.len()];
                 let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
                 let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
                 let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
@@ -135,7 +137,27 @@ where
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn extrusion_geometry(&self, distance: f64) -> Result<Vec<(VertexKey, G::Vertex)>, ()> {
+    fn extrusion_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
+    where
+        F: Float,
+        // Constraints on the vertex geometry when converted to a position:
+        //
+        // 1. Supports addition with the output of multiplication with `F` of
+        //    the cross product of subtraction with itself.
+        // 2. The output of the above addition is itself.
+        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
+        // Constraints on the output of the cross product of subtraction of
+        // vertex geometry when converted to a position:
+        //
+        // 1. Supports multiplication with `F`.
+        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
+        // Constraints on the output of multiplication with `F` of the cross
+        // product of subtraction of vertex geometry when converted to a
+        // position:
+        //
+        // 1. Supports cloning.
+        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+    {
         let mesh = self.mesh.as_ref();
         let edges = self.edges().collect::<Vec<_>>();
         if edges.len() < 3 {
@@ -380,5 +402,45 @@ mod tests {
 
         // No matter which face is selected, it should have three neighbors.
         assert_eq!(3, face.faces().count());
+    }
+
+    #[test]
+    fn extrude_face() {
+        use nalgebra::Point3;
+
+        // TODO: This looks like a candidate for a blanket implementation.
+        impl FromGeometry<(r32, r32, r32)> for Point3<f32> {
+            fn from_geometry(geometry: (r32, r32, r32)) -> Self {
+                Point3::from_ordered_float(geometry)
+            }
+        }
+
+        let mut mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .spatial_polygons() // 6 triangles, 18 vertices.
+            .ordered::<(r32, r32, r32)>()
+            .triangulate()
+            .collect::<Mesh<(r32, r32, r32)>>()
+            .into_geometry();
+        {
+            // TODO: Provide a way to get a key for the faces in the mesh.
+            //       Using `default` only works if the initial face has not
+            //       been removed.
+            let face = mesh.face_mut(FaceKey::default()).unwrap();
+            let face = face.extrude(1.0).unwrap();
+
+            // The extruded face, being a triangle, should have three
+            // neighboring faces.
+            assert_eq!(3, face.faces().count());
+        }
+
+        assert_eq!(8, mesh.vertex_count());
+        // The mesh begins with 18 edges. The additional edges are derived from
+        // seven new triangles, but three edges are shared, so there are `(7 *
+        // 3) - 3` new edges.
+        assert_eq!(36, mesh.edge_count());
+        // All faces are triangles and the mesh begins with six such faces. The
+        // extruded face remains, in addition to three connective faces, each
+        // of which is constructed from two triangular faces.
+        assert_eq!(12, mesh.face_count());
     }
 }

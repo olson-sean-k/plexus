@@ -21,6 +21,15 @@ where
     }
 }
 
+// TODO: The implementation of this trait for `Mesh` would conflict with a
+//       blanket reflexive implementation. Is there some way to tell the
+//       compiler "when `Mesh<T> != Mesh<U>`"?
+impl FromGeometry<()> for () {
+    fn from_geometry(_: ()) -> Self {
+        ()
+    }
+}
+
 // This trait does not require `Default`, because supporting nalgebra and mesh
 // generation requires being explicit about vertex geometry. The types exposed
 // by nalgebra do not support `Default`, but it is convenient to support them

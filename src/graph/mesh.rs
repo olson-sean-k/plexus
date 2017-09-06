@@ -221,8 +221,11 @@ where
                 let edge = self.edges.get(&edge).unwrap();
                 (
                     edge.vertex,
+                    // When the last edge is reached, its key for the next edge
+                    // will be invalid, so do not `unwrap` the result of the
+                    // lookup.
                     edge.next
-                        .map(|edge| self.edges.get(&edge).unwrap())
+                        .and_then(|edge| self.edges.get(&edge))
                         .map(|edge| edge.vertex),
                 )
             };

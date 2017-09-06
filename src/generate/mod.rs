@@ -50,6 +50,9 @@ pub(crate) use self::geometry::Unit;
 
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{IndexedPolygons, SpatialPolygons, SpatialVertices, TexturedPolygons};
+// TODO: Avoid re-exporting these conversion types. Blanket implementations
+//       concerning `Geometry` may be a better choice.
+pub use self::geometry::{FromOrderedFloat, FromUnorderedFloat};
 pub use self::index::{HashIndexer, IndexVertices};
 pub use self::topology::{Line, MapVertices, Ordered, Polygon, Polygonal, Quad, Rotate,
                          Topological, Triangle, Unordered};
