@@ -7,16 +7,6 @@ use graph::mesh::{Face, Mesh};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::EdgeView;
 
-// TODO: Generalize this pairing of a ref to a mesh and a key for topology
-//       within the mesh.
-
-// NOTE: This code assumes that any keys for topological structures in the mesh
-//       are valid (hence the `unwrap` calls), which is very important for
-//       `Deref`. Topological mutations using views like `FaceView` are
-//       dangerous if they do not consume `self`. If these views can be used to
-//       mutate that data, then they can also invalidate these constraints and
-//       cause panics.
-
 pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
 pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
 
