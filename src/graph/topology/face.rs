@@ -408,13 +408,6 @@ mod tests {
     fn extrude_face() {
         use nalgebra::Point3;
 
-        // TODO: This looks like a candidate for a blanket implementation.
-        impl FromGeometry<(r32, r32, r32)> for Point3<f32> {
-            fn from_geometry(geometry: (r32, r32, r32)) -> Self {
-                Point3::from_ordered_float(geometry)
-            }
-        }
-
         let mut mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
             .ordered::<(r32, r32, r32)>()

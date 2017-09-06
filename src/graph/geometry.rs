@@ -1,7 +1,7 @@
 use num::Float;
 use ordered_float::OrderedFloat;
 
-use generate::Unit;
+use generate::{FromOrderedFloat, Unit, Vector};
 use graph::topology::FaceMut;
 
 pub trait FromGeometry<T> {
@@ -22,11 +22,22 @@ where
 }
 
 // TODO: The implementation of this trait for `Mesh` would conflict with a
-//       blanket reflexive implementation. Is there some way to tell the
-//       compiler "when `Mesh<T> != Mesh<U>`"?
+//       blanket reflexive implementation. Is there some way to express to the
+//       compiler "where `Mesh<T> != Mesh<U>`"?
 impl FromGeometry<()> for () {
     fn from_geometry(_: ()) -> Self {
         ()
+    }
+}
+
+impl<T, U, S> FromGeometry<U> for T
+where
+    T: FromOrderedFloat<U, S, Output = T> + Geometry + Vector<Scalar = S>,
+    U: Geometry + Vector<Scalar = OrderedFloat<S>>,
+    S: Float + Unit,
+{
+    fn from_geometry(geometry: U) -> Self {
+        Self::from_ordered_float(geometry)
     }
 }
 
