@@ -17,7 +17,7 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 ```rust
 use plexus::r32;
 use plexus::buffer::conjoint::ConjointBuffer;
-use plexus::generate::{sphere, MapVertices, SpatialPolygons};
+use plexus::generate::{sphere, MapVertices, Ordered, SpatialPolygons};
 
 // Example module in the local crate that provides rendering.
 use render::{self, Vertex};
@@ -28,8 +28,8 @@ use render::{self, Vertex};
 // in this example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .spatial_polygons()
-    .map_verticies(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
     .map_verticies(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
+    .ordered::<(r32, r32, r32)>()
     .collect::<ConjointBuffer<u64, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
@@ -44,26 +44,20 @@ be queried and manipulated in ways that generators and iterator expressions
 cannot.
 
 ```rust
+use nalgebra::Point3;
 use plexus::r32;
-use plexus::generate::{sphere, MapVertices, SpatialPolygons};
-use plexus::graph::{FaceKey, IntoGeometry, Mesh};
-
-// Example module in the local crate that provides a custom mesh geometry.
-use render::MeshGeometry;
+use plexus::generate::{sphere, MapVertices, Ordered, SpatialPolygons};
+use plexus::graph::{ExtrudeFace, FaceKey, IntoGeometry, Mesh};
 
 // Construct a mesh from a sphere primitive. Note that the `(r32, r32, r32)`
-// geometry is convertible to `MeshGeometry` via the `FromGeometry` trait in
+// geometry is convertible to `Point3<f32>` via the `FromGeometry` trait in
 // this example.
-let mesh: Mesh<MeshGeometry> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+let mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
     .spatial_polygons()
-    .map_vertices(|(x, y, z)| (r32::from(x), r32::from(y), r32::from(z)))
+    .ordered::<(r32, r32, r32)>()
     .collect::<Mesh<(r32, r32, r32)>>()
     .into_geometry();
-// Get one of the faces and iterate over its neighboring faces using a
-// "circulator".
-// TODO: Do not use `FaceKey::default()`.
-let face = mesh.face(FaceKey::default()).unwrap();
-for face in face.faces() {
-    println!("Neighbor: {:?}", face.key);
-}
+// Extrude a face in the mesh.
+let face = mesh.face_mut(FaceKey::default()).unwrap();
+let face = face.extrude(1.0).unwrap();
 ```
