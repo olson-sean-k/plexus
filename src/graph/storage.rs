@@ -112,7 +112,7 @@ where
         Storage(K::Generator::default(), HashMap::new())
     }
 
-    pub fn map_values<U, F>(self, mut f: F) -> Storage<K, U>
+    pub fn map_values_into<U, F>(self, mut f: F) -> Storage<K, U>
     where
         F: FnMut(T) -> U,
     {

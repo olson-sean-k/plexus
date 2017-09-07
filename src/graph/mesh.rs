@@ -280,9 +280,9 @@ where
         } = mesh;
         // TODO: The new geometry should be recomputed or finalized here.
         Mesh {
-            vertices: vertices.map_values(|vertex| vertex.into_geometry()),
-            edges: edges.map_values(|edge| edge.into_geometry()),
-            faces: faces.map_values(|face| face.into_geometry()),
+            vertices: vertices.map_values_into(|vertex| vertex.into_geometry()),
+            edges: edges.map_values_into(|edge| edge.into_geometry()),
+            faces: faces.map_values_into(|face| face.into_geometry()),
         }
     }
 }
