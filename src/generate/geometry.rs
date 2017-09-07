@@ -50,23 +50,39 @@ impl<T> Vector for (T, T, T) {
     type Scalar = T;
 }
 
-pub trait FromUnorderedFloat<T>
+pub trait FromUnorderedFloat<T>: Vector<Scalar = OrderedFloat<T::Scalar>>
 where
     T: Vector,
     T::Scalar: Float + Unit,
 {
-    type Output: Vector<Scalar = OrderedFloat<T::Scalar>>;
+    fn from_unordered_float(vector: T) -> Self;
+}
 
-    fn from_unordered_float(vector: T) -> Self::Output;
+pub trait IntoUnorderedFloat<T>
+    : Sized + Vector<Scalar = OrderedFloat<T::Scalar>>
+where
+    T: Vector,
+    T::Scalar: Float + Unit,
+{
+    fn into_unordered_float(self) -> T;
+}
+
+impl<T, U> IntoUnorderedFloat<U> for T
+where
+    T: Vector<Scalar = OrderedFloat<U::Scalar>>,
+    U: FromOrderedFloat<T> + Vector,
+    U::Scalar: Float + Unit,
+{
+    fn into_unordered_float(self) -> U {
+        U::from_ordered_float(self)
+    }
 }
 
 impl<T> FromUnorderedFloat<(T, T)> for (OrderedFloat<T>, OrderedFloat<T>)
 where
     T: Float + Unit,
 {
-    type Output = Self;
-
-    fn from_unordered_float(vector: (T, T)) -> Self::Output {
+    fn from_unordered_float(vector: (T, T)) -> Self {
         (OrderedFloat::from(vector.0), OrderedFloat::from(vector.1))
     }
 }
@@ -75,9 +91,7 @@ impl<T> FromUnorderedFloat<(T, T, T)> for (OrderedFloat<T>, OrderedFloat<T>, Ord
 where
     T: Float + Unit,
 {
-    type Output = Self;
-
-    fn from_unordered_float(vector: (T, T, T)) -> Self::Output {
+    fn from_unordered_float(vector: (T, T, T)) -> Self {
         (
             OrderedFloat::from(vector.0),
             OrderedFloat::from(vector.1),
@@ -86,36 +100,47 @@ where
     }
 }
 
-pub trait FromOrderedFloat<T, U>
+pub trait FromOrderedFloat<T>: Vector
 where
-    T: Vector<Scalar = OrderedFloat<U>>,
-    U: Float + Unit,
+    Self::Scalar: Float + Unit,
+    T: Vector<Scalar = OrderedFloat<Self::Scalar>>,
 {
-    type Output: Vector<Scalar = U>;
-
-    fn from_ordered_float(vector: T) -> Self::Output;
+    fn from_ordered_float(vector: T) -> Self;
 }
 
-impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>), T> for (T, T)
+pub trait IntoOrderedFloat<T>: Sized + Vector
+where
+    Self::Scalar: Float + Unit,
+    T: Vector<Scalar = OrderedFloat<Self::Scalar>>,
+{
+    fn into_ordered_float(self) -> T;
+}
+
+impl<T, U> IntoOrderedFloat<U> for T
+where
+    T: Vector,
+    T::Scalar: Float + Unit,
+    U: FromUnorderedFloat<T> + Vector<Scalar = OrderedFloat<T::Scalar>>,
+{
+    fn into_ordered_float(self) -> U {
+        U::from_unordered_float(self)
+    }
+}
+
+impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for (T, T)
 where
     T: Float + Unit,
 {
-    type Output = (T, T);
-
-    fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self::Output {
+    fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
         ((vector.0).0, (vector.1).0)
     }
 }
 
-impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>), T> for (T, T, T)
+impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for (T, T, T)
 where
     T: Float + Unit,
 {
-    type Output = (T, T, T);
-
-    fn from_ordered_float(
-        vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>),
-    ) -> Self::Output {
+    fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
         ((vector.0).0, (vector.1).0, (vector.2).0)
     }
 }
@@ -204,9 +229,7 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Self;
-
-        fn from_unordered_float(point: Point2<T>) -> Self::Output {
+        fn from_unordered_float(point: Point2<T>) -> Self {
             (OrderedFloat::from(point.x), OrderedFloat::from(point.y))
         }
     }
@@ -215,9 +238,7 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Self;
-
-        fn from_unordered_float(point: Point3<T>) -> Self::Output {
+        fn from_unordered_float(point: Point3<T>) -> Self {
             (
                 OrderedFloat::from(point.x),
                 OrderedFloat::from(point.y),
@@ -230,9 +251,7 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Self;
-
-        fn from_unordered_float(vector: Vector2<T>) -> Self::Output {
+        fn from_unordered_float(vector: Vector2<T>) -> Self {
             (OrderedFloat::from(vector.x), OrderedFloat::from(vector.y))
         }
     }
@@ -241,9 +260,7 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Self;
-
-        fn from_unordered_float(vector: Vector3<T>) -> Self::Output {
+        fn from_unordered_float(vector: Vector3<T>) -> Self {
             (
                 OrderedFloat::from(vector.x),
                 OrderedFloat::from(vector.y),
@@ -252,50 +269,38 @@ mod feature {
         }
     }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>), T> for Point2<T>
+    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for Point2<T>
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Point2<T>;
-
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self::Output {
+        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
             Point2::new((vector.0).0, (vector.1).0)
         }
     }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>), T> for Point3<T>
+    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for Point3<T>
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Point3<T>;
-
-        fn from_ordered_float(
-            vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>),
-        ) -> Self::Output {
+        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
             Point3::new((vector.0).0, (vector.1).0, (vector.2).0)
         }
     }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>), T> for Vector2<T>
+    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for Vector2<T>
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Vector2<T>;
-
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self::Output {
+        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
             Vector2::new((vector.0).0, (vector.1).0)
         }
     }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>), T> for Vector3<T>
+    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for Vector3<T>
     where
         T: Float + Scalar + Unit,
     {
-        type Output = Vector3<T>;
-
-        fn from_ordered_float(
-            vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>),
-        ) -> Self::Output {
+        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
             Vector3::new((vector.0).0, (vector.1).0, (vector.2).0)
         }
     }

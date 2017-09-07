@@ -30,11 +30,11 @@ impl FromGeometry<()> for () {
     }
 }
 
-impl<T, U, S> FromGeometry<U> for T
+impl<T, U> FromGeometry<U> for T
 where
-    T: FromOrderedFloat<U, S, Output = T> + Geometry + Vector<Scalar = S>,
-    U: Geometry + Vector<Scalar = OrderedFloat<S>>,
-    S: Float + Unit,
+    T: FromOrderedFloat<U> + Geometry + Vector,
+    T::Scalar: Float + Unit,
+    U: Geometry + Vector<Scalar = OrderedFloat<T::Scalar>>,
 {
     fn from_geometry(geometry: U) -> Self {
         Self::from_ordered_float(geometry)

@@ -43,27 +43,26 @@ pub trait Rotate {
 pub trait Ordered<T>: Iterator + Sized
 where
     T: Clone + Vector,
-    T::Scalar: Clone + Float + Unit,
+    T::Scalar: Float + Unit,
 {
-    fn ordered<U>(self) -> Map<Self, T, U::Output, fn(T) -> U::Output>
+    fn ordered<U>(self) -> Map<Self, T, U, fn(T) -> U>
     where
-        Self::Item: MapVerticesInto<T, U::Output>,
-        <Self::Item as MapVerticesInto<T, U::Output>>::Output: Topological<Vertex = U::Output>,
-        U: FromUnorderedFloat<T>,
-        U::Output: Clone;
+        Self::Item: MapVerticesInto<T, U>,
+        <Self::Item as MapVerticesInto<T, U>>::Output: Topological<Vertex = U>,
+        U: Clone + FromUnorderedFloat<T> + Vector<Scalar = OrderedFloat<T::Scalar>>;
 }
 
-pub trait Unordered<T, S>: Iterator + Sized
+pub trait Unordered<T>: Iterator + Sized
 where
-    T: Clone + Vector<Scalar = OrderedFloat<S>>,
-    S: Clone + Float + Unit,
+    T: Clone + Vector,
 {
-    fn unordered<U>(self) -> Map<Self, T, U::Output, fn(T) -> U::Output>
+    fn unordered<U>(self) -> Map<Self, T, U, fn(T) -> U>
     where
-        Self::Item: MapVerticesInto<T, U::Output>,
-        <Self::Item as MapVerticesInto<T, U::Output>>::Output: Topological<Vertex = U::Output>,
-        U: FromOrderedFloat<T, S>,
-        U::Output: Clone;
+        Self::Item: MapVerticesInto<T, U>,
+        <Self::Item as MapVerticesInto<T, U>>::Output: Topological<Vertex = U>,
+        T: Vector<Scalar = OrderedFloat<U::Scalar>>,
+        U: Clone + FromOrderedFloat<T> + Vector,
+        U::Scalar: Float + Unit;
 }
 
 impl<I, T, U, P, Q> MapVertices<T, U> for I
@@ -88,47 +87,46 @@ where
     T: Clone + Vector,
     T::Scalar: Float + Unit,
 {
-    fn ordered<U>(self) -> Map<Self, T, U::Output, fn(T) -> U::Output>
+    fn ordered<U>(self) -> Map<Self, T, U, fn(T) -> U>
     where
-        Self::Item: MapVerticesInto<T, U::Output>,
-        <Self::Item as MapVerticesInto<T, U::Output>>::Output: Topological<Vertex = U::Output>,
-        U: FromUnorderedFloat<T>,
-        U::Output: Clone,
+        Self::Item: MapVerticesInto<T, U>,
+        <Self::Item as MapVerticesInto<T, U>>::Output: Topological<Vertex = U>,
+        U: Clone + FromUnorderedFloat<T> + Vector<Scalar = OrderedFloat<T::Scalar>>,
     {
-        fn f<T, U>(value: T) -> U::Output
+        fn f<T, U>(value: T) -> U
         where
             T: Vector,
             T::Scalar: Float + Unit,
             U: FromUnorderedFloat<T>,
         {
-            <U as FromUnorderedFloat<T>>::from_unordered_float(value)
+            U::from_unordered_float(value)
         }
         self.map_vertices(f::<T, U>)
     }
 }
 
-impl<I, T, S> Unordered<T, S> for I
+impl<I, T> Unordered<T> for I
 where
     I: Iterator,
-    T: Clone + Vector<Scalar = OrderedFloat<S>>,
-    S: Clone + Float + Unit,
+    T: Clone + Vector,
 {
-    fn unordered<U>(self) -> Map<Self, T, U::Output, fn(T) -> U::Output>
+    fn unordered<U>(self) -> Map<Self, T, U, fn(T) -> U>
     where
-        Self::Item: MapVerticesInto<T, U::Output>,
-        <Self::Item as MapVerticesInto<T, U::Output>>::Output: Topological<Vertex = U::Output>,
-        U: FromOrderedFloat<T, S>,
-        U::Output: Clone,
+        Self::Item: MapVerticesInto<T, U>,
+        <Self::Item as MapVerticesInto<T, U>>::Output: Topological<Vertex = U>,
+        T: Vector<Scalar = OrderedFloat<U::Scalar>>,
+        U: Clone + FromOrderedFloat<T> + Vector,
+        U::Scalar: Float + Unit,
     {
-        fn f<T, U, S>(value: T) -> U::Output
+        fn f<T, U>(value: T) -> U
         where
-            T: Vector<Scalar = OrderedFloat<S>>,
-            S: Float + Unit,
-            U: FromOrderedFloat<T, S>,
+            T: Vector<Scalar = OrderedFloat<U::Scalar>>,
+            U: FromOrderedFloat<T> + Vector,
+            U::Scalar: Float + Unit,
         {
-            <U as FromOrderedFloat<T, S>>::from_ordered_float(value)
+            U::from_ordered_float(value)
         }
-        self.map_vertices(f::<T, U, S>)
+        self.map_vertices(f::<T, U>)
     }
 }
 
