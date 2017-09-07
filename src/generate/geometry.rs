@@ -145,6 +145,27 @@ where
     }
 }
 
+pub trait OrderedFloatConjugate: Sized + Vector
+where
+    Self::Scalar: Float + Unit,
+{
+    type Ordered: FromUnorderedFloat<Self> + IntoUnorderedFloat<Self>;
+}
+
+impl<T> OrderedFloatConjugate for (T, T)
+where
+    T: Float + Unit,
+{
+    type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
+}
+
+impl<T> OrderedFloatConjugate for (T, T, T)
+where
+    T: Float + Unit,
+{
+    type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+}
+
 pub trait Interpolate<T = Self>: Sized {
     type Output;
 
@@ -303,6 +324,34 @@ mod feature {
         fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
             Vector3::new((vector.0).0, (vector.1).0, (vector.2).0)
         }
+    }
+
+    impl<T> OrderedFloatConjugate for Point2<T>
+    where
+        T: Float + Scalar + Unit,
+    {
+        type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
+    }
+
+    impl<T> OrderedFloatConjugate for Point3<T>
+    where
+        T: Float + Scalar + Unit,
+    {
+        type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+    }
+
+    impl<T> OrderedFloatConjugate for Vector2<T>
+    where
+        T: Float + Scalar + Unit,
+    {
+        type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
+    }
+
+    impl<T> OrderedFloatConjugate for Vector3<T>
+    where
+        T: Float + Scalar + Unit,
+    {
+        type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
     }
 
     impl<T> Interpolate for Point2<T>
