@@ -1,5 +1,6 @@
 use num::{self, Float, Num, NumCast};
 use ordered_float::OrderedFloat;
+use std::hash::Hash;
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
@@ -38,132 +39,45 @@ macro_rules! unit {
 unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
 unit!(real => f32, f64);
 
-pub trait Vector {
-    type Scalar;
+pub trait HashConjugate: Sized {
+    type Hash: Eq + Hash;
+
+    fn into_hash(self) -> Self::Hash;
+    fn from_hash(hash: Self::Hash) -> Self;
 }
 
-impl<T> Vector for (T, T) {
-    type Scalar = T;
-}
-
-impl<T> Vector for (T, T, T) {
-    type Scalar = T;
-}
-
-pub trait FromUnorderedFloat<T>: Vector<Scalar = OrderedFloat<T::Scalar>>
-where
-    T: Vector,
-    T::Scalar: Float + Unit,
-{
-    fn from_unordered_float(vector: T) -> Self;
-}
-
-pub trait IntoUnorderedFloat<T>
-    : Sized + Vector<Scalar = OrderedFloat<T::Scalar>>
-where
-    T: Vector,
-    T::Scalar: Float + Unit,
-{
-    fn into_unordered_float(self) -> T;
-}
-
-impl<T, U> IntoUnorderedFloat<U> for T
-where
-    T: Vector<Scalar = OrderedFloat<U::Scalar>>,
-    U: FromOrderedFloat<T> + Vector,
-    U::Scalar: Float + Unit,
-{
-    fn into_unordered_float(self) -> U {
-        U::from_ordered_float(self)
-    }
-}
-
-impl<T> FromUnorderedFloat<(T, T)> for (OrderedFloat<T>, OrderedFloat<T>)
+impl<T> HashConjugate for (T, T)
 where
     T: Float + Unit,
 {
-    fn from_unordered_float(vector: (T, T)) -> Self {
-        (OrderedFloat::from(vector.0), OrderedFloat::from(vector.1))
+    type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+
+    fn into_hash(self) -> Self::Hash {
+        (OrderedFloat::from(self.0), OrderedFloat::from(self.1))
+    }
+
+    fn from_hash(hash: Self::Hash) -> Self {
+        ((hash.0).0, (hash.1).0)
     }
 }
 
-impl<T> FromUnorderedFloat<(T, T, T)> for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
+impl<T> HashConjugate for (T, T, T)
 where
     T: Float + Unit,
 {
-    fn from_unordered_float(vector: (T, T, T)) -> Self {
+    type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+
+    fn into_hash(self) -> Self::Hash {
         (
-            OrderedFloat::from(vector.0),
-            OrderedFloat::from(vector.1),
-            OrderedFloat::from(vector.2),
+            OrderedFloat::from(self.0),
+            OrderedFloat::from(self.1),
+            OrderedFloat::from(self.2),
         )
     }
-}
 
-pub trait FromOrderedFloat<T>: Vector
-where
-    Self::Scalar: Float + Unit,
-    T: Vector<Scalar = OrderedFloat<Self::Scalar>>,
-{
-    fn from_ordered_float(vector: T) -> Self;
-}
-
-pub trait IntoOrderedFloat<T>: Sized + Vector
-where
-    Self::Scalar: Float + Unit,
-    T: Vector<Scalar = OrderedFloat<Self::Scalar>>,
-{
-    fn into_ordered_float(self) -> T;
-}
-
-impl<T, U> IntoOrderedFloat<U> for T
-where
-    T: Vector,
-    T::Scalar: Float + Unit,
-    U: FromUnorderedFloat<T> + Vector<Scalar = OrderedFloat<T::Scalar>>,
-{
-    fn into_ordered_float(self) -> U {
-        U::from_unordered_float(self)
+    fn from_hash(hash: Self::Hash) -> Self {
+        ((hash.0).0, (hash.1).0, (hash.2).0)
     }
-}
-
-impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for (T, T)
-where
-    T: Float + Unit,
-{
-    fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-        ((vector.0).0, (vector.1).0)
-    }
-}
-
-impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for (T, T, T)
-where
-    T: Float + Unit,
-{
-    fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-        ((vector.0).0, (vector.1).0, (vector.2).0)
-    }
-}
-
-pub trait OrderedFloatConjugate: Sized + Vector
-where
-    Self::Scalar: Float + Unit,
-{
-    type Ordered: FromUnorderedFloat<Self> + IntoUnorderedFloat<Self>;
-}
-
-impl<T> OrderedFloatConjugate for (T, T)
-where
-    T: Float + Unit,
-{
-    type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
-}
-
-impl<T> OrderedFloatConjugate for (T, T, T)
-where
-    T: Float + Unit,
-{
-    type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
 }
 
 pub trait Interpolate<T = Self>: Sized {
@@ -218,140 +132,75 @@ mod feature {
 
     use super::*;
 
-    impl<T> Vector for Point2<T>
-    where
-        T: Scalar,
-    {
-        type Scalar = T;
-    }
-
-    impl<T> Vector for Point3<T>
-    where
-        T: Scalar,
-    {
-        type Scalar = T;
-    }
-
-    impl<T> Vector for Vector2<T>
-    where
-        T: Scalar,
-    {
-        type Scalar = T;
-    }
-
-    impl<T> Vector for Vector3<T>
-    where
-        T: Scalar,
-    {
-        type Scalar = T;
-    }
-
-    impl<T> FromUnorderedFloat<Point2<T>> for (OrderedFloat<T>, OrderedFloat<T>)
+    impl<T> HashConjugate for Point2<T>
     where
         T: Float + Scalar + Unit,
     {
-        fn from_unordered_float(point: Point2<T>) -> Self {
-            (OrderedFloat::from(point.x), OrderedFloat::from(point.y))
+        type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+
+        fn into_hash(self) -> Self::Hash {
+            (OrderedFloat::from(self.x), OrderedFloat::from(self.y))
+        }
+
+        fn from_hash(hash: Self::Hash) -> Self {
+            Point2::new((hash.0).0, (hash.1).0)
         }
     }
 
-    impl<T> FromUnorderedFloat<Point3<T>> for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
+    impl<T> HashConjugate for Point3<T>
     where
         T: Float + Scalar + Unit,
     {
-        fn from_unordered_float(point: Point3<T>) -> Self {
+        type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+
+        fn into_hash(self) -> Self::Hash {
             (
-                OrderedFloat::from(point.x),
-                OrderedFloat::from(point.y),
-                OrderedFloat::from(point.z),
+                OrderedFloat::from(self.x),
+                OrderedFloat::from(self.y),
+                OrderedFloat::from(self.z),
             )
         }
-    }
 
-    impl<T> FromUnorderedFloat<Vector2<T>> for (OrderedFloat<T>, OrderedFloat<T>)
-    where
-        T: Float + Scalar + Unit,
-    {
-        fn from_unordered_float(vector: Vector2<T>) -> Self {
-            (OrderedFloat::from(vector.x), OrderedFloat::from(vector.y))
+        fn from_hash(hash: Self::Hash) -> Self {
+            Point3::new((hash.0).0, (hash.1).0, (hash.2).0)
         }
     }
 
-    impl<T> FromUnorderedFloat<Vector3<T>> for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
+    impl<T> HashConjugate for Vector2<T>
     where
         T: Float + Scalar + Unit,
     {
-        fn from_unordered_float(vector: Vector3<T>) -> Self {
+        type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+
+        fn into_hash(self) -> Self::Hash {
             (
-                OrderedFloat::from(vector.x),
-                OrderedFloat::from(vector.y),
-                OrderedFloat::from(vector.z),
+                OrderedFloat::from(self.x),
+                OrderedFloat::from(self.y),
             )
         }
-    }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for Point2<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-            Point2::new((vector.0).0, (vector.1).0)
+        fn from_hash(hash: Self::Hash) -> Self {
+            Vector2::new((hash.0).0, (hash.1).0)
         }
     }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for Point3<T>
+    impl<T> HashConjugate for Vector3<T>
     where
         T: Float + Scalar + Unit,
     {
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-            Point3::new((vector.0).0, (vector.1).0, (vector.2).0)
+        type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+
+        fn into_hash(self) -> Self::Hash {
+            (
+                OrderedFloat::from(self.x),
+                OrderedFloat::from(self.y),
+                OrderedFloat::from(self.z),
+            )
         }
-    }
 
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>)> for Vector2<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-            Vector2::new((vector.0).0, (vector.1).0)
+        fn from_hash(hash: Self::Hash) -> Self {
+            Vector3::new((hash.0).0, (hash.1).0, (hash.2).0)
         }
-    }
-
-    impl<T> FromOrderedFloat<(OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)> for Vector3<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        fn from_ordered_float(vector: (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)) -> Self {
-            Vector3::new((vector.0).0, (vector.1).0, (vector.2).0)
-        }
-    }
-
-    impl<T> OrderedFloatConjugate for Point2<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
-    }
-
-    impl<T> OrderedFloatConjugate for Point3<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
-    }
-
-    impl<T> OrderedFloatConjugate for Vector2<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        type Ordered = (OrderedFloat<T>, OrderedFloat<T>);
-    }
-
-    impl<T> OrderedFloatConjugate for Vector3<T>
-    where
-        T: Float + Scalar + Unit,
-    {
-        type Ordered = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
     }
 
     impl<T> Interpolate for Point2<T>

@@ -1,7 +1,8 @@
 use num::Float;
 use ordered_float::OrderedFloat;
+use std::hash::Hash;
 
-use generate::{FromOrderedFloat, Unit, Vector};
+use generate::{HashConjugate, Unit};
 use graph::topology::FaceMut;
 
 pub trait FromGeometry<T> {
@@ -32,12 +33,11 @@ impl FromGeometry<()> for () {
 
 impl<T, U> FromGeometry<U> for T
 where
-    T: FromOrderedFloat<U> + Geometry + Vector,
-    T::Scalar: Float + Unit,
-    U: Geometry + Vector<Scalar = OrderedFloat<T::Scalar>>,
+    T: Geometry + HashConjugate<Hash = U>,
+    U: Eq + Geometry + Hash,
 {
     fn from_geometry(geometry: U) -> Self {
-        Self::from_ordered_float(geometry)
+        Self::from_hash(geometry)
     }
 }
 

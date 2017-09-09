@@ -46,10 +46,11 @@ pub mod sphere;
 mod topology;
 
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
-pub(crate) use self::geometry::{FromOrderedFloat, Unit, Vector};
+pub(crate) use self::geometry::Unit;
 
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{IndexedPolygons, SpatialPolygons, SpatialVertices, TexturedPolygons};
+pub use self::geometry::HashConjugate;
 pub use self::index::{HashIndexer, IndexVertices};
-pub use self::topology::{Line, MapVertices, Ordered, Polygon, Polygonal, Quad, Rotate,
-                         Topological, Triangle, Unordered};
+pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate,
+                         Topological, Triangle};

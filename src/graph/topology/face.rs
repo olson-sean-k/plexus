@@ -378,7 +378,7 @@ mod tests {
     fn circulate_over_edges() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
-            .ordered::<(r32, r32, r32)>()
+            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>();
         // TODO: Provide a way to get a key for the faces in the mesh. Using
@@ -393,7 +393,7 @@ mod tests {
     fn circulate_over_faces() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
-            .ordered::<(r32, r32, r32)>()
+            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>();
         // TODO: Provide a way to get a key for the faces in the mesh. Using
@@ -410,7 +410,7 @@ mod tests {
 
         let mut mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .spatial_polygons() // 6 triangles, 18 vertices.
-            .ordered::<(r32, r32, r32)>()
+            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>()
             .into_geometry();
