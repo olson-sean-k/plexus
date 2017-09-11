@@ -185,7 +185,7 @@ where
             let mut geometry = mesh.vertices.get(&edge.vertex).unwrap().geometry.clone();
             *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
             (edge.vertex, geometry)
-        }).collect::<Vec<_>>())
+        }).collect())
     }
 }
 

@@ -173,10 +173,7 @@ mod feature {
         type Hash = (OrderedFloat<T>, OrderedFloat<T>);
 
         fn into_hash(self) -> Self::Hash {
-            (
-                OrderedFloat::from(self.x),
-                OrderedFloat::from(self.y),
-            )
+            (OrderedFloat::from(self.x), OrderedFloat::from(self.y))
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
