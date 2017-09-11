@@ -73,6 +73,8 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
     G::Vertex: AsPosition + Clone,
+    G::Edge: Clone,
+    G::Face: Clone,
     // Constraints on the vertex geometry when converted to a position:
     //
     // 1. Supports cloning.
@@ -96,9 +98,19 @@ where
         <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
         <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
     {
+        self.extrude_with_geometry(distance, G::Edge::default(), G::Face::default())
+    }
+
+    pub fn extrude_with_geometry<F>(self, distance: F, edge: G::Edge, face: G::Face) -> Result<Self, ()>
+    where
+        F: Float,
+        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
+        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
+        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+    {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
-        let geometry = self.extrusion_geometry(distance)?;
+        let geometry = self.extrude_vertex_geometry(distance)?;
         // Begin topological mutations, starting by removing the originating
         // face. These mutations invalidate the key used by the `FaceView`, so
         // destructure `self` to avoid its reuse.
@@ -115,29 +127,27 @@ where
                 .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1))).collect::<Vec<_>>();
             let edges = vertices.iter().enumerate().map(|(index, &(_, a))| {
                 let b = vertices[(index + 1) % vertices.len()].1;
-                // TODO: Copy the geometry of the edges in the originating face.
-                mesh.insert_edge((a, b), G::Edge::default()).unwrap()
+                mesh.insert_edge((a, b), edge.clone()).unwrap()
             }).collect::<Vec<_>>();
-            // TODO: Copy the geometry of the originating face.
-            let extrusion = mesh.insert_face(&edges, G::Face::default()).unwrap();
+            let extrusion = mesh.insert_face(&edges, face.clone()).unwrap();
             for index in 0..vertices.len() {
                 let (d, c) = vertices[index];
                 let (a, b) = vertices[(index + 1) % vertices.len()];
-                let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
-                let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
-                let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
-                let da = mesh.insert_edge((d, a), G::Edge::default()).unwrap();
-                let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap(); // Diagonal.
-                let ac = mesh.insert_edge((a, c), G::Edge::default()).unwrap(); // Diagonal.
-                mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
-                mesh.insert_face(&[ac, cd, da], G::Face::default()).unwrap();
+                let ab = mesh.insert_edge((a, b), edge.clone()).unwrap();
+                let bc = mesh.insert_edge((b, c), edge.clone()).unwrap();
+                let cd = mesh.insert_edge((c, d), edge.clone()).unwrap();
+                let da = mesh.insert_edge((d, a), edge.clone()).unwrap();
+                let ca = mesh.insert_edge((c, a), edge.clone()).unwrap(); // Diagonal.
+                let ac = mesh.insert_edge((a, c), edge.clone()).unwrap(); // Diagonal.
+                mesh.insert_face(&[ab, bc, ca], face.clone()).unwrap();
+                mesh.insert_face(&[ac, cd, da], face.clone()).unwrap();
             }
             extrusion
         };
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn extrusion_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
+    fn extrude_vertex_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
     where
         F: Float,
         // Constraints on the vertex geometry when converted to a position:
