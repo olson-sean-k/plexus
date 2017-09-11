@@ -27,7 +27,7 @@ use render::{self, Vertex};
 // to `Vertex` via the `From` trait in this example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .spatial_polygons()
-    .map_verticies(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
+    .map_vertices(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
     .map_vertices(|vertex| vertex.into_hash())
     .collect::<ConjointBuffer<u64, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
