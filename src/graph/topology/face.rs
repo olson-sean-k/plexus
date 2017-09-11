@@ -231,10 +231,12 @@ where
     }
 }
 
+pub type OrphanFaceMut<'a, G> = OrphanFaceView<'a, G>;
+
 // There's no need to abstract over mutability for this type. For immutable
 // refs, there is no need for an orphan type. Moreover, it is not possible to
 // implement `AsRef` and `AsMut` for all types that implement `Geometry`.
-pub struct OrphanFaceMut<'a, G>
+pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
@@ -244,12 +246,12 @@ where
     pub geometry: &'a mut G::Face,
 }
 
-impl<'a, G> OrphanFaceMut<'a, G>
+impl<'a, G> OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
     fn new(geometry: &'a mut G::Face, face: FaceKey) -> Self {
-        OrphanFaceMut {
+        OrphanFaceView {
             key: face,
             geometry: geometry,
         }
@@ -370,9 +372,9 @@ where
 {
     // This cannot be a `FaceView`, because that would alias the mutable
     // reference to the mesh. Instead, yield the key and a mutable reference to
-    // the geometry data as an `OrphanFaceMut` that discards any traversable
+    // the geometry data as an `OrphanFaceView` that discards any traversable
     // reference into the mesh.
-    type Item = OrphanFaceMut<'a, G>;
+    type Item = OrphanFaceView<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         <FaceCirculator<_, _>>::next(self).map(|face| {
@@ -394,7 +396,7 @@ where
                     &mut face.geometry
                 }
             };
-            OrphanFaceMut::new(geometry, face)
+            OrphanFaceView::new(geometry, face)
         })
     }
 }
