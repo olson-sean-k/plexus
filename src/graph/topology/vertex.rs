@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -108,7 +107,7 @@ where
 {
     vertex: VertexView<M, G>,
     edge: Option<EdgeKey>,
-    breadcrumbs: HashSet<EdgeKey>,
+    breadcrumb: Option<EdgeKey>,
 }
 
 impl<M, G> EdgeCirculator<M, G>
@@ -121,7 +120,7 @@ where
         EdgeCirculator {
             vertex: vertex,
             edge: edge,
-            breadcrumbs: HashSet::with_capacity(3),
+            breadcrumb: edge,
         }
     }
 
@@ -131,13 +130,17 @@ where
                 self.vertex.mesh.as_ref().edges.get(&outgoing).unwrap()
             })
             .and_then(|outgoing| outgoing.opposite)
-            .and_then(|incoming| if self.breadcrumbs.contains(&incoming) {
-                None
-            }
-            else {
-                self.breadcrumbs.insert(incoming);
-                self.edge = self.vertex.mesh.as_ref().edges.get(&incoming).unwrap().next;
-                Some(incoming)
+            .and_then(|incoming| {
+                let outgoing = self.vertex.mesh.as_ref().edges.get(&incoming).unwrap().next;
+                self.breadcrumb.map(|_| {
+                    if self.breadcrumb == outgoing {
+                        self.breadcrumb = None;
+                    }
+                    else {
+                        self.edge = outgoing;
+                    }
+                    incoming
+                })
             })
     }
 }

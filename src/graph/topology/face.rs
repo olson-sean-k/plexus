@@ -1,5 +1,4 @@
 use num::Float;
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul, Sub};
 
@@ -265,7 +264,7 @@ where
 {
     face: FaceView<M, G>,
     edge: Option<EdgeKey>,
-    breadcrumbs: HashSet<EdgeKey>,
+    breadcrumb: Option<EdgeKey>,
 }
 
 impl<M, G> EdgeCirculator<M, G>
@@ -278,23 +277,23 @@ where
         EdgeCirculator {
             face: face,
             edge: Some(edge),
-            breadcrumbs: HashSet::with_capacity(3),
+            breadcrumb: Some(edge),
         }
     }
 
     fn next(&mut self) -> Option<EdgeKey> {
-        let mesh = self.face.mesh.as_ref();
-        if let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(&edge).unwrap())) {
-            if self.breadcrumbs.contains(&key) {
-                return None;
-            }
-            self.breadcrumbs.insert(key);
-            self.edge = edge.next;
-            Some(key)
-        }
-        else {
-            None
-        }
+        self.edge.and_then(|edge| {
+            let next = self.face.mesh.as_ref().edges.get(&edge).unwrap().next;
+            self.breadcrumb.map(|_| {
+                if self.breadcrumb == next {
+                    self.breadcrumb = None;
+                }
+                else {
+                    self.edge = next;
+                }
+                edge
+            })
+        })
     }
 }
 
@@ -316,7 +315,7 @@ where
 {
     face: FaceView<M, G>,
     edge: Option<EdgeKey>,
-    breadcrumbs: HashSet<EdgeKey>,
+    breadcrumb: Option<EdgeKey>,
 }
 
 impl<M, G> FaceCirculator<M, G>
@@ -329,23 +328,27 @@ where
         FaceCirculator {
             face: face,
             edge: Some(edge),
-            breadcrumbs: HashSet::with_capacity(3),
+            breadcrumb: Some(edge),
         }
     }
 
     fn next(&mut self) -> Option<FaceKey> {
         let mesh = self.face.mesh.as_ref();
-        while let Some((key, edge)) = self.edge.map(|edge| (edge, mesh.edges.get(&edge).unwrap())) {
-            if self.breadcrumbs.contains(&key) {
-                return None;
-            }
-            self.breadcrumbs.insert(key);
+        while let Some(edge) = self.edge.map(|edge| mesh.edges.get(&edge).unwrap()) {
             self.edge = edge.next;
             if let Some(face) = edge.opposite
                 .map(|opposite| mesh.edges.get(&opposite).unwrap())
                 .and_then(|opposite| opposite.face)
             {
-                return Some(face);
+                return if let Some(_) = self.breadcrumb {
+                    if self.breadcrumb == edge.next {
+                        self.breadcrumb = None;
+                    }
+                    Some(face)
+                }
+                else {
+                    None
+                };
             }
             else {
                 continue;
