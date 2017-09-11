@@ -250,7 +250,7 @@ impl<'a, G> OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
-    fn new(geometry: &'a mut G::Face, face: FaceKey) -> Self {
+    pub(crate) fn new(geometry: &'a mut G::Face, face: FaceKey) -> Self {
         OrphanFaceView {
             key: face,
             geometry: geometry,

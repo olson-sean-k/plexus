@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
 use graph::geometry::{Attribute, FromGeometry, Geometry, IntoGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{FaceMut, FaceRef};
+use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, VertexMut, VertexRef};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<T>
@@ -149,6 +149,30 @@ where
 
     pub fn face_count(&self) -> usize {
         self.faces.len()
+    }
+
+    pub fn vertex(&self, vertex: VertexKey) -> Option<VertexRef<G>> {
+        self.vertices
+            .get(&vertex)
+            .map(|_| VertexRef::new(self, vertex))
+    }
+
+    pub fn vertex_mut(&mut self, vertex: VertexKey) -> Option<VertexMut<G>> {
+        match self.vertices.contains_key(&vertex) {
+            true => Some(VertexMut::new(self, vertex)),
+            _ => None,
+        }
+    }
+
+    pub fn edge(&self, edge: EdgeKey) -> Option<EdgeRef<G>> {
+        self.edges.get(&edge).map(|_| EdgeRef::new(self, edge))
+    }
+
+    pub fn edge_mut(&mut self, edge: EdgeKey) -> Option<EdgeMut<G>> {
+        match self.edges.contains_key(&edge) {
+            true => Some(EdgeMut::new(self, edge)),
+            _ => None,
+        }
     }
 
     pub fn face(&self, face: FaceKey) -> Option<FaceRef<G>> {

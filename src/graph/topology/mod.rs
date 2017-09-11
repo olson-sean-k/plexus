@@ -1,5 +1,6 @@
 mod edge;
 mod face;
+mod vertex;
 
 // TODO: Generalize the pairing of a ref to a mesh and a key for topology
 //       within the mesh.
@@ -11,5 +12,6 @@ mod face;
 // they can also invalidate these constraints and cause panics. Any mutating
 // functions should consume the view.
 
-pub use self::edge::{EdgeMut, EdgeRef, EdgeView};
+pub use self::edge::{EdgeMut, EdgeRef, EdgeView, OrphanEdgeMut, OrphanEdgeView};
 pub use self::face::{FaceMut, FaceRef, FaceView, OrphanFaceMut, OrphanFaceView};
+pub use self::vertex::{VertexMut, VertexRef, VertexView};
