@@ -231,6 +231,31 @@ where
     }
 }
 
+// There's no need to abstract over mutability for this type. For immutable
+// refs, there is no need for an orphan type. Moreover, it is not possible to
+// implement `AsRef` and `AsMut` for all types that implement `Geometry`.
+pub struct OrphanFaceMut<'a, G>
+where
+    G: 'a + Geometry,
+{
+    pub key: FaceKey,
+    // The name `geometry` mirrors the `geometry` field of `Face`, to which
+    // `FaceView` derefs.
+    pub geometry: &'a mut G::Face,
+}
+
+impl<'a, G> OrphanFaceMut<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn new(geometry: &'a mut G::Face, face: FaceKey) -> Self {
+        OrphanFaceMut {
+            key: face,
+            geometry: geometry,
+        }
+    }
+}
+
 pub struct EdgeCirculator<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -343,15 +368,11 @@ impl<'a, G> Iterator for FaceCirculator<&'a mut Mesh<G>, G>
 where
     G: 'a + Geometry,
 {
-    // TODO: One way to "unify" the output types of this iterator is to
-    //       introduce an `OrphanFaceView` that holds a reference to the
-    //       geometry but not the mesh. Code working with these structures
-    //       would look nearly the same.
-    //
     // This cannot be a `FaceView`, because that would alias the mutable
     // reference to the mesh. Instead, yield the key and a mutable reference to
-    // the geometry data.
-    type Item = (FaceKey, &'a mut G::Face);
+    // the geometry data as an `OrphanFaceMut` that discards any traversable
+    // reference into the mesh.
+    type Item = OrphanFaceMut<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         <FaceCirculator<_, _>>::next(self).map(|face| {
@@ -373,7 +394,7 @@ where
                     &mut face.geometry
                 }
             };
-            (face, geometry)
+            OrphanFaceMut::new(geometry, face)
         })
     }
 }

@@ -12,4 +12,4 @@ mod face;
 // functions should consume the view.
 
 pub use self::edge::{EdgeMut, EdgeRef, EdgeView};
-pub use self::face::{FaceMut, FaceRef, FaceView};
+pub use self::face::{FaceMut, FaceRef, FaceView, OrphanFaceMut};
