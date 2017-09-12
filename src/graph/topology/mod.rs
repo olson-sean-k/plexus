@@ -1,3 +1,6 @@
+use graph::geometry::Attribute;
+use graph::storage::OpaqueKey;
+
 mod edge;
 mod face;
 mod vertex;
@@ -15,3 +18,8 @@ mod vertex;
 pub use self::edge::{EdgeMut, EdgeRef, EdgeView, OrphanEdgeMut, OrphanEdgeView};
 pub use self::face::{FaceMut, FaceRef, FaceView, OrphanFaceMut, OrphanFaceView};
 pub use self::vertex::{VertexMut, VertexRef, VertexView};
+
+pub trait Topological {
+    type Key: OpaqueKey;
+    type Attribute: Attribute;
+}

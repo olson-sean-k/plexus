@@ -2,25 +2,25 @@ use itertools::Itertools;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
-use graph::geometry::{Attribute, FromGeometry, Geometry, IntoGeometry};
+use generate::{self, HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Triangulate};
+use graph::geometry::{FromGeometry, Geometry, IntoGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, VertexMut, VertexRef};
+use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, Topological, VertexMut, VertexRef};
 
 #[derive(Clone, Debug)]
-pub struct Vertex<T>
+pub struct Vertex<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    pub geometry: T,
+    pub geometry: G::Vertex,
     pub(super) edge: Option<EdgeKey>,
 }
 
-impl<T> Vertex<T>
+impl<G> Vertex<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    fn new(geometry: T) -> Self {
+    fn new(geometry: G::Vertex) -> Self {
         Vertex {
             geometry: geometry,
             edge: None,
@@ -28,12 +28,13 @@ where
     }
 }
 
-impl<T, U> FromGeometry<Vertex<U>> for Vertex<T>
+impl<G, H> FromGeometry<Vertex<H>> for Vertex<G>
 where
-    T: Attribute + FromGeometry<U>,
-    U: Attribute,
+    G: Geometry,
+    G::Vertex: FromGeometry<H::Vertex>,
+    H: Geometry,
 {
-    fn from_geometry(vertex: Vertex<U>) -> Self {
+    fn from_geometry(vertex: Vertex<H>) -> Self {
         Vertex {
             geometry: vertex.geometry.into_geometry(),
             edge: vertex.edge,
@@ -41,23 +42,31 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Edge<T>
+impl<G> Topological for Vertex<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    pub geometry: T,
+    type Key = VertexKey;
+    type Attribute = G::Vertex;
+}
+
+#[derive(Clone, Debug)]
+pub struct Edge<G>
+where
+    G: Geometry,
+{
+    pub geometry: G::Edge,
     pub(super) vertex: VertexKey,
     pub(super) opposite: Option<EdgeKey>,
     pub(super) next: Option<EdgeKey>,
     pub(super) face: Option<FaceKey>,
 }
 
-impl<T> Edge<T>
+impl<G> Edge<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    fn new(vertex: VertexKey, geometry: T) -> Self {
+    fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
         Edge {
             geometry: geometry,
             vertex: vertex,
@@ -68,12 +77,13 @@ where
     }
 }
 
-impl<T, U> FromGeometry<Edge<U>> for Edge<T>
+impl<G, H> FromGeometry<Edge<H>> for Edge<G>
 where
-    T: Attribute + FromGeometry<U>,
-    U: Attribute,
+    G: Geometry,
+    G::Edge: FromGeometry<H::Edge>,
+    H: Geometry,
 {
-    fn from_geometry(edge: Edge<U>) -> Self {
+    fn from_geometry(edge: Edge<H>) -> Self {
         Edge {
             geometry: edge.geometry.into_geometry(),
             vertex: edge.vertex,
@@ -84,20 +94,28 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Face<T>
+impl<G> Topological for Edge<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    pub geometry: T,
+    type Key = EdgeKey;
+    type Attribute = G::Edge;
+}
+
+#[derive(Clone, Debug)]
+pub struct Face<G>
+where
+    G: Geometry,
+{
+    pub geometry: G::Face,
     pub(super) edge: EdgeKey,
 }
 
-impl<T> Face<T>
+impl<G> Face<G>
 where
-    T: Attribute,
+    G: Geometry,
 {
-    fn new(edge: EdgeKey, geometry: T) -> Self {
+    fn new(edge: EdgeKey, geometry: G::Face) -> Self {
         Face {
             geometry: geometry,
             edge: edge,
@@ -105,12 +123,13 @@ where
     }
 }
 
-impl<T, U> FromGeometry<Face<U>> for Face<T>
+impl<G, H> FromGeometry<Face<H>> for Face<G>
 where
-    T: Attribute + FromGeometry<U>,
-    U: Attribute,
+    G: Geometry,
+    G::Face: FromGeometry<H::Face>,
+    H: Geometry,
 {
-    fn from_geometry(face: Face<U>) -> Self {
+    fn from_geometry(face: Face<H>) -> Self {
         Face {
             geometry: face.geometry.into_geometry(),
             edge: face.edge,
@@ -118,13 +137,21 @@ where
     }
 }
 
+impl<G> Topological for Face<G>
+where
+    G: Geometry,
+{
+    type Key = FaceKey;
+    type Attribute = G::Face;
+}
+
 pub struct Mesh<G = ()>
 where
     G: Geometry,
 {
-    pub(super) vertices: Storage<VertexKey, Vertex<G::Vertex>>,
-    pub(super) edges: Storage<EdgeKey, Edge<G::Edge>>,
-    pub(super) faces: Storage<FaceKey, Face<G::Face>>,
+    pub(super) vertices: Storage<Vertex<G>>,
+    pub(super) edges: Storage<Edge<G>>,
+    pub(super) faces: Storage<Face<G>>,
 }
 
 impl<G> Mesh<G>
@@ -314,7 +341,7 @@ where
 impl<G, T> FromIterator<T> for Mesh<G>
 where
     G: Geometry,
-    T: IntoTriangles + IntoVertices + Topological,
+    T: IntoTriangles + IntoVertices + generate::Topological,
     T::Vertex: Eq + Hash + Into<G::Vertex>,
 {
     fn from_iter<I>(input: I) -> Self

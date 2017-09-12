@@ -83,7 +83,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    type Target = Vertex<G::Vertex>;
+    type Target = Vertex<G>;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().vertices.get(&self.key).unwrap()
@@ -176,7 +176,7 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let edge = mem::transmute::<_, &'a mut Edge<G::Edge>>(
+                    let edge = mem::transmute::<_, &'a mut Edge<G>>(
                         self.vertex.mesh.edges.get_mut(&edge).unwrap(),
                     );
                     &mut edge.geometry

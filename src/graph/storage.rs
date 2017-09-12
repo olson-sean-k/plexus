@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
+use graph::topology::Topological;
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Key(u64);
 
@@ -34,10 +36,10 @@ impl Generator for Key {
 }
 
 pub trait OpaqueKey {
-    type Key: Copy + Eq + Hash;
+    type RawKey: Copy + Eq + Hash;
     type Generator: Generator;
 
-    fn to_inner(&self) -> Self::Key;
+    fn to_inner(&self) -> Self::RawKey;
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -50,10 +52,10 @@ impl From<Key> for VertexKey {
 }
 
 impl OpaqueKey for VertexKey {
-    type Key = Key;
+    type RawKey = Key;
     type Generator = Key;
 
-    fn to_inner(&self) -> Self::Key {
+    fn to_inner(&self) -> Self::RawKey {
         self.0
     }
 }
@@ -62,10 +64,10 @@ impl OpaqueKey for VertexKey {
 pub struct EdgeKey(Key, Key);
 
 impl OpaqueKey for EdgeKey {
-    type Key = (Key, Key);
+    type RawKey = (Key, Key);
     type Generator = ();
 
-    fn to_inner(&self) -> Self::Key {
+    fn to_inner(&self) -> Self::RawKey {
         (self.0, self.1)
     }
 }
@@ -92,28 +94,35 @@ impl From<Key> for FaceKey {
 }
 
 impl OpaqueKey for FaceKey {
-    type Key = Key;
+    type RawKey = Key;
     type Generator = Key;
 
-    fn to_inner(&self) -> Self::Key {
+    fn to_inner(&self) -> Self::RawKey {
         self.0
     }
 }
 
-pub struct Storage<K, T>(K::Generator, HashMap<K::Key, T>)
+pub struct Storage<T>(
+    <<T as Topological>::Key as OpaqueKey>::Generator,
+    HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>,
+)
 where
-    K: OpaqueKey;
+    T: Topological;
 
-impl<K, T> Storage<K, T>
+impl<T> Storage<T>
 where
-    K: OpaqueKey,
+    T: Topological,
 {
     pub fn new() -> Self {
-        Storage(K::Generator::default(), HashMap::new())
+        Storage(
+            <<T as Topological>::Key as OpaqueKey>::Generator::default(),
+            HashMap::new(),
+        )
     }
 
-    pub fn map_values_into<U, F>(self, mut f: F) -> Storage<K, U>
+    pub fn map_values_into<U, F>(self, mut f: F) -> Storage<U>
     where
+        U: Topological<Key = T::Key>,
         F: FnMut(T) -> U,
     {
         let mut hash = HashMap::new();
@@ -124,36 +133,37 @@ where
     }
 
     #[inline(always)]
-    pub fn insert_with_key(&mut self, key: &K, item: T) {
+    pub fn insert_with_key(&mut self, key: &T::Key, item: T) {
         self.1.insert(key.to_inner(), item);
     }
 
     #[inline(always)]
-    pub fn contains_key(&self, key: &K) -> bool {
+    pub fn contains_key(&self, key: &T::Key) -> bool {
         self.1.contains_key(&key.to_inner())
     }
 
     #[inline(always)]
-    pub fn get(&self, key: &K) -> Option<&T> {
+    pub fn get(&self, key: &T::Key) -> Option<&T> {
         self.1.get(&key.to_inner())
     }
 
     #[inline(always)]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut T> {
+    pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
         self.1.get_mut(&key.to_inner())
     }
 
     #[inline(always)]
-    pub fn remove(&mut self, key: &K) -> Option<T> {
+    pub fn remove(&mut self, key: &T::Key) -> Option<T> {
         self.1.remove(&key.to_inner())
     }
 }
 
-impl<K, T> Storage<K, T>
+impl<T> Storage<T>
 where
-    K: From<Key> + OpaqueKey<Key = Key, Generator = Key>,
+    T: Topological,
+    T::Key: From<Key> + OpaqueKey<RawKey = Key, Generator = Key>,
 {
-    pub fn insert_with_generator(&mut self, item: T) -> K {
+    pub fn insert_with_generator(&mut self, item: T) -> T::Key {
         let key = self.0;
         self.1.insert(key, item);
         self.0 = self.0.next();
@@ -161,20 +171,20 @@ where
     }
 }
 
-impl<K, T> Deref for Storage<K, T>
+impl<T> Deref for Storage<T>
 where
-    K: OpaqueKey,
+    T: Topological,
 {
-    type Target = HashMap<K::Key, T>;
+    type Target = HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>;
 
     fn deref(&self) -> &Self::Target {
         &self.1
     }
 }
 
-impl<K, T> DerefMut for Storage<K, T>
+impl<T> DerefMut for Storage<T>
 where
-    K: OpaqueKey,
+    T: Topological,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.1

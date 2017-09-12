@@ -220,7 +220,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    type Target = Face<G::Face>;
+    type Target = Face<G>;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().faces.get(&self.key).unwrap()
@@ -400,7 +400,7 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let face = mem::transmute::<_, &'a mut Face<G::Face>>(
+                    let face = mem::transmute::<_, &'a mut Face<G>>(
                         self.face.mesh.faces.get_mut(&face).unwrap(),
                     );
                     &mut face.geometry

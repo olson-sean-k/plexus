@@ -93,7 +93,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    type Target = Edge<G::Edge>;
+    type Target = Edge<G>;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().edges.get(&self.key).unwrap()
