@@ -1,3 +1,4 @@
+use graph::Mesh;
 use graph::geometry::Attribute;
 use graph::storage::OpaqueKey;
 
@@ -15,9 +16,20 @@ mod vertex;
 // they can also invalidate these constraints and cause panics. Any mutating
 // functions should consume the view.
 
-pub use self::edge::{EdgeMut, EdgeRef, EdgeView, OrphanEdgeMut, OrphanEdgeView};
-pub use self::face::{FaceMut, FaceRef, FaceView, OrphanFaceMut, OrphanFaceView};
-pub use self::vertex::{VertexMut, VertexRef, VertexView};
+pub use self::edge::{EdgeView, OrphanEdgeView};
+pub use self::face::{FaceView, OrphanFaceView};
+pub use self::vertex::VertexView;
+
+pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
+pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
+pub type OrphanEdgeMut<'a, G> = OrphanEdgeView<'a, G>;
+
+pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
+pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
+pub type OrphanFaceMut<'a, G> = OrphanFaceView<'a, G>;
+
+pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
+pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
 
 pub trait Topological {
     type Key: OpaqueKey;

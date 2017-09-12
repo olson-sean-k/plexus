@@ -7,9 +7,6 @@ use graph::mesh::{Face, Mesh};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::EdgeView;
 
-pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
-pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
-
 #[derive(Clone, Copy)]
 pub struct FaceView<M, G>
 where
@@ -236,8 +233,6 @@ where
         self.mesh.as_mut().faces.get_mut(&self.key).unwrap()
     }
 }
-
-pub type OrphanFaceMut<'a, G> = OrphanFaceView<'a, G>;
 
 // There's no need to abstract over mutability for this type. For immutable
 // refs, there is no need for an orphan type. Moreover, it is not possible to

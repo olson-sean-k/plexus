@@ -6,9 +6,6 @@ use graph::mesh::{Edge, Mesh, Vertex};
 use graph::storage::{EdgeKey, VertexKey};
 use graph::topology::{EdgeView, OrphanEdgeView};
 
-pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
-pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
-
 #[derive(Clone, Copy)]
 pub struct VertexView<M, G>
 where

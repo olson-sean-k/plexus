@@ -5,9 +5,6 @@ use graph::geometry::Geometry;
 use graph::mesh::{Edge, Mesh};
 use graph::storage::EdgeKey;
 
-pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
-pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
-
 #[derive(Clone, Copy)]
 pub struct EdgeView<M, G>
 where
@@ -109,8 +106,6 @@ where
         self.mesh.as_mut().edges.get_mut(&self.key).unwrap()
     }
 }
-
-pub type OrphanEdgeMut<'a, G> = OrphanEdgeView<'a, G>;
 
 // There's no need to abstract over mutability for this type. For immutable
 // refs, there is no need for an orphan type. Moreover, it is not possible to
