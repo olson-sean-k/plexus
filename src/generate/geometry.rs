@@ -1,12 +1,16 @@
 use num::{self, Float, Num, NumCast};
-use ordered_float::OrderedFloat;
 use std::hash::Hash;
+
+use NotNan;
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
     fn unit_width() -> (Self, Self);
 }
 
+// TODO: https://github.com/reem/rust-ordered-float/pull/31
+//       Once `NotNan` implements numeric traits, implement `Unit` for `NotNan`
+//       and allow it to be used as vertex geometry in generators.
 macro_rules! unit {
     (integer => $($t:ty),*) => {$(
         impl Unit for $t {
@@ -50,14 +54,14 @@ impl<T> HashConjugate for (T, T)
 where
     T: Float + Unit,
 {
-    type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+    type Hash = (NotNan<T>, NotNan<T>);
 
     fn into_hash(self) -> Self::Hash {
-        (OrderedFloat::from(self.0), OrderedFloat::from(self.1))
+        (NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        ((hash.0).0, (hash.1).0)
+        ((hash.0).into_inner(), (hash.1).into_inner())
     }
 }
 
@@ -65,18 +69,22 @@ impl<T> HashConjugate for (T, T, T)
 where
     T: Float + Unit,
 {
-    type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+    type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
 
     fn into_hash(self) -> Self::Hash {
         (
-            OrderedFloat::from(self.0),
-            OrderedFloat::from(self.1),
-            OrderedFloat::from(self.2),
+            NotNan::new(self.0).unwrap(),
+            NotNan::new(self.1).unwrap(),
+            NotNan::new(self.2).unwrap(),
         )
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        ((hash.0).0, (hash.1).0, (hash.2).0)
+        (
+            (hash.0).into_inner(),
+            (hash.1).into_inner(),
+            (hash.2).into_inner(),
+        )
     }
 }
 
@@ -136,14 +144,14 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+        type Hash = (NotNan<T>, NotNan<T>);
 
         fn into_hash(self) -> Self::Hash {
-            (OrderedFloat::from(self.x), OrderedFloat::from(self.y))
+            (NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new((hash.0).0, (hash.1).0)
+            Point2::new((hash.0).into_inner(), (hash.1).into_inner())
         }
     }
 
@@ -151,18 +159,22 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+        type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
 
         fn into_hash(self) -> Self::Hash {
             (
-                OrderedFloat::from(self.x),
-                OrderedFloat::from(self.y),
-                OrderedFloat::from(self.z),
+                NotNan::new(self.x).unwrap(),
+                NotNan::new(self.y).unwrap(),
+                NotNan::new(self.z).unwrap(),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point3::new((hash.0).0, (hash.1).0, (hash.2).0)
+            Point3::new(
+                (hash.0).into_inner(),
+                (hash.1).into_inner(),
+                (hash.2).into_inner(),
+            )
         }
     }
 
@@ -170,14 +182,14 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (OrderedFloat<T>, OrderedFloat<T>);
+        type Hash = (NotNan<T>, NotNan<T>);
 
         fn into_hash(self) -> Self::Hash {
-            (OrderedFloat::from(self.x), OrderedFloat::from(self.y))
+            (NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new((hash.0).0, (hash.1).0)
+            Vector2::new((hash.0).into_inner(), (hash.1).into_inner())
         }
     }
 
@@ -185,18 +197,22 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>);
+        type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
 
         fn into_hash(self) -> Self::Hash {
             (
-                OrderedFloat::from(self.x),
-                OrderedFloat::from(self.y),
-                OrderedFloat::from(self.z),
+                NotNan::new(self.x).unwrap(),
+                NotNan::new(self.y).unwrap(),
+                NotNan::new(self.z).unwrap(),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector3::new((hash.0).0, (hash.1).0, (hash.2).0)
+            Vector3::new(
+                (hash.0).into_inner(),
+                (hash.1).into_inner(),
+                (hash.2).into_inner(),
+            )
         }
     }
 

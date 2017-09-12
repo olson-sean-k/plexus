@@ -10,12 +10,15 @@ extern crate nalgebra;
 extern crate num;
 extern crate ordered_float;
 
-use ordered_float::OrderedFloat;
+use ordered_float::NotNaN;
+
+// TODO: https://github.com/reem/rust-ordered-float/pull/28
+pub type NotNan<T> = NotNaN<T>;
 
 #[allow(non_camel_case_types)]
-pub type r32 = OrderedFloat<f32>;
+pub type r32 = NotNan<f32>;
 #[allow(non_camel_case_types)]
-pub type r64 = OrderedFloat<f64>;
+pub type r64 = NotNan<f64>;
 
 pub mod buffer;
 pub mod generate;

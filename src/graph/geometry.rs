@@ -1,7 +1,7 @@
 use num::Float;
-use ordered_float::OrderedFloat;
 use std::hash::Hash;
 
+use NotNan;
 use generate::{HashConjugate, Unit};
 use graph::topology::FaceMut;
 
@@ -71,7 +71,7 @@ where
 {
 }
 
-impl<T> Attribute for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
+impl<T> Attribute for (NotNan<T>, NotNan<T>, NotNan<T>)
 where
     T: Default + Float + Unit,
 {
@@ -92,7 +92,7 @@ where
     type Face = ();
 }
 
-impl<T> Geometry for (OrderedFloat<T>, OrderedFloat<T>, OrderedFloat<T>)
+impl<T> Geometry for (NotNan<T>, NotNan<T>, NotNan<T>)
 where
     T: Default + Float + Unit,
 {
