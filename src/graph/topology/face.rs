@@ -92,6 +92,7 @@ where
 {
     pub fn extrude<F>(self, distance: F) -> Result<Self, ()>
     where
+        // See `extrude_vertex_geometry`.
         F: Float,
         <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
         <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
@@ -100,8 +101,14 @@ where
         self.extrude_with_geometry(distance, G::Edge::default(), G::Face::default())
     }
 
-    pub fn extrude_with_geometry<F>(self, distance: F, edge: G::Edge, face: G::Face) -> Result<Self, ()>
+    pub fn extrude_with_geometry<F>(
+        self,
+        distance: F,
+        edge: G::Edge,
+        face: G::Face,
+    ) -> Result<Self, ()>
     where
+        // See `extrude_vertex_geometry`.
         F: Float,
         <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
         <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
