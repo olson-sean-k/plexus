@@ -44,22 +44,22 @@ pub trait VertexGenerator {
     fn vertex_count(&self) -> usize;
 }
 
-pub trait SpatialVertexGenerator: VertexGenerator {
+pub trait PositionVertexGenerator: VertexGenerator {
     type Output;
 
-    fn spatial_vertex(&self, index: usize) -> Self::Output;
+    fn vertex_with_position(&self, index: usize) -> Self::Output;
 }
 
-pub trait SpatialVertices<P>: Sized {
-    fn spatial_vertices(&self) -> Generate<Self, P>;
+pub trait VerticesWithPosition<P>: Sized {
+    fn vertices_with_position(&self) -> Generate<Self, P>;
 }
 
-impl<G, P> SpatialVertices<P> for G
+impl<G, P> VerticesWithPosition<P> for G
 where
-    G: SpatialVertexGenerator<Output = P>,
+    G: PositionVertexGenerator<Output = P>,
 {
-    fn spatial_vertices(&self) -> Generate<Self, P> {
-        Generate::new(self, 0..self.vertex_count(), G::spatial_vertex)
+    fn vertices_with_position(&self) -> Generate<Self, P> {
+        Generate::new(self, 0..self.vertex_count(), G::vertex_with_position)
     }
 }
 
@@ -67,62 +67,62 @@ pub trait PolygonGenerator {
     fn polygon_count(&self) -> usize;
 }
 
-pub trait SpatialPolygonGenerator: PolygonGenerator {
+pub trait PositionPolygonGenerator: PolygonGenerator {
     type Output: Polygonal;
 
-    fn spatial_polygon(&self, index: usize) -> Self::Output;
+    fn polygon_with_position(&self, index: usize) -> Self::Output;
 }
 
-pub trait SpatialPolygons<P>: Sized {
-    fn spatial_polygons(&self) -> Generate<Self, P>;
+pub trait PolygonsWithPosition<P>: Sized {
+    fn polygons_with_position(&self) -> Generate<Self, P>;
 }
 
-impl<G, P> SpatialPolygons<P> for G
+impl<G, P> PolygonsWithPosition<P> for G
 where
-    G: SpatialPolygonGenerator<Output = P>,
+    G: PositionPolygonGenerator<Output = P>,
     P: Polygonal,
 {
-    fn spatial_polygons(&self) -> Generate<Self, P> {
-        Generate::new(self, 0..self.polygon_count(), G::spatial_polygon)
+    fn polygons_with_position(&self) -> Generate<Self, P> {
+        Generate::new(self, 0..self.polygon_count(), G::polygon_with_position)
     }
 }
 
-pub trait IndexedPolygonGenerator: VertexGenerator + PolygonGenerator {
+pub trait IndexPolygonGenerator: VertexGenerator + PolygonGenerator {
     type Output: Polygonal;
 
-    fn indexed_polygon(&self, index: usize) -> <Self as IndexedPolygonGenerator>::Output;
+    fn polygon_with_index(&self, index: usize) -> <Self as IndexPolygonGenerator>::Output;
 }
 
-pub trait IndexedPolygons<P>: Sized {
-    fn indexed_polygons(&self) -> Generate<Self, P>;
+pub trait PolygonsWithIndex<P>: Sized {
+    fn polygons_with_index(&self) -> Generate<Self, P>;
 }
 
-impl<G, P> IndexedPolygons<P> for G
+impl<G, P> PolygonsWithIndex<P> for G
 where
-    G: IndexedPolygonGenerator<Output = P> + VertexGenerator + PolygonGenerator,
+    G: IndexPolygonGenerator<Output = P> + VertexGenerator + PolygonGenerator,
     P: Polygonal,
 {
-    fn indexed_polygons(&self) -> Generate<Self, P> {
-        Generate::new(self, 0..self.polygon_count(), G::indexed_polygon)
+    fn polygons_with_index(&self) -> Generate<Self, P> {
+        Generate::new(self, 0..self.polygon_count(), G::polygon_with_index)
     }
 }
 
-pub trait TexturedPolygonGenerator: PolygonGenerator {
+pub trait TexturePolygonGenerator: PolygonGenerator {
     type Output: Polygonal;
 
-    fn textured_polygon(&self, index: usize) -> <Self as TexturedPolygonGenerator>::Output;
+    fn polygon_with_texture(&self, index: usize) -> <Self as TexturePolygonGenerator>::Output;
 }
 
-pub trait TexturedPolygons<P>: Sized {
-    fn textured_polygons(&self) -> Generate<Self, P>;
+pub trait PolygonsWithTexture<P>: Sized {
+    fn polygons_with_texture(&self) -> Generate<Self, P>;
 }
 
-impl<G, P> TexturedPolygons<P> for G
+impl<G, P> PolygonsWithTexture<P> for G
 where
-    G: PolygonGenerator + TexturedPolygonGenerator<Output = P>,
+    G: PolygonGenerator + TexturePolygonGenerator<Output = P>,
     P: Polygonal,
 {
-    fn textured_polygons(&self) -> Generate<Self, P> {
-        Generate::new(self, 0..self.polygon_count(), G::textured_polygon)
+    fn polygons_with_texture(&self) -> Generate<Self, P> {
+        Generate::new(self, 0..self.polygon_count(), G::polygon_with_texture)
     }
 }

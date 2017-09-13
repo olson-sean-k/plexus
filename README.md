@@ -16,7 +16,8 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 
 ```rust
 use plexus::buffer::conjoint::ConjointBuffer;
-use plexus::generate::{sphere, HashConjugate, MapVertices, SpatialPolygons};
+use plexus::generate::{sphere, HashConjugate};
+use plexus::generate::prelude::*; // Common generator traits.
 
 // Example module in the local crate that provides rendering.
 use render::{self, Vertex};
@@ -26,7 +27,7 @@ use render::{self, Vertex};
 // that supports `Hash` via the `into_hash` function. That type is convertible
 // to `Vertex` via the `From` trait in this example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
-    .spatial_polygons()
+    .polygons_with_position()
     .map_vertices(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
     .map_vertices(|vertex| vertex.into_hash())
     .collect::<ConjointBuffer<u64, Vertex>>();
@@ -45,14 +46,15 @@ cannot.
 ```rust
 use nalgebra::Point3;
 use plexus::r32;
-use plexus::generate::{sphere, HashConjugate, MapVertices, SpatialPolygons};
+use plexus::generate::{sphere, HashConjugate};
+use plexus::generate::prelude::*;
 use plexus::graph::{FaceKey, IntoGeometry, Mesh};
 
 // Construct a mesh from a sphere primitive. Note that the `(r32, r32, r32)`
 // geometry is convertible to `Point3<f32>` via the `FromGeometry` trait in
 // this example.
 let mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-    .spatial_polygons()
+    .polygons_with_position()
     .map_vertices(|vertex| vertex.into_hash())
     .collect::<Mesh<(r32, r32, r32)>>()
     .into_geometry();

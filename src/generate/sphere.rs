@@ -3,8 +3,8 @@ use num::traits::FloatConst;
 use std::cmp;
 use std::marker::PhantomData;
 
-use generate::generate::{IndexedPolygonGenerator, PolygonGenerator, SpatialPolygonGenerator,
-                         SpatialVertexGenerator, VertexGenerator};
+use generate::generate::{IndexPolygonGenerator, PolygonGenerator, PositionPolygonGenerator,
+                         PositionVertexGenerator, VertexGenerator};
 use generate::geometry::Unit;
 use generate::topology::{Polygon, Quad, Triangle};
 
@@ -42,7 +42,7 @@ where
         Self::new(nu, nv, T::unit_width().1)
     }
 
-    fn spatial_vertex(&self, u: usize, v: usize) -> (T, T, T) {
+    fn vertex_with_position(&self, u: usize, v: usize) -> (T, T, T) {
         let u = (T::from(u).unwrap() / T::from(self.nu).unwrap()) * T::PI() * (T::one() + T::one());
         let v = (T::from(v).unwrap() / T::from(self.nv).unwrap()) * T::PI();
         (
@@ -52,7 +52,7 @@ where
         )
     }
 
-    fn indexed_vertex(&self, u: usize, v: usize) -> usize {
+    fn vertex_with_index(&self, u: usize, v: usize) -> usize {
         if v == 0 {
             0
         }
@@ -78,22 +78,22 @@ where
     }
 }
 
-impl<T> SpatialVertexGenerator for UVSphere<T>
+impl<T> PositionVertexGenerator for UVSphere<T>
 where
     T: Float + FloatConst + Unit,
 {
     type Output = (T, T, T);
 
-    fn spatial_vertex(&self, index: usize) -> Self::Output {
+    fn vertex_with_position(&self, index: usize) -> Self::Output {
         if index == 0 {
-            self.spatial_vertex(0, 0)
+            self.vertex_with_position(0, 0)
         }
         else if index == self.vertex_count() - 1 {
-            self.spatial_vertex(0, self.nv)
+            self.vertex_with_position(0, self.nv)
         }
         else {
             let index = index - 1;
-            self.spatial_vertex(index % self.nu, (index / self.nu) + 1)
+            self.vertex_with_position(index % self.nu, (index / self.nu) + 1)
         }
     }
 }
@@ -107,13 +107,13 @@ where
     }
 }
 
-impl<T> SpatialPolygonGenerator for UVSphere<T>
+impl<T> PositionPolygonGenerator for UVSphere<T>
 where
     T: Float + FloatConst + Unit,
 {
     type Output = Polygon<(T, T, T)>;
 
-    fn spatial_polygon(&self, index: usize) -> Self::Output {
+    fn polygon_with_position(&self, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
         // values for `(u, v)` into `(p, q)`. This is important for indexing
         // geometry, because small differences in the computation of spatial
@@ -134,58 +134,58 @@ where
         // Generate the vertices at the requested meridian and parallel. The
         // lower bound of `(u, v)` is always used, so compute that in advance
         // (`lower`). Emit triangles at the poles, otherwise quads.
-        let lower = self.spatial_vertex(u, v);
+        let lower = self.vertex_with_position(u, v);
         if v == 0 {
             Polygon::Triangle(Triangle::new(
                 lower,
-                self.spatial_vertex(u, q),
-                self.spatial_vertex(p, q),
+                self.vertex_with_position(u, q),
+                self.vertex_with_position(p, q),
             ))
         }
         else if v == self.nv - 1 {
             Polygon::Triangle(Triangle::new(
                 // Normalize `u` at the pole, using `(0, nv)` in place of
                 // `(p, q)`.
-                self.spatial_vertex(0, self.nv),
-                self.spatial_vertex(p, v),
+                self.vertex_with_position(0, self.nv),
+                self.vertex_with_position(p, v),
                 lower,
             ))
         }
         else {
             Polygon::Quad(Quad::new(
                 lower,
-                self.spatial_vertex(u, q),
-                self.spatial_vertex(p, q),
-                self.spatial_vertex(p, v),
+                self.vertex_with_position(u, q),
+                self.vertex_with_position(p, q),
+                self.vertex_with_position(p, v),
             ))
         }
     }
 }
 
-impl<T> IndexedPolygonGenerator for UVSphere<T>
+impl<T> IndexPolygonGenerator for UVSphere<T>
 where
     T: Float + FloatConst + Unit,
 {
     type Output = Polygon<usize>;
 
-    fn indexed_polygon(&self, index: usize) -> <Self as IndexedPolygonGenerator>::Output {
+    fn polygon_with_index(&self, index: usize) -> <Self as IndexPolygonGenerator>::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
-        let low = self.indexed_vertex(u, v);
-        let high = self.indexed_vertex(p, q);
+        let low = self.vertex_with_index(u, v);
+        let high = self.vertex_with_index(p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.indexed_vertex(u, q), high))
+            Polygon::Triangle(Triangle::new(low, self.vertex_with_index(u, q), high))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.indexed_vertex(p, v), low))
+            Polygon::Triangle(Triangle::new(high, self.vertex_with_index(p, v), low))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.indexed_vertex(u, q),
+                self.vertex_with_index(u, q),
                 high,
-                self.indexed_vertex(p, v),
+                self.vertex_with_index(p, v),
             ))
         }
     }
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(
             5,
             sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-                .spatial_vertices() // 5 conjoint vertices.
+                .vertices_with_position() // 5 conjoint vertices.
                 .count()
         );
     }
@@ -213,7 +213,7 @@ mod tests {
         assert_eq!(
             18,
             sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-                .spatial_polygons() // 6 triangles, 18 vertices.
+                .polygons_with_position() // 6 triangles, 18 vertices.
                 .vertices()
                 .count()
         );
@@ -225,7 +225,7 @@ mod tests {
             5,
             BTreeSet::from_iter(
                 sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-                    .indexed_polygons() // 18 vertices, 5 indeces.
+                    .polygons_with_index() // 18 vertices, 5 indeces.
                     .vertices()
             ).len()
         )

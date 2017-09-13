@@ -415,7 +415,7 @@ mod tests {
     #[test]
     fn circulate_over_edges() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-            .spatial_polygons() // 6 triangles, 18 vertices.
+            .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>();
@@ -430,7 +430,7 @@ mod tests {
     #[test]
     fn circulate_over_faces() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-            .spatial_polygons() // 6 triangles, 18 vertices.
+            .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>();
@@ -447,7 +447,7 @@ mod tests {
         use nalgebra::Point3;
 
         let mut mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
-            .spatial_polygons() // 6 triangles, 18 vertices.
+            .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
             .collect::<Mesh<(r32, r32, r32)>>()

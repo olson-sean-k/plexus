@@ -1,6 +1,6 @@
-use generate::generate::{Generate, IndexedPolygonGenerator, PolygonGenerator,
-                         SpatialPolygonGenerator, SpatialVertexGenerator,
-                         TexturedPolygonGenerator, VertexGenerator};
+use generate::generate::{Generate, IndexPolygonGenerator, PolygonGenerator,
+                         PositionPolygonGenerator, PositionVertexGenerator,
+                         TexturePolygonGenerator, VertexGenerator};
 use generate::geometry::Unit;
 use generate::topology::{MapVerticesInto, Quad};
 
@@ -44,11 +44,11 @@ where
         Cube::new(lower, upper)
     }
 
-    pub fn planar_polygons(&self) -> Generate<Self, Quad<Plane>> {
-        Generate::new(self, 0..self.polygon_count(), Cube::planar_polygon)
+    pub fn polygons_with_plane(&self) -> Generate<Self, Quad<Plane>> {
+        Generate::new(self, 0..self.polygon_count(), Cube::polygon_with_plane)
     }
 
-    fn planar_polygon(&self, index: usize) -> Quad<Plane> {
+    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
         match index {
             0 => Quad::converged(Plane::XY),  // front
             1 => Quad::converged(Plane::NZY), // right
@@ -70,14 +70,14 @@ where
     }
 }
 
-impl<T> SpatialVertexGenerator for Cube<T>
+impl<T> PositionVertexGenerator for Cube<T>
 where
     T: Unit,
 {
     type Output = (T, T, T);
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn spatial_vertex(&self, index: usize) -> Self::Output {
+    fn vertex_with_position(&self, index: usize) -> Self::Output {
         let x = if index & 0b100 == 0b100 { self.upper } else { self.lower };
         let y = if index & 0b010 == 0b010 { self.upper } else { self.lower };
         let z = if index & 0b001 == 0b001 { self.upper } else { self.lower };
@@ -94,25 +94,25 @@ where
     }
 }
 
-impl<T> SpatialPolygonGenerator for Cube<T>
+impl<T> PositionPolygonGenerator for Cube<T>
 where
     T: Unit,
 {
     type Output = Quad<(T, T, T)>;
 
-    fn spatial_polygon(&self, index: usize) -> Self::Output {
-        self.indexed_polygon(index)
-            .map_vertices_into(|index| self.spatial_vertex(index))
+    fn polygon_with_position(&self, index: usize) -> Self::Output {
+        self.polygon_with_index(index)
+            .map_vertices_into(|index| self.vertex_with_position(index))
     }
 }
 
-impl<T> IndexedPolygonGenerator for Cube<T>
+impl<T> IndexPolygonGenerator for Cube<T>
 where
     T: Unit,
 {
     type Output = Quad<usize>;
 
-    fn indexed_polygon(&self, index: usize) -> <Self as IndexedPolygonGenerator>::Output {
+    fn polygon_with_index(&self, index: usize) -> <Self as IndexPolygonGenerator>::Output {
         match index {
             0 => Quad::new(5, 7, 3, 1), // front
             1 => Quad::new(6, 7, 5, 4), // right
@@ -125,13 +125,13 @@ where
     }
 }
 
-impl<T> TexturedPolygonGenerator for Cube<T>
+impl<T> TexturePolygonGenerator for Cube<T>
 where
     T: Unit,
 {
     type Output = Quad<(f32, f32)>;
 
-    fn textured_polygon(&self, index: usize) -> <Self as TexturedPolygonGenerator>::Output {
+    fn polygon_with_texture(&self, index: usize) -> <Self as TexturePolygonGenerator>::Output {
         let uu = (1.0, 1.0);
         let ul = (1.0, 0.0);
         let ll = (0.0, 0.0);
