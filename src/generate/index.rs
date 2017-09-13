@@ -1,3 +1,4 @@
+use std::cmp;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -67,6 +68,85 @@ where
         });
         self.n = n;
         (*index, vertex)
+    }
+}
+
+pub struct LruIndexer<T, K>
+where
+    T: IntoVertices + Topological,
+    K: Clone + PartialEq,
+{
+    lru: Vec<(K, usize)>,
+    capacity: usize,
+    n: usize,
+    phantom: PhantomData<T>,
+}
+
+impl<T, K> LruIndexer<T, K>
+where
+    T: IntoVertices + Topological,
+    K: Clone + PartialEq,
+{
+    pub fn new() -> Self {
+        LruIndexer::with_capacity(16)
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        let capacity = cmp::max(1, capacity);
+        LruIndexer {
+            lru: Vec::with_capacity(capacity),
+            capacity: capacity,
+            n: 0,
+            phantom: PhantomData,
+        }
+    }
+
+    fn find(&self, key: &K) -> Option<(usize, usize)> {
+        self.lru
+            .iter()
+            .enumerate()
+            .find(|&(_, ref entry)| entry.0 == *key)
+            .map(|(index, ref entry)| (index, entry.1))
+    }
+}
+
+impl<T, K> Default for LruIndexer<T, K>
+where
+    T: IntoVertices + Topological,
+    K: Clone + PartialEq,
+{
+    fn default() -> Self {
+        LruIndexer::new()
+    }
+}
+
+impl<T, K> Indexer<T, K> for LruIndexer<T, K>
+where
+    T: IntoVertices + Topological,
+    K: Clone + PartialEq,
+{
+    fn index<F>(&mut self, input: T::Vertex, f: F) -> (usize, Option<T::Vertex>)
+    where
+        F: Fn(&T::Vertex) -> &K,
+    {
+        let mut vertex = None;
+        let key = f(&input).clone();
+        let index = if let Some(entry) = self.find(&key) {
+            let vertex = self.lru.remove(entry.0);
+            self.lru.push(vertex);
+            entry.1
+        }
+        else {
+            vertex = Some(input);
+            let m = self.n;
+            self.n += 1;
+            if self.lru.len() >= self.capacity {
+                self.lru.remove(0);
+            }
+            self.lru.push((key, m));
+            m
+        };
+        (index, vertex)
     }
 }
 

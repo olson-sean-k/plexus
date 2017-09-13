@@ -24,9 +24,13 @@ mod mesh;
 mod storage;
 mod topology;
 
-pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, Geometry, IntoGeometry,
-                         Normalize};
+pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, FromInteriorGeometry,
+                         Geometry, IntoGeometry, IntoInteriorGeometry, Normalize};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                          VertexMut, VertexRef};
+
+pub mod prelude {
+    pub use super::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
+}

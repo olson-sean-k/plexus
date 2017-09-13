@@ -1,12 +1,11 @@
 use num::Float;
-use std::hash::Hash;
 
 use NotNan;
-use generate::{HashConjugate, Unit};
+use generate::Unit;
 use graph::topology::FaceMut;
 
 pub trait FromGeometry<T> {
-    fn from_geometry(_: T) -> Self;
+    fn from_geometry(other: T) -> Self;
 }
 
 pub trait IntoGeometry<T> {
@@ -22,22 +21,37 @@ where
     }
 }
 
-// TODO: The implementation of this trait for `Mesh` would conflict with a
-//       blanket reflexive implementation. Is there some way to express to the
-//       compiler "where `Mesh<T> != Mesh<U>`"?
-impl FromGeometry<()> for () {
-    fn from_geometry(_: ()) -> Self {
-        ()
+// TODO: This reflexive implementation disallows interior conversions. For
+//       example, it is not possible to extend geometry conversion from
+//       `Vertex<T>` to `Vertex<U>` or `Mesh<T>` to `Mesh<U>`, because there is
+//       no way to constrain `T` and `U` such that `T != U`. See
+//       `FromInteriorGeometry`.
+impl<T> FromGeometry<T> for T {
+    fn from_geometry(other: T) -> Self {
+        other
     }
 }
 
-impl<T, U> FromGeometry<U> for T
+// TODO: The interior versions of geometry conversion traits do not have a
+//       reflexive implementation. This allows for conversions from `Mesh<T>`
+//       to `Mesh<U>`, where `T` and `U` may be the same.
+//
+//       This is a bit confusing; consider removing these if they aren't
+//       useful.
+pub trait FromInteriorGeometry<T> {
+    fn from_interior_geometry(other: T) -> Self;
+}
+
+pub trait IntoInteriorGeometry<T> {
+    fn into_interior_geometry(self) -> T;
+}
+
+impl<T, U> IntoInteriorGeometry<U> for T
 where
-    T: Geometry + HashConjugate<Hash = U>,
-    U: Eq + Geometry + Hash,
+    U: FromInteriorGeometry<T>,
 {
-    fn from_geometry(geometry: U) -> Self {
-        Self::from_hash(geometry)
+    fn into_interior_geometry(self) -> U {
+        U::from_interior_geometry(self)
     }
 }
 
@@ -121,10 +135,46 @@ pub trait AsPosition {
 #[cfg(feature = "geometry-nalgebra")]
 mod feature {
     use alga::general::Real;
-    use nalgebra::{Point3, Scalar, Vector3};
+    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use nalgebra::core::Matrix;
 
     use super::*;
+
+    impl<T> FromGeometry<(T, T)> for Point2<T>
+    where
+        T: Scalar + Unit,
+    {
+        fn from_geometry(other: (T, T)) -> Self {
+            Point2::new(other.0, other.1)
+        }
+    }
+
+    impl<T> FromGeometry<(T, T, T)> for Point3<T>
+    where
+        T: Scalar + Unit,
+    {
+        fn from_geometry(other: (T, T, T)) -> Self {
+            Point3::new(other.0, other.1, other.2)
+        }
+    }
+
+    impl<T> FromGeometry<(T, T)> for Vector2<T>
+    where
+        T: Scalar + Unit,
+    {
+        fn from_geometry(other: (T, T)) -> Self {
+            Vector2::new(other.0, other.1)
+        }
+    }
+
+    impl<T> FromGeometry<(T, T, T)> for Vector3<T>
+    where
+        T: Scalar + Unit,
+    {
+        fn from_geometry(other: (T, T, T)) -> Self {
+            Vector3::new(other.0, other.1, other.2)
+        }
+    }
 
     impl<T> Attribute for Point3<T>
     where

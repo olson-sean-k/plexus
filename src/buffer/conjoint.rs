@@ -99,13 +99,15 @@ where
     where
         I: IntoIterator<Item = P>,
     {
+        // TODO: This is fast and reliable, but the requirements on `P::Vertex`
+        //       are difficult to achieve. Would `LruIndexer` be a better
+        //       choice?
         Self::from_indexer(input, HashIndexer::default())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use r32;
     use buffer::conjoint::*;
     use generate::*;
 
@@ -113,9 +115,8 @@ mod tests {
     fn collect_topology_into_buffer() {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
-            .collect::<ConjointBuffer<u64, (r32, r32, r32)>>();
+            .collect_with_indexer::<ConjointBuffer<u32, (_, _, _)>, _>(LruIndexer::default());
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());

@@ -4,7 +4,8 @@ use std::iter::FromIterator;
 
 use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
                IntoVertices, Triangle, Triangulate};
-use graph::geometry::{FromGeometry, Geometry, IntoGeometry};
+use graph::geometry::{FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
+                      IntoInteriorGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, Topological, VertexMut, VertexRef};
 
@@ -29,13 +30,13 @@ where
     }
 }
 
-impl<G, H> FromGeometry<Vertex<H>> for Vertex<G>
+impl<G, H> FromInteriorGeometry<Vertex<H>> for Vertex<G>
 where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
     H: Geometry,
 {
-    fn from_geometry(vertex: Vertex<H>) -> Self {
+    fn from_interior_geometry(vertex: Vertex<H>) -> Self {
         Vertex {
             geometry: vertex.geometry.into_geometry(),
             edge: vertex.edge,
@@ -78,13 +79,13 @@ where
     }
 }
 
-impl<G, H> FromGeometry<Edge<H>> for Edge<G>
+impl<G, H> FromInteriorGeometry<Edge<H>> for Edge<G>
 where
     G: Geometry,
     G::Edge: FromGeometry<H::Edge>,
     H: Geometry,
 {
-    fn from_geometry(edge: Edge<H>) -> Self {
+    fn from_interior_geometry(edge: Edge<H>) -> Self {
         Edge {
             geometry: edge.geometry.into_geometry(),
             vertex: edge.vertex,
@@ -124,13 +125,13 @@ where
     }
 }
 
-impl<G, H> FromGeometry<Face<H>> for Face<G>
+impl<G, H> FromInteriorGeometry<Face<H>> for Face<G>
 where
     G: Geometry,
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
-    fn from_geometry(face: Face<H>) -> Self {
+    fn from_interior_geometry(face: Face<H>) -> Self {
         Face {
             geometry: face.geometry.into_geometry(),
             edge: face.edge,
@@ -316,7 +317,7 @@ where
     }
 }
 
-impl<G, H> FromGeometry<Mesh<H>> for Mesh<G>
+impl<G, H> FromInteriorGeometry<Mesh<H>> for Mesh<G>
 where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
@@ -324,7 +325,7 @@ where
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
-    fn from_geometry(mesh: Mesh<H>) -> Self {
+    fn from_interior_geometry(mesh: Mesh<H>) -> Self {
         let Mesh {
             vertices,
             edges,
@@ -332,9 +333,9 @@ where
         } = mesh;
         // TODO: The new geometry should be recomputed or finalized here.
         Mesh {
-            vertices: vertices.map_values_into(|vertex| vertex.into_geometry()),
-            edges: edges.map_values_into(|edge| edge.into_geometry()),
-            faces: faces.map_values_into(|face| face.into_geometry()),
+            vertices: vertices.map_values_into(|vertex| vertex.into_interior_geometry()),
+            edges: edges.map_values_into(|edge| edge.into_interior_geometry()),
+            faces: faces.map_values_into(|face| face.into_interior_geometry()),
         }
     }
 }
@@ -343,7 +344,7 @@ impl<G, P> FromIndexer<P, Triangle<P::Vertex>> for Mesh<G>
 where
     G: Geometry,
     P: IntoTriangles + IntoVertices + generate::Topological,
-    P::Vertex: Into<G::Vertex>,
+    P::Vertex: IntoGeometry<G::Vertex>,
 {
     fn from_indexer<I, N>(input: I, indexer: N) -> Self
     where
@@ -354,7 +355,7 @@ where
         let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
-            .map(|vertex| mesh.insert_vertex(vertex.into()))
+            .map(|vertex| mesh.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for mut triangle in &indeces.into_iter().chunks(3) {
             let (a, b, c) = (
@@ -377,19 +378,21 @@ impl<G, P> FromIterator<P> for Mesh<G>
 where
     G: Geometry,
     P: IntoTriangles + IntoVertices + generate::Topological,
-    P::Vertex: Eq + Hash + Into<G::Vertex>,
+    P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
 {
     fn from_iter<I>(input: I) -> Self
     where
         I: IntoIterator<Item = P>,
     {
+        // TODO: This is fast and reliable, but the requirements on `P::Vertex`
+        //       are difficult to achieve. Would `LruIndexer` be a better
+        //       choice?
         Self::from_indexer(input, HashIndexer::default())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use r32;
     use generate::*;
     use graph::*;
 
@@ -397,9 +400,8 @@ mod tests {
     fn collect_topology_into_mesh() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
-            .collect::<Mesh<(r32, r32, r32)>>();
+            .collect_with_indexer::<Mesh<(f32, f32, f32)>, _>(LruIndexer::default());
 
         assert_eq!(5, mesh.vertex_count());
         assert_eq!(18, mesh.edge_count());

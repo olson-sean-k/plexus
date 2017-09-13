@@ -16,21 +16,19 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 
 ```rust
 use plexus::buffer::conjoint::ConjointBuffer;
-use plexus::generate::{sphere, HashConjugate};
+use plexus::generate::{sphere, LruIndexer};
 use plexus::generate::prelude::*; // Common generator traits.
 
 // Example module in the local crate that provides rendering.
 use render::{self, Vertex};
 
-// Construct a buffer of index and vertex data from a sphere primitive.
-// `HashConjugate` is used to convert vertex geometry into a conjugate type
-// that supports `Hash` via the `into_hash` function. That type is convertible
-// to `Vertex` via the `From` trait in this example.
+// Construct a buffer of index and vertex data from a sphere primitive. The
+// vertex geometry is convertible to `Vertex` via the `From` trait in this
+// example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .polygons_with_position()
     .map_vertices(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
-    .map_vertices(|vertex| vertex.into_hash())
-    .collect::<ConjointBuffer<u64, Vertex>>();
+    .collect_with_indexer::<ConjointBuffer<u64, Vertex>, _>(LruIndexer::default());
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
@@ -45,19 +43,15 @@ cannot.
 
 ```rust
 use nalgebra::Point3;
-use plexus::r32;
-use plexus::generate::{sphere, HashConjugate};
+use plexus::generate::{sphere, LruIndexer};
 use plexus::generate::prelude::*;
-use plexus::graph::{FaceKey, IntoGeometry, Mesh};
+use plexus::graph::{FaceKey, Mesh};
 
-// Construct a mesh from a sphere primitive. Note that the `(r32, r32, r32)`
-// geometry is convertible to `Point3<f32>` via the `FromGeometry` trait in
-// this example.
-let mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+// Construct a mesh from a sphere primitive. The vertex geometry is convertible
+// to `Point3<f32>` via the `FromGeometry` trait in this example.
+let mesh: = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
     .polygons_with_position()
-    .map_vertices(|vertex| vertex.into_hash())
-    .collect::<Mesh<(r32, r32, r32)>>()
-    .into_geometry();
+    .collect_with_indexer::<Mesh<Point3<f32>>, _>(LruIndexer::default());
 // Extrude a face in the mesh.
 let face = mesh.face_mut(FaceKey::default()).unwrap();
 let face = face.extrude(1.0).unwrap();

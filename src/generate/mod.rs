@@ -53,7 +53,7 @@ pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices}
 pub use self::generate::{PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
                          VerticesWithPosition};
 pub use self::geometry::HashConjugate;
-pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices};
+pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
                          Triangle};
 

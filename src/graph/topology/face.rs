@@ -408,7 +408,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use r32;
     use generate::*;
     use graph::*;
 
@@ -416,9 +415,8 @@ mod tests {
     fn circulate_over_edges() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
-            .collect::<Mesh<(r32, r32, r32)>>();
+            .collect_with_indexer::<Mesh<(f32, f32, f32)>, _>(LruIndexer::default());
         // TODO: Provide a way to get a key for the faces in the mesh. Using
         //       `default` only works if the initial face has not been removed.
         let face = mesh.face(FaceKey::default()).unwrap();
@@ -431,9 +429,8 @@ mod tests {
     fn circulate_over_faces() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
-            .collect::<Mesh<(r32, r32, r32)>>();
+            .collect_with_indexer::<Mesh<(f32, f32, f32)>, _>(LruIndexer::default());
         // TODO: Provide a way to get a key for the faces in the mesh. Using
         //       `default` only works if the initial face has not been removed.
         let face = mesh.face(FaceKey::default()).unwrap();
@@ -446,12 +443,10 @@ mod tests {
     fn extrude_face() {
         use nalgebra::Point3;
 
-        let mut mesh: Mesh<Point3<f32>> = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+        let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
             .triangulate()
-            .collect::<Mesh<(r32, r32, r32)>>()
-            .into_geometry();
+            .collect_with_indexer::<Mesh<Point3<f32>>, _>(LruIndexer::default());
         {
             // TODO: Provide a way to get a key for the faces in the mesh.
             //       Using `default` only works if the initial face has not
