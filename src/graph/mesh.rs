@@ -2,7 +2,8 @@ use itertools::Itertools;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{self, HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Triangulate};
+use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
+               IntoVertices, Triangle, Triangulate};
 use graph::geometry::{FromGeometry, Geometry, IntoGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, Topological, VertexMut, VertexRef};
@@ -338,28 +339,24 @@ where
     }
 }
 
-impl<G, T> FromIterator<T> for Mesh<G>
+impl<G, P> FromIndexer<P, Triangle<P::Vertex>> for Mesh<G>
 where
     G: Geometry,
-    T: IntoTriangles + IntoVertices + generate::Topological,
-    T::Vertex: Eq + Hash + Into<G::Vertex>,
+    P: IntoTriangles + IntoVertices + generate::Topological,
+    P::Vertex: Into<G::Vertex>,
 {
-    fn from_iter<I>(input: I) -> Self
+    fn from_indexer<I, N>(input: I, indexer: N) -> Self
     where
-        I: IntoIterator<Item = T>,
+        I: IntoIterator<Item = P>,
+        N: Indexer<Triangle<P::Vertex>, P::Vertex>,
     {
         let mut mesh = Mesh::new();
-        let (indeces, vertices) = input
-            .into_iter()
-            .triangulate()
-            .index_vertices(HashIndexer::default());
+        let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
             .map(|vertex| mesh.insert_vertex(vertex.into()))
             .collect::<Vec<_>>();
         for mut triangle in &indeces.into_iter().chunks(3) {
-            // Map from the indeces into the original buffers to the keys
-            // referring to the vertices in the mesh.
             let (a, b, c) = (
                 vertices[triangle.next().unwrap()],
                 vertices[triangle.next().unwrap()],
@@ -373,6 +370,20 @@ where
             mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
         }
         mesh
+    }
+}
+
+impl<G, P> FromIterator<P> for Mesh<G>
+where
+    G: Geometry,
+    P: IntoTriangles + IntoVertices + generate::Topological,
+    P::Vertex: Eq + Hash + Into<G::Vertex>,
+{
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = P>,
+    {
+        Self::from_indexer(input, HashIndexer::default())
     }
 }
 

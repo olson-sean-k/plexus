@@ -111,3 +111,40 @@ where
         (indeces, vertices)
     }
 }
+
+pub trait FromIndexer<P, Q>
+where
+    P: IntoVertices + Topological,
+    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+{
+    fn from_indexer<I, N>(input: I, indexer: N) -> Self
+    where
+        I: IntoIterator<Item = P>,
+        N: Indexer<Q, P::Vertex>;
+}
+
+pub trait CollectWithIndexer<P, Q>
+where
+    P: IntoVertices + Topological,
+    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+{
+    fn collect_with_indexer<T, N>(self, indexer: N) -> T
+    where
+        T: FromIndexer<P, Q>,
+        N: Indexer<Q, P::Vertex>;
+}
+
+impl<P, Q, I> CollectWithIndexer<P, Q> for I
+where
+    I: Iterator<Item = P>,
+    P: IntoVertices + Topological,
+    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+{
+    fn collect_with_indexer<T, N>(self, indexer: N) -> T
+    where
+        T: FromIndexer<P, Q>,
+        N: Indexer<Q, P::Vertex>,
+    {
+        T::from_indexer(self, indexer)
+    }
+}

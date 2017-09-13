@@ -2,7 +2,8 @@ use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{HashIndexer, IndexVertices, IntoTriangles, IntoVertices, Topological, Triangulate};
+use generate::{FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles, IntoVertices,
+               Topological, Triangle, Triangulate};
 
 pub struct ConjointBuffer<N, V>
 where
@@ -67,26 +68,38 @@ where
     }
 }
 
-impl<T, N, V> FromIterator<T> for ConjointBuffer<N, V>
+impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for ConjointBuffer<N, V>
 where
-    T: IntoTriangles + IntoVertices + Topological,
-    T::Vertex: Eq + Hash + Into<V>,
+    P: IntoTriangles + IntoVertices + Topological,
+    P::Vertex: Into<V>,
     N: Integer + NumCast + Unsigned,
 {
-    fn from_iter<I>(input: I) -> Self
+    fn from_indexer<I, M>(input: I, indexer: M) -> Self
     where
-        I: IntoIterator<Item = T>,
+        I: IntoIterator<Item = P>,
+        M: Indexer<Triangle<P::Vertex>, P::Vertex>,
     {
-        let (indeces, vertices) = input
-            .into_iter()
-            .triangulate()
-            .index_vertices(HashIndexer::default());
+        let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
         let mut buffer = ConjointBuffer::new();
         buffer.extend(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into()),
         );
         buffer
+    }
+}
+
+impl<N, V, P> FromIterator<P> for ConjointBuffer<N, V>
+where
+    P: IntoTriangles + IntoVertices + Topological,
+    P::Vertex: Eq + Hash + Into<V>,
+    N: Integer + NumCast + Unsigned,
+{
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = P>,
+    {
+        Self::from_indexer(input, HashIndexer::default())
     }
 }
 
