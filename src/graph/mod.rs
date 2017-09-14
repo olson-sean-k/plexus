@@ -13,7 +13,7 @@
 //!
 //! Creating an empty mesh with no geometric data:
 //!
-//! ```
+//! ```rust
 //! use plexus::graph::Mesh;
 //!
 //! let mut mesh = Mesh::<()>::new();

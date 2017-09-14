@@ -1,7 +1,6 @@
 use num::{self, Float, Num, NumCast};
-use std::hash::Hash;
 
-use NotNan;
+use ordered::{HashConjugate, NotNan};
 
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
@@ -42,51 +41,6 @@ macro_rules! unit {
 }
 unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
 unit!(real => f32, f64);
-
-pub trait HashConjugate: Sized {
-    type Hash: Eq + Hash;
-
-    fn into_hash(self) -> Self::Hash;
-    fn from_hash(hash: Self::Hash) -> Self;
-}
-
-impl<T> HashConjugate for (T, T)
-where
-    T: Float + Unit,
-{
-    type Hash = (NotNan<T>, NotNan<T>);
-
-    fn into_hash(self) -> Self::Hash {
-        (NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
-    }
-
-    fn from_hash(hash: Self::Hash) -> Self {
-        ((hash.0).into_inner(), (hash.1).into_inner())
-    }
-}
-
-impl<T> HashConjugate for (T, T, T)
-where
-    T: Float + Unit,
-{
-    type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
-
-    fn into_hash(self) -> Self::Hash {
-        (
-            NotNan::new(self.0).unwrap(),
-            NotNan::new(self.1).unwrap(),
-            NotNan::new(self.2).unwrap(),
-        )
-    }
-
-    fn from_hash(hash: Self::Hash) -> Self {
-        (
-            (hash.0).into_inner(),
-            (hash.1).into_inner(),
-            (hash.2).into_inner(),
-        )
-    }
-}
 
 pub trait Interpolate<T = Self>: Sized {
     type Output;
@@ -134,11 +88,101 @@ where
     <T as NumCast>::from(af + bf).unwrap()
 }
 
+impl<T> HashConjugate for (T, T)
+where
+    T: Float + Unit,
+{
+    type Hash = (NotNan<T>, NotNan<T>);
+
+    fn into_hash(self) -> Self::Hash {
+        (NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
+    }
+
+    fn from_hash(hash: Self::Hash) -> Self {
+        ((hash.0).into_inner(), (hash.1).into_inner())
+    }
+}
+
+impl<T> HashConjugate for (T, T, T)
+where
+    T: Float + Unit,
+{
+    type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
+
+    fn into_hash(self) -> Self::Hash {
+        (
+            NotNan::new(self.0).unwrap(),
+            NotNan::new(self.1).unwrap(),
+            NotNan::new(self.2).unwrap(),
+        )
+    }
+
+    fn from_hash(hash: Self::Hash) -> Self {
+        (
+            (hash.0).into_inner(),
+            (hash.1).into_inner(),
+            (hash.2).into_inner(),
+        )
+    }
+}
+
 #[cfg(feature = "geometry-nalgebra")]
 mod feature {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
 
     use super::*;
+
+    impl<T> Interpolate for Point2<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
+        }
+    }
+
+    impl<T> Interpolate for Point3<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point3::new(
+                lerp(self.x, other.x, f),
+                lerp(self.y, other.y, f),
+                lerp(self.z, other.z, f),
+            )
+        }
+    }
+
+    impl<T> Interpolate for Vector2<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
+        }
+    }
+
+    impl<T> Interpolate for Vector3<T>
+    where
+        T: NumCast + Scalar + Unit,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector3::new(
+                lerp(self.x, other.x, f),
+                lerp(self.y, other.y, f),
+                lerp(self.z, other.z, f),
+            )
+        }
+    }
 
     impl<T> HashConjugate for Point2<T>
     where
@@ -212,58 +256,6 @@ mod feature {
                 (hash.0).into_inner(),
                 (hash.1).into_inner(),
                 (hash.2).into_inner(),
-            )
-        }
-    }
-
-    impl<T> Interpolate for Point2<T>
-    where
-        T: NumCast + Scalar + Unit,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Point2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
-        }
-    }
-
-    impl<T> Interpolate for Point3<T>
-    where
-        T: NumCast + Scalar + Unit,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Point3::new(
-                lerp(self.x, other.x, f),
-                lerp(self.y, other.y, f),
-                lerp(self.z, other.z, f),
-            )
-        }
-    }
-
-    impl<T> Interpolate for Vector2<T>
-    where
-        T: NumCast + Scalar + Unit,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Vector2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
-        }
-    }
-
-    impl<T> Interpolate for Vector3<T>
-    where
-        T: NumCast + Scalar + Unit,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Vector3::new(
-                lerp(self.x, other.x, f),
-                lerp(self.y, other.y, f),
-                lerp(self.z, other.z, f),
             )
         }
     }

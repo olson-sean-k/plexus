@@ -1,8 +1,8 @@
 use num::Float;
 
-use NotNan;
 use generate::Unit;
 use graph::topology::FaceMut;
+use ordered::NotNan;
 
 pub trait FromGeometry<T> {
     fn from_geometry(other: T) -> Self;
