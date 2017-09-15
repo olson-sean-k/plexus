@@ -1,6 +1,6 @@
 use num::Float;
 
-use generate::Unit;
+use generate::{Duplet, Triplet, Unit};
 use graph::topology::FaceMut;
 use ordered::NotNan;
 
@@ -79,13 +79,13 @@ pub trait Geometry: Sized {
 
 impl Attribute for () {}
 
-impl<T> Attribute for (T, T, T)
+impl<T> Attribute for Triplet<T>
 where
     T: Default + Unit,
 {
 }
 
-impl<T> Attribute for (NotNan<T>, NotNan<T>, NotNan<T>)
+impl<T> Attribute for Triplet<NotNan<T>>
 where
     T: Default + Float + Unit,
 {
@@ -97,7 +97,7 @@ impl Geometry for () {
     type Face = ();
 }
 
-impl<T> Geometry for (T, T, T)
+impl<T> Geometry for Triplet<T>
 where
     T: Default + Unit,
 {
@@ -106,7 +106,7 @@ where
     type Face = ();
 }
 
-impl<T> Geometry for (NotNan<T>, NotNan<T>, NotNan<T>)
+impl<T> Geometry for Triplet<NotNan<T>>
 where
     T: Default + Float + Unit,
 {
@@ -140,38 +140,38 @@ mod feature {
 
     use super::*;
 
-    impl<T> FromGeometry<(T, T)> for Point2<T>
+    impl<T> FromGeometry<Duplet<T>> for Point2<T>
     where
         T: Scalar + Unit,
     {
-        fn from_geometry(other: (T, T)) -> Self {
+        fn from_geometry(other: Duplet<T>) -> Self {
             Point2::new(other.0, other.1)
         }
     }
 
-    impl<T> FromGeometry<(T, T, T)> for Point3<T>
+    impl<T> FromGeometry<Triplet<T>> for Point3<T>
     where
         T: Scalar + Unit,
     {
-        fn from_geometry(other: (T, T, T)) -> Self {
+        fn from_geometry(other: Triplet<T>) -> Self {
             Point3::new(other.0, other.1, other.2)
         }
     }
 
-    impl<T> FromGeometry<(T, T)> for Vector2<T>
+    impl<T> FromGeometry<Duplet<T>> for Vector2<T>
     where
         T: Scalar + Unit,
     {
-        fn from_geometry(other: (T, T)) -> Self {
+        fn from_geometry(other: Duplet<T>) -> Self {
             Vector2::new(other.0, other.1)
         }
     }
 
-    impl<T> FromGeometry<(T, T, T)> for Vector3<T>
+    impl<T> FromGeometry<Triplet<T>> for Vector3<T>
     where
         T: Scalar + Unit,
     {
-        fn from_geometry(other: (T, T, T)) -> Self {
+        fn from_geometry(other: Triplet<T>) -> Self {
             Vector3::new(other.0, other.1, other.2)
         }
     }

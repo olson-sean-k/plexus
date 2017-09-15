@@ -14,13 +14,13 @@
 //! Generating position and index buffers for a scaled sphere:
 //!
 //! ```rust
-//! use plexus::generate::{PolygonsWithIndex, Triangulate, Vertices, VerticesWithPosition};
+//! use plexus::generate::prelude::*;
 //! use plexus::generate::sphere::UVSphere;
 //!
 //! let sphere = UVSphere::<f32>::with_unit_radius(16, 16);
 //! let positions: Vec<_> = sphere
 //!     .vertices_with_position() // Generate the unique set of positional vertices.
-//!     .map(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0)) // Scale the positions by 10.
+//!     .map(|Triplet(x, y, z)| Triplet(x * 10.0, y * 10.0, z * 10.0)) // Scale the positions by 10.
 //!     .collect();
 //! let indeces: Vec<_> = sphere
 //!     .polygons_with_index() // Generate polygons indexing the unique set of vertices.
@@ -52,11 +52,13 @@ pub(crate) use self::index::{FromIndexer, Indexer};
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
                          VerticesWithPosition};
+pub use self::geometry::{Duplet, Triplet};
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
                          Triangle};
 
 pub mod prelude {
-    pub use super::{CollectWithIndexer, MapVertices, PolygonsWithIndex, PolygonsWithPosition,
-                    PolygonsWithTexture, Triangulate, Vertices, VerticesWithPosition};
+    pub use super::{CollectWithIndexer, Duplet, MapVertices, PolygonsWithIndex,
+                    PolygonsWithPosition, PolygonsWithTexture, Triangulate, Triplet, Vertices,
+                    VerticesWithPosition};
 }

@@ -116,7 +116,7 @@ mod tests {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .triangulate()
-            .collect_with_indexer::<ConjointBuffer<u32, (_, _, _)>, _>(LruIndexer::default());
+            .collect_with_indexer::<ConjointBuffer<u32, Triplet<_>>, _>(LruIndexer::default());
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());

@@ -401,7 +401,7 @@ mod tests {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .triangulate()
-            .collect_with_indexer::<Mesh<(f32, f32, f32)>, _>(LruIndexer::default());
+            .collect_with_indexer::<Mesh<Triplet<f32>>, _>(LruIndexer::default());
 
         assert_eq!(5, mesh.vertex_count());
         assert_eq!(18, mesh.edge_count());

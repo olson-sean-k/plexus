@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use generate::generate::{IndexPolygonGenerator, PolygonGenerator, PositionPolygonGenerator,
                          PositionVertexGenerator, VertexGenerator};
-use generate::geometry::Unit;
+use generate::geometry::{Triplet, Unit};
 use generate::topology::{Polygon, Quad, Triangle};
 
 #[derive(Clone)]
@@ -42,10 +42,10 @@ where
         Self::new(nu, nv, T::unit_width().1)
     }
 
-    fn vertex_with_position(&self, u: usize, v: usize) -> (T, T, T) {
+    fn vertex_with_position(&self, u: usize, v: usize) -> Triplet<T> {
         let u = (T::from(u).unwrap() / T::from(self.nu).unwrap()) * T::PI() * (T::one() + T::one());
         let v = (T::from(v).unwrap() / T::from(self.nv).unwrap()) * T::PI();
-        (
+        Triplet(
             self.unit * u.cos() * v.sin(),
             self.unit * u.sin() * v.sin(),
             self.unit * v.cos(),
@@ -82,7 +82,7 @@ impl<T> PositionVertexGenerator for UVSphere<T>
 where
     T: Float + FloatConst + Unit,
 {
-    type Output = (T, T, T);
+    type Output = Triplet<T>;
 
     fn vertex_with_position(&self, index: usize) -> Self::Output {
         if index == 0 {
@@ -111,7 +111,7 @@ impl<T> PositionPolygonGenerator for UVSphere<T>
 where
     T: Float + FloatConst + Unit,
 {
-    type Output = Polygon<(T, T, T)>;
+    type Output = Polygon<Triplet<T>>;
 
     fn polygon_with_position(&self, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented

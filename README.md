@@ -27,7 +27,7 @@ use render::{self, Vertex};
 // example.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .polygons_with_position()
-    .map_vertices(|(x, y, z)| (x * 10.0, y * 10.0, z * 10.0))
+    .map_vertices(|Triplet(x, y, z)| Triplet(x * 10.0, y * 10.0, z * 10.0))
     .collect_with_indexer::<ConjointBuffer<u64, Vertex>, _>(LruIndexer::default());
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```

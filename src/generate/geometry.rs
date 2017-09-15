@@ -2,6 +2,12 @@ use num::{self, Float, Num, NumCast};
 
 use ordered::{HashConjugate, NotNan};
 
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Duplet<T>(pub T, pub T);
+
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Triplet<T>(pub T, pub T, pub T);
+
 pub trait Unit: Copy + Num {
     fn unit_radius() -> (Self, Self);
     fn unit_width() -> (Self, Self);
@@ -52,25 +58,25 @@ pub trait Interpolate<T = Self>: Sized {
     }
 }
 
-impl<T> Interpolate for (T, T)
+impl<T> Interpolate for Duplet<T>
 where
     T: Copy + Num + NumCast,
 {
     type Output = Self;
 
     fn lerp(self, other: Self, f: f64) -> Self::Output {
-        (lerp(self.0, other.0, f), lerp(self.1, other.1, f))
+        Duplet(lerp(self.0, other.0, f), lerp(self.1, other.1, f))
     }
 }
 
-impl<T> Interpolate for (T, T, T)
+impl<T> Interpolate for Triplet<T>
 where
     T: Copy + Num + NumCast,
 {
     type Output = Self;
 
     fn lerp(self, other: Self, f: f64) -> Self::Output {
-        (
+        Triplet(
             lerp(self.0, other.0, f),
             lerp(self.1, other.1, f),
             lerp(self.2, other.2, f),
@@ -88,29 +94,29 @@ where
     <T as NumCast>::from(af + bf).unwrap()
 }
 
-impl<T> HashConjugate for (T, T)
+impl<T> HashConjugate for Duplet<T>
 where
     T: Float + Unit,
 {
-    type Hash = (NotNan<T>, NotNan<T>);
+    type Hash = Duplet<NotNan<T>>;
 
     fn into_hash(self) -> Self::Hash {
-        (NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
+        Duplet(NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        ((hash.0).into_inner(), (hash.1).into_inner())
+        Duplet((hash.0).into_inner(), (hash.1).into_inner())
     }
 }
 
-impl<T> HashConjugate for (T, T, T)
+impl<T> HashConjugate for Triplet<T>
 where
     T: Float + Unit,
 {
-    type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
+    type Hash = Triplet<NotNan<T>>;
 
     fn into_hash(self) -> Self::Hash {
-        (
+        Triplet(
             NotNan::new(self.0).unwrap(),
             NotNan::new(self.1).unwrap(),
             NotNan::new(self.2).unwrap(),
@@ -118,7 +124,7 @@ where
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        (
+        Triplet(
             (hash.0).into_inner(),
             (hash.1).into_inner(),
             (hash.2).into_inner(),
@@ -131,6 +137,78 @@ mod feature {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
 
     use super::*;
+
+    impl<T> From<Point2<T>> for Duplet<T>
+    where
+        T: Scalar,
+    {
+        fn from(other: Point2<T>) -> Self {
+            Duplet(other.x, other.y)
+        }
+    }
+
+    impl<T> From<Vector2<T>> for Duplet<T>
+    where
+        T: Scalar,
+    {
+        fn from(other: Vector2<T>) -> Self {
+            Duplet(other.x, other.y)
+        }
+    }
+
+    impl<T> Into<Point2<T>> for Duplet<T>
+    where
+        T: Scalar,
+    {
+        fn into(self) -> Point2<T> {
+            Point2::new(self.0, self.1)
+        }
+    }
+
+    impl<T> Into<Vector2<T>> for Duplet<T>
+    where
+        T: Scalar,
+    {
+        fn into(self) -> Vector2<T> {
+            Vector2::new(self.0, self.1)
+        }
+    }
+
+    impl<T> From<Point3<T>> for Triplet<T>
+    where
+        T: Scalar,
+    {
+        fn from(other: Point3<T>) -> Self {
+            Triplet(other.x, other.y, other.z)
+        }
+    }
+
+    impl<T> From<Vector3<T>> for Triplet<T>
+    where
+        T: Scalar,
+    {
+        fn from(other: Vector3<T>) -> Self {
+            Triplet(other.x, other.y, other.z)
+        }
+    }
+
+    impl<T> Into<Point3<T>> for Triplet<T>
+    where
+        T: Scalar,
+    {
+        fn into(self) -> Point3<T> {
+            Point3::new(self.0, self.1, self.2)
+        }
+    }
+
+    impl<T> Into<Vector3<T>> for Triplet<T>
+    where
+        T: Scalar,
+    {
+        fn into(self) -> Vector3<T> {
+            Vector3::new(self.0, self.1, self.2)
+        }
+    }
 
     impl<T> Interpolate for Point2<T>
     where
@@ -188,10 +266,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (NotNan<T>, NotNan<T>);
+        type Hash = Duplet<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            (NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Duplet(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
@@ -203,10 +281,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
+        type Hash = Triplet<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            (
+            Triplet(
                 NotNan::new(self.x).unwrap(),
                 NotNan::new(self.y).unwrap(),
                 NotNan::new(self.z).unwrap(),
@@ -226,10 +304,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (NotNan<T>, NotNan<T>);
+        type Hash = Duplet<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            (NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Duplet(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
@@ -241,10 +319,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = (NotNan<T>, NotNan<T>, NotNan<T>);
+        type Hash = Triplet<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            (
+            Triplet(
                 NotNan::new(self.x).unwrap(),
                 NotNan::new(self.y).unwrap(),
                 NotNan::new(self.z).unwrap(),

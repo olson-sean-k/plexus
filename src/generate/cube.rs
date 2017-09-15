@@ -1,7 +1,7 @@
 use generate::generate::{Generate, IndexPolygonGenerator, PolygonGenerator,
                          PositionPolygonGenerator, PositionVertexGenerator,
                          TexturePolygonGenerator, VertexGenerator};
-use generate::geometry::Unit;
+use generate::geometry::{Duplet, Triplet, Unit};
 use generate::topology::{MapVerticesInto, Quad};
 
 #[derive(Clone, Copy)]
@@ -74,14 +74,14 @@ impl<T> PositionVertexGenerator for Cube<T>
 where
     T: Unit,
 {
-    type Output = (T, T, T);
+    type Output = Triplet<T>;
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn vertex_with_position(&self, index: usize) -> Self::Output {
         let x = if index & 0b100 == 0b100 { self.upper } else { self.lower };
         let y = if index & 0b010 == 0b010 { self.upper } else { self.lower };
         let z = if index & 0b001 == 0b001 { self.upper } else { self.lower };
-        (x, y, z)
+        Triplet(x, y, z)
     }
 }
 
@@ -98,7 +98,7 @@ impl<T> PositionPolygonGenerator for Cube<T>
 where
     T: Unit,
 {
-    type Output = Quad<(T, T, T)>;
+    type Output = Quad<Triplet<T>>;
 
     fn polygon_with_position(&self, index: usize) -> Self::Output {
         self.polygon_with_index(index)
@@ -129,13 +129,13 @@ impl<T> TexturePolygonGenerator for Cube<T>
 where
     T: Unit,
 {
-    type Output = Quad<(f32, f32)>;
+    type Output = Quad<Duplet<f32>>;
 
     fn polygon_with_texture(&self, index: usize) -> <Self as TexturePolygonGenerator>::Output {
-        let uu = (1.0, 1.0);
-        let ul = (1.0, 0.0);
-        let ll = (0.0, 0.0);
-        let lu = (0.0, 1.0);
+        let uu = Duplet(1.0, 1.0);
+        let ul = Duplet(1.0, 0.0);
+        let ll = Duplet(0.0, 0.0);
+        let lu = Duplet(0.0, 1.0);
         match index {
             0 | 4 | 5 => Quad::new(uu, ul, ll, lu), // front | bottom | back
             1 => Quad::new(ul, ll, lu, uu),         // right

@@ -194,7 +194,7 @@ mod tests {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .triangulate()
-            .collect_with_indexer::<Mesh<(f32, f32, f32)>, _>(LruIndexer::default());
+            .collect_with_indexer::<Mesh<Triplet<f32>>, _>(LruIndexer::default());
         // TODO: Provide a way to get a key for the vertices in the mesh. Using
         //       `default` only works if the initial vertex has not been
         //       removed.

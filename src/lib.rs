@@ -14,3 +14,7 @@ pub mod buffer;
 pub mod generate;
 pub mod graph;
 pub mod ordered;
+
+pub mod prelude {
+    pub use generate::prelude::*;
+}
