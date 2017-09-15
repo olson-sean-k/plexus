@@ -50,15 +50,15 @@ pub(crate) use self::geometry::Unit;
 pub(crate) use self::index::{FromIndexer, Indexer};
 
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
-pub use self::generate::{PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
-                         VerticesWithPosition};
+pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
+                         PolygonsWithTexture, VertexGenerator, VerticesWithPosition};
 pub use self::geometry::{Duplet, Triplet};
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
                          Triangle};
 
 pub mod prelude {
-    pub use super::{CollectWithIndexer, Duplet, MapVertices, PolygonsWithIndex,
-                    PolygonsWithPosition, PolygonsWithTexture, Triangulate, Triplet, Vertices,
-                    VerticesWithPosition};
+    pub use super::{CollectWithIndexer, Duplet, MapVertices, PolygonGenerator, PolygonsWithIndex,
+                    PolygonsWithPosition, PolygonsWithTexture, Triangulate, Triplet,
+                    VertexGenerator, Vertices, VerticesWithPosition};
 }
