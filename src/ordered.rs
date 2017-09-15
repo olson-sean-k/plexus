@@ -16,10 +16,12 @@
 //! ```no_run,rust
 //! use plexus::ordered;
 //!
-//! #[derive(Derivative)]
-//! #[derivative(Hash)]
+//! // TODO: The `derive` and `derivative` attributes are commented out to prevent
+//! //       build errors when running doc tests.
+//! //#[derive(Derivative)]
+//! //#[derivative(Hash)]
 //! pub struct Vertex {
-//!     #[derivative(Hash(hash_with="ordered::hash_float_array"))]
+//!     //#[derivative(Hash(hash_with="ordered::hash_float_array"))]
 //!     pub position: [f32; 3],
 //! }
 //! ```
