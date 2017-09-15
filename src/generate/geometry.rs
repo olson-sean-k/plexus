@@ -266,14 +266,14 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = Duplet<NotNan<T>>;
+        type Hash = Point2<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Duplet(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Point2::new(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new((hash.0).into_inner(), (hash.1).into_inner())
+            Point2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -281,10 +281,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = Triplet<NotNan<T>>;
+        type Hash = Point3<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Triplet(
+            Point3::new(
                 NotNan::new(self.x).unwrap(),
                 NotNan::new(self.y).unwrap(),
                 NotNan::new(self.z).unwrap(),
@@ -293,9 +293,9 @@ mod feature {
 
         fn from_hash(hash: Self::Hash) -> Self {
             Point3::new(
-                (hash.0).into_inner(),
-                (hash.1).into_inner(),
-                (hash.2).into_inner(),
+                hash.x.into_inner(),
+                hash.y.into_inner(),
+                hash.z.into_inner(),
             )
         }
     }
@@ -304,14 +304,14 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = Duplet<NotNan<T>>;
+        type Hash = Vector2<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Duplet(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Vector2::new(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new((hash.0).into_inner(), (hash.1).into_inner())
+            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -319,10 +319,10 @@ mod feature {
     where
         T: Float + Scalar + Unit,
     {
-        type Hash = Triplet<NotNan<T>>;
+        type Hash = Vector3<NotNan<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Triplet(
+            Vector3::new(
                 NotNan::new(self.x).unwrap(),
                 NotNan::new(self.y).unwrap(),
                 NotNan::new(self.z).unwrap(),
@@ -331,9 +331,9 @@ mod feature {
 
         fn from_hash(hash: Self::Hash) -> Self {
             Vector3::new(
-                (hash.0).into_inner(),
-                (hash.1).into_inner(),
-                (hash.2).into_inner(),
+                hash.x.into_inner(),
+                hash.y.into_inner(),
+                hash.z.into_inner(),
             )
         }
     }
