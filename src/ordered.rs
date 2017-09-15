@@ -81,7 +81,10 @@ where
 
 macro_rules! hash_float_array {
     (lengths => $($N:expr),*) => {$(
-        impl HashFloatArray for [f32; $N] {
+        impl<T> HashFloatArray for [T; $N]
+        where
+            T: Float,
+        {
             fn hash<H>(&self, state: &mut H)
             where
                 H: Hasher
