@@ -132,8 +132,13 @@ where
     }
 }
 
+#[cfg(feature = "geometry-cgmath")]
+mod feature_geometry_cgmath {}
+#[cfg(not(feature = "geometry-cgmath"))]
+mod feature_geometry_cgmath {}
+
 #[cfg(feature = "geometry-nalgebra")]
-mod feature {
+mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
 
     use super::*;
@@ -338,8 +343,8 @@ mod feature {
         }
     }
 }
-
 #[cfg(not(feature = "geometry-nalgebra"))]
-mod feature {}
+mod feature_geometry_nalgebra {}
 
-pub use self::feature::*;
+pub use self::feature_geometry_cgmath::*;
+pub use self::feature_geometry_nalgebra::*;

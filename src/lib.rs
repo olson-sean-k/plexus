@@ -4,6 +4,8 @@
 #[cfg(feature = "geometry-nalgebra")]
 extern crate alga;
 extern crate arrayvec;
+#[cfg(feature = "geometry-cgmath")]
+extern crate cgmath;
 extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;

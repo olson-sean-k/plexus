@@ -132,8 +132,13 @@ pub trait AsPosition {
     fn as_position_mut(&mut self) -> &mut Self::Target;
 }
 
+#[cfg(feature = "geometry-cgmath")]
+mod feature_geometry_cgmath {}
+#[cfg(not(feature = "geometry-cgmath"))]
+mod feature_geometry_cgmath {}
+
 #[cfg(feature = "geometry-nalgebra")]
-mod feature {
+mod feature_geometry_nalgebra {
     use alga::general::Real;
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use nalgebra::core::Matrix;
@@ -226,8 +231,8 @@ mod feature {
         }
     }
 }
-
 #[cfg(not(feature = "geometry-nalgebra"))]
-mod feature {}
+mod feature_geometry_nalgebra {}
 
-pub use self::feature::*;
+pub use self::feature_geometry_cgmath::*;
+pub use self::feature_geometry_nalgebra::*;
