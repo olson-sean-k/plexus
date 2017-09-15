@@ -168,16 +168,12 @@ where
         }
     }
 
+    pub fn compute_geometry(&mut self) {
+        G::compute(self)
+    }
+
     pub fn vertex_count(&self) -> usize {
         self.vertices.len()
-    }
-
-    pub fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
-
-    pub fn face_count(&self) -> usize {
-        self.faces.len()
     }
 
     pub fn vertex(&self, vertex: VertexKey) -> Option<VertexRef<G>> {
@@ -193,6 +189,10 @@ where
         }
     }
 
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
     pub fn edge(&self, edge: EdgeKey) -> Option<EdgeRef<G>> {
         self.edges.get(&edge).map(|_| EdgeRef::new(self, edge))
     }
@@ -202,6 +202,10 @@ where
             true => Some(EdgeMut::new(self, edge)),
             _ => None,
         }
+    }
+
+    pub fn face_count(&self) -> usize {
+        self.faces.len()
     }
 
     pub fn face(&self, face: FaceKey) -> Option<FaceRef<G>> {

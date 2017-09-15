@@ -1,7 +1,7 @@
 use num::Float;
 
 use generate::{Duplet, Triplet, Unit};
-use graph::topology::FaceMut;
+use graph::mesh::Mesh;
 use ordered::NotNan;
 
 pub trait FromGeometry<T> {
@@ -69,11 +69,7 @@ pub trait Geometry: Sized {
     type Edge: Attribute + Default;
     type Face: Attribute + Default;
 
-    fn compute_vertex_geometry() {}
-
-    fn compute_edge_geometry() {}
-
-    fn compute_face_geometry(_: FaceMut<Self>) {}
+    fn compute(_: &mut Mesh<Self>) {}
 }
 
 
