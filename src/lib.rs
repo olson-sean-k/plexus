@@ -19,4 +19,5 @@ pub mod ordered;
 
 pub mod prelude {
     pub use generate::prelude::*;
+    pub use ordered::prelude::*;
 }

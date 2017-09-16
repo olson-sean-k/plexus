@@ -96,7 +96,7 @@ where
 
 impl<T> HashConjugate for Duplet<T>
 where
-    T: Float + Unit,
+    T: Float,
 {
     type Hash = Duplet<NotNan<T>>;
 
@@ -111,7 +111,7 @@ where
 
 impl<T> HashConjugate for Triplet<T>
 where
-    T: Float + Unit,
+    T: Float,
 {
     type Hash = Triplet<NotNan<T>>;
 
@@ -217,7 +217,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Interpolate for Point2<T>
     where
-        T: NumCast + Scalar + Unit,
+        T: Num + NumCast + Scalar,
     {
         type Output = Self;
 
@@ -228,7 +228,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Interpolate for Point3<T>
     where
-        T: NumCast + Scalar + Unit,
+        T: Num + NumCast + Scalar,
     {
         type Output = Self;
 
@@ -243,7 +243,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Interpolate for Vector2<T>
     where
-        T: NumCast + Scalar + Unit,
+        T: Num + NumCast + Scalar,
     {
         type Output = Self;
 
@@ -254,7 +254,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Interpolate for Vector3<T>
     where
-        T: NumCast + Scalar + Unit,
+        T: Num + NumCast + Scalar,
     {
         type Output = Self;
 
@@ -269,7 +269,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Point2<T>
     where
-        T: Float + Scalar + Unit,
+        T: Float + Scalar,
     {
         type Hash = Point2<NotNan<T>>;
 
@@ -284,7 +284,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Point3<T>
     where
-        T: Float + Scalar + Unit,
+        T: Float + Scalar,
     {
         type Hash = Point3<NotNan<T>>;
 
@@ -307,7 +307,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Vector2<T>
     where
-        T: Float + Scalar + Unit,
+        T: Float + Scalar,
     {
         type Hash = Vector2<NotNan<T>>;
 
@@ -322,7 +322,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Vector3<T>
     where
-        T: Float + Scalar + Unit,
+        T: Float + Scalar,
     {
         type Hash = Vector3<NotNan<T>>;
 

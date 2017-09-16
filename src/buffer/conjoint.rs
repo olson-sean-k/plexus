@@ -110,13 +110,14 @@ where
 mod tests {
     use buffer::conjoint::*;
     use generate::*;
+    use ordered::*;
 
     #[test]
     fn collect_topology_into_buffer() {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .triangulate()
-            .collect_with_indexer::<ConjointBuffer<u32, Triplet<_>>, _>(LruIndexer::default());
+            .map_vertices(|vertex| vertex.into_hash())
+            .collect::<ConjointBuffer<u32, Triplet<_>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());

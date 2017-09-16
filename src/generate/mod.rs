@@ -46,7 +46,6 @@ pub mod sphere;
 mod topology;
 
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
-pub(crate) use self::geometry::Unit;
 pub(crate) use self::index::{FromIndexer, Indexer};
 
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};

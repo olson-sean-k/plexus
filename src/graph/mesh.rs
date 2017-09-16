@@ -399,13 +399,14 @@ where
 mod tests {
     use generate::*;
     use graph::*;
+    use ordered::*;
 
     #[test]
     fn collect_topology_into_mesh() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .triangulate()
-            .collect_with_indexer::<Mesh<Triplet<f32>>, _>(LruIndexer::default());
+            .map_vertices(|vertex| vertex.into_hash())
+            .collect::<Mesh<Triplet<_>>>();
 
         assert_eq!(5, mesh.vertex_count());
         assert_eq!(18, mesh.edge_count());

@@ -39,6 +39,10 @@ pub type r32 = NotNan<f32>;
 #[allow(non_camel_case_types)]
 pub type r64 = NotNan<f64>;
 
+pub mod prelude {
+    pub use ordered::HashConjugate;
+}
+
 pub trait HashConjugate: Sized {
     type Hash: Eq + Hash;
 

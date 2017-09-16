@@ -1,8 +1,7 @@
 use num::Float;
 
-use generate::{Duplet, Triplet, Unit};
+use generate::{Duplet, Triplet};
 use graph::mesh::Mesh;
-use ordered::NotNan;
 
 pub trait FromGeometry<T> {
     fn from_geometry(other: T) -> Self;
@@ -77,13 +76,7 @@ impl Attribute for () {}
 
 impl<T> Attribute for Triplet<T>
 where
-    T: Default + Unit,
-{
-}
-
-impl<T> Attribute for Triplet<NotNan<T>>
-where
-    T: Default + Float + Unit,
+    T: Default,
 {
 }
 
@@ -95,16 +88,7 @@ impl Geometry for () {
 
 impl<T> Geometry for Triplet<T>
 where
-    T: Default + Unit,
-{
-    type Vertex = Self;
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> Geometry for Triplet<NotNan<T>>
-where
-    T: Default + Float + Unit,
+    T: Default,
 {
     type Vertex = Self;
     type Edge = ();
@@ -143,7 +127,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Duplet<T>> for Point2<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         fn from_geometry(other: Duplet<T>) -> Self {
             Point2::new(other.0, other.1)
@@ -152,7 +136,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Triplet<T>> for Point3<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         fn from_geometry(other: Triplet<T>) -> Self {
             Point3::new(other.0, other.1, other.2)
@@ -161,7 +145,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Duplet<T>> for Vector2<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         fn from_geometry(other: Duplet<T>) -> Self {
             Vector2::new(other.0, other.1)
@@ -170,7 +154,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Triplet<T>> for Vector3<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         fn from_geometry(other: Triplet<T>) -> Self {
             Vector3::new(other.0, other.1, other.2)
@@ -179,13 +163,13 @@ mod feature_geometry_nalgebra {
 
     impl<T> Attribute for Point3<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
     }
 
     impl<T> Geometry for Point3<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         type Vertex = Self;
         type Edge = ();
@@ -194,7 +178,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Normalize for Vector3<T>
     where
-        T: Float + Real + Scalar + Unit,
+        T: Float + Real + Scalar,
     {
         fn normalize(self) -> Self {
             Matrix::normalize(&self)
@@ -203,7 +187,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Cross for Vector3<T>
     where
-        T: Float + Real + Scalar + Unit,
+        T: Float + Real + Scalar,
     {
         type Output = Self;
 
@@ -214,7 +198,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> AsPosition for Point3<T>
     where
-        T: Scalar + Unit,
+        T: Scalar,
     {
         type Target = Self;
 

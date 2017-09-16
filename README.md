@@ -17,8 +17,8 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 ```rust
 use nalgebra::Point3;
 use plexus::buffer::conjoint::ConjointBuffer;
-use plexus::generate::{sphere, LruIndexer};
-use plexus::generate::prelude::*; // Common generator traits.
+use plexus::generate::sphere;
+use plexus::prelude::*; // Common traits.
 
 // Example module in the local crate that provides rendering.
 use render::{self, Vertex};
@@ -30,7 +30,8 @@ let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .polygons_with_position()
     .map_vertices(|vertex| -> Point3<_> { vertex.into() })
     .map_vertices(|vertex| vertex * 10.0)
-    .collect_with_indexer::<ConjointBuffer<u32, Vertex>, _>(LruIndexer::default());
+    .map_vertices(|vertex| vertex.into_hash())
+    .collect::<ConjointBuffer<u32, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
@@ -46,14 +47,14 @@ cannot.
 ```rust
 use nalgebra::Point3;
 use plexus::generate::{sphere, LruIndexer};
-use plexus::generate::prelude::*;
 use plexus::graph::{FaceKey, Mesh};
+use plexus::prelude::*;
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
 // to `Point3<f32>` via the `FromGeometry` trait in this example.
 let mesh: = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
     .polygons_with_position()
-    .collect_with_indexer::<Mesh<Point3<f32>>, _>(LruIndexer::default());
+    .collect_with_indexer::<Mesh<Point3<_>>, _>(LruIndexer::default());
 // Extrude a face in the mesh.
 let face = mesh.face_mut(FaceKey::default()).unwrap();
 let face = face.extrude(1.0).unwrap();
