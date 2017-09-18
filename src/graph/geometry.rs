@@ -114,8 +114,6 @@ pub trait AsPosition {
 
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {}
-#[cfg(not(feature = "geometry-cgmath"))]
-mod feature_geometry_cgmath {}
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
@@ -211,8 +209,3 @@ mod feature_geometry_nalgebra {
         }
     }
 }
-#[cfg(not(feature = "geometry-nalgebra"))]
-mod feature_geometry_nalgebra {}
-
-pub use self::feature_geometry_cgmath::*;
-pub use self::feature_geometry_nalgebra::*;
