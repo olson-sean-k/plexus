@@ -12,7 +12,7 @@ where
     G: Geometry,
 {
     mesh: M,
-    pub key: EdgeKey,
+    key: EdgeKey,
     phantom: PhantomData<G>,
 }
 
@@ -27,6 +27,10 @@ where
             key: edge,
             phantom: PhantomData,
         }
+    }
+
+    pub fn key(&self) -> EdgeKey {
+        self.key
     }
 
     pub fn as_opposite(&self) -> Option<EdgeView<&Mesh<G>, G>> {
@@ -114,7 +118,7 @@ pub struct OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub key: EdgeKey,
+    key: EdgeKey,
     // The name `geometry` mirrors the `geometry` field of `Edge`, to which
     // `EdgeView` derefs.
     pub geometry: &'a mut G::Edge,
@@ -129,5 +133,9 @@ where
             key: edge,
             geometry: geometry,
         }
+    }
+
+    pub fn key(&self) -> EdgeKey {
+        self.key
     }
 }

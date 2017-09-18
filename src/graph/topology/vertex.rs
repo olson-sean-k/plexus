@@ -13,7 +13,7 @@ where
     G: Geometry,
 {
     mesh: M,
-    pub key: VertexKey,
+    key: VertexKey,
     phantom: PhantomData<G>,
 }
 
@@ -28,6 +28,10 @@ where
             key: vertex,
             phantom: PhantomData,
         }
+    }
+
+    pub fn key(&self) -> VertexKey {
+        self.key
     }
 
     pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {

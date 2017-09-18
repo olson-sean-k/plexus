@@ -268,7 +268,7 @@ where
             self.face(face)
                 .unwrap()
                 .edges()
-                .map(|edge| edge.key)
+                .map(|edge| edge.key())
                 .collect::<Vec<_>>()
         };
         // For each edge, disconnect its opposite edge and originating vertex,

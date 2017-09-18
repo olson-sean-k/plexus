@@ -14,7 +14,7 @@ where
     G: Geometry,
 {
     mesh: M,
-    pub key: FaceKey,
+    key: FaceKey,
     phantom: PhantomData<G>,
 }
 
@@ -29,6 +29,10 @@ where
             key: face,
             phantom: PhantomData,
         }
+    }
+
+    pub fn key(&self) -> FaceKey {
+        self.key
     }
 
     pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
@@ -241,7 +245,7 @@ pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub key: FaceKey,
+    key: FaceKey,
     // The name `geometry` mirrors the `geometry` field of `Face`, to which
     // `FaceView` derefs.
     pub geometry: &'a mut G::Face,
@@ -256,6 +260,10 @@ where
             key: face,
             geometry: geometry,
         }
+    }
+
+    pub fn key(&self) -> FaceKey {
+        self.key
     }
 }
 
