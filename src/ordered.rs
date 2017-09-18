@@ -14,17 +14,19 @@
 //! Creating a basic vertex type that can be used for rendering and implements
 //! `Hash`:
 //!
-//! ```no_run,rust
+//! ```rust
+//! # #[macro_use]
+//! # extern crate derivative;
+//! # extern crate plexus;
 //! use plexus::ordered;
 //!
-//! // TODO: The `derive` and `derivative` attributes are commented out to prevent
-//! //       build errors when running doc tests.
-//! //#[derive(Derivative)]
-//! //#[derivative(Hash)]
+//! #[derive(Derivative)]
+//! #[derivative(Hash)]
 //! pub struct Vertex {
-//!     //#[derivative(Hash(hash_with="ordered::hash_float_array"))]
+//!     #[derivative(Hash(hash_with="ordered::hash_float_array"))]
 //!     pub position: [f32; 3],
 //! }
+//! # fn main() {}
 //! ```
 
 use num::Float;
