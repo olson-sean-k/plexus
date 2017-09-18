@@ -1,13 +1,29 @@
-use graph::Mesh;
-use graph::geometry::Attribute;
-use graph::storage::OpaqueKey;
-
-mod edge;
-mod face;
-mod vertex;
-
-// TODO: Generalize the pairing of a ref to a mesh and a key for topology
-//       within the mesh.
+//! Topological views into a `Mesh`.
+//!
+//! This module provides topological traits and views into a `Mesh`. Views
+//! allow the topology of a graph to be traversed and mutated in a consistent
+//! way, and also expose the geometry of the graph.
+//!
+//! Views behave like references, and are exposed as `...Ref`, `...Mut`, and
+//! `Orphan...Mut` types. Summarized below.
+//!
+//!   - `...Ref`
+//!     Immutable reference to topology. Can be freely traversed, yielding
+//!     arbitrary topology, but cannot mutate geometry or topology.
+//!   - `...Mut`
+//!     Mutable reference to topology. Traversal is limited, only yielding
+//!     `Orphan...Mut` types. Allows both topology and geometry to mutate.
+//!   - `Orphan...Mut`
+//!     Mutable reference to geometry paired with a topological key. Cannot be
+//!     traversed, but can mutate geometry and be collected.
+//!
+//! Note that it is not possible to get mutable views from another mutable
+//! view, because a mutation may alter the topology and invalidate the
+//! originating view. This means that mutable operations will always consume
+//! `self` and that it is not possible to get a `...Mut` type from another
+//! `...Mut` type. In general, an immutable traversal of topology can be used
+//! to collect keys that are later used to query and mutate the target
+//! topology.
 
 // This code assumes that any keys for topological structures in the mesh are
 // valid (hence the `unwrap` calls), which is very important for `Deref`.
@@ -22,6 +38,14 @@ mod vertex;
 // the first. Circulators effectively map from a mutable view to orphan views,
 // for example. While `into` and `as` functions are okay, `as...mut` functions
 // MUST yield orphans (or not exist at all).
+
+use graph::Mesh;
+use graph::geometry::Attribute;
+use graph::storage::OpaqueKey;
+
+mod edge;
+mod face;
+mod vertex;
 
 pub use self::edge::{EdgeView, OrphanEdgeView};
 pub use self::face::{FaceView, OrphanFaceView};
