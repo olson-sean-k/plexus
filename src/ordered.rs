@@ -2,7 +2,8 @@
 //!
 //! This module provides tools to ease the creation of geometry data that can
 //! be ordered and hashed. For Plexus, this is most useful for quickly
-//! identifying unique geometry in an iterator expression or `Mesh`.
+//! identifying unique geometry in an iterator expression or `Mesh`, such as
+//! using a `HashIndexer`.
 //!
 //! This code is best used with the
 //! [derivative](https://crates.io/crates/derivative) crate, which can be used
@@ -93,9 +94,7 @@ macro_rules! hash_float_array {
             where
                 H: Hasher
             {
-                for f in self.iter() {
-                    hash_float(f, state)
-                }
+                hash_float_slice(self, state)
             }
         }
     )*};
