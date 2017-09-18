@@ -21,21 +21,23 @@ where
         Self::default()
     }
 
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Self
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = V>,
+    {
+        ConjointBuffer {
+            indeces: indeces.into_iter().collect(),
+            vertices: vertices.into_iter().collect(),
+        }
+    }
+
     pub fn as_index_slice(&self) -> &[N] {
         self.indeces.as_slice()
     }
 
     pub fn as_vertex_slice(&self) -> &[V] {
         self.vertices.as_slice()
-    }
-
-    fn extend<I, J>(&mut self, indeces: I, vertices: J)
-    where
-        I: IntoIterator<Item = N>,
-        J: IntoIterator<Item = V>,
-    {
-        self.indeces.extend(indeces);
-        self.vertices.extend(vertices);
     }
 }
 
@@ -80,12 +82,10 @@ where
         M: Indexer<Triangle<P::Vertex>, P::Vertex>,
     {
         let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
-        let mut buffer = ConjointBuffer::new();
-        buffer.extend(
+        ConjointBuffer::from_raw_buffers(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into()),
-        );
-        buffer
+        )
     }
 }
 
