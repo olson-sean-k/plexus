@@ -34,6 +34,17 @@ where
         self.key
     }
 
+    pub fn as_outgoing_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+        self.edge
+            .map(|edge| EdgeView::new(self.mesh.as_ref(), edge))
+    }
+
+    pub fn into_outgoing_edge(self) -> Option<EdgeView<M, G>> {
+        let edge = self.edge;
+        let mesh = self.mesh;
+        edge.map(|edge| EdgeView::new(mesh, edge))
+    }
+
     pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
         EdgeCirculator::new(self.with_mesh_ref())
     }
@@ -49,6 +60,16 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
+    pub fn as_outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+        let edge = self.edge;
+        edge.map(move |edge| {
+            OrphanEdgeView::new(
+                &mut self.mesh.as_mut().edges.get_mut(&edge).unwrap().geometry,
+                edge,
+            )
+        })
+    }
+
     pub fn edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
         EdgeCirculator::new(self.with_mesh_mut())
     }

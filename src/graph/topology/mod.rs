@@ -15,6 +15,13 @@ mod vertex;
 // not consume `self`. If these views can be used to mutate that data, then
 // they can also invalidate these constraints and cause panics. Any mutating
 // functions should consume the view.
+//
+// Similarly, toplogical mutations could invalidate views used to reach other
+// views. This means that it is unsafe for a mutable view to yield another
+// mutable view, because the second view may cause mutations that invalidate
+// the first. Circulators effectively map from a mutable view to orphan views,
+// for example. While `into` and `as` functions are okay, `as...mut` functions
+// MUST yield orphans (or not exist at all).
 
 pub use self::edge::{EdgeView, OrphanEdgeView};
 pub use self::face::{FaceView, OrphanFaceView};

@@ -56,10 +56,19 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
-    pub fn as_opposite_mut(&mut self) -> Option<EdgeView<&mut Mesh<G>, G>> {
+    pub fn as_opposite_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let opposite = self.opposite;
-        let mesh = self.mesh.as_mut();
-        opposite.map(|opposite| EdgeView::new(mesh, opposite))
+        opposite.map(move |opposite| {
+            OrphanEdgeView::new(
+                &mut self.mesh
+                    .as_mut()
+                    .edges
+                    .get_mut(&opposite)
+                    .unwrap()
+                    .geometry,
+                opposite,
+            )
+        })
     }
 
     // Resolve the `M` parameter to a concrete reference.
