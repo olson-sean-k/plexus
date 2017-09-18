@@ -60,11 +60,12 @@ let face = face.extrude(1.0).unwrap();
 ## Hashing Floating-Point Values
 
 When collecting an iterator expression into a graph or buffer, an indexer is
-used to index the geometry into buffers. `HashIndexer` is fast and reliable,
-and is used by `collect` (which can be overridden via `collect_with_indexer`).
-However, geometry often contains floating point values, which do not implement
-`Hash`. This means some thought is required when collecting iterator
-expressions: which indexer is used and what types are involved?
+used to transform the geometry into raw buffers. `HashIndexer` is fast and
+reliable, and is used by `collect` (which can be overridden via
+`collect_with_indexer`). However, geometry often contains floating point
+values, which do not implement `Hash`. This means some thought is required when
+collecting iterator expressions: which indexer is used and what types are
+involved?
 
 The [ordered-float](https://crates.io/crates/ordered-float) crate is used by
 the `ordered` module to ease this problem. Common geometric types implement
@@ -72,14 +73,12 @@ traits that provide conversions to and from a conjugate type that implements
 `Hash`.
 
 The `ordered` module also exposes some hashing functions for floating point
-primitives, which can be used for `Hash` implementations. With the
+primitives, which can be used to directly implement `Hash`. With the
 [derivative](https://crates.io/crates/derivative) crate, floating point fields
-can be hashed using one of these functions. The `Vertex` type used in the above
-example could be defined as follows:
+can be hashed using one of these functions while deriving `Hash`. The `Vertex`
+type used in the above example could be defined as follows:
 
 ```rust
-use nalgebra::{Point3, Scalar};
-use num::{Num, NumCast};
 use plexus::ordered;
 
 #[derive(Derivative)]
@@ -87,20 +86,5 @@ use plexus::ordered;
 pub struct Vertex {
     #[derivative(Hash(hash_with="ordered::hash_float_array"))]
     pub position: [f32; 3],
-}
-
-impl<T> From<Point3<T>> for Vertex
-where
-    T: Num + NumCast + Scalar,
-{
-    fn from(point: Point3<T>) -> Self {
-        Vertex {
-            position: [
-                <f32 as NumCast>::from(point.x).unwrap(),
-                <f32 as NumCast>::from(point.y).unwrap(),
-                <f32 as NumCast>::from(point.z).unwrap(),
-            ],
-        }
-    }
 }
 ```
