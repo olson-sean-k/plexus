@@ -23,14 +23,12 @@ use plexus::prelude::*; // Common traits.
 // Example module in the local crate that provides rendering.
 use render::{self, Vertex};
 
-// Construct a buffer of index and vertex data from a sphere primitive. The
-// vertex geometry is convertible to `Vertex` via the `From` trait in this
-// example.
+// Construct a buffer of index and vertex data from a sphere primitive.
 let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .polygons_with_position()
     .map_vertices(|vertex| -> Point3<_> { vertex.into() })
     .map_vertices(|vertex| vertex * 10.0)
-    .map_vertices(|vertex| vertex.into_hash())
+    .map_vertices(|vertex| -> Vertex { vertex.into() })
     .collect::<ConjointBuffer<u32, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
@@ -58,4 +56,51 @@ let mesh: = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
 // Extrude a face in the mesh.
 let face = mesh.face_mut(FaceKey::default()).unwrap();
 let face = face.extrude(1.0).unwrap();
+```
+## Hashing Floating-Point Values
+
+When collecting an iterator expression into a graph or buffer, an indexer is
+used to index the geometry into buffers. `HashIndexer` is fast and reliable,
+and is used by `collect` (which can be overridden via `collect_with_indexer`).
+However, geometry often contains floating point values, which do not implement
+`Hash`. This means some thought is required when collecting iterator
+expressions: which indexer is used and what types are involved?
+
+The [ordered-float](https://crates.io/crates/ordered-float) crate is used by
+the `ordered` module to ease this problem. Common geometric types implement
+traits that provide conversions to and from a conjugate type that implements
+`Hash`.
+
+The `ordered` module also exposes some hashing functions for floating point
+primitives, which can be used for `Hash` implementations. With the
+[derivative](https://crates.io/crates/derivative) crate, floating point fields
+can be hashed using one of these functions. The `Vertex` type used in the above
+example could be defined as follows:
+
+```rust
+use nalgebra::{Point3, Scalar};
+use num::{Num, NumCast};
+use plexus::ordered;
+
+#[derive(Derivative)]
+#[derivative(Hash)]
+pub struct Vertex {
+    #[derivative(Hash(hash_with="ordered::hash_float_array"))]
+    pub position: [f32; 3],
+}
+
+impl<T> From<Point3<T>> for Vertex
+where
+    T: Num + NumCast + Scalar,
+{
+    fn from(point: Point3<T>) -> Self {
+        Vertex {
+            position: [
+                <f32 as NumCast>::from(point.x).unwrap(),
+                <f32 as NumCast>::from(point.y).unwrap(),
+                <f32 as NumCast>::from(point.z).unwrap(),
+            ],
+        }
+    }
+}
 ```
