@@ -1,11 +1,11 @@
-use num::Float;
 use std::marker::PhantomData;
-use std::ops::{Add, Deref, DerefMut, Mul, Sub};
+use std::ops::{Add, Deref, DerefMut, Mul};
 
-use graph::geometry::{AsPosition, Cross, Geometry, Normalize};
+use graph::geometry::{AsPosition, FaceNormal, Geometry};
+use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Face, Mesh};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::EdgeView;
+use graph::topology::{EdgeView, VertexView};
 
 #[derive(Clone, Copy)]
 pub struct FaceView<M, G>
@@ -33,6 +33,10 @@ where
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+
+    pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G> {
+        VertexCirculator::new(self.edges())
     }
 
     pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
@@ -65,39 +69,19 @@ where
 }
 
 // The elaborate type constraints state that positions stored in the vertex
-// geometry can be used to compute a normal of a face using vector subtraction,
-// cross product, normalization, vector addition, and vector scaling.
-#[cfg_attr(rustfmt, rustfmt_skip)]
+// geometry can be used to compute a normal of a face and that normal can be
+// scaled and added to vertex positions.
 impl<M, G> FaceView<M, G>
 where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
-    G: Geometry,
-    G::Vertex: AsPosition + Clone,
-    G::Edge: Clone,
-    G::Face: Clone,
-    // Constraints on the vertex geometry when converted to a position:
-    //
-    // 1. Supports cloning.
-    // 2. Supports subtraction with itself.
-    <G::Vertex as AsPosition>::Target: Clone + Sub,
-    // Constraints on the output of subtraction of vertex geometry when
-    // converted to a position:
-    //
-    // 1. Supports the cross product.
-    <<G::Vertex as AsPosition>::Target as Sub>::Output: Cross,
-    // Constraints on the output of the cross product of subtraction of vertex
-    // geometry when converted to a position:
-    //
-    // 1. Supports normalization.
-    <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Normalize,
+    G: FaceNormal + Geometry,
+    G::Vertex: AsPosition,
 {
     pub fn extrude<F>(self, distance: F) -> Result<Self, ()>
     where
-        // See `extrude_vertex_geometry`.
-        F: Float,
-        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
-        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
-        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+        G::Normal: Mul<F>,
+        ScaledFaceNormal<G, F>: Clone,
+        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
     {
         self.extrude_with_geometry(distance, G::Edge::default(), G::Face::default())
     }
@@ -109,11 +93,9 @@ where
         face: G::Face,
     ) -> Result<Self, ()>
     where
-        // See `extrude_vertex_geometry`.
-        F: Float,
-        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
-        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
-        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+        G::Normal: Mul<F>,
+        ScaledFaceNormal<G, F>: Clone,
+        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
     {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
@@ -130,12 +112,18 @@ where
         // opposing edges to its neighboring connective faces.
         let extrusion = {
             let mesh = mesh.as_mut();
-            let vertices = geometry.into_iter()
-                .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1))).collect::<Vec<_>>();
-            let edges = vertices.iter().enumerate().map(|(index, &(_, a))| {
-                let b = vertices[(index + 1) % vertices.len()].1;
-                mesh.insert_edge((a, b), edge.clone()).unwrap()
-            }).collect::<Vec<_>>();
+            let vertices = geometry
+                .into_iter()
+                .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1)))
+                .collect::<Vec<_>>();
+            let edges = vertices
+                .iter()
+                .enumerate()
+                .map(|(index, &(_, a))| {
+                    let b = vertices[(index + 1) % vertices.len()].1;
+                    mesh.insert_edge((a, b), edge.clone()).unwrap()
+                })
+                .collect::<Vec<_>>();
             let extrusion = mesh.insert_face(&edges, face.clone()).unwrap();
             for index in 0..vertices.len() {
                 let (d, c) = vertices[index];
@@ -156,43 +144,33 @@ where
 
     fn extrude_vertex_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
     where
-        F: Float,
-        // Constraints on the vertex geometry when converted to a position:
+        // Constraints on the normal of the face:
         //
-        // 1. Supports addition with the output of multiplication with `F` of
-        //    the cross product of subtraction with itself.
-        // 2. The output of the above addition is itself.
-        <G::Vertex as AsPosition>::Target: Add<<<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output, Output = <G::Vertex as AsPosition>::Target>,
-        // Constraints on the output of the cross product of subtraction of
-        // vertex geometry when converted to a position:
-        //
-        // 1. Supports multiplication with `F`.
-        <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output: Mul<F>,
-        // Constraints on the output of multiplication with `F` of the cross
-        // product of subtraction of vertex geometry when converted to a
-        // position:
+        // 1. Supports multiplication with `F` (becoming the scaled face
+        //    normal).
+        G::Normal: Mul<F>,
+        // Constraints on the scaled normal of the face:
         //
         // 1. Supports cloning.
-        <<<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output as Mul<F>>::Output: Clone,
+        ScaledFaceNormal<G, F>: Clone,
+        // Constraints on the vertex geometry when converted to a position:
+        //
+        // 1. Supports cloning.
+        // 2. Supports addition with the scaled normal of the face.
+        // 3. The output of the above addition is itself.
+        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
     {
-        let mesh = self.mesh.as_ref();
-        let edges = self.edges().collect::<Vec<_>>();
-        if edges.len() < 3 {
-            return Err(());
-        }
-        let (a, b, c) = (
-            mesh.vertices.get(&edges[0].vertex).unwrap(),
-            mesh.vertices.get(&edges[1].vertex).unwrap(),
-            mesh.vertices.get(&edges[2].vertex).unwrap(),
-        );
-        let ab = a.geometry.as_position().clone() - b.geometry.as_position().clone();
-        let bc = b.geometry.as_position().clone() - c.geometry.as_position().clone();
-        let translation = ab.cross(bc).normalize() * distance;
-        Ok(edges.into_iter().map(|edge| {
-            let mut geometry = mesh.vertices.get(&edge.vertex).unwrap().geometry.clone();
-            *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
-            (edge.vertex, geometry)
-        }).collect())
+        let translation = G::normal(self.with_mesh_ref())? * distance;
+        Ok(
+            self.vertices()
+                .map(|vertex| {
+                    let mut geometry = vertex.geometry.clone();
+                    *geometry.as_position_mut() =
+                        geometry.as_position().clone() + translation.clone();
+                    (vertex.key(), geometry)
+                })
+                .collect(),
+        )
     }
 }
 
@@ -264,6 +242,36 @@ where
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+}
+
+pub struct VertexCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    inner: EdgeCirculator<M, G>,
+}
+
+impl<M, G> VertexCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    fn new(edges: EdgeCirculator<M, G>) -> Self {
+        VertexCirculator { inner: edges }
+    }
+}
+
+impl<'a, G> Iterator for VertexCirculator<&'a Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = VertexView<&'a Mesh<G>, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <EdgeCirculator<_, G> as Iterator>::next(&mut self.inner)
+            .map(|edge| VertexView::new(self.inner.face.mesh, edge.vertex))
     }
 }
 

@@ -1,7 +1,10 @@
 use num::Float;
+use std::ops::Sub;
 
 use generate::{Duplet, Triplet};
 use graph::mesh::Mesh;
+use graph::topology::FaceRef;
+use self::alias::*;
 
 pub trait FromGeometry<T> {
     fn from_geometry(other: T) -> Self;
@@ -61,7 +64,7 @@ where
 //
 // Instead, the associated `Edge` and `Face` types of `Geometry` require
 // `Default` on their own.
-pub trait Attribute {}
+pub trait Attribute: Clone {}
 
 pub trait Geometry: Sized {
     type Vertex: Attribute;
@@ -71,12 +74,58 @@ pub trait Geometry: Sized {
     fn compute(_: &mut Mesh<Self>) {}
 }
 
+pub trait FaceNormal: Geometry {
+    type Normal;
+
+    fn normal(face: FaceRef<Self>) -> Result<Self::Normal, ()>;
+}
+
+// The elaborate type constraints state that positions stored in the vertex
+// geometry can be used to compute a normal of a face using subtraction, cross
+// product, and normalization.
+impl<G> FaceNormal for G
+where
+    G: Geometry,
+    G::Vertex: AsPosition,
+    // Constraints on the vertex geometry when converted to a position:
+    //
+    // 1. Supports cloning.
+    // 2. Supports subtraction with itself.
+    VertexPosition<G>: Clone + Sub,
+    // Constraints on the output of subtraction of vertex geometry when
+    // converted to a position:
+    //
+    // 1. Supports the cross product.
+    <VertexPosition<G> as Sub>::Output: Cross,
+    // Constraints on the output of the cross product of subtraction of vertex
+    // geometry when converted to a position:
+    //
+    // 1. Supports normalization.
+    <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
+{
+    type Normal = <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output;
+
+    fn normal(face: FaceRef<Self>) -> Result<Self::Normal, ()> {
+        const N: usize = 3;
+        let positions = face.vertices()
+            .take(N)
+            .map(|vertex| vertex.geometry.as_position().clone())
+            .collect::<Vec<_>>();
+        if positions.len() < N {
+            return Err(());
+        }
+        let (a, b, c) = (&positions[0], &positions[1], &positions[2]);
+        let ab = a.clone() - b.clone();
+        let bc = b.clone() - c.clone();
+        Ok(ab.cross(bc).normalize())
+    }
+}
 
 impl Attribute for () {}
 
 impl<T> Attribute for Triplet<T>
 where
-    T: Default,
+    T: Clone + Default,
 {
 }
 
@@ -88,7 +137,7 @@ impl Geometry for () {
 
 impl<T> Geometry for Triplet<T>
 where
-    T: Default,
+    T: Clone + Default,
 {
     type Vertex = Self;
     type Edge = ();
@@ -110,6 +159,17 @@ pub trait AsPosition {
 
     fn as_position(&self) -> &Self::Target;
     fn as_position_mut(&mut self) -> &mut Self::Target;
+}
+
+pub mod alias {
+    use std::ops::Mul;
+
+    use super::*;
+
+    pub type VertexPosition<G> =
+        <<G as Geometry>::Vertex as AsPosition>::Target;
+    pub type ScaledFaceNormal<G, F> =
+        <<G as FaceNormal>::Normal as Mul<F>>::Output;
 }
 
 #[cfg(feature = "geometry-cgmath")]
