@@ -1,36 +1,32 @@
 //! Topological views into a `Mesh`.
 //!
-//! This module provides topological traits and views into a `Mesh`. Views
+//! This module provides topological traits and views into a [`Mesh`]. Views
 //! allow the topology of a graph to be traversed and mutated in a consistent
 //! way, and also expose the geometry of the graph.
 //!
 //! Views behave like references, and are exposed as `...Ref`, `...Mut`, and
-//! `Orphan...Mut` types. Summarized below.
+//! `Orphan...Mut` types (immutable, mutable, and orphan views, respectively)
+//! summarized below:
 //!
-//!   - `...Ref`
-//!     Immutable reference to topology. Can be freely traversed, yielding
-//!     arbitrary topology, but cannot mutate geometry or topology.
-//!   - `...Mut`
-//!     Mutable reference to topology. Traversal is limited, only yielding
-//!     `Orphan...Mut` types. Allows both topology and geometry to mutate.
-//!   - `Orphan...Mut`
-//!     Mutable reference to geometry paired with a topological key. Cannot be
-//!     traversed, but can mutate geometry and be collected.
+//! |                | Traversal   | Collection | Geometry  | Topology  |
+//! |----------------|-------------|------------|-----------|-----------|
+//! | `...Ref`       | Yes         | Yes        | Immutable | Immutable |
+//! | `...Mut`       | Orphan Only | No         | Mutable   | Mutable   |
+//! | `Orphan...Mut` | No          | Yes        | Mutable   | N/A       |
 //!
-//! Note that it is not possible to get mutable views from another mutable
-//! view, because a mutation may alter the topology and invalidate the
-//! originating view. This means that mutable operations will always consume
-//! `self` and that it is not possible to get a `...Mut` type from another
-//! `...Mut` type. In general, an immutable traversal of topology can be used
+//! Note that it is not possible to get mutable views from another mutable view
+//! via a traversal, because a mutation may alter the topology and invalidate
+//! the originating view. This also means that mutable operations will always
+//! consume `self`. In general, an immutable traversal of topology can be used
 //! to collect keys that are later used to query and mutate the target
 //! topology.
 
 // This code assumes that any keys for topological structures in the mesh are
 // valid (hence the `unwrap` calls), which is very important for `Deref`.
-// Topological mutations using views like `FaceView` are dangerous if they do
-// not consume `self`. If these views can be used to mutate that data, then
-// they can also invalidate these constraints and cause panics. Any mutating
-// functions should consume the view.
+// Topological mutations using views are dangerous if they do not consume
+// `self`. If these views can be used to mutate that data, then they can also
+// invalidate these constraints and cause panics. Any mutating functions should
+// consume the view.
 //
 // Similarly, toplogical mutations could invalidate views used to reach other
 // views. This means that it is unsafe for a mutable view to yield another
