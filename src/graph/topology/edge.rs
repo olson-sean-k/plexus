@@ -34,13 +34,10 @@ where
     }
 
     pub fn to_key_topology(&self) -> EdgeKeyTopology {
-        EdgeKeyTopology::new(
-            self.key,
-            (self.vertex, self.as_next().map(|edge| edge.vertex)),
-        )
+        EdgeKeyTopology::new(self.key, (self.vertex, self.next().map(|edge| edge.vertex)))
     }
 
-    pub fn as_opposite(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+    pub fn opposite(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.opposite
             .map(|opposite| EdgeView::new(self.mesh.as_ref(), opposite))
     }
@@ -51,7 +48,7 @@ where
         opposite.map(|opposite| EdgeView::new(mesh, opposite))
     }
 
-    pub fn as_next(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+    pub fn next(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.next
             .map(|next| EdgeView::new(self.mesh.as_ref(), next))
     }
@@ -74,7 +71,7 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
-    pub fn as_opposite_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub fn opposite_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let opposite = self.opposite;
         opposite.map(move |opposite| {
             OrphanEdgeView::new(
@@ -89,7 +86,7 @@ where
         })
     }
 
-    pub fn as_next_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub fn next_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let next = self.next;
         next.map(move |next| {
             OrphanEdgeView::new(

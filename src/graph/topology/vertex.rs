@@ -34,7 +34,7 @@ where
         self.key
     }
 
-    pub fn as_outgoing_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+    pub fn outgoing_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.edge
             .map(|edge| EdgeView::new(self.mesh.as_ref(), edge))
     }
@@ -60,7 +60,7 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
-    pub fn as_outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub fn outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let edge = self.edge;
         edge.map(move |edge| {
             OrphanEdgeView::new(

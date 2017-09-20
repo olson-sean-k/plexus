@@ -32,8 +32,8 @@
 // views. This means that it is unsafe for a mutable view to yield another
 // mutable view, because the second view may cause mutations that invalidate
 // the first. Circulators effectively map from a mutable view to orphan views,
-// for example. While `into` and `as` functions are okay, `as...mut` functions
-// MUST yield orphans (or not exist at all).
+// for example. While `into` and immutable accessor functions are okay, mutable
+// accessor functions MUST yield orphans (or not exist at all).
 
 use graph::Mesh;
 use graph::geometry::Attribute;
