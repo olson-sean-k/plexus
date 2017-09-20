@@ -8,11 +8,11 @@
 //! `Orphan...Mut` types (immutable, mutable, and orphan views, respectively)
 //! summarized below:
 //!
-//! |                | Traversal   | Collection | Geometry  | Topology  |
-//! |----------------|-------------|------------|-----------|-----------|
-//! | `...Ref`       | Yes         | Yes        | Immutable | Immutable |
-//! | `...Mut`       | Orphan Only | No         | Mutable   | Mutable   |
-//! | `Orphan...Mut` | No          | Yes        | Mutable   | N/A       |
+//! |                | Traversal   | Arity | Geometry  | Topology  |
+//! |----------------|-------------|-------|-----------|-----------|
+//! | `...Ref`       | Yes         | Many  | Immutable | Immutable |
+//! | `...Mut`       | Orphan Only | One   | Mutable   | Mutable   |
+//! | `Orphan...Mut` | No          | Many  | Mutable   | N/A       |
 //!
 //! Note that it is not possible to get mutable views from another mutable view
 //! via a traversal, because a mutation may alter the topology and invalidate
