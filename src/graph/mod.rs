@@ -29,7 +29,7 @@ pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, FromInterio
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
-                         VertexMut, VertexRef};
+                         OrphanVertexMut, VertexMut, VertexRef};
 
 pub mod prelude {
     pub use super::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};

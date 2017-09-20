@@ -122,6 +122,32 @@ where
     }
 }
 
+pub struct OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    key: VertexKey,
+    // The name `geometry` mirrors the `geometry` field of `Vertex`, to which
+    // `VertexView` derefs.
+    pub geometry: &'a mut G::Vertex,
+}
+
+impl<'a, G> OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    pub(crate) fn new(geometry: &'a mut G::Vertex, vertex: VertexKey) -> Self {
+        OrphanVertexView {
+            key: vertex,
+            geometry: geometry,
+        }
+    }
+
+    pub fn key(&self) -> VertexKey {
+        self.key
+    }
+}
+
 pub struct EdgeCirculator<M, G>
 where
     M: AsRef<Mesh<G>>,

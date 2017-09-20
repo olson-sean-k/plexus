@@ -3,9 +3,9 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use graph::geometry::{AsPosition, FaceNormal, Geometry};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
-use graph::mesh::{Face, Mesh};
+use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{EdgeView, VertexView};
+use graph::topology::{EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
 
 #[derive(Clone, Copy)]
 pub struct FaceView<M, G>
@@ -36,7 +36,7 @@ where
     }
 
     pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G> {
-        VertexCirculator::new(self.edges())
+        VertexCirculator::from_edge_circulator(self.edges())
     }
 
     pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
@@ -44,7 +44,7 @@ where
     }
 
     pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
-        FaceCirculator::new(self.with_mesh_ref())
+        FaceCirculator::from_edge_circulator(self.edges())
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -58,8 +58,16 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
+    pub fn vertices_mut(&mut self) -> VertexCirculator<&mut Mesh<G>, G> {
+        VertexCirculator::from_edge_circulator(self.edges_mut())
+    }
+
+    pub fn edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
+        EdgeCirculator::new(self.with_mesh_mut())
+    }
+
     pub fn faces_mut(&mut self) -> FaceCirculator<&mut Mesh<G>, G> {
-        FaceCirculator::new(self.with_mesh_mut())
+        FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -258,7 +266,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    fn new(edges: EdgeCirculator<M, G>) -> Self {
+    fn from_edge_circulator(edges: EdgeCirculator<M, G>) -> Self {
         VertexCirculator { inner: edges }
     }
 }
@@ -272,6 +280,41 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         <EdgeCirculator<_, G> as Iterator>::next(&mut self.inner)
             .map(|edge| VertexView::new(self.inner.face.mesh, edge.vertex))
+    }
+}
+
+impl<'a, G> Iterator for VertexCirculator<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = OrphanVertexView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <EdgeCirculator<_, G> as Iterator>::next(&mut self.inner)
+            .map(|edge| {
+                self.inner.face.mesh.edges.get(&edge.key()).unwrap().vertex
+            })
+            .map(|vertex| {
+                let geometry = {
+                    unsafe {
+                        use std::mem;
+
+                        // There is no way to bind the anonymous lifetime of this
+                        // function to `Self::Item`. This is problematic for the
+                        // call to `get_mut`, which requires autoref. However, this
+                        // should be safe, because the use of this iterator
+                        // requires a mutable borrow of the source mesh with
+                        // lifetime `'a`. Therefore, the (disjoint) geometry data
+                        // within the mesh should also be valid over the lifetime
+                        // '`a'.
+                        let vertex = mem::transmute::<_, &'a mut Vertex<G>>(
+                            self.inner.face.mesh.vertices.get_mut(&vertex).unwrap(),
+                        );
+                        &mut vertex.geometry
+                    }
+                };
+                OrphanVertexView::new(geometry, vertex)
+            })
     }
 }
 
@@ -326,14 +369,43 @@ where
     }
 }
 
+impl<'a, G> Iterator for EdgeCirculator<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = OrphanEdgeView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <EdgeCirculator<_, _>>::next(self).map(|edge| {
+            let geometry = {
+                unsafe {
+                    use std::mem;
+
+                    // There is no way to bind the anonymous lifetime of this
+                    // function to `Self::Item`. This is problematic for the
+                    // call to `get_mut`, which requires autoref. However, this
+                    // should be safe, because the use of this iterator
+                    // requires a mutable borrow of the source mesh with
+                    // lifetime `'a`. Therefore, the (disjoint) geometry data
+                    // within the mesh should also be valid over the lifetime
+                    // '`a'.
+                    let edge = mem::transmute::<_, &'a mut Edge<G>>(
+                        self.face.mesh.edges.get_mut(&edge).unwrap(),
+                    );
+                    &mut edge.geometry
+                }
+            };
+            OrphanEdgeView::new(geometry, edge)
+        })
+    }
+}
+
 pub struct FaceCirculator<M, G>
 where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    face: FaceView<M, G>,
-    edge: Option<EdgeKey>,
-    breadcrumb: Option<EdgeKey>,
+    inner: EdgeCirculator<M, G>,
 }
 
 impl<M, G> FaceCirculator<M, G>
@@ -341,34 +413,25 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    fn new(face: FaceView<M, G>) -> Self {
-        let edge = face.edge;
-        FaceCirculator {
-            face: face,
-            edge: Some(edge),
-            breadcrumb: Some(edge),
-        }
+    fn from_edge_circulator(edges: EdgeCirculator<M, G>) -> Self {
+        FaceCirculator { inner: edges }
     }
 
     fn next(&mut self) -> Option<FaceKey> {
-        let mesh = self.face.mesh.as_ref();
-        while let Some(edge) = self.edge.map(|edge| mesh.edges.get(&edge).unwrap()) {
-            self.edge = edge.next;
+        while let Some(edge) = self.inner.next().map(|edge| {
+            self.inner.face.mesh.as_ref().edges.get(&edge).unwrap()
+        }) {
             if let Some(face) = edge.opposite
-                .map(|opposite| mesh.edges.get(&opposite).unwrap())
+                .map(|opposite| {
+                    self.inner.face.mesh.as_ref().edges.get(&opposite).unwrap()
+                })
                 .and_then(|opposite| opposite.face)
             {
-                return if let Some(_) = self.breadcrumb {
-                    if self.breadcrumb == edge.next {
-                        self.breadcrumb = None;
-                    }
-                    Some(face)
-                }
-                else {
-                    None
-                };
+                return Some(face);
             }
             else {
+                // Skip edges with no opposing face. This can occur within
+                // non-enclosed meshes.
                 continue;
             }
         }
@@ -383,7 +446,7 @@ where
     type Item = FaceView<&'a Mesh<G>, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        <FaceCirculator<_, _>>::next(self).map(|face| FaceView::new(self.face.mesh, face))
+        <FaceCirculator<_, _>>::next(self).map(|face| FaceView::new(self.inner.face.mesh, face))
     }
 }
 
@@ -412,7 +475,7 @@ where
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
                     let face = mem::transmute::<_, &'a mut Face<G>>(
-                        self.face.mesh.faces.get_mut(&face).unwrap(),
+                        self.inner.face.mesh.faces.get_mut(&face).unwrap(),
                     );
                     &mut face.geometry
                 }

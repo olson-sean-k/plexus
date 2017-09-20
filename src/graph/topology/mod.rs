@@ -45,7 +45,7 @@ mod vertex;
 
 pub use self::edge::{EdgeView, OrphanEdgeView};
 pub use self::face::{FaceView, OrphanFaceView};
-pub use self::vertex::VertexView;
+pub use self::vertex::{OrphanVertexView, VertexView};
 
 pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
 pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
@@ -57,6 +57,7 @@ pub type OrphanFaceMut<'a, G> = OrphanFaceView<'a, G>;
 
 pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
 pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
+pub type OrphanVertexMut<'a, G> = OrphanVertexView<'a, G>;
 
 pub trait Topological {
     type Key: OpaqueKey;
