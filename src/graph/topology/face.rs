@@ -5,7 +5,7 @@ use graph::geometry::{AsPosition, FaceNormal, Geometry};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
+use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
 
 #[derive(Clone, Copy)]
 pub struct FaceView<M, G>
@@ -33,6 +33,10 @@ where
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+
+    pub fn to_key_topology(&self) -> FaceKeyTopology {
+        FaceKeyTopology::new(self.key, self.edges().map(|edge| edge.to_key_topology()))
     }
 
     pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G> {
@@ -250,6 +254,31 @@ where
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+}
+
+pub struct FaceKeyTopology {
+    key: FaceKey,
+    edges: Vec<EdgeKeyTopology>,
+}
+
+impl FaceKeyTopology {
+    fn new<I>(face: FaceKey, edges: I) -> Self
+    where
+        I: IntoIterator<Item = EdgeKeyTopology>,
+    {
+        FaceKeyTopology {
+            key: face,
+            edges: edges.into_iter().collect(),
+        }
+    }
+
+    pub fn key(&self) -> FaceKey {
+        self.key
+    }
+
+    pub fn edges(&self) -> &[EdgeKeyTopology] {
+        self.edges.as_slice()
     }
 }
 

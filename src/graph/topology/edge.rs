@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use graph::geometry::Geometry;
 use graph::mesh::{Edge, Mesh};
-use graph::storage::EdgeKey;
+use graph::storage::{EdgeKey, VertexKey};
 
 #[derive(Clone, Copy)]
 pub struct EdgeView<M, G>
@@ -33,6 +33,13 @@ where
         self.key
     }
 
+    pub fn to_key_topology(&self) -> EdgeKeyTopology {
+        EdgeKeyTopology::new(
+            self.key,
+            (self.vertex, self.as_next().map(|edge| edge.vertex)),
+        )
+    }
+
     pub fn as_opposite(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.opposite
             .map(|opposite| EdgeView::new(self.mesh.as_ref(), opposite))
@@ -42,6 +49,17 @@ where
         let opposite = self.opposite;
         let mesh = self.mesh;
         opposite.map(|opposite| EdgeView::new(mesh, opposite))
+    }
+
+    pub fn as_next(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+        self.next
+            .map(|next| EdgeView::new(self.mesh.as_ref(), next))
+    }
+
+    pub fn into_next(self) -> Option<Self> {
+        let next = self.next;
+        let mesh = self.mesh;
+        next.map(|next| EdgeView::new(mesh, next))
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -67,6 +85,16 @@ where
                     .unwrap()
                     .geometry,
                 opposite,
+            )
+        })
+    }
+
+    pub fn as_next_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+        let next = self.next;
+        next.map(move |next| {
+            OrphanEdgeView::new(
+                &mut self.mesh.as_mut().edges.get_mut(&next).unwrap().geometry,
+                next,
             )
         })
     }
@@ -146,5 +174,27 @@ where
 
     pub fn key(&self) -> EdgeKey {
         self.key
+    }
+}
+
+pub struct EdgeKeyTopology {
+    key: EdgeKey,
+    vertices: (VertexKey, Option<VertexKey>),
+}
+
+impl EdgeKeyTopology {
+    fn new(edge: EdgeKey, vertices: (VertexKey, Option<VertexKey>)) -> Self {
+        EdgeKeyTopology {
+            key: edge,
+            vertices: vertices,
+        }
+    }
+
+    pub fn key(&self) -> EdgeKey {
+        self.key
+    }
+
+    pub fn vertices(&self) -> (VertexKey, Option<VertexKey>) {
+        self.vertices
     }
 }

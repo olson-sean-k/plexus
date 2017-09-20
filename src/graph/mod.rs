@@ -28,8 +28,8 @@ pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, FromInterio
                          Geometry, IntoGeometry, IntoInteriorGeometry, Normalize};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
-pub use self::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
-                         OrphanVertexMut, VertexMut, VertexRef};
+pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef,
+                         OrphanEdgeMut, OrphanFaceMut, OrphanVertexMut, VertexMut, VertexRef};
 
 pub mod prelude {
     pub use super::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};

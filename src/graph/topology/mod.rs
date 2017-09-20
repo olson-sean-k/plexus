@@ -43,8 +43,8 @@ mod edge;
 mod face;
 mod vertex;
 
-pub use self::edge::{EdgeView, OrphanEdgeView};
-pub use self::face::{FaceView, OrphanFaceView};
+pub use self::edge::{EdgeKeyTopology, EdgeView, OrphanEdgeView};
+pub use self::face::{FaceKeyTopology, FaceView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
 
 pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
