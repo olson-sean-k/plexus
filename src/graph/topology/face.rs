@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use graph::geometry::{AsPosition, FaceNormal, Geometry};
+use graph::geometry::{AsPosition, FaceCentroid, FaceNormal, Geometry};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
@@ -74,15 +74,45 @@ where
         FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
+    fn remove(self) -> Result<M, ()> {
+        let FaceView { mut mesh, key, .. } = self;
+        mesh.as_mut().remove_face(key)?;
+        Ok(mesh)
+    }
+
     // Resolve the `M` parameter to a concrete reference.
     fn with_mesh_mut(&mut self) -> FaceView<&mut Mesh<G>, G> {
         FaceView::new(self.mesh.as_mut(), self.key)
     }
 }
 
-// The elaborate type constraints state that positions stored in the vertex
-// geometry can be used to compute a normal of a face and that normal can be
-// scaled and added to vertex positions.
+impl<M, G> FaceView<M, G>
+where
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
+    G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+{
+    pub fn triangulate(self) -> Result<(), ()> {
+        let perimeter = self.edges()
+            .map(|edge| (edge.vertex, edge.next().unwrap().vertex))
+            .collect::<Vec<_>>();
+        if perimeter.len() <= 3 {
+            return Ok(());
+        }
+        let face = self.geometry.clone();
+        let centroid = G::centroid(self.with_mesh_ref())?;
+        let mut mesh = self.remove()?; // This binding keeps `mesh` alive.
+        let mesh = mesh.as_mut();
+        let c = mesh.insert_vertex(centroid);
+        for (a, b) in perimeter {
+            let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
+            let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
+            let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap();
+            mesh.insert_face(&[ab, bc, ca], face.clone()).unwrap();
+        }
+        Ok(())
+    }
+}
+
 impl<M, G> FaceView<M, G>
 where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
@@ -95,28 +125,11 @@ where
         ScaledFaceNormal<G, F>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
     {
-        self.extrude_with_geometry(distance, G::Edge::default(), G::Face::default())
-    }
-
-    pub fn extrude_with_geometry<F>(
-        self,
-        distance: F,
-        edge: G::Edge,
-        face: G::Face,
-    ) -> Result<Self, ()>
-    where
-        G::Normal: Mul<F>,
-        ScaledFaceNormal<G, F>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
-    {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
-        let geometry = self.extrude_vertex_geometry(distance)?;
-        // Begin topological mutations, starting by removing the originating
-        // face. These mutations invalidate the key used by the `FaceView`, so
-        // destructure `self` to avoid its reuse.
-        let FaceView { mut mesh, key, .. } = self;
-        mesh.as_mut().remove_face(key).unwrap();
+        let vertices = self.extrude_vertex_geometry(distance)?;
+        let face = self.geometry.clone();
+        let mut mesh = self.remove()?;
         // Use the keys for the existing vertices and the translated geometries
         // to construct the extruded face and its connective faces.
         //
@@ -124,7 +137,7 @@ where
         // opposing edges to its neighboring connective faces.
         let extrusion = {
             let mesh = mesh.as_mut();
-            let vertices = geometry
+            let vertices = vertices
                 .into_iter()
                 .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1)))
                 .collect::<Vec<_>>();
@@ -133,21 +146,21 @@ where
                 .enumerate()
                 .map(|(index, &(_, a))| {
                     let b = vertices[(index + 1) % vertices.len()].1;
-                    mesh.insert_edge((a, b), edge.clone()).unwrap()
+                    mesh.insert_edge((a, b), G::Edge::default()).unwrap()
                 })
                 .collect::<Vec<_>>();
-            let extrusion = mesh.insert_face(&edges, face.clone()).unwrap();
+            let extrusion = mesh.insert_face(&edges, face).unwrap();
             for index in 0..vertices.len() {
                 let (d, c) = vertices[index];
                 let (a, b) = vertices[(index + 1) % vertices.len()];
-                let ab = mesh.insert_edge((a, b), edge.clone()).unwrap();
-                let bc = mesh.insert_edge((b, c), edge.clone()).unwrap();
-                let cd = mesh.insert_edge((c, d), edge.clone()).unwrap();
-                let da = mesh.insert_edge((d, a), edge.clone()).unwrap();
-                let ca = mesh.insert_edge((c, a), edge.clone()).unwrap(); // Diagonal.
-                let ac = mesh.insert_edge((a, c), edge.clone()).unwrap(); // Diagonal.
-                mesh.insert_face(&[ab, bc, ca], face.clone()).unwrap();
-                mesh.insert_face(&[ac, cd, da], face.clone()).unwrap();
+                let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
+                let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
+                let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
+                let da = mesh.insert_edge((d, a), G::Edge::default()).unwrap();
+                let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap(); // Diagonal.
+                let ac = mesh.insert_edge((a, c), G::Edge::default()).unwrap(); // Diagonal.
+                mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
+                mesh.insert_face(&[ac, cd, da], G::Face::default()).unwrap();
             }
             extrusion
         };
@@ -156,20 +169,8 @@ where
 
     fn extrude_vertex_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
     where
-        // Constraints on the normal of the face:
-        //
-        // 1. Supports multiplication with `F` (becoming the scaled face
-        //    normal).
         G::Normal: Mul<F>,
-        // Constraints on the scaled normal of the face:
-        //
-        // 1. Supports cloning.
         ScaledFaceNormal<G, F>: Clone,
-        // Constraints on the vertex geometry when converted to a position:
-        //
-        // 1. Supports cloning.
-        // 2. Supports addition with the scaled normal of the face.
-        // 3. The output of the above addition is itself.
         VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
     {
         let translation = G::normal(self.with_mesh_ref())? * distance;

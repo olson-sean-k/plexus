@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 
 use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
                IntoVertices, Triangle, Triangulate};
-use graph::geometry::{FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
+use graph::geometry::{FaceCentroid, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
                       IntoInteriorGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, Topological, VertexMut, VertexRef};
@@ -219,6 +219,21 @@ where
         }
     }
 
+    pub fn triangulate(&mut self) -> Result<(), ()>
+    where
+        G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+    {
+        let faces = self.faces
+            .keys()
+            .map(|key| FaceKey::from(*key))
+            .collect::<Vec<_>>();
+        for face in faces {
+            let face = FaceMut::new(self, face);
+            face.triangulate()?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.vertices.insert_with_generator(Vertex::new(geometry))
     }
@@ -246,6 +261,11 @@ where
         edges: &[EdgeKey],
         geometry: G::Face,
     ) -> Result<FaceKey, ()> {
+        // A face requires at least three vertices (and edges). This invariant
+        // should be maintained by any code that is able to mutate the mesh,
+        // such that code manipulating faces (via `FaceView`) may assume this
+        // is true. Panics resulting from faces with fewer than three vertices
+        // are bugs.
         if edges.len() < 3 {
             return Err(());
         }
@@ -253,15 +273,16 @@ where
             .insert_with_generator(Face::new(edges[0], geometry));
         for index in 0..edges.len() {
             // TODO: Connecting these edges creates a cycle. This means code
-            //       must be able to detect these cycles. Is this okay?
+            //       must be aware of and able to detect these cycles. Is this
+            //       okay?
             self.connect_edges_in_face(face, (edges[index], edges[(index + 1) % edges.len()]));
         }
         Ok(face)
     }
 
     // TODO: This code orphans vertices; it does not remove vertices with no
-    //       remaining associated edges. `FaceView::extrude` relies on this
-    //       behavior.  Is this okay?
+    //       remaining associated edges. `FaceView::extrude` currently relies
+    //       on this behavior. Is this okay?
     pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
         // Get all of the edges forming the face.
         let edges = {
