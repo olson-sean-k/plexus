@@ -517,6 +517,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::Point3;
+
     use generate::*;
     use graph::*;
     use ordered::*;
@@ -526,7 +528,7 @@ mod tests {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
-            .collect::<Mesh<Triplet<_>>>();
+            .collect::<Mesh<Point3<f32>>>();
         // TODO: Provide a way to get a key for the faces in the mesh. Using
         //       `default` only works if the initial face has not been removed.
         let face = mesh.face(FaceKey::default()).unwrap();
@@ -540,7 +542,7 @@ mod tests {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
-            .collect::<Mesh<Triplet<_>>>();
+            .collect::<Mesh<Point3<f32>>>();
         // TODO: Provide a way to get a key for the faces in the mesh. Using
         //       `default` only works if the initial face has not been removed.
         let face = mesh.face(FaceKey::default()).unwrap();
@@ -551,11 +553,10 @@ mod tests {
 
     #[test]
     fn extrude_face() {
-        use nalgebra::Point3;
-
         let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect_with_indexer::<Mesh<Point3<f32>>, _>(LruIndexer::default());
+            .map_vertices(|vertex| vertex.into_hash())
+            .collect::<Mesh<Point3<f32>>>();
         {
             // TODO: Provide a way to get a key for the faces in the mesh.
             //       Using `default` only works if the initial face has not

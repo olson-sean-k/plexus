@@ -4,6 +4,7 @@ use std::ops::{AddAssign, MulAssign, Sub};
 use generate::{Duplet, Triplet};
 use graph::mesh::Mesh;
 use graph::topology::FaceRef;
+use ordered::NotNan;
 use self::alias::*;
 
 pub trait FromGeometry<T> {
@@ -205,6 +206,32 @@ mod feature_geometry_nalgebra {
     {
         fn from_geometry(other: Triplet<T>) -> Self {
             Point3::new(other.0, other.1, other.2)
+        }
+    }
+
+    impl<T> FromGeometry<Triplet<NotNan<T>>> for Point3<T>
+    where
+        T: Float + Scalar,
+    {
+        fn from_geometry(other: Triplet<NotNan<T>>) -> Self {
+            Point3::new(
+                other.0.into_inner(),
+                other.1.into_inner(),
+                other.2.into_inner(),
+            )
+        }
+    }
+
+    impl<T> FromGeometry<Point3<NotNan<T>>> for Point3<T>
+    where
+        T: Float + Scalar,
+    {
+        fn from_geometry(other: Point3<NotNan<T>>) -> Self {
+            Point3::new(
+                other.x.into_inner(),
+                other.y.into_inner(),
+                other.z.into_inner(),
+            )
         }
     }
 

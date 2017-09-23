@@ -52,7 +52,8 @@ use plexus::prelude::*;
 // to `Point3<f32>` via the `FromGeometry` trait in this example.
 let mesh: = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
     .polygons_with_position()
-    .collect_with_indexer::<Mesh<Point3<_>>, _>(LruIndexer::default());
+    .map_vertices(|vertex| vertex.into_hash())
+    .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
 let face = mesh.face_mut(FaceKey::default()).unwrap();
 let face = face.extrude(1.0).unwrap();
@@ -70,7 +71,8 @@ involved?
 The [ordered-float](https://crates.io/crates/ordered-float) crate is used by
 the `ordered` module to ease this problem. Common geometric types implement
 traits that provide conversions to and from a conjugate type that implements
-`Hash`.
+`Hash`. Some geometric types can be constructed from these conjugate types, as
+seen in the `Mesh` example.
 
 The `ordered` module also exposes some hashing functions for floating point
 primitives, which can be used to directly implement `Hash`. With the
