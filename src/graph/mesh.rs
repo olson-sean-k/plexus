@@ -4,6 +4,7 @@ use std::iter::FromIterator;
 
 use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
                IntoVertices, Triangle, Triangulate};
+use graph::VecExt;
 use graph::geometry::{FaceCentroid, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
                       IntoInteriorGeometry};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
@@ -166,6 +167,33 @@ where
             edges: Storage::new(),
             faces: Storage::new(),
         }
+    }
+
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, ()>
+    where
+        I: IntoIterator<Item = usize>,
+        J: IntoIterator,
+        J::Item: IntoGeometry<G::Vertex>,
+    {
+        let mut mesh = Mesh::new();
+        let vertices = vertices
+            .into_iter()
+            .map(|vertex| mesh.insert_vertex(vertex.into_geometry()))
+            .collect::<Vec<_>>();
+        for face in &indeces.into_iter().chunks(arity) {
+            let face = face.collect::<Vec<_>>();
+            if face.len() != arity {
+                return Err(());
+            }
+            let mut edges = Vec::with_capacity(arity);
+            for (a, b) in face.duplet_circuit_windows() {
+                let a = *vertices.get(a).ok_or(())?;
+                let b = *vertices.get(b).ok_or(())?;
+                edges.push(mesh.insert_edge((a, b), G::Edge::default())?);
+            }
+            mesh.insert_face(&edges, G::Face::default())?;
+        }
+        Ok(mesh)
     }
 
     pub fn compute_geometry(&mut self) {

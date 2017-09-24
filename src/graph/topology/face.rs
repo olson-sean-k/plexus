@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
+use graph::VecExt;
 use graph::geometry::{AsPosition, FaceCentroid, FaceNormal, Geometry};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
@@ -142,17 +143,13 @@ where
                 .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1)))
                 .collect::<Vec<_>>();
             let edges = vertices
-                .iter()
-                .enumerate()
-                .map(|(index, &(_, a))| {
-                    let b = vertices[(index + 1) % vertices.len()].1;
+                .duplet_circuit_windows()
+                .map(|((_, a), (_, b))| {
                     mesh.insert_edge((a, b), G::Edge::default()).unwrap()
                 })
                 .collect::<Vec<_>>();
             let extrusion = mesh.insert_face(&edges, face).unwrap();
-            for index in 0..vertices.len() {
-                let (d, c) = vertices[index];
-                let (a, b) = vertices[(index + 1) % vertices.len()];
+            for ((d, c), (a, b)) in vertices.duplet_circuit_windows() {
                 let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
                 let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
                 let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
@@ -578,5 +575,22 @@ mod tests {
         // extruded face remains, in addition to three connective faces, each
         // of which is constructed from two triangular faces.
         assert_eq!(12, mesh.face_count());
+    }
+
+    #[test]
+    fn triangulate_mesh() {
+        let (indeces, vertices) = cube::Cube::<f32>::with_unit_radius()
+            .polygons_with_position() // 6 quads, 24 vertices.
+            .map_vertices(|vertex| vertex.into_hash())
+            .index_vertices(HashIndexer::default());
+        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
+        mesh.triangulate().unwrap();
+
+        // There are 8 unique vertices and a vertex is added for each quad,
+        // yielding `8 + 6` vertices.
+        assert_eq!(14, mesh.vertex_count());
+        assert_eq!(72, mesh.edge_count());
+        // Each quad becomes a tetrahedron, so 6 quads become 24 triangles.
+        assert_eq!(24, mesh.face_count());
     }
 }

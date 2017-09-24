@@ -34,3 +34,58 @@ pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, Fac
 pub mod prelude {
     pub use super::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
 }
+
+pub(crate) trait VecExt<T>
+where
+    T: Copy,
+{
+    fn duplet_circuit_windows(&self) -> DupletCircuitWindows<T>;
+}
+
+impl<T> VecExt<T> for Vec<T>
+where
+    T: Copy,
+{
+    fn duplet_circuit_windows(&self) -> DupletCircuitWindows<T> {
+        DupletCircuitWindows::new(self)
+    }
+}
+
+pub(crate) struct DupletCircuitWindows<'a, T>
+where
+    T: 'a + Copy,
+{
+    input: &'a Vec<T>,
+    index: usize,
+}
+
+impl<'a, T> DupletCircuitWindows<'a, T>
+where
+    T: 'a + Copy,
+{
+    fn new(input: &'a Vec<T>) -> Self {
+        DupletCircuitWindows {
+            input: input,
+            index: 0,
+        }
+    }
+}
+
+impl<'a, T> Iterator for DupletCircuitWindows<'a, T>
+where
+    T: 'a + Copy,
+{
+    type Item = (T, T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index;
+        let n = self.input.len();
+        if index >= n {
+            None
+        }
+        else {
+            self.index += 1;
+            Some((self.input[index], self.input[(index + 1) % n]))
+        }
+    }
+}
