@@ -92,25 +92,24 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<(), ()> {
+    pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, ()> {
         let perimeter = self.edges()
             .map(|edge| (edge.vertex, edge.next().unwrap().vertex))
             .collect::<Vec<_>>();
         if perimeter.len() <= 3 {
-            return Ok(());
+            return Ok(None);
         }
         let face = self.geometry.clone();
         let centroid = G::centroid(self.with_mesh_ref())?;
-        let mut mesh = self.remove()?; // This binding keeps `mesh` alive.
-        let mesh = mesh.as_mut();
-        let c = mesh.insert_vertex(centroid);
+        let mut mesh = self.remove()?;
+        let c = mesh.as_mut().insert_vertex(centroid);
         for (a, b) in perimeter {
-            let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
-            let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
-            let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap();
-            mesh.insert_face(&[ab, bc, ca], face.clone()).unwrap();
+            let ab = mesh.as_mut().insert_edge((a, b), G::Edge::default()).unwrap();
+            let bc = mesh.as_mut().insert_edge((b, c), G::Edge::default()).unwrap();
+            let ca = mesh.as_mut().insert_edge((c, a), G::Edge::default()).unwrap();
+            mesh.as_mut().insert_face(&[ab, bc, ca], face.clone()).unwrap();
         }
-        Ok(())
+        Ok(Some(VertexView::new(mesh, c)))
     }
 }
 
