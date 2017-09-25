@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
@@ -35,8 +36,8 @@ impl Generator for Key {
     }
 }
 
-pub trait OpaqueKey {
-    type RawKey: Copy + Eq + Hash;
+pub trait OpaqueKey: Sized {
+    type RawKey: Copy + Eq + Hash + Into<Self>;
     type Generator: Generator;
 
     fn to_inner(&self) -> Self::RawKey;
@@ -101,6 +102,13 @@ impl OpaqueKey for FaceKey {
         self.0
     }
 }
+
+pub type StorageIter<'a, T> = hash_map::Iter<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
+pub type StorageIterMut<'a, T> = hash_map::IterMut<
+    'a,
+    <<T as Topological>::Key as OpaqueKey>::RawKey,
+    T,
+>;
 
 pub struct Storage<T>(
     <<T as Topological>::Key as OpaqueKey>::Generator,

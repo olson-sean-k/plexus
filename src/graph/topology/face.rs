@@ -6,7 +6,8 @@ use graph::geometry::{AsPosition, FaceCentroid, FaceNormal, Geometry};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
+use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, OrphanView,
+                      Topological, VertexView, View};
 
 #[derive(Clone, Copy)]
 pub struct FaceView<M, G>
@@ -104,10 +105,18 @@ where
         let mut mesh = self.remove()?;
         let c = mesh.as_mut().insert_vertex(centroid);
         for (a, b) in perimeter {
-            let ab = mesh.as_mut().insert_edge((a, b), G::Edge::default()).unwrap();
-            let bc = mesh.as_mut().insert_edge((b, c), G::Edge::default()).unwrap();
-            let ca = mesh.as_mut().insert_edge((c, a), G::Edge::default()).unwrap();
-            mesh.as_mut().insert_face(&[ab, bc, ca], face.clone()).unwrap();
+            let ab = mesh.as_mut()
+                .insert_edge((a, b), G::Edge::default())
+                .unwrap();
+            let bc = mesh.as_mut()
+                .insert_edge((b, c), G::Edge::default())
+                .unwrap();
+            let ca = mesh.as_mut()
+                .insert_edge((c, a), G::Edge::default())
+                .unwrap();
+            mesh.as_mut()
+                .insert_face(&[ab, bc, ca], face.clone())
+                .unwrap();
         }
         Ok(Some(VertexView::new(mesh, c)))
     }
@@ -225,6 +234,18 @@ where
     }
 }
 
+impl<M, G> View<M, G> for FaceView<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    type Topology = Face<G>;
+
+    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+        FaceView::new(mesh, key)
+    }
+}
+
 // There's no need to abstract over mutability for this type. For immutable
 // refs, there is no need for an orphan type. Moreover, it is not possible to
 // implement `AsRef` and `AsMut` for all types that implement `Geometry`.
@@ -251,6 +272,17 @@ where
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+}
+
+impl<'a, G> OrphanView<'a, G> for OrphanFaceView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Topology = Face<G>;
+
+    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
+        OrphanFaceView::new(&mut topology.geometry, key)
     }
 }
 
@@ -525,9 +557,7 @@ mod tests {
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<Mesh<Point3<f32>>>();
-        // TODO: Provide a way to get a key for the faces in the mesh. Using
-        //       `default` only works if the initial face has not been removed.
-        let face = mesh.face(FaceKey::default()).unwrap();
+        let face = mesh.faces().nth(0).unwrap();
 
         // All faces should be triangles and should have three edges.
         assert_eq!(3, face.edges().count());
@@ -539,9 +569,7 @@ mod tests {
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<Mesh<Point3<f32>>>();
-        // TODO: Provide a way to get a key for the faces in the mesh. Using
-        //       `default` only works if the initial face has not been removed.
-        let face = mesh.face(FaceKey::default()).unwrap();
+        let face = mesh.faces().nth(0).unwrap();
 
         // No matter which face is selected, it should have three neighbors.
         assert_eq!(3, face.faces().count());
@@ -554,10 +582,8 @@ mod tests {
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         {
-            // TODO: Provide a way to get a key for the faces in the mesh.
-            //       Using `default` only works if the initial face has not
-            //       been removed.
-            let face = mesh.face_mut(FaceKey::default()).unwrap();
+            let key = mesh.faces().nth(0).map(|face| face.key()).unwrap();
+            let face = mesh.face_mut(key).unwrap();
             let face = face.extrude(1.0).unwrap();
 
             // The extruded face, being a triangle, should have three

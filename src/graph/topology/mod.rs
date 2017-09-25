@@ -8,11 +8,11 @@
 //! `Orphan...Mut` types (immutable, mutable, and orphan views, respectively)
 //! summarized below:
 //!
-//! |                | Traversal   | Arity | Geometry  | Topology  |
-//! |----------------|-------------|-------|-----------|-----------|
-//! | `...Ref`       | Yes         | Many  | Immutable | Immutable |
-//! | `...Mut`       | Orphan Only | One   | Mutable   | Mutable   |
-//! | `Orphan...Mut` | No          | Many  | Mutable   | N/A       |
+//! | Type      | Name           | Traversal | Arity | Geometry  | Topology  |
+//! |-----------|----------------|-----------|-------|-----------|-----------|
+//! | Immutable | `...Ref`       | Yes       | Many  | Immutable | Immutable |
+//! | Mutable   | `...Mut`       | Neighbors | One   | Mutable   | Mutable   |
+//! | Orphan    | `Orphan...Mut` | No        | Many  | Mutable   | N/A       |
 //!
 //! Note that it is not possible to get mutable views from another mutable view
 //! via a traversal, because a mutation may alter the topology and invalidate
@@ -36,7 +36,7 @@
 // accessor functions MUST yield orphans (or not exist at all).
 
 use graph::Mesh;
-use graph::geometry::Attribute;
+use graph::geometry::{Attribute, Geometry};
 use graph::storage::OpaqueKey;
 
 mod edge;
@@ -62,4 +62,28 @@ pub type OrphanVertexMut<'a, G> = OrphanVertexView<'a, G>;
 pub trait Topological {
     type Key: OpaqueKey;
     type Attribute: Attribute;
+}
+
+pub trait View<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    type Topology: Topological;
+
+    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self;
+}
+
+pub trait OrphanView<'a, G>
+where
+    G: Geometry,
+{
+    type Topology: Topological;
+
+    // TODO: It would probably be better for this to accept a reference to the
+    //       attribute instead of the topology, but it is difficult to isolate
+    //       this type with the given traits and would require more machinery.
+    //       For now, it is expected that types implementing this function will
+    //       take a reference to the geometry within the given topology.
+    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self;
 }

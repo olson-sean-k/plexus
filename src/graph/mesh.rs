@@ -7,8 +7,9 @@ use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTrian
 use graph::VecExt;
 use graph::geometry::{FaceCentroid, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
                       IntoInteriorGeometry};
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, Topological, VertexMut, VertexRef};
+use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
+use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
+                      OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
 
 #[derive(Clone, Debug)]
 pub struct Vertex<G>
@@ -217,6 +218,14 @@ where
         }
     }
 
+    pub fn vertices(&self) -> MeshIter<VertexRef<G>, G> {
+        MeshIter::new(self, self.vertices.iter())
+    }
+
+    pub fn vertices_mut(&mut self) -> MeshIterMut<OrphanVertexMut<G>, G> {
+        MeshIterMut::new(self.vertices.iter_mut())
+    }
+
     pub fn edge_count(&self) -> usize {
         self.edges.len()
     }
@@ -232,6 +241,14 @@ where
         }
     }
 
+    pub fn edges(&self) -> MeshIter<EdgeRef<G>, G> {
+        MeshIter::new(self, self.edges.iter())
+    }
+
+    pub fn edges_mut(&mut self) -> MeshIterMut<OrphanEdgeMut<G>, G> {
+        MeshIterMut::new(self.edges.iter_mut())
+    }
+
     pub fn face_count(&self) -> usize {
         self.faces.len()
     }
@@ -245,6 +262,14 @@ where
             true => Some(FaceMut::new(self, face)),
             _ => None,
         }
+    }
+
+    pub fn faces(&self) -> MeshIter<FaceRef<G>, G> {
+        MeshIter::new(self, self.faces.iter())
+    }
+
+    pub fn faces_mut(&mut self) -> MeshIterMut<OrphanFaceMut<G>, G> {
+        MeshIterMut::new(self.faces.iter_mut())
     }
 
     pub fn triangulate(&mut self) -> Result<(), ()>
@@ -444,8 +469,96 @@ where
     }
 }
 
+pub struct MeshIter<'a, T, G>
+where
+    T: 'a + View<&'a Mesh<G>, G>,
+    T::Topology: 'a,
+    G: 'a + Geometry,
+{
+    mesh: &'a Mesh<G>,
+    input: StorageIter<'a, T::Topology>,
+}
+
+impl<'a, T, G> MeshIter<'a, T, G>
+where
+    T: View<&'a Mesh<G>, G>,
+    G: Geometry,
+{
+    fn new(mesh: &'a Mesh<G>, input: StorageIter<'a, T::Topology>) -> Self {
+        MeshIter {
+            mesh: mesh,
+            input: input,
+        }
+    }
+}
+
+impl<'a, T, G> Iterator for MeshIter<'a, T, G>
+where
+    T: View<&'a Mesh<G>, G>,
+    G: Geometry,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.input
+            .next()
+            .map(|entry| T::of(self.mesh, (*entry.0).into()))
+    }
+}
+
+// TODO: The fact that this iterator yields an orphan view (instead of a
+//       mutable view) may be surprising. This means that `Mesh`'s `face_mut`
+//       and `faces_mut` functions work very differently, despite the
+//       similarity in name. Is there some way to make this difference clear?
+pub struct MeshIterMut<'a, T, G>
+where
+    T: 'a + OrphanView<'a, G>,
+    G: 'a + Geometry,
+{
+    input: StorageIterMut<'a, T::Topology>,
+}
+
+impl<'a, T, G> MeshIterMut<'a, T, G>
+where
+    T: OrphanView<'a, G>,
+    G: Geometry,
+{
+    fn new(input: StorageIterMut<'a, T::Topology>) -> Self {
+        MeshIterMut { input: input }
+    }
+}
+
+impl<'a, T, G> Iterator for MeshIterMut<'a, T, G>
+where
+    T: OrphanView<'a, G>,
+    G: Geometry,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.input.next().map(|mut entry| {
+            T::of(
+                unsafe {
+                    use std::mem;
+
+                    // This should be safe, because the use of this iterator
+                    // requires a mutable borrow of the source mesh with
+                    // lifetime `'a`. Therefore, the (disjoint) geometry data
+                    // within the mesh should also be valid over the lifetime
+                    // '`a'.
+                    mem::transmute::<_, &'a mut T::Topology>(&mut entry.1)
+                },
+                (*entry.0).into(),
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use nalgebra::{Point3, Vector3};
+    use num::Zero;
+
     use generate::*;
     use graph::*;
     use ordered::*;
@@ -460,5 +573,26 @@ mod tests {
         assert_eq!(5, mesh.vertex_count());
         assert_eq!(18, mesh.edge_count());
         assert_eq!(6, mesh.face_count());
+    }
+
+    #[test]
+    fn iterate_mesh_topology() {
+        let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(4, 2)
+            .polygons_with_position() // 8 triangles, 24 vertices.
+            .map_vertices(|vertex| vertex.into_hash())
+            .collect::<Mesh<Point3<f32>>>();
+
+        assert_eq!(6, mesh.vertices().count());
+        assert_eq!(24, mesh.edges().count());
+        assert_eq!(8, mesh.faces().count());
+        for vertex in mesh.vertices() {
+            // Every vertex is connected to 4 triangles with 4 (incoming)
+            // edges. Traversal of topology should be possible.
+            assert_eq!(4, vertex.edges().count());
+        }
+        for vertex in mesh.vertices_mut() {
+            // Geometry should be mutable.
+            *vertex.geometry += Vector3::zero();
+        }
     }
 }

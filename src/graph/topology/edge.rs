@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use graph::geometry::Geometry;
 use graph::mesh::{Edge, Mesh};
 use graph::storage::{EdgeKey, VertexKey};
+use graph::topology::{OrphanView, Topological, View};
 
 #[derive(Clone, Copy)]
 pub struct EdgeView<M, G>
@@ -145,6 +146,18 @@ where
     }
 }
 
+impl<M, G> View<M, G> for EdgeView<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    type Topology = Edge<G>;
+
+    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+        EdgeView::new(mesh, key)
+    }
+}
+
 // There's no need to abstract over mutability for this type. For immutable
 // refs, there is no need for an orphan type. Moreover, it is not possible to
 // implement `AsRef` and `AsMut` for all types that implement `Geometry`.
@@ -171,6 +184,17 @@ where
 
     pub fn key(&self) -> EdgeKey {
         self.key
+    }
+}
+
+impl<'a, G> OrphanView<'a, G> for OrphanEdgeView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Topology = Edge<G>;
+
+    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
+        OrphanEdgeView::new(&mut topology.geometry, key)
     }
 }
 

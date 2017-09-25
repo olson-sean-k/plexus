@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use graph::geometry::Geometry;
 use graph::mesh::{Edge, Mesh, Vertex};
 use graph::storage::{EdgeKey, VertexKey};
-use graph::topology::{EdgeView, OrphanEdgeView};
+use graph::topology::{EdgeView, OrphanEdgeView, OrphanView, Topological, View};
 
 #[derive(Clone, Copy)]
 pub struct VertexView<M, G>
@@ -122,6 +122,18 @@ where
     }
 }
 
+impl<M, G> View<M, G> for VertexView<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    type Topology = Vertex<G>;
+
+    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+        VertexView::new(mesh, key)
+    }
+}
+
 pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
@@ -145,6 +157,17 @@ where
 
     pub fn key(&self) -> VertexKey {
         self.key
+    }
+}
+
+impl<'a, G> OrphanView<'a, G> for OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Topology = Vertex<G>;
+
+    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
+        OrphanVertexView::new(&mut topology.geometry, key)
     }
 }
 
@@ -243,17 +266,15 @@ mod tests {
 
     #[test]
     fn circulate_over_edges() {
-        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<Mesh<Triplet<_>>>();
-        // TODO: Provide a way to get a key for the vertices in the mesh. Using
-        //       `default` only works if the initial vertex has not been
-        //       removed.
-        let vertex = mesh.vertex(VertexKey::default()).unwrap();
 
-        // All faces should be triangles and all vertices should have three
-        // incoming edges.
-        assert_eq!(3, vertex.edges().count());
+        // All faces should be triangles and all vertices should have 4
+        // (incoming) edges.
+        for vertex in mesh.vertices() {
+            assert_eq!(4, vertex.edges().count());
+        }
     }
 }
