@@ -2,9 +2,10 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use graph::geometry::Geometry;
-use graph::mesh::{Edge, Mesh, Vertex};
-use graph::storage::{EdgeKey, VertexKey};
-use graph::topology::{EdgeView, OrphanEdgeView, OrphanView, Topological, View};
+use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::storage::{EdgeKey, FaceKey, VertexKey};
+use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological,
+                      View};
 
 #[derive(Clone, Copy)]
 pub struct VertexView<M, G>
@@ -49,6 +50,10 @@ where
         EdgeCirculator::new(self.with_mesh_ref())
     }
 
+    pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
+        FaceCirculator::from_edge_circulator(self.edges())
+    }
+
     // Resolve the `M` parameter to a concrete reference.
     fn with_mesh_ref(&self) -> VertexView<&Mesh<G>, G> {
         VertexView::new(self.mesh.as_ref(), self.key)
@@ -72,6 +77,10 @@ where
 
     pub fn edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
         EdgeCirculator::new(self.with_mesh_mut())
+    }
+
+    pub fn faces_mut(&mut self) -> FaceCirculator<&mut Mesh<G>, G> {
+        FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -254,6 +263,86 @@ where
                 }
             };
             OrphanEdgeView::new(geometry, edge)
+        })
+    }
+}
+
+pub struct FaceCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    inner: EdgeCirculator<M, G>,
+}
+
+impl<M, G> FaceCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    fn from_edge_circulator(edges: EdgeCirculator<M, G>) -> Self {
+        FaceCirculator { inner: edges }
+    }
+
+    fn next(&mut self) -> Option<FaceKey> {
+        while let Some(edge) = self.inner.next().map(|edge| {
+            self.inner.vertex.mesh.as_ref().edges.get(&edge).unwrap()
+        }) {
+            if let Some(face) = edge.face {
+                return Some(face);
+            }
+            else {
+                // Skip edges with no face. This can occur within non-enclosed
+                // meshes.
+                continue;
+            }
+        }
+        None
+    }
+}
+
+impl<'a, G> Iterator for FaceCirculator<&'a Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = FaceView<&'a Mesh<G>, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <FaceCirculator<_, _>>::next(self).map(|face| FaceView::new(self.inner.vertex.mesh, face))
+    }
+}
+
+impl<'a, G> Iterator for FaceCirculator<&'a mut Mesh<G>, G>
+where
+    G: 'a + Geometry,
+{
+    // This cannot be a `FaceView`, because that would alias the mutable
+    // reference to the mesh. Instead, yield the key and a mutable reference to
+    // the geometry data as an `OrphanFaceView` that discards any traversable
+    // reference into the mesh.
+    type Item = OrphanFaceView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        <FaceCirculator<_, _>>::next(self).map(|face| {
+            let geometry = {
+                unsafe {
+                    use std::mem;
+
+                    // There is no way to bind the anonymous lifetime of this
+                    // function to `Self::Item`. This is problematic for the
+                    // call to `get_mut`, which requires autoref. However, this
+                    // should be safe, because the use of this iterator
+                    // requires a mutable borrow of the source mesh with
+                    // lifetime `'a`. Therefore, the (disjoint) geometry data
+                    // within the mesh should also be valid over the lifetime
+                    // '`a'.
+                    let face = mem::transmute::<_, &'a mut Face<G>>(
+                        self.inner.vertex.mesh.faces.get_mut(&face).unwrap(),
+                    );
+                    &mut face.geometry
+                }
+            };
+            OrphanFaceView::new(geometry, face)
         })
     }
 }
