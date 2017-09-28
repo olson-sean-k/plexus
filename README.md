@@ -16,7 +16,7 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 
 ```rust
 use nalgebra::Point3;
-use plexus::buffer::conjoint::ConjointBuffer;
+use plexus::buffer::MeshBuffer;
 use plexus::generate::sphere;
 use plexus::prelude::*; // Common traits.
 
@@ -29,7 +29,7 @@ let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
     .map_vertices(|position| -> Point3<_> { position.into() })
     .map_vertices(|position| position * 10.0)
     .map_vertices(|position| Vertex::new(position, Color::white()))
-    .collect::<ConjointBuffer<u32, Vertex>>();
+    .collect::<MeshBuffer<u32, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
@@ -68,8 +68,8 @@ required: `Geometry` and `Attribute`.
 
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
-[cgmath](https://crates.io/crates/cgmath) crates (nalgebra is enabled by
-default) so that common types can be used right away for vertex geomtry.
+[cgmath](https://crates.io/crates/cgmath) crates so that common types can be
+used right away for vertex geomtry.
 
 ## Hashing Floating-Point Values
 

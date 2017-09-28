@@ -1,3 +1,9 @@
+//! Linear buffer that can be used for rendering.
+//!
+//! This module provides a `MeshBuffer` that can be read by graphics pipelines
+//! to render meshes. `MeshBuffer` combines an index buffer and vertex buffer,
+//! which is exposes as slices.
+
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -5,7 +11,7 @@ use std::iter::FromIterator;
 use generate::{FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles, IntoVertices,
                Topological, Triangle, Triangulate};
 
-pub struct ConjointBuffer<N, V>
+pub struct MeshBuffer<N, V>
 where
     N: Integer + Unsigned,
 {
@@ -13,7 +19,7 @@ where
     vertices: Vec<V>,
 }
 
-impl<N, V> ConjointBuffer<N, V>
+impl<N, V> MeshBuffer<N, V>
 where
     N: Integer + Unsigned,
 {
@@ -26,7 +32,7 @@ where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = V>,
     {
-        ConjointBuffer {
+        MeshBuffer {
             indeces: indeces.into_iter().collect(),
             vertices: vertices.into_iter().collect(),
         }
@@ -41,11 +47,11 @@ where
     }
 }
 
-impl<N, V> ConjointBuffer<N, V>
+impl<N, V> MeshBuffer<N, V>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    pub fn append<M, U>(&mut self, other: &mut ConjointBuffer<M, U>)
+    pub fn append<M, U>(&mut self, other: &mut MeshBuffer<M, U>)
     where
         M: Copy + Integer + Into<N> + Unsigned,
         U: Into<V>,
@@ -58,19 +64,19 @@ where
     }
 }
 
-impl<N, V> Default for ConjointBuffer<N, V>
+impl<N, V> Default for MeshBuffer<N, V>
 where
     N: Integer + Unsigned,
 {
     fn default() -> Self {
-        ConjointBuffer {
+        MeshBuffer {
             indeces: vec![],
             vertices: vec![],
         }
     }
 }
 
-impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for ConjointBuffer<N, V>
+impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
     P::Vertex: Into<V>,
@@ -82,14 +88,14 @@ where
         M: Indexer<Triangle<P::Vertex>, P::Vertex>,
     {
         let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
-        ConjointBuffer::from_raw_buffers(
+        MeshBuffer::from_raw_buffers(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into()),
         )
     }
 }
 
-impl<N, V, P> FromIterator<P> for ConjointBuffer<N, V>
+impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
     P::Vertex: Eq + Hash + Into<V>,
@@ -108,7 +114,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use buffer::conjoint::*;
+    use buffer::*;
     use generate::*;
     use ordered::*;
 
@@ -117,7 +123,7 @@ mod tests {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
-            .collect::<ConjointBuffer<u32, Triplet<_>>>();
+            .collect::<MeshBuffer<u32, Triplet<_>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
