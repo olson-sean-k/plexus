@@ -55,7 +55,7 @@ let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
     .map_vertices(|position| position.into_hash())
     .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
-let key = mesh.faces().nth(0).unwrap();
+let key = mesh.faces().nth(0).unwrap().key();
 let face = mesh.face_mut(key).unwrap();
 let face = face.extrude(1.0).unwrap();
 ```

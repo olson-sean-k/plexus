@@ -582,7 +582,7 @@ mod tests {
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         {
-            let key = mesh.faces().nth(0).map(|face| face.key()).unwrap();
+            let key = mesh.faces().nth(0).unwrap().key();
             let face = mesh.face_mut(key).unwrap();
             let face = face.extrude(1.0).unwrap();
 
