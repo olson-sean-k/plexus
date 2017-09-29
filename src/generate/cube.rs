@@ -1,8 +1,9 @@
 use generate::generate::{Generate, IndexPolygonGenerator, PolygonGenerator,
                          PositionPolygonGenerator, PositionVertexGenerator,
                          TexturePolygonGenerator, VertexGenerator};
-use generate::geometry::{Duplet, Triplet, Unit};
 use generate::topology::{MapVerticesInto, Quad};
+use generate::unit::Unit;
+use geometry::{Duplet, Triplet};
 
 #[derive(Clone, Copy)]
 pub enum Plane {

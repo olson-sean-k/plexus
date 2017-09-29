@@ -24,18 +24,12 @@ mod mesh;
 mod storage;
 mod topology;
 
-pub use self::geometry::{AsPosition, Attribute, Cross, FromGeometry, FromInteriorGeometry,
-                         Geometry, IntoGeometry, IntoInteriorGeometry, Normalize};
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef,
                          OrphanEdgeMut, OrphanFaceMut, OrphanVertexMut, VertexMut, VertexRef};
 
-pub mod prelude {
-    pub use super::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
-}
-
-pub(crate) trait VecExt<T>
+trait VecExt<T>
 where
     T: Copy,
 {
@@ -51,7 +45,7 @@ where
     }
 }
 
-pub(crate) struct DupletCircuitWindows<'a, T>
+struct DupletCircuitWindows<'a, T>
 where
     T: 'a + Copy,
 {

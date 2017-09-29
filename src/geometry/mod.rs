@@ -2,97 +2,27 @@ use num::{self, Float, Num, NumCast};
 
 use ordered::{HashConjugate, NotNan};
 
+pub mod convert;
+pub mod ops;
+
+pub trait Attribute: Clone {}
+
+pub trait Geometry: Sized {
+    type Vertex: Attribute;
+    type Edge: Attribute + Default;
+    type Face: Attribute + Default;
+}
+
+impl Attribute for () {}
+
+impl Geometry for () {
+    type Vertex = ();
+    type Edge = ();
+    type Face = ();
+}
+
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Duplet<T>(pub T, pub T);
-
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Triplet<T>(pub T, pub T, pub T);
-
-pub trait Unit: Copy + Num {
-    fn unit_radius() -> (Self, Self);
-    fn unit_width() -> (Self, Self);
-}
-
-// TODO: https://github.com/reem/rust-ordered-float/pull/31
-//       Once `NotNan` implements numeric traits, implement `Unit` for `NotNan`
-//       and allow it to be used as vertex geometry in generators.
-macro_rules! unit {
-    (integer => $($t:ty),*) => {$(
-        impl Unit for $t {
-            fn unit_radius() -> (Self, Self) {
-                use num::{One, Zero};
-                (Self::zero(), Self::one() + Self::one())
-            }
-
-            fn unit_width() -> (Self, Self) {
-                use num::{One, Zero};
-                (Self::zero(), Self::one())
-            }
-        }
-    )*};
-    (real => $($t:ty),*) => {$(
-        impl Unit for $t {
-            fn unit_radius() -> (Self, Self) {
-                use num::One;
-                (-Self::one(), Self::one())
-            }
-
-            fn unit_width() -> (Self, Self) {
-                use num::One;
-                let half = Self::one() / (Self::one() + Self::one());
-                (-half, half)
-            }
-        }
-    )*};
-}
-unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
-unit!(real => f32, f64);
-
-pub trait Interpolate<T = Self>: Sized {
-    type Output;
-
-    fn lerp(self, other: T, f: f64) -> Self::Output;
-
-    fn midpoint(self, other: T) -> Self::Output {
-        self.lerp(other, 0.5)
-    }
-}
-
-impl<T> Interpolate for Duplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, f: f64) -> Self::Output {
-        Duplet(lerp(self.0, other.0, f), lerp(self.1, other.1, f))
-    }
-}
-
-impl<T> Interpolate for Triplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, f: f64) -> Self::Output {
-        Triplet(
-            lerp(self.0, other.0, f),
-            lerp(self.1, other.1, f),
-            lerp(self.2, other.2, f),
-        )
-    }
-}
-
-fn lerp<T>(a: T, b: T, f: f64) -> T
-where
-    T: Num + NumCast,
-{
-    let f = num::clamp(f, 0.0, 1.0);
-    let af = <f64 as NumCast>::from(a).unwrap() * (1.0 - f);
-    let bf = <f64 as NumCast>::from(b).unwrap() * f;
-    <T as NumCast>::from(af + bf).unwrap()
-}
 
 impl<T> HashConjugate for Duplet<T>
 where
@@ -107,6 +37,24 @@ where
     fn from_hash(hash: Self::Hash) -> Self {
         Duplet((hash.0).into_inner(), (hash.1).into_inner())
     }
+}
+
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Triplet<T>(pub T, pub T, pub T);
+
+impl<T> Attribute for Triplet<T>
+where
+    T: Clone,
+{
+}
+
+impl<T> Geometry for Triplet<T>
+where
+    T: Clone,
+{
+    type Vertex = Self;
+    type Edge = ();
+    type Face = ();
 }
 
 impl<T> HashConjugate for Triplet<T>
@@ -132,6 +80,16 @@ where
     }
 }
 
+pub fn lerp<T>(a: T, b: T, f: f64) -> T
+where
+    T: Num + NumCast,
+{
+    let f = num::clamp(f, 0.0, 1.0);
+    let af = <f64 as NumCast>::from(a).unwrap() * (1.0 - f);
+    let bf = <f64 as NumCast>::from(b).unwrap() * f;
+    <T as NumCast>::from(af + bf).unwrap()
+}
+
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {}
 
@@ -139,7 +97,7 @@ mod feature_geometry_cgmath {}
 mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
 
-    use super::*;
+    use geometry::*;
 
     impl<T> From<Point2<T>> for Duplet<T>
     where
@@ -213,56 +171,19 @@ mod feature_geometry_nalgebra {
         }
     }
 
-    impl<T> Interpolate for Point2<T>
+    impl<T> Attribute for Point3<T>
     where
-        T: Num + NumCast + Scalar,
+        T: Scalar,
     {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Point2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
-        }
     }
 
-    impl<T> Interpolate for Point3<T>
+    impl<T> Geometry for Point3<T>
     where
-        T: Num + NumCast + Scalar,
+        T: Scalar,
     {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Point3::new(
-                lerp(self.x, other.x, f),
-                lerp(self.y, other.y, f),
-                lerp(self.z, other.z, f),
-            )
-        }
-    }
-
-    impl<T> Interpolate for Vector2<T>
-    where
-        T: Num + NumCast + Scalar,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Vector2::new(lerp(self.x, other.x, f), lerp(self.y, other.y, f))
-        }
-    }
-
-    impl<T> Interpolate for Vector3<T>
-    where
-        T: Num + NumCast + Scalar,
-    {
-        type Output = Self;
-
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
-            Vector3::new(
-                lerp(self.x, other.x, f),
-                lerp(self.y, other.y, f),
-                lerp(self.z, other.z, f),
-            )
-        }
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
     }
 
     impl<T> HashConjugate for Point2<T>

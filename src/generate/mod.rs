@@ -14,8 +14,8 @@
 //! Generating position and index buffers for a scaled sphere:
 //!
 //! ```rust
-//! use plexus::generate::prelude::*;
 //! use plexus::generate::sphere::UVSphere;
+//! use plexus::prelude::*;
 //!
 //! let sphere = UVSphere::<f32>::with_unit_radius(16, 16);
 //! let positions: Vec<_> = sphere
@@ -40,10 +40,10 @@
 pub mod cube;
 mod decompose;
 mod generate;
-mod geometry;
 mod index;
 pub mod sphere;
 mod topology;
+mod unit;
 
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
 pub(crate) use self::index::{FromIndexer, Indexer};
@@ -51,13 +51,6 @@ pub(crate) use self::index::{FromIndexer, Indexer};
 pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
                          PolygonsWithTexture, VertexGenerator, VerticesWithPosition};
-pub use self::geometry::{Duplet, Triplet};
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
                          Triangle};
-
-pub mod prelude {
-    pub use super::{CollectWithIndexer, Duplet, MapVertices, PolygonGenerator, PolygonsWithIndex,
-                    PolygonsWithPosition, PolygonsWithTexture, Triangulate, Triplet,
-                    VertexGenerator, Vertices, VerticesWithPosition};
-}

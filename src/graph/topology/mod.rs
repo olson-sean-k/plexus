@@ -35,8 +35,8 @@
 // for example. While `into` and immutable accessor functions are okay, mutable
 // accessor functions MUST yield orphans (or not exist at all).
 
+use geometry::{Attribute, Geometry};
 use graph::Mesh;
-use graph::geometry::{Attribute, Geometry};
 use graph::storage::OpaqueKey;
 
 mod edge;

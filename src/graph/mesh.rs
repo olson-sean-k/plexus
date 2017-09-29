@@ -4,9 +4,10 @@ use std::iter::FromIterator;
 
 use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
                IntoVertices, Triangle, Triangulate};
+use geometry::Geometry;
+use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
 use graph::VecExt;
-use graph::geometry::{FaceCentroid, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry,
-                      IntoInteriorGeometry};
+use graph::geometry::FaceCentroid;
 use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                       OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
@@ -195,10 +196,6 @@ where
             mesh.insert_face(&edges, G::Face::default())?;
         }
         Ok(mesh)
-    }
-
-    pub fn compute_geometry(&mut self) {
-        G::compute(self)
     }
 
     pub fn vertex_count(&self) -> usize {
@@ -560,6 +557,7 @@ mod tests {
     use num::Zero;
 
     use generate::*;
+    use geometry::*;
     use graph::*;
     use ordered::*;
 

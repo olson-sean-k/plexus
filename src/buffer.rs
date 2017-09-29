@@ -116,6 +116,7 @@ where
 mod tests {
     use buffer::*;
     use generate::*;
+    use geometry::*;
     use ordered::*;
 
     #[test]

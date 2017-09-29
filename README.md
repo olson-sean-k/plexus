@@ -18,7 +18,7 @@ triangulation, tesselation, and conversion into rendering pipeline data.
 use nalgebra::Point3;
 use plexus::buffer::MeshBuffer;
 use plexus::generate::sphere;
-use plexus::prelude::*; // Common traits.
+use plexus::prelude::*;
 
 // Example module in the local crate that provides basic rendering.
 use render::{self, Color, Vertex};
@@ -44,20 +44,19 @@ cannot.
 
 ```rust
 use nalgebra::Point3;
-use plexus::generate::{sphere, LruIndexer};
-use plexus::graph::{FaceKey, Mesh};
+use plexus::generate::sphere;
+use plexus::graph::Mesh;
 use plexus::prelude::*;
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
-// to `Point3<f32>` via the `FromGeometry` trait in this example.
+// to `Point3` via the `FromGeometry` trait in this example.
 let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
     .polygons_with_position()
     .map_vertices(|position| position.into_hash())
     .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
 let key = mesh.faces().nth(0).unwrap().key();
-let face = mesh.face_mut(key).unwrap();
-let face = face.extrude(1.0).unwrap();
+let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
 ```
 
 ## Geometric Traits
@@ -65,6 +64,38 @@ let face = face.extrude(1.0).unwrap();
 Meshes support arbitrary geometry via optional traits. Implementing these
 traits allows more operations to be supported, but only two basic traits are
 required: `Geometry` and `Attribute`.
+
+```rust
+use nalgebra::{Point3, Vector3};
+use plexus::geometry::{Attribute, Geometry};
+use plexus::geometry::convert::AsPosition;
+
+#[derive(Clone, Copy)]
+pub struct VertexGeometry {
+    pub position: Point3<f32>,
+    pub normal: Vector3<f32>,
+}
+
+impl Attribute for VertexGeometry {}
+
+impl Geometry for VertexGeometry {
+    type Vertex = Self;
+    type Edge = ();
+    type Face = ();
+}
+
+impl AsPosition for VertexGeometry {
+    type Target = Point3<f32>;
+
+    fn as_position(&self) -> &Self::Target {
+        &self.position
+    }
+
+    fn as_position_mut(&mut self) -> &mut Self::Target {
+        &mut self.position
+    }
+}
+```
 
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and

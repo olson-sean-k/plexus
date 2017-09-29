@@ -5,8 +5,9 @@ use std::marker::PhantomData;
 
 use generate::generate::{IndexPolygonGenerator, PolygonGenerator, PositionPolygonGenerator,
                          PositionVertexGenerator, VertexGenerator};
-use generate::geometry::{Triplet, Unit};
 use generate::topology::{Polygon, Quad, Triangle};
+use generate::unit::Unit;
+use geometry::Triplet;
 
 #[derive(Clone)]
 pub struct UVSphere<T = f32>

@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use graph::geometry::Geometry;
+use geometry::Geometry;
 use graph::mesh::{Edge, Mesh};
 use graph::storage::{EdgeKey, VertexKey};
 use graph::topology::{OrphanView, Topological, View};

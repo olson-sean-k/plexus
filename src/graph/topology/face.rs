@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
+use geometry::Geometry;
+use geometry::convert::AsPosition;
 use graph::VecExt;
-use graph::geometry::{AsPosition, FaceCentroid, FaceNormal, Geometry};
+use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
@@ -128,11 +130,11 @@ where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<F>(self, distance: F) -> Result<Self, ()>
+    pub fn extrude<T>(self, distance: T) -> Result<Self, ()>
     where
-        G::Normal: Mul<F>,
-        ScaledFaceNormal<G, F>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
+        G::Normal: Mul<T>,
+        ScaledFaceNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
@@ -172,11 +174,11 @@ where
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn extrude_vertex_geometry<F>(&self, distance: F) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
+    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
     where
-        G::Normal: Mul<F>,
-        ScaledFaceNormal<G, F>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, F>, Output = VertexPosition<G>> + Clone,
+        G::Normal: Mul<T>,
+        ScaledFaceNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
         let translation = G::normal(self.with_mesh_ref())? * distance;
         Ok(
@@ -583,8 +585,7 @@ mod tests {
             .collect::<Mesh<Point3<f32>>>();
         {
             let key = mesh.faces().nth(0).unwrap().key();
-            let face = mesh.face_mut(key).unwrap();
-            let face = face.extrude(1.0).unwrap();
+            let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.

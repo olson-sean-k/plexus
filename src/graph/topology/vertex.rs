@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use graph::geometry::Geometry;
+use geometry::Geometry;
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological,
@@ -350,6 +350,7 @@ where
 #[cfg(test)]
 mod tests {
     use generate::*;
+    use geometry::*;
     use graph::*;
     use ordered::*;
 
