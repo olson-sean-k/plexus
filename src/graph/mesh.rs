@@ -406,7 +406,6 @@ where
             edges,
             faces,
         } = mesh;
-        // TODO: The new geometry should be recomputed or finalized here.
         Mesh {
             vertices: vertices.map_values_into(|vertex| vertex.into_interior_geometry()),
             edges: edges.map_values_into(|edge| edge.into_interior_geometry()),
