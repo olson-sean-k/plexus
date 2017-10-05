@@ -14,19 +14,37 @@
 //! Generating position and index buffers for a scaled sphere:
 //!
 //! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
 //! use plexus::generate::sphere::UVSphere;
 //! use plexus::prelude::*;
 //!
+//! # fn main() {
 //! let sphere = UVSphere::<f32>::with_unit_radius(16, 16);
 //! let positions: Vec<_> = sphere
 //!     .vertices_with_position() // Generate the unique set of positional vertices.
-//!     .map(|Triplet(x, y, z)| Triplet(x * 10.0, y * 10.0, z * 10.0)) // Scale the positions by 10.
+//!     .map(|position| -> Point3<_> { position.into() }) // Convert into a nalgebra type.
+//!     .map(|position| position * 10.0) // Scale the positions by 10.
 //!     .collect();
 //! let indeces: Vec<_> = sphere
 //!     .polygons_with_index() // Generate polygons indexing the unique set of vertices.
 //!     .triangulate() // Decompose the polygons into triangles.
 //!     .vertices() // Decompose the triangles into vertices (indeces).
 //!     .collect();
+//! # }
+//! ```
+//! Generating position and index buffers using an indexer:
+//!
+//! ```rust
+//! use plexus::generate::LruIndexer;
+//! use plexus::generate::cube::Cube;
+//! use plexus::prelude::*;
+//!
+//! let (indeces, positions) = Cube::<f32>::with_unit_width()
+//!     .polygons_with_position()
+//!     .triangulate()
+//!     .index_vertices(LruIndexer::default());
 //! ```
 
 // TODO: Primitives are parameterized over the type of scalars used for spatial

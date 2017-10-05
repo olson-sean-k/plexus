@@ -1,8 +1,30 @@
-//! Linear buffer that can be used for rendering.
+//! Linear buffers that can be used for rendering.
 //!
-//! This module provides a `MeshBuffer` that can be read by graphics pipelines
-//! to render meshes. `MeshBuffer` combines an index buffer and vertex buffer,
-//! which is exposes as slices.
+//! This module provides a [`MeshBuffer`] that can be read by graphics
+//! pipelines to render meshes. `MeshBuffer` combines an index buffer and
+//! vertex buffer (containing arbitrary data), which are exposed as slices.
+//!
+//! # Examples
+//!
+//! Generating a buffer from a primitive:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
+//! use plexus::buffer::MeshBuffer;
+//! use plexus::generate::sphere::UVSphere;
+//! use plexus::prelude::*;
+//!
+//! # fn main() {
+//! let buffer = UVSphere::<f32>::with_unit_radius(16, 16)
+//!     .polygons_with_position()
+//!     .map_vertices(|vertex| vertex.into_hash())
+//!     .collect::<MeshBuffer<u32, Point3<_>>>();
+//! let indeces = buffer.as_index_slice();
+//! let positions = buffer.as_vertex_slice();
+//! # }
+//! ```
 
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;

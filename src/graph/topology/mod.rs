@@ -1,26 +1,3 @@
-//! Topological views into a `Mesh`.
-//!
-//! This module provides topological traits and views into a [`Mesh`]. Views
-//! allow the topology of a graph to be traversed and mutated in a consistent
-//! way, and also expose the geometry of the graph.
-//!
-//! Views behave like references, and are exposed as `...Ref`, `...Mut`, and
-//! `Orphan...Mut` types (immutable, mutable, and orphan views, respectively)
-//! summarized below:
-//!
-//! | Type      | Name           | Traversal | Arity | Geometry  | Topology  |
-//! |-----------|----------------|-----------|-------|-----------|-----------|
-//! | Immutable | `...Ref`       | Yes       | Many  | Immutable | Immutable |
-//! | Mutable   | `...Mut`       | Neighbors | One   | Mutable   | Mutable   |
-//! | Orphan    | `Orphan...Mut` | No        | Many  | Mutable   | N/A       |
-//!
-//! Note that it is not possible to get mutable views from another mutable view
-//! via a traversal, because a mutation may alter the topology and invalidate
-//! the originating view. This also means that mutable operations will always
-//! consume `self`. In general, an immutable traversal of topology can be used
-//! to collect keys that are later used to query and mutate the target
-//! topology.
-
 // This code assumes that any keys for topological structures in the mesh are
 // valid (hence the `unwrap` calls), which is very important for `Deref`.
 // Topological mutations using views are dangerous if they do not consume

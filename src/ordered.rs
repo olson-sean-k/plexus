@@ -28,6 +28,20 @@
 //! }
 //! # fn main() {}
 //! ```
+//!
+//! Converting generator types into a hashable type via `HashConjugate`:
+//!
+//! ```rust
+//! use plexus::generate::HashIndexer;
+//! use plexus::generate::cube::Cube;
+//! use plexus::prelude::*;
+//!
+//! let (indeces, positions) = Cube::<f32>::with_unit_width()
+//!     .polygons_with_position()
+//!     .map_vertices(|vertex| vertex.into_hash()) // Convert to hashable type.
+//!     .triangulate()
+//!     .index_vertices(HashIndexer::default());
+//! ```
 
 use num::Float;
 use ordered_float;
