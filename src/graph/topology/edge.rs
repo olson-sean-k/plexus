@@ -76,12 +76,7 @@ where
         let opposite = self.opposite;
         opposite.map(move |opposite| {
             OrphanEdgeView::new(
-                &mut self.mesh
-                    .as_mut()
-                    .edges
-                    .get_mut(&opposite)
-                    .unwrap()
-                    .geometry,
+                self.mesh.as_mut().edges.get_mut(&opposite).unwrap(),
                 opposite,
             )
         })
@@ -90,10 +85,7 @@ where
     pub fn next_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let next = self.next;
         next.map(move |next| {
-            OrphanEdgeView::new(
-                &mut self.mesh.as_mut().edges.get_mut(&next).unwrap().geometry,
-                next,
-            )
+            OrphanEdgeView::new(self.mesh.as_mut().edges.get_mut(&next).unwrap(), next)
         })
     }
 
@@ -153,37 +145,52 @@ where
 {
     type Topology = Edge<G>;
 
-    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+    fn from_mesh(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
         EdgeView::new(mesh, key)
     }
 }
 
-// There's no need to abstract over mutability for this type. For immutable
-// refs, there is no need for an orphan type. Moreover, it is not possible to
-// implement `AsRef` and `AsMut` for all types that implement `Geometry`.
 pub struct OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
 {
     key: EdgeKey,
-    // The name `geometry` mirrors the `geometry` field of `Edge`, to which
-    // `EdgeView` derefs.
-    pub geometry: &'a mut G::Edge,
+    edge: &'a mut Edge<G>,
 }
 
 impl<'a, G> OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub(crate) fn new(geometry: &'a mut G::Edge, edge: EdgeKey) -> Self {
+    pub(crate) fn new(edge: &'a mut Edge<G>, key: EdgeKey) -> Self {
         OrphanEdgeView {
-            key: edge,
-            geometry: geometry,
+            key: key,
+            edge: edge,
         }
     }
 
     pub fn key(&self) -> EdgeKey {
         self.key
+    }
+}
+
+impl<'a, G> Deref for OrphanEdgeView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Target = <Self as OrphanView<'a, G>>::Topology;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.edge
+    }
+}
+
+impl<'a, G> DerefMut for OrphanEdgeView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.edge
     }
 }
 
@@ -193,8 +200,11 @@ where
 {
     type Topology = Edge<G>;
 
-    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
-        OrphanEdgeView::new(&mut topology.geometry, key)
+    fn from_topology(
+        topology: &'a mut Self::Topology,
+        key: <Self::Topology as Topological>::Key,
+    ) -> Self {
+        OrphanEdgeView::new(topology, key)
     }
 }
 

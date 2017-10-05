@@ -64,6 +64,11 @@ pub trait Topological {
     type Attribute: Attribute;
 }
 
+// TODO: The view traits could require `Deref` and replace the `Topology`
+//       associated type with `Target`. However, they are only used to abstract
+//       over the instantiation of views, and placing constraints on
+//       `Deref::Target` is not transient.
+
 pub trait View<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -71,19 +76,20 @@ where
 {
     type Topology: Topological;
 
-    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self;
+    fn from_mesh(mesh: M, key: <Self::Topology as Topological>::Key) -> Self;
 }
 
+// Orphan views do not abstract over mutability of the topology they reference,
+// as an immutable orphan view is not useful and could always be replaced by an
+// immutable view.
 pub trait OrphanView<'a, G>
 where
     G: Geometry,
 {
     type Topology: Topological;
 
-    // TODO: It would probably be better for this to accept a reference to the
-    //       attribute instead of the topology, but it is difficult to isolate
-    //       this type with the given traits and would require more machinery.
-    //       For now, it is expected that types implementing this function will
-    //       take a reference to the geometry within the given topology.
-    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self;
+    fn from_topology(
+        topology: &'a mut Self::Topology,
+        key: <Self::Topology as Topological>::Key,
+    ) -> Self;
 }

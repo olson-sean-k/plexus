@@ -68,10 +68,7 @@ where
     pub fn outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let edge = self.edge;
         edge.map(move |edge| {
-            OrphanEdgeView::new(
-                &mut self.mesh.as_mut().edges.get_mut(&edge).unwrap().geometry,
-                edge,
-            )
+            OrphanEdgeView::new(self.mesh.as_mut().edges.get_mut(&edge).unwrap(), edge)
         })
     }
 
@@ -138,7 +135,7 @@ where
 {
     type Topology = Vertex<G>;
 
-    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+    fn from_mesh(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
         VertexView::new(mesh, key)
     }
 }
@@ -148,24 +145,42 @@ where
     G: 'a + Geometry,
 {
     key: VertexKey,
-    // The name `geometry` mirrors the `geometry` field of `Vertex`, to which
-    // `VertexView` derefs.
-    pub geometry: &'a mut G::Vertex,
+    vertex: &'a mut Vertex<G>,
 }
 
 impl<'a, G> OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub(crate) fn new(geometry: &'a mut G::Vertex, vertex: VertexKey) -> Self {
+    pub(crate) fn new(vertex: &'a mut Vertex<G>, key: VertexKey) -> Self {
         OrphanVertexView {
-            key: vertex,
-            geometry: geometry,
+            key: key,
+            vertex: vertex,
         }
     }
 
     pub fn key(&self) -> VertexKey {
         self.key
+    }
+}
+
+impl<'a, G> Deref for OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Target = <Self as OrphanView<'a, G>>::Topology;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.vertex
+    }
+}
+
+impl<'a, G> DerefMut for OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.vertex
     }
 }
 
@@ -175,8 +190,11 @@ where
 {
     type Topology = Vertex<G>;
 
-    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
-        OrphanVertexView::new(&mut topology.geometry, key)
+    fn from_topology(
+        topology: &'a mut Self::Topology,
+        key: <Self::Topology as Topological>::Key,
+    ) -> Self {
+        OrphanVertexView::new(topology, key)
     }
 }
 
@@ -244,7 +262,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         <EdgeCirculator<_, _>>::next(self).map(|edge| {
-            let geometry = {
+            OrphanEdgeView::new(
                 unsafe {
                     use std::mem;
 
@@ -256,13 +274,12 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let edge = mem::transmute::<_, &'a mut Edge<G>>(
+                    mem::transmute::<_, &'a mut Edge<G>>(
                         self.vertex.mesh.edges.get_mut(&edge).unwrap(),
-                    );
-                    &mut edge.geometry
-                }
-            };
-            OrphanEdgeView::new(geometry, edge)
+                    )
+                },
+                edge,
+            )
         })
     }
 }
@@ -324,7 +341,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         <FaceCirculator<_, _>>::next(self).map(|face| {
-            let geometry = {
+            OrphanFaceView::new(
                 unsafe {
                     use std::mem;
 
@@ -336,13 +353,12 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let face = mem::transmute::<_, &'a mut Face<G>>(
+                    mem::transmute::<_, &'a mut Face<G>>(
                         self.inner.vertex.mesh.faces.get_mut(&face).unwrap(),
-                    );
-                    &mut face.geometry
-                }
-            };
-            OrphanFaceView::new(geometry, face)
+                    )
+                },
+                face,
+            )
         })
     }
 }

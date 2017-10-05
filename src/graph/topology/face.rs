@@ -219,7 +219,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    type Target = Face<G>;
+    type Target = <Self as View<M, G>>::Topology;
 
     fn deref(&self) -> &Self::Target {
         self.mesh.as_ref().faces.get(&self.key).unwrap()
@@ -243,37 +243,52 @@ where
 {
     type Topology = Face<G>;
 
-    fn of(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
+    fn from_mesh(mesh: M, key: <Self::Topology as Topological>::Key) -> Self {
         FaceView::new(mesh, key)
     }
 }
 
-// There's no need to abstract over mutability for this type. For immutable
-// refs, there is no need for an orphan type. Moreover, it is not possible to
-// implement `AsRef` and `AsMut` for all types that implement `Geometry`.
 pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
     key: FaceKey,
-    // The name `geometry` mirrors the `geometry` field of `Face`, to which
-    // `FaceView` derefs.
-    pub geometry: &'a mut G::Face,
+    face: &'a mut Face<G>,
 }
 
 impl<'a, G> OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub(crate) fn new(geometry: &'a mut G::Face, face: FaceKey) -> Self {
+    pub(crate) fn new(face: &'a mut Face<G>, key: FaceKey) -> Self {
         OrphanFaceView {
-            key: face,
-            geometry: geometry,
+            key: key,
+            face: face,
         }
     }
 
     pub fn key(&self) -> FaceKey {
         self.key
+    }
+}
+
+impl<'a, G> Deref for OrphanFaceView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Target = <Self as OrphanView<'a, G>>::Topology;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.face
+    }
+}
+
+impl<'a, G> DerefMut for OrphanFaceView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.face
     }
 }
 
@@ -283,8 +298,11 @@ where
 {
     type Topology = Face<G>;
 
-    fn of(topology: &'a mut Self::Topology, key: <Self::Topology as Topological>::Key) -> Self {
-        OrphanFaceView::new(&mut topology.geometry, key)
+    fn from_topology(
+        topology: &'a mut Self::Topology,
+        key: <Self::Topology as Topological>::Key,
+    ) -> Self {
+        OrphanFaceView::new(topology, key)
     }
 }
 
@@ -355,7 +373,7 @@ where
                 self.inner.face.mesh.edges.get(&edge.key()).unwrap().vertex
             })
             .map(|vertex| {
-                let geometry = {
+                OrphanVertexView::new(
                     unsafe {
                         use std::mem;
 
@@ -367,13 +385,12 @@ where
                         // lifetime `'a`. Therefore, the (disjoint) geometry data
                         // within the mesh should also be valid over the lifetime
                         // '`a'.
-                        let vertex = mem::transmute::<_, &'a mut Vertex<G>>(
+                        mem::transmute::<_, &'a mut Vertex<G>>(
                             self.inner.face.mesh.vertices.get_mut(&vertex).unwrap(),
-                        );
-                        &mut vertex.geometry
-                    }
-                };
-                OrphanVertexView::new(geometry, vertex)
+                        )
+                    },
+                    vertex,
+                )
             })
     }
 }
@@ -437,7 +454,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         <EdgeCirculator<_, _>>::next(self).map(|edge| {
-            let geometry = {
+            OrphanEdgeView::new(
                 unsafe {
                     use std::mem;
 
@@ -449,13 +466,12 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let edge = mem::transmute::<_, &'a mut Edge<G>>(
+                    mem::transmute::<_, &'a mut Edge<G>>(
                         self.face.mesh.edges.get_mut(&edge).unwrap(),
-                    );
-                    &mut edge.geometry
-                }
-            };
-            OrphanEdgeView::new(geometry, edge)
+                    )
+                },
+                edge,
+            )
         })
     }
 }
@@ -522,7 +538,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         <FaceCirculator<_, _>>::next(self).map(|face| {
-            let geometry = {
+            OrphanFaceView::new(
                 unsafe {
                     use std::mem;
 
@@ -534,13 +550,12 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    let face = mem::transmute::<_, &'a mut Face<G>>(
+                    mem::transmute::<_, &'a mut Face<G>>(
                         self.inner.face.mesh.faces.get_mut(&face).unwrap(),
-                    );
-                    &mut face.geometry
-                }
-            };
-            OrphanFaceView::new(geometry, face)
+                    )
+                },
+                face,
+            )
         })
     }
 }

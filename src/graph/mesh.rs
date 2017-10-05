@@ -499,14 +499,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.input
             .next()
-            .map(|entry| T::of(self.mesh, (*entry.0).into()))
+            .map(|entry| T::from_mesh(self.mesh, (*entry.0).into()))
     }
 }
 
-// TODO: The fact that this iterator yields an orphan view (instead of a
-//       mutable view) may be surprising. This means that `Mesh`'s `face_mut`
-//       and `faces_mut` functions work very differently, despite the
-//       similarity in name. Is there some way to make this difference clear?
 pub struct MeshIterMut<'a, T, G>
 where
     T: 'a + OrphanView<'a, G>,
@@ -534,7 +530,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|mut entry| {
-            T::of(
+            T::from_topology(
                 unsafe {
                     use std::mem;
 
@@ -588,9 +584,9 @@ mod tests {
             // edges. Traversal of topology should be possible.
             assert_eq!(4, vertex.edges().count());
         }
-        for vertex in mesh.vertices_mut() {
+        for mut vertex in mesh.vertices_mut() {
             // Geometry should be mutable.
-            *vertex.geometry += Vector3::zero();
+            vertex.geometry += Vector3::zero();
         }
     }
 }
