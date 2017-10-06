@@ -1,4 +1,7 @@
 //! **Plexus** is a library for generating and manipulating 3D mesh data.
+//!
+//! Please note that versions in the `0.0.*` series are experimental and
+//! extremely unstable!
 #![allow(unknown_lints)] // Allow clippy lints.
 
 #[cfg(feature = "geometry-nalgebra")]

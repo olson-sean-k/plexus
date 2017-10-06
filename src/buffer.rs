@@ -20,7 +20,7 @@
 //! let buffer = UVSphere::<f32>::with_unit_radius(16, 16)
 //!     .polygons_with_position()
 //!     .map_vertices(|vertex| vertex.into_hash())
-//!     .collect::<MeshBuffer<u32, Point3<_>>>();
+//!     .collect::<MeshBuffer<u32, Point3<f32>>>();
 //! let indeces = buffer.as_index_slice();
 //! let positions = buffer.as_vertex_slice();
 //! # }
@@ -32,6 +32,7 @@ use std::iter::FromIterator;
 
 use generate::{FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles, IntoVertices,
                Topological, Triangle, Triangulate};
+use geometry::convert::IntoGeometry;
 
 pub struct MeshBuffer<N, V>
 where
@@ -76,11 +77,15 @@ where
     pub fn append<M, U>(&mut self, other: &mut MeshBuffer<M, U>)
     where
         M: Copy + Integer + Into<N> + Unsigned,
-        U: Into<V>,
+        U: IntoGeometry<V>,
     {
         let offset = N::from(self.vertices.len()).unwrap();
-        self.vertices
-            .extend(other.vertices.drain(..).map(|vertex| vertex.into()));
+        self.vertices.extend(
+            other
+                .vertices
+                .drain(..)
+                .map(|vertex| vertex.into_geometry()),
+        );
         self.indeces
             .extend(other.indeces.drain(..).map(|index| index.into() + offset))
     }
@@ -101,7 +106,7 @@ where
 impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
-    P::Vertex: Into<V>,
+    P::Vertex: IntoGeometry<V>,
     N: Integer + NumCast + Unsigned,
 {
     fn from_indexer<I, M>(input: I, indexer: M) -> Self
@@ -112,7 +117,7 @@ where
         let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
         MeshBuffer::from_raw_buffers(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
-            vertices.into_iter().map(|vertex| vertex.into()),
+            vertices.into_iter().map(|vertex| vertex.into_geometry()),
         )
     }
 }
@@ -120,7 +125,7 @@ where
 impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
-    P::Vertex: Eq + Hash + Into<V>,
+    P::Vertex: Eq + Hash + IntoGeometry<V>,
     N: Integer + NumCast + Unsigned,
 {
     fn from_iter<I>(input: I) -> Self
