@@ -43,12 +43,20 @@
 //! [`FaceMut`], provide topological operations, like triangulation and
 //! extrusion.
 //!
+//! # Circulators
+//!
+//! Topological views allow for traversals of a mesh's topology. One useful
+//! type of traversal uses a circulator, which is a type of iterator that
+//! examines the neighbors of a topological structure. For example, the face
+//! circulator of a vertex yields all faces that share that vertex in order.
+//!
 //! # Examples
 //!
 //! Creating an empty mesh with no geometric data:
 //!
 //! ```rust
-//! # use plexus::graph::Mesh;
+//! use plexus::graph::Mesh;
+//!
 //! let mut mesh = Mesh::<()>::new();
 //! ```
 //!
@@ -87,6 +95,27 @@
 //!     .triangulate()
 //!     .index_vertices(LruIndexer::with_capacity(256));
 //! let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, positions, 3);
+//! # }
+//!
+//! ```
+//!
+//! Manipulating a face in a mesh:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
+//! use plexus::generate::sphere::UVSphere;
+//! use plexus::graph::Mesh;
+//! use plexus::prelude::*;
+//!
+//! # fn main() {
+//! let mut mesh = UVSphere::<f32>::with_unit_radius(16, 16)
+//!     .polygons_with_position()
+//!     .map_vertices(|vertex| vertex.into_hash())
+//!     .collect::<Mesh<Point3<f32>>>();
+//! let key = mesh.faces().nth(0).unwrap().key(); // Get the key of the first face.
+//! mesh.face_mut(key).unwrap().extrude(1.0).unwrap(); // Extrude the face.
 //! # }
 //! ```
 
