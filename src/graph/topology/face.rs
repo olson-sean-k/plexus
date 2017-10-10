@@ -43,6 +43,10 @@ where
         FaceKeyTopology::new(self.key, self.edges().map(|edge| edge.to_key_topology()))
     }
 
+    pub fn arity(&self) -> usize {
+        self.edges().count()
+    }
+
     pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G> {
         VertexCirculator::from_edge_circulator(self.edges())
     }
