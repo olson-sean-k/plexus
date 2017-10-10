@@ -11,6 +11,10 @@ pub trait Topological: Sized {
 
 pub trait Polygonal: Topological {}
 
+pub trait Arity {
+    const ARITY: usize;
+}
+
 pub trait MapVerticesInto<T, U>: Topological<Vertex = T>
 where
     T: Clone,
@@ -105,6 +109,10 @@ impl<T> Line<T> {
     }
 }
 
+impl<T> Arity for Line<T> {
+    const ARITY: usize = 2;
+}
+
 impl<T, U> MapVerticesInto<T, U> for Line<T>
 where
     T: Clone,
@@ -156,6 +164,10 @@ impl<T> Triangle<T> {
     {
         Triangle::new(value.clone(), value.clone(), value)
     }
+}
+
+impl<T> Arity for Triangle<T> {
+    const ARITY: usize = 3;
 }
 
 impl<T, U> MapVerticesInto<T, U> for Triangle<T>
@@ -227,6 +239,10 @@ impl<T> Quad<T> {
     {
         Quad::new(value.clone(), value.clone(), value.clone(), value)
     }
+}
+
+impl<T> Arity for Quad<T> {
+    const ARITY: usize = 4;
 }
 
 impl<T, U> MapVerticesInto<T, U> for Quad<T>

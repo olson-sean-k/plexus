@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use generate::decompose::IntoVertices;
-use generate::topology::Topological;
+use generate::topology::{Arity, Topological};
 
 pub trait Indexer<T, K>
 where
@@ -152,7 +152,7 @@ where
 
 pub trait IndexVertices<T>: Sized
 where
-    T: IntoVertices + Topological,
+    T: Arity + IntoVertices + Topological,
 {
     fn index_vertices_with_key<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
@@ -170,7 +170,7 @@ where
 impl<T, I> IndexVertices<T> for I
 where
     I: Iterator<Item = T>,
-    T: IntoVertices + Topological,
+    T: Arity + IntoVertices + Topological,
 {
     fn index_vertices_with_key<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
