@@ -44,36 +44,28 @@ where
 
 impl<N, V> MeshBuffer<N, V>
 where
-    N: Integer + Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
 {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Self
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, ()>
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = V>,
     {
-        MeshBuffer {
-            indeces: indeces.into_iter().collect(),
-            vertices: vertices.into_iter().collect(),
+        let indeces = indeces.into_iter().collect::<Vec<_>>();
+        let vertices = vertices.into_iter().collect::<Vec<_>>();
+        let len = N::from(vertices.len()).unwrap();
+        if indeces.iter().any(|index| *index >= len) {
+            Err(())
+        }
+        else {
+            Ok(MeshBuffer { indeces, vertices })
         }
     }
 
-    pub fn as_index_slice(&self) -> &[N] {
-        self.indeces.as_slice()
-    }
-
-    pub fn as_vertex_slice(&self) -> &[V] {
-        self.vertices.as_slice()
-    }
-}
-
-impl<N, V> MeshBuffer<N, V>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
     pub fn append<M, U>(&mut self, other: &mut MeshBuffer<M, U>)
     where
         M: Copy + Integer + Into<N> + Unsigned,
@@ -88,6 +80,14 @@ where
         );
         self.indeces
             .extend(other.indeces.drain(..).map(|index| index.into() + offset))
+    }
+
+    pub fn as_index_slice(&self) -> &[N] {
+        self.indeces.as_slice()
+    }
+
+    pub fn as_vertex_slice(&self) -> &[V] {
+        self.vertices.as_slice()
     }
 }
 
@@ -107,7 +107,7 @@ impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
     P::Vertex: IntoGeometry<V>,
-    N: Integer + NumCast + Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
 {
     fn from_indexer<I, M>(input: I, indexer: M) -> Self
     where
@@ -118,7 +118,7 @@ where
         MeshBuffer::from_raw_buffers(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
-        )
+        ).unwrap()
     }
 }
 
@@ -126,7 +126,7 @@ impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
     P: IntoTriangles + IntoVertices + Topological,
     P::Vertex: Eq + Hash + IntoGeometry<V>,
-    N: Integer + NumCast + Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
 {
     fn from_iter<I>(input: I) -> Self
     where
