@@ -9,6 +9,8 @@ extern crate alga;
 extern crate arrayvec;
 #[cfg(feature = "geometry-cgmath")]
 extern crate cgmath;
+#[macro_use]
+extern crate derivative;
 extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;

@@ -12,11 +12,13 @@ use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, Ver
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                       OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
 
-#[derive(Clone, Debug)]
+#[derivative(Hash)]
+#[derive(Clone, Debug, Derivative)]
 pub struct Vertex<G>
 where
     G: Geometry,
 {
+    #[derivative(Hash="ignore")]
     pub geometry: G::Vertex,
     pub(super) edge: Option<EdgeKey>,
 }
@@ -55,11 +57,13 @@ where
     type Attribute = G::Vertex;
 }
 
-#[derive(Clone, Debug)]
+#[derivative(Hash)]
+#[derive(Clone, Debug, Derivative)]
 pub struct Edge<G>
 where
     G: Geometry,
 {
+    #[derivative(Hash="ignore")]
     pub geometry: G::Edge,
     pub(super) vertex: VertexKey,
     pub(super) opposite: Option<EdgeKey>,
@@ -107,11 +111,13 @@ where
     type Attribute = G::Edge;
 }
 
-#[derive(Clone, Debug)]
+#[derivative(Hash)]
+#[derive(Clone, Debug, Derivative)]
 pub struct Face<G>
 where
     G: Geometry,
 {
+    #[derivative(Hash="ignore")]
     pub geometry: G::Face,
     pub(super) edge: EdgeKey,
 }
