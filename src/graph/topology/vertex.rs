@@ -7,7 +7,6 @@ use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological,
                       View};
 
-#[derive(Clone, Copy)]
 pub struct VertexView<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -126,6 +125,27 @@ where
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.mesh.as_mut().vertices.get_mut(&self.key).unwrap()
     }
+}
+
+impl<M, G> Clone for VertexView<M, G>
+where
+    M: AsRef<Mesh<G>> + Clone,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        VertexView {
+            mesh: self.mesh.clone(),
+            key: self.key.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<M, G> Copy for VertexView<M, G>
+where
+    M: AsRef<Mesh<G>> + Copy,
+    G: Geometry,
+{
 }
 
 impl<M, G> View<M, G> for VertexView<M, G>
