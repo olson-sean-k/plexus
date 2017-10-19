@@ -290,17 +290,25 @@ where
         Ok(())
     }
 
-    pub fn to_mesh_buffer<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
+    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
     where
         G::Vertex: IntoGeometry<V>,
         N: Copy + Integer + NumCast + Unsigned,
+    {
+        self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.clone().into_geometry())
+    }
+
+    pub fn to_mesh_buffer_by_vertex_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
+    where
+        N: Copy + Integer + NumCast + Unsigned,
+        F: FnMut(VertexRef<G>) -> V,
     {
         let (keys, vertices) = {
             let mut keys = HashMap::with_capacity(self.vertex_count());
             let mut vertices = Vec::with_capacity(self.vertex_count());
             for (n, vertex) in self.vertices().enumerate() {
                 keys.insert(vertex.key(), n);
-                vertices.push(vertex.geometry.clone().into_geometry());
+                vertices.push(f(vertex));
             }
             (keys, vertices)
         };
@@ -318,6 +326,39 @@ where
             indeces
         };
         MeshBuffer::from_raw_buffers(indeces, vertices)
+    }
+
+    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
+    where
+        G::Vertex: IntoGeometry<V>,
+        N: Copy + Integer + NumCast + Unsigned,
+    {
+        self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.clone().into_geometry())
+    }
+
+    pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
+    where
+        N: Copy + Integer + NumCast + Unsigned,
+        F: FnMut(FaceRef<G>, VertexRef<G>) -> V,
+    {
+        let vertices = {
+            let arity = self.faces().nth(0).ok_or(())?.arity();
+            let mut vertices = Vec::with_capacity(arity * self.face_count());
+            for face in self.faces() {
+                if face.arity() != arity {
+                    return Err(());
+                }
+                for vertex in face.vertices() {
+                    vertices.push(f(face, vertex));
+                }
+            }
+            vertices
+        };
+        MeshBuffer::from_raw_buffers(
+            // TODO: Cannot use the bound `N: Step`, which is unstable.
+            (0..vertices.len()).map(|index| N::from(index).unwrap()),
+            vertices,
+        )
     }
 
     pub(crate) fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {

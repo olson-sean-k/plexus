@@ -161,14 +161,26 @@ mod tests {
     }
 
     #[test]
-    fn convert_mesh_to_buffer() {
+    fn convert_mesh_to_buffer_by_vertex() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
-        let buffer = mesh.to_mesh_buffer::<u32, Point3<_>>().unwrap();
+        let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
+    }
+
+    #[test]
+    fn convert_mesh_to_buffer_by_face() {
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .polygons_with_position() // 6 triangles, 18 vertices.
+            .map_vertices(|position| position.into_hash())
+            .collect::<Mesh<Point3<f32>>>();
+        let buffer = mesh.to_mesh_buffer_by_face::<u32, Point3<_>>().unwrap();
+
+        assert_eq!(18, buffer.as_index_slice().len());
+        assert_eq!(18, buffer.as_vertex_slice().len());
     }
 }
