@@ -12,14 +12,13 @@ use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, Ver
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                       OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
 
-#[derivative(Hash)]
-#[derive(Clone, Debug, Derivative)]
+#[derivative(Debug, Hash)]
+#[derive(Clone, Derivative)]
 pub struct Vertex<G>
 where
     G: Geometry,
 {
-    #[derivative(Hash="ignore")]
-    pub geometry: G::Vertex,
+    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Vertex,
     pub(super) edge: Option<EdgeKey>,
 }
 
@@ -57,14 +56,13 @@ where
     type Attribute = G::Vertex;
 }
 
-#[derivative(Hash)]
-#[derive(Clone, Debug, Derivative)]
+#[derivative(Debug, Hash)]
+#[derive(Clone, Derivative)]
 pub struct Edge<G>
 where
     G: Geometry,
 {
-    #[derivative(Hash="ignore")]
-    pub geometry: G::Edge,
+    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Edge,
     pub(super) vertex: VertexKey,
     pub(super) opposite: Option<EdgeKey>,
     pub(super) next: Option<EdgeKey>,
@@ -111,14 +109,13 @@ where
     type Attribute = G::Edge;
 }
 
-#[derivative(Hash)]
-#[derive(Clone, Debug, Derivative)]
+#[derivative(Debug, Hash)]
+#[derive(Clone, Derivative)]
 pub struct Face<G>
 where
     G: Geometry,
 {
-    #[derivative(Hash="ignore")]
-    pub geometry: G::Face,
+    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Face,
     pub(super) edge: EdgeKey,
 }
 
