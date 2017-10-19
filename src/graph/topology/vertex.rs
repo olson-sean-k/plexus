@@ -374,7 +374,7 @@ mod tests {
     fn circulate_over_edges() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Triplet<_>>>();
 
         // All faces should be triangles and all vertices should have 4

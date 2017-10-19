@@ -19,7 +19,7 @@
 //! # fn main() {
 //! let buffer = UVSphere::<f32>::with_unit_radius(16, 16)
 //!     .polygons_with_position()
-//!     .map_vertices(|vertex| vertex.into_hash())
+//!     .map_vertices(|position| position.into_hash())
 //!     .collect::<MeshBuffer<u32, Point3<f32>>>();
 //! let indeces = buffer.as_index_slice();
 //! let positions = buffer.as_vertex_slice();
@@ -153,7 +153,7 @@ mod tests {
     fn collect_topology_into_buffer() {
         let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<MeshBuffer<u32, Triplet<_>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
@@ -164,7 +164,7 @@ mod tests {
     fn convert_mesh_to_buffer() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         let buffer = mesh.to_mesh_buffer::<u32, Point3<_>>().unwrap();
 

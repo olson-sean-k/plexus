@@ -73,7 +73,7 @@
 //! # fn main() {
 //! let mut mesh = UVSphere::<f32>::with_unit_radius(16, 16)
 //!     .polygons_with_position()
-//!     .map_vertices(|vertex| vertex.into_hash())
+//!     .map_vertices(|position| position.into_hash())
 //!     .collect::<Mesh<Point3<f32>>>();
 //! # }
 //! ```
@@ -112,7 +112,7 @@
 //! # fn main() {
 //! let mut mesh = UVSphere::<f32>::with_unit_radius(16, 16)
 //!     .polygons_with_position()
-//!     .map_vertices(|vertex| vertex.into_hash())
+//!     .map_vertices(|position| position.into_hash())
 //!     .collect::<Mesh<Point3<f32>>>();
 //! let key = mesh.faces().nth(0).unwrap().key(); // Get the key of the first face.
 //! mesh.face_mut(key).unwrap().extrude(1.0).unwrap(); // Extrude the face.

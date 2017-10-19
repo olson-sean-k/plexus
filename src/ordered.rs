@@ -38,7 +38,7 @@
 //!
 //! let (indeces, positions) = Cube::<f32>::with_unit_width()
 //!     .polygons_with_position()
-//!     .map_vertices(|vertex| vertex.into_hash()) // Convert to hashable type.
+//!     .map_vertices(|position| position.into_hash()) // Convert to hashable type.
 //!     .triangulate()
 //!     .index_vertices(HashIndexer::default());
 //! ```

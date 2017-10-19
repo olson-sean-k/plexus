@@ -576,7 +576,7 @@ mod tests {
     fn circulate_over_edges() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         let face = mesh.faces().nth(0).unwrap();
 
@@ -588,7 +588,7 @@ mod tests {
     fn circulate_over_faces() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         let face = mesh.faces().nth(0).unwrap();
 
@@ -600,7 +600,7 @@ mod tests {
     fn extrude_face() {
         let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         {
             let key = mesh.faces().nth(0).unwrap().key();
@@ -626,7 +626,7 @@ mod tests {
     fn triangulate_mesh() {
         let (indeces, vertices) = cube::Cube::<f32>::with_unit_radius()
             .polygons_with_position() // 6 quads, 24 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .index_vertices(HashIndexer::default());
         let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
         mesh.triangulate().unwrap();

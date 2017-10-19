@@ -596,7 +596,7 @@ mod tests {
     fn collect_topology_into_mesh() {
         let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Triplet<_>>>();
 
         assert_eq!(5, mesh.vertex_count());
@@ -608,7 +608,7 @@ mod tests {
     fn iterate_mesh_topology() {
         let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(4, 2)
             .polygons_with_position() // 8 triangles, 24 vertices.
-            .map_vertices(|vertex| vertex.into_hash())
+            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
 
         assert_eq!(6, mesh.vertices().count());
