@@ -1,7 +1,10 @@
 use itertools::Itertools;
+use num::{Integer, NumCast, Unsigned};
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
+use buffer::MeshBuffer;
 use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
                IntoVertices, Triangle, Triangulate};
 use geometry::Geometry;
@@ -285,6 +288,36 @@ where
             face.triangulate()?;
         }
         Ok(())
+    }
+
+    pub fn to_mesh_buffer<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
+    where
+        G::Vertex: IntoGeometry<V>,
+        N: Copy + Integer + NumCast + Unsigned,
+    {
+        let (keys, vertices) = {
+            let mut keys = HashMap::with_capacity(self.vertex_count());
+            let mut vertices = Vec::with_capacity(self.vertex_count());
+            for (n, vertex) in self.vertices().enumerate() {
+                keys.insert(vertex.key(), n);
+                vertices.push(vertex.geometry.clone().into_geometry());
+            }
+            (keys, vertices)
+        };
+        let indeces = {
+            let arity = self.faces().nth(0).ok_or(())?.arity();
+            let mut indeces = Vec::with_capacity(arity * self.face_count());
+            for face in self.faces() {
+                if face.arity() != arity {
+                    return Err(());
+                }
+                for vertex in face.vertices() {
+                    indeces.push(N::from(*keys.get(&vertex.key()).ok_or(())?).unwrap());
+                }
+            }
+            indeces
+        };
+        MeshBuffer::from_raw_buffers(indeces, vertices)
     }
 
     pub(crate) fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {

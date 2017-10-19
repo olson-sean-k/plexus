@@ -141,9 +141,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::Point3;
+
     use buffer::*;
     use generate::*;
     use geometry::*;
+    use graph::*;
     use ordered::*;
 
     #[test]
@@ -152,6 +155,18 @@ mod tests {
             .polygons_with_position() // 6 triangles, 18 vertices.
             .map_vertices(|vertex| vertex.into_hash())
             .collect::<MeshBuffer<u32, Triplet<_>>>();
+
+        assert_eq!(18, buffer.as_index_slice().len());
+        assert_eq!(5, buffer.as_vertex_slice().len());
+    }
+
+    #[test]
+    fn convert_mesh_to_buffer() {
+        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            .polygons_with_position() // 6 triangles, 18 vertices.
+            .map_vertices(|vertex| vertex.into_hash())
+            .collect::<Mesh<Point3<f32>>>();
+        let buffer = mesh.to_mesh_buffer::<u32, Point3<_>>().unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
