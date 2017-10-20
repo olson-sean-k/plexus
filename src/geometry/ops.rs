@@ -58,7 +58,116 @@ where
 }
 
 #[cfg(feature = "geometry-cgmath")]
-mod feature_geometry_cgmath {}
+mod feature_geometry_cgmath {
+    use cgmath::{ApproxEq, BaseFloat, BaseNum, EuclideanSpace, InnerSpace, Point2, Point3,
+                 Vector2, Vector3};
+    use num::NumCast;
+    use std::ops::{AddAssign, MulAssign};
+
+    use geometry;
+    use geometry::ops::*;
+
+    impl<T> Normalize for Vector3<T>
+    where
+        T: ApproxEq + BaseFloat + BaseNum,
+    {
+        #[inline(always)]
+        fn normalize(self) -> Self {
+            <Self as InnerSpace>::normalize(self)
+        }
+    }
+
+    impl<T> Average for Point3<T>
+    where
+        T: AddAssign + BaseNum + MulAssign + NumCast,
+    {
+        fn average<I>(values: I) -> Self
+        where
+            I: IntoIterator<Item = Self>,
+        {
+            let values = values.into_iter().collect::<Vec<_>>();
+            let n = <T as NumCast>::from(values.len()).unwrap();
+            let sum = {
+                let mut sum = Point3::origin();
+                for point in values {
+                    sum += Vector3::<T>::new(point.x, point.y, point.z);
+                }
+                sum
+            };
+            sum * (T::one() / n)
+        }
+    }
+
+    impl<T> Interpolate for Point2<T>
+    where
+        T: BaseNum + NumCast,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point2::new(
+                geometry::lerp(self.x, other.x, f),
+                geometry::lerp(self.y, other.y, f),
+            )
+        }
+    }
+
+    impl<T> Interpolate for Point3<T>
+    where
+        T: BaseNum + NumCast,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Point3::new(
+                geometry::lerp(self.x, other.x, f),
+                geometry::lerp(self.y, other.y, f),
+                geometry::lerp(self.z, other.z, f),
+            )
+        }
+    }
+
+    impl<T> Interpolate for Vector2<T>
+    where
+        T: BaseNum + NumCast,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector2::new(
+                geometry::lerp(self.x, other.x, f),
+                geometry::lerp(self.y, other.y, f),
+            )
+        }
+    }
+
+    impl<T> Interpolate for Vector3<T>
+    where
+        T: BaseNum + NumCast,
+    {
+        type Output = Self;
+
+        fn lerp(self, other: Self, f: f64) -> Self::Output {
+            Vector3::new(
+                geometry::lerp(self.x, other.x, f),
+                geometry::lerp(self.y, other.y, f),
+                geometry::lerp(self.z, other.z, f),
+            )
+        }
+    }
+
+    impl<T> Cross for Vector3<T>
+    where
+        T: BaseFloat + BaseNum,
+    {
+        type Output = Self;
+
+        #[inline(always)]
+        fn cross(self, other: Self) -> Self::Output {
+            Self::cross(self, other)
+        }
+    }
+}
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {

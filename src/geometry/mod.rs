@@ -90,8 +90,89 @@ where
     <T as NumCast>::from(af + bf).unwrap()
 }
 
+// TODO: `NotNan` and `OrderedFloat` cannot be used as scalar values with
+//       cgmath types. This means cgmath does not support `HashConjugate`.
 #[cfg(feature = "geometry-cgmath")]
-mod feature_geometry_cgmath {}
+mod feature_geometry_cgmath {
+    use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
+
+    use geometry::*;
+
+    impl<T> From<Point2<T>> for Duplet<T> {
+        fn from(other: Point2<T>) -> Self {
+            Duplet(other.x, other.y)
+        }
+    }
+
+    impl<T> From<Vector2<T>> for Duplet<T> {
+        fn from(other: Vector2<T>) -> Self {
+            Duplet(other.x, other.y)
+        }
+    }
+
+    impl<T> Into<Point2<T>> for Duplet<T>
+    where
+        T: BaseNum,
+    {
+        fn into(self) -> Point2<T> {
+            Point2::new(self.0, self.1)
+        }
+    }
+
+    impl<T> Into<Vector2<T>> for Duplet<T>
+    where
+        T: BaseNum,
+    {
+        fn into(self) -> Vector2<T> {
+            Vector2::new(self.0, self.1)
+        }
+    }
+
+    impl<T> From<Point3<T>> for Triplet<T> {
+        fn from(other: Point3<T>) -> Self {
+            Triplet(other.x, other.y, other.z)
+        }
+    }
+
+    impl<T> From<Vector3<T>> for Triplet<T> {
+        fn from(other: Vector3<T>) -> Self {
+            Triplet(other.x, other.y, other.z)
+        }
+    }
+
+    impl<T> Into<Point3<T>> for Triplet<T>
+    where
+        T: BaseNum,
+    {
+        fn into(self) -> Point3<T> {
+            Point3::new(self.0, self.1, self.2)
+        }
+    }
+
+    impl<T> Into<Vector3<T>> for Triplet<T>
+    where
+        T: BaseNum,
+    {
+        fn into(self) -> Vector3<T> {
+            Vector3::new(self.0, self.1, self.2)
+        }
+    }
+
+    impl<T> Attribute for Point3<T>
+    where
+        T: Clone,
+    {
+    }
+
+    impl<T> Geometry for Point3<T>
+    where
+        T: Clone,
+    {
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
+    }
+}
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {

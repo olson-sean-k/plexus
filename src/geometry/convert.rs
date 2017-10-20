@@ -52,7 +52,90 @@ pub trait AsPosition {
 }
 
 #[cfg(feature = "geometry-cgmath")]
-mod feature_geometry_cgmath {}
+mod feature_geometry_cgmath {
+    use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
+
+    use geometry::{Duplet, Triplet};
+    use geometry::convert::*;
+    use ordered::NotNan;
+
+    impl<T> FromGeometry<Duplet<T>> for Point2<T>
+    where
+        T: BaseNum,
+    {
+        fn from_geometry(other: Duplet<T>) -> Self {
+            Point2::new(other.0, other.1)
+        }
+    }
+
+    impl<T> FromGeometry<Triplet<T>> for Point3<T>
+    where
+        T: BaseNum,
+    {
+        fn from_geometry(other: Triplet<T>) -> Self {
+            Point3::new(other.0, other.1, other.2)
+        }
+    }
+
+    impl<T> FromGeometry<Triplet<NotNan<T>>> for Point3<T>
+    where
+        T: BaseFloat + BaseNum,
+    {
+        fn from_geometry(other: Triplet<NotNan<T>>) -> Self {
+            Point3::new(
+                other.0.into_inner(),
+                other.1.into_inner(),
+                other.2.into_inner(),
+            )
+        }
+    }
+
+    impl<T> FromGeometry<Point3<NotNan<T>>> for Point3<T>
+    where
+        T: BaseFloat + BaseNum,
+    {
+        fn from_geometry(other: Point3<NotNan<T>>) -> Self {
+            Point3::new(
+                other.x.into_inner(),
+                other.y.into_inner(),
+                other.z.into_inner(),
+            )
+        }
+    }
+
+    impl<T> FromGeometry<Duplet<T>> for Vector2<T>
+    where
+        T: BaseNum,
+    {
+        fn from_geometry(other: Duplet<T>) -> Self {
+            Vector2::new(other.0, other.1)
+        }
+    }
+
+    impl<T> FromGeometry<Triplet<T>> for Vector3<T>
+    where
+        T: BaseNum,
+    {
+        fn from_geometry(other: Triplet<T>) -> Self {
+            Vector3::new(other.0, other.1, other.2)
+        }
+    }
+
+    impl<T> AsPosition for Point3<T>
+    where
+        T: BaseNum,
+    {
+        type Target = Self;
+
+        fn as_position(&self) -> &Self::Target {
+            self
+        }
+
+        fn as_position_mut(&mut self) -> &mut Self::Target {
+            self
+        }
+    }
+}
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
