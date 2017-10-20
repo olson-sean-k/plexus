@@ -101,7 +101,7 @@ impl AsPosition for VertexGeometry {
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
 [cgmath](https://crates.io/crates/cgmath) crates so that common types can be
-used right away for vertex geomtry.
+used right away for vertex geometry.
 
 ## Hashing Floating-Point Values
 
