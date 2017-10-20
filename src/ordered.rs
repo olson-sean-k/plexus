@@ -7,7 +7,9 @@
 //!
 //! This code is best used with the
 //! [derivative](https://crates.io/crates/derivative) crate, which can be used
-//! to specify a particular hashing function for a given field.
+//! to specify a particular hashing function for a given field. See the
+//! [ordered-float](https://crates.io/crates/ordered-float) crate for details
+//! about the hashing strategy.
 //!
 //! # Examples
 //!
@@ -56,13 +58,22 @@ pub type r32 = NotNan<f32>;
 #[allow(non_camel_case_types)]
 pub type r64 = NotNan<f64>;
 
+/// Provides conversion to and from a conjugate type that can be hashed.
+///
+/// This trait is primarily used to convert geometry to and from hashable data
+/// for indexing.
 pub trait HashConjugate: Sized {
+    /// Conjugate type that provides `Eq` and `Hash` implementations.
     type Hash: Eq + Hash;
 
+    /// Converts into the conjugate type.
     fn into_hash(self) -> Self::Hash;
+
+    /// Converts from the conjugate type.
     fn from_hash(hash: Self::Hash) -> Self;
 }
 
+/// Hashes a floating point value.
 #[inline(always)]
 pub fn hash_float<F, H>(f: &F, state: &mut H)
 where
@@ -72,6 +83,7 @@ where
     OrderedFloat::from(*f).hash(state)
 }
 
+/// Hashes a slice of floating point values.
 pub fn hash_float_slice<F, H>(slice: &[F], state: &mut H)
 where
     F: Float,
@@ -88,6 +100,7 @@ pub trait HashFloatArray {
         H: Hasher;
 }
 
+/// Hashes an array of floating point values.
 pub fn hash_float_array<F, H>(array: &F, state: &mut H)
 where
     F: HashFloatArray,

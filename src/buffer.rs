@@ -1,12 +1,12 @@
 //! Linear buffers that can be used for rendering.
 //!
-//! This module provides a [`MeshBuffer`] that can be read by graphics
-//! pipelines to render meshes. `MeshBuffer` combines an index buffer and
-//! vertex buffer (containing arbitrary data), which are exposed as slices.
+//! This module provides a `MeshBuffer` that can be read by graphics pipelines
+//! to render meshes. `MeshBuffer` combines an index buffer and vertex buffer
+//! (containing arbitrary data), which are exposed as slices.
 //!
 //! # Examples
 //!
-//! Generating a buffer from a primitive:
+//! Generating a `MeshBuffer` from a primitive:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -25,6 +25,26 @@
 //! let positions = buffer.as_vertex_slice();
 //! # }
 //! ```
+//!
+//! Converting a `Mesh` to a `MeshBuffer`:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
+//! use plexus::buffer::MeshBuffer;
+//! use plexus::generate::cube::Cube;
+//! use plexus::graph::Mesh;
+//! use plexus::prelude::*;
+//!
+//! # fn main() {
+//! let mesh = Cube::<f32>::with_unit_width()
+//!     .polygons_with_position()
+//!     .map_vertices(|position| position.into_hash())
+//!     .collect::<Mesh<Point3<f32>>>();
+//! let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
+//! # }
+//! ```
 
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
@@ -34,6 +54,14 @@ use generate::{FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles, 
                Topological, Triangle, Triangulate};
 use geometry::convert::IntoGeometry;
 
+/// Linear buffer of mesh data.
+///
+/// A `MeshBuffer` is a flattened representation of a mesh that can be consumed
+/// by a rendering pipeline. A `MeshBuffer` is composed of two separate
+/// buffers: an index buffer and a vertex buffer. The index buffer contains
+/// ordered indeces into the data in the vertex buffer and describes the
+/// topology or polygons forming the mesh. The vertex buffer contains arbitrary
+/// geometric data that is typically read by a rendering pipeline.
 pub struct MeshBuffer<N, V>
 where
     N: Integer + Unsigned,
@@ -46,10 +74,51 @@ impl<N, V> MeshBuffer<N, V>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
+    /// Creates a new empty `MeshBuffer`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::geometry::Triplet;
+    ///
+    /// let buffer = MeshBuffer::<u32, Triplet<f32>>::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Creates a `MeshBuffer` from raw index and vertex buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index data is out of bounds within the vertex
+    /// buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::generate::cube::Cube;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::<f32>::with_unit_width();
+    /// let indeces = cube
+    ///     .polygons_with_index()
+    ///     .triangulate()
+    ///     .vertices()
+    ///     .collect::<Vec<_>>();
+    /// let vertices = cube
+    ///     .vertices_with_position()
+    ///     .map(|position| -> Point3<_> { position.into() })
+    ///     .collect::<Vec<_>>();
+    /// let buffer = MeshBuffer::from_raw_buffers(indeces, vertices).unwrap();
+    /// # }
+    /// ```
     pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, ()>
     where
         I: IntoIterator<Item = N>,
@@ -66,6 +135,8 @@ where
         }
     }
 
+    /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
+    /// source buffer is drained.
     pub fn append<M, U>(&mut self, other: &mut MeshBuffer<M, U>)
     where
         M: Copy + Integer + Into<N> + Unsigned,
@@ -82,10 +153,12 @@ where
             .extend(other.indeces.drain(..).map(|index| index.into() + offset))
     }
 
+    /// Gets a slice of the index data.
     pub fn as_index_slice(&self) -> &[N] {
         self.indeces.as_slice()
     }
 
+    /// Gets a slice of the vertex data.
     pub fn as_vertex_slice(&self) -> &[V] {
         self.vertices.as_slice()
     }
