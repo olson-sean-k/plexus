@@ -6,7 +6,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/olson-sean-k/plexus"
 description = "3D mesh generation and manipulation."
-keywords = ["mesh", "graphics"]
+keywords = ["graphics", "half-edge", "mesh", "topology"]
 
 [package.metadata.docs.rs]
 # Enable all featues so that trait implementations for types from commonly used
