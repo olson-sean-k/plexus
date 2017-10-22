@@ -1,8 +1,8 @@
-/// Higher order geometric traits.
-///
-/// This module defines higher order traits for operations on a mesh. It also
-/// provides aliases for geometric types to improve readability of type
-/// constraints.
+//! Higher order geometric traits.
+//!
+//! This module defines higher order traits for operations on a mesh. It also
+//! provides aliases for geometric types to improve readability of type
+//! constraints.
 
 use std::ops::Sub;
 

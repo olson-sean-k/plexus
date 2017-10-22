@@ -1,9 +1,9 @@
-/// Geometric traits and primitives.
-///
-/// These traits are used to support high-order operations in generators and
-/// `Mesh`es. To use types as geometry in a `Mesh` only requires implementing
-/// the `Geometry` and `Attribute` traits. Operation and convertion traits are
-/// optional, but enable additional features.
+//! Geometric traits and primitives.
+//!
+//! These traits are used to support high-order operations in generators and
+//! `Mesh`es. To use types as geometry in a `Mesh` only requires implementing
+//! the `Geometry` and `Attribute` traits. Operation and convertion traits are
+//! optional, but enable additional features.
 
 use num::{self, Float, Num, NumCast};
 
