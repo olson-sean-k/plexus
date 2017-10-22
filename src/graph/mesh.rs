@@ -156,6 +156,15 @@ where
     type Attribute = G::Face;
 }
 
+/// Half-edge graph representation of a mesh. Provides topological data in the
+/// form of vertices, half-edges, and faces. A half-edge is directed from one
+/// vertex to another, with an opposing half-edge joining the vertices in the
+/// other direction.
+///
+/// `Mesh`es expose topological views, which can be used to traverse and
+/// manipulate topology and geometry.
+///
+/// See the module documentation for more details.
 pub struct Mesh<G = ()>
 where
     G: Geometry,
@@ -169,6 +178,15 @@ impl<G> Mesh<G>
 where
     G: Geometry,
 {
+    /// Creates an empty `Mesh`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use plexus::graph::Mesh;
+    ///
+    /// let mut mesh = Mesh::<()>::new();
+    /// ```
     pub fn new() -> Self {
         Mesh {
             vertices: Storage::new(),
@@ -177,6 +195,34 @@ where
         }
     }
 
+    /// Creates a `Mesh` from raw index and vertex buffers. The arity of the
+    /// polygons in the index buffer must be known and constant.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arity of the index buffer is not constant, any
+    /// index is out of bounds, or there is an error inserting topology into
+    /// the mesh.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::generate::LruIndexer;
+    /// use plexus::generate::sphere::UVSphere;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let (indeces, positions) = UVSphere::<f32>::with_unit_radius(16, 16)
+    ///     .polygons_with_position()
+    ///     .triangulate()
+    ///     .index_vertices(LruIndexer::with_capacity(256));
+    /// let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, positions, 3);
+    /// # }
+    /// ```
     pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, ()>
     where
         I: IntoIterator<Item = usize>,
@@ -204,16 +250,19 @@ where
         Ok(mesh)
     }
 
+    /// Gets the number of vertices in the mesh.
     pub fn vertex_count(&self) -> usize {
         self.vertices.len()
     }
 
+    /// Gets an immutable view of the vertex with the given key.
     pub fn vertex(&self, vertex: VertexKey) -> Option<VertexRef<G>> {
         self.vertices
             .get(&vertex)
             .map(|_| VertexRef::new(self, vertex))
     }
 
+    /// Gets a mutable view of the vertex with the given key.
     pub fn vertex_mut(&mut self, vertex: VertexKey) -> Option<VertexMut<G>> {
         match self.vertices.contains_key(&vertex) {
             true => Some(VertexMut::new(self, vertex)),
@@ -221,22 +270,31 @@ where
         }
     }
 
+    /// Gets an iterator of immutable views over the vertices in the mesh.
     pub fn vertices(&self) -> MeshIter<VertexRef<G>, G> {
         MeshIter::new(self, self.vertices.iter())
     }
 
+    /// Gets an iterator of orphan views over the vertices in the mesh.
+    ///
+    /// Because this only yields orphan views, only geometry can be mutated.
+    /// For topological mutations, collect the necessary keys and use
+    /// `vertex_mut` instead.
     pub fn vertices_mut(&mut self) -> MeshIterMut<OrphanVertexMut<G>, G> {
         MeshIterMut::new(self.vertices.iter_mut())
     }
 
+    /// Gets the number of edges in the mesh.
     pub fn edge_count(&self) -> usize {
         self.edges.len()
     }
 
+    /// Gets an immutable view of the edge with the given key.
     pub fn edge(&self, edge: EdgeKey) -> Option<EdgeRef<G>> {
         self.edges.get(&edge).map(|_| EdgeRef::new(self, edge))
     }
 
+    /// Gets a mutable view of the edge with the given key.
     pub fn edge_mut(&mut self, edge: EdgeKey) -> Option<EdgeMut<G>> {
         match self.edges.contains_key(&edge) {
             true => Some(EdgeMut::new(self, edge)),
@@ -244,22 +302,31 @@ where
         }
     }
 
+    /// Gets an iterator of immutable views over the edges in the mesh.
     pub fn edges(&self) -> MeshIter<EdgeRef<G>, G> {
         MeshIter::new(self, self.edges.iter())
     }
 
+    /// Gets an iterator of orphan views over the edges in the mesh.
+    ///
+    /// Because this only yields orphan views, only geometry can be mutated.
+    /// For topological mutations, collect the necessary keys and use
+    /// `edge_mut` instead.
     pub fn edges_mut(&mut self) -> MeshIterMut<OrphanEdgeMut<G>, G> {
         MeshIterMut::new(self.edges.iter_mut())
     }
 
+    /// Gets the number of faces in the mesh.
     pub fn face_count(&self) -> usize {
         self.faces.len()
     }
 
+    /// Gets an immutable view of the face with the given key.
     pub fn face(&self, face: FaceKey) -> Option<FaceRef<G>> {
         self.faces.get(&face).map(|_| FaceRef::new(self, face))
     }
 
+    /// Gets a mutable view of the face with the given key.
     pub fn face_mut(&mut self, face: FaceKey) -> Option<FaceMut<G>> {
         match self.faces.contains_key(&face) {
             true => Some(FaceMut::new(self, face)),
@@ -267,14 +334,21 @@ where
         }
     }
 
+    /// Gets an iterator of immutable views over the faces in the mesh.
     pub fn faces(&self) -> MeshIter<FaceRef<G>, G> {
         MeshIter::new(self, self.faces.iter())
     }
 
+    /// Gets an iterator of orphan views over the faces in the mesh.
+    ///
+    /// Because this only yields orphan views, only geometry can be mutated.
+    /// For topological mutations, collect the necessary keys and use
+    /// `face_mut` instead.
     pub fn faces_mut(&mut self) -> MeshIterMut<OrphanFaceMut<G>, G> {
         MeshIterMut::new(self.faces.iter_mut())
     }
 
+    /// Triangulates the mesh, tesselating all faces into triangles.
     pub fn triangulate(&mut self) -> Result<(), ()>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
@@ -290,6 +364,14 @@ where
         Ok(())
     }
 
+    /// Creates a mesh buffer from the mesh.
+    ///
+    /// The buffer is created using the vertex geometry of each unique vertex.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mesh does not have constant arity. Typically, a
+    /// mesh is triangulated before being converted to a mesh buffer.
     pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
     where
         G::Vertex: IntoGeometry<V>,
@@ -298,6 +380,15 @@ where
         self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.clone().into_geometry())
     }
 
+    /// Creates a mesh buffer from the mesh.
+    ///
+    /// The buffer is created using each unique vertex, which is converted into
+    /// the buffer geometry by the given function.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mesh does not have constant arity. Typically, a
+    /// mesh is triangulated before being converted to a mesh buffer.
     pub fn to_mesh_buffer_by_vertex_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
     where
         N: Copy + Integer + NumCast + Unsigned,
@@ -328,6 +419,15 @@ where
         MeshBuffer::from_raw_buffers(indeces, vertices)
     }
 
+    /// Creates a mesh buffer from the mesh.
+    ///
+    /// The buffer is created using the vertex geometry of each face. Shared
+    /// vertices are included for each face to which they belong.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mesh does not have constant arity. Typically, a
+    /// mesh is triangulated before being converted to a mesh buffer.
     pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
     where
         G::Vertex: IntoGeometry<V>,
@@ -336,6 +436,15 @@ where
         self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.clone().into_geometry())
     }
 
+    /// Creates a mesh buffer from the mesh.
+    ///
+    /// The buffer is created from each face, which is converted into the
+    /// buffer geometry by the given function.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the mesh does not have constant arity. Typically, a
+    /// mesh is triangulated before being converted to a mesh buffer.
     pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
     where
         N: Copy + Integer + NumCast + Unsigned,

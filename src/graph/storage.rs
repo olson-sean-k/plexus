@@ -1,3 +1,5 @@
+/// Storage for topological data in a mesh.
+
 use std::collections::HashMap;
 use std::collections::hash_map;
 use std::hash::Hash;

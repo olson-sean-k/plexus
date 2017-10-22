@@ -2,8 +2,8 @@
 //!
 //! This module provides a flexible representation of meshes as a [half-edge
 //! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list) exposed as
-//! the [`Mesh`] type. Meshes can store arbitrary geometric data associated
-//! with any topological structure, including vertices, half-edges, and faces.
+//! the `Mesh` type. Meshes can store arbitrary geometric data associated with
+//! any topological structure, including vertices, half-edges, and faces.
 //!
 //! These structures can be difficult to construct from individual components;
 //! the `generate` module can be used to produce primitive meshes that can be
@@ -14,7 +14,7 @@
 //! Meshes store topological data using keyed storage. That is, structures
 //! representing vertices, edges, and faces, are stored using associative
 //! collections. Keys are exposed as strongly typed and opaque values, which
-//! can be used to refer to a topological structure, e.g., [`VertexKey`].
+//! can be used to refer to a topological structure, e.g., `VertexKey`.
 //! Importantly, raw references are not used, which eases the construction and
 //! manipulation of the graph in both user and library code by avoiding certain
 //! borrowing rules.
@@ -40,7 +40,7 @@
 //! topology.
 //!
 //! All views provide access to their associated geometry. Mutable views, like
-//! [`FaceMut`], provide topological operations, like triangulation and
+//! `FaceMut`, provide topological operations, like triangulation and
 //! extrusion.
 //!
 //! # Circulators
@@ -51,14 +51,6 @@
 //! circulator of a vertex yields all faces that share that vertex in order.
 //!
 //! # Examples
-//!
-//! Creating an empty mesh with no geometric data:
-//!
-//! ```rust
-//! use plexus::graph::Mesh;
-//!
-//! let mut mesh = Mesh::<()>::new();
-//! ```
 //!
 //! Generating a mesh from a primitive:
 //!
@@ -76,27 +68,6 @@
 //!     .map_vertices(|position| position.into_hash())
 //!     .collect::<Mesh<Point3<f32>>>();
 //! # }
-//! ```
-//!
-//! Generating a mesh from raw position and index buffers:
-//!
-//! ```rust
-//! # extern crate nalgebra;
-//! # extern crate plexus;
-//! use nalgebra::Point3;
-//! use plexus::generate::LruIndexer;
-//! use plexus::generate::sphere::UVSphere;
-//! use plexus::graph::Mesh;
-//! use plexus::prelude::*;
-//!
-//! # fn main() {
-//! let (indeces, positions) = UVSphere::<f32>::with_unit_radius(16, 16)
-//!     .polygons_with_position()
-//!     .triangulate()
-//!     .index_vertices(LruIndexer::with_capacity(256));
-//! let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, positions, 3);
-//! # }
-//!
 //! ```
 //!
 //! Manipulating a face in a mesh:

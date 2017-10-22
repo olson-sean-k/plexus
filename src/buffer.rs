@@ -74,7 +74,7 @@ impl<N, V> MeshBuffer<N, V>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    /// Creates a new empty `MeshBuffer`.
+    /// Creates an empty `MeshBuffer`.
     ///
     /// # Examples
     ///
