@@ -106,8 +106,12 @@ where
     <T as NumCast>::from(af + bf).unwrap()
 }
 
-// TODO: `Finite` cannot be used as scalar values with cgmath types. This means
-//       cgmath does not support `HashConjugate`.
+// TODO: `Finite` cannot be used as scalar values with cgmath types, because it
+//       does not implement `Float` and therefore cannot implement `BaseFloat`.
+//       This means cgmath does not support `HashConjugate`.
+//
+//       The decorum crate could probably provide a hashable type that has no
+//       constraints on its value.
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
