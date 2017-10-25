@@ -21,12 +21,11 @@ pub mod buffer;
 pub mod generate;
 pub mod geometry;
 pub mod graph;
-pub mod ordered;
 
 pub mod prelude {
     pub use generate::{CollectWithIndexer, IndexVertices, MapVertices, PolygonGenerator,
                        PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Triangulate,
                        VertexGenerator, Vertices, VerticesWithPosition};
     pub use geometry::{Duplet, Triplet};
-    pub use ordered::HashConjugate;
+    pub use geometry::convert::HashConjugate;
 }
