@@ -54,10 +54,10 @@ pub trait AsPosition {
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
+    use decorum::Finite;
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
-    use ordered::NotNan;
 
     impl<T> FromGeometry<Duplet<T>> for Point2<T>
     where
@@ -77,28 +77,28 @@ mod feature_geometry_cgmath {
         }
     }
 
-    impl<T> FromGeometry<Triplet<NotNan<T>>> for Point3<T>
+    impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
     where
         T: BaseFloat + BaseNum,
     {
-        fn from_geometry(other: Triplet<NotNan<T>>) -> Self {
+        fn from_geometry(other: Triplet<Finite<T>>) -> Self {
             Point3::new(
-                other.0.into_inner(),
-                other.1.into_inner(),
-                other.2.into_inner(),
+                other.0.into_raw_float(),
+                other.1.into_raw_float(),
+                other.2.into_raw_float(),
             )
         }
     }
 
-    impl<T> FromGeometry<Point3<NotNan<T>>> for Point3<T>
+    impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
     where
         T: BaseFloat + BaseNum,
     {
-        fn from_geometry(other: Point3<NotNan<T>>) -> Self {
+        fn from_geometry(other: Point3<Finite<T>>) -> Self {
             Point3::new(
-                other.x.into_inner(),
-                other.y.into_inner(),
-                other.z.into_inner(),
+                other.x.into_raw_float(),
+                other.y.into_raw_float(),
+                other.z.into_raw_float(),
             )
         }
     }
@@ -139,12 +139,12 @@ mod feature_geometry_cgmath {
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
+    use decorum::Finite;
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::Float;
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
-    use ordered::NotNan;
 
     impl<T> FromGeometry<Duplet<T>> for Point2<T>
     where
@@ -164,28 +164,28 @@ mod feature_geometry_nalgebra {
         }
     }
 
-    impl<T> FromGeometry<Triplet<NotNan<T>>> for Point3<T>
+    impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
     where
         T: Float + Scalar,
     {
-        fn from_geometry(other: Triplet<NotNan<T>>) -> Self {
+        fn from_geometry(other: Triplet<Finite<T>>) -> Self {
             Point3::new(
-                other.0.into_inner(),
-                other.1.into_inner(),
-                other.2.into_inner(),
+                other.0.into_raw_float(),
+                other.1.into_raw_float(),
+                other.2.into_raw_float(),
             )
         }
     }
 
-    impl<T> FromGeometry<Point3<NotNan<T>>> for Point3<T>
+    impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
     where
         T: Float + Scalar,
     {
-        fn from_geometry(other: Point3<NotNan<T>>) -> Self {
+        fn from_geometry(other: Point3<Finite<T>>) -> Self {
             Point3::new(
-                other.x.into_inner(),
-                other.y.into_inner(),
-                other.z.into_inner(),
+                other.x.into_raw_float(),
+                other.y.into_raw_float(),
+                other.z.into_raw_float(),
             )
         }
     }

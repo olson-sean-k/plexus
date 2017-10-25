@@ -385,17 +385,17 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::R32;
+    use nalgebra::Point3;
+
     use generate::*;
-    use geometry::*;
     use graph::*;
-    use ordered::*;
 
     #[test]
     fn circulate_over_edges() {
-        let mesh = sphere::UVSphere::<f32>::with_unit_radius(4, 2)
+        let mesh = sphere::UVSphere::<R32>::with_unit_radius(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|position| position.into_hash())
-            .collect::<Mesh<Triplet<_>>>();
+            .collect::<Mesh<Point3<f32>>>();
 
         // All faces should be triangles and all vertices should have 4
         // (incoming) edges.

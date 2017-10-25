@@ -1,4 +1,5 @@
-use num::Float;
+use decorum::Real;
+use num::NumCast;
 use num::traits::FloatConst;
 use std::cmp;
 use std::marker::PhantomData;
@@ -12,7 +13,7 @@ use geometry::Triplet;
 #[derive(Clone)]
 pub struct UVSphere<T = f32>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     nu: usize, // Meridians.
     nv: usize, // Parallels.
@@ -22,7 +23,7 @@ where
 
 impl<T> UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     fn new(nu: usize, nv: usize, upper: T) -> Self {
         let nu = cmp::max(3, nu);
@@ -72,7 +73,7 @@ where
 
 impl<T> VertexGenerator for UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     fn vertex_count(&self) -> usize {
         (self.nv - 1) * self.nu + 2
@@ -81,7 +82,7 @@ where
 
 impl<T> PositionVertexGenerator for UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     type Output = Triplet<T>;
 
@@ -101,7 +102,7 @@ where
 
 impl<T> PolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     fn polygon_count(&self) -> usize {
         self.nu * self.nv
@@ -110,7 +111,7 @@ where
 
 impl<T> PositionPolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     type Output = Polygon<Triplet<T>>;
 
@@ -165,7 +166,7 @@ where
 
 impl<T> IndexPolygonGenerator for UVSphere<T>
 where
-    T: Float + FloatConst + Unit,
+    T: FloatConst + NumCast + Real + Unit,
 {
     type Output = Polygon<usize>;
 

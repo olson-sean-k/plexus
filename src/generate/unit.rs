@@ -1,3 +1,4 @@
+use decorum::{N32, N64, R32, R64};
 use num::Num;
 
 pub trait Unit: Copy + Num {
@@ -5,9 +6,6 @@ pub trait Unit: Copy + Num {
     fn unit_width() -> (Self, Self);
 }
 
-// TODO: https://github.com/reem/rust-ordered-float/pull/31
-//       Once `NotNan` implements numeric traits, implement `Unit` for `NotNan`
-//       and allow it to be used as vertex geometry in generators.
 macro_rules! unit {
     (integer => $($t:ty),*) => {$(
         impl Unit for $t {
@@ -38,4 +36,4 @@ macro_rules! unit {
     )*};
 }
 unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
-unit!(real => f32, f64);
+unit!(real => f32, f64, N32, N64, R32, R64);

@@ -214,20 +214,18 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::R32;
     use nalgebra::Point3;
 
     use buffer::*;
     use generate::*;
-    use geometry::*;
     use graph::*;
-    use ordered::*;
 
     #[test]
     fn collect_topology_into_buffer() {
-        let buffer = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+        let buffer = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|position| position.into_hash())
-            .collect::<MeshBuffer<u32, Triplet<_>>>();
+            .collect::<MeshBuffer<u32, Point3<f32>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -235,9 +233,8 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
-        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+        let mesh = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
 
@@ -247,9 +244,8 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_face() {
-        let mesh = sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+        let mesh = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .map_vertices(|position| position.into_hash())
             .collect::<Mesh<Point3<f32>>>();
         let buffer = mesh.to_mesh_buffer_by_face::<u32, Point3<_>>().unwrap();
 

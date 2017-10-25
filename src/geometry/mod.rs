@@ -5,12 +5,18 @@
 //! the `Geometry` and `Attribute` traits. Operation and convertion traits are
 //! optional, but enable additional features.
 
+use decorum::Finite;
 use num::{self, Float, Num, NumCast};
 
-use ordered::{HashConjugate, NotNan};
+use ordered::HashConjugate;
 
 pub mod convert;
 pub mod ops;
+
+// TODO: `Finite` is used as a hash conjugate and is convertible in geometric
+//       types. It may also be good to support `NotNan` for geometric
+//       conversions. Is there a way to do that generically (without copying
+//       the `Finite` implementations)?
 
 pub trait Attribute: Clone {}
 
@@ -35,14 +41,17 @@ impl<T> HashConjugate for Duplet<T>
 where
     T: Float,
 {
-    type Hash = Duplet<NotNan<T>>;
+    type Hash = Duplet<Finite<T>>;
 
     fn into_hash(self) -> Self::Hash {
-        Duplet(NotNan::new(self.0).unwrap(), NotNan::new(self.1).unwrap())
+        Duplet(
+            Finite::from_raw_float(self.0).unwrap(),
+            Finite::from_raw_float(self.1).unwrap(),
+        )
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        Duplet((hash.0).into_inner(), (hash.1).into_inner())
+        Duplet((hash.0).into_raw_float(), (hash.1).into_raw_float())
     }
 }
 
@@ -68,21 +77,21 @@ impl<T> HashConjugate for Triplet<T>
 where
     T: Float,
 {
-    type Hash = Triplet<NotNan<T>>;
+    type Hash = Triplet<Finite<T>>;
 
     fn into_hash(self) -> Self::Hash {
         Triplet(
-            NotNan::new(self.0).unwrap(),
-            NotNan::new(self.1).unwrap(),
-            NotNan::new(self.2).unwrap(),
+            Finite::from_raw_float(self.0).unwrap(),
+            Finite::from_raw_float(self.1).unwrap(),
+            Finite::from_raw_float(self.2).unwrap(),
         )
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
         Triplet(
-            (hash.0).into_inner(),
-            (hash.1).into_inner(),
-            (hash.2).into_inner(),
+            (hash.0).into_raw_float(),
+            (hash.1).into_raw_float(),
+            (hash.2).into_raw_float(),
         )
     }
 }
@@ -97,8 +106,8 @@ where
     <T as NumCast>::from(af + bf).unwrap()
 }
 
-// TODO: `NotNan` and `OrderedFloat` cannot be used as scalar values with
-//       cgmath types. This means cgmath does not support `HashConjugate`.
+// TODO: `Finite` cannot be used as scalar values with cgmath types. This means
+//       cgmath does not support `HashConjugate`.
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
@@ -278,14 +287,17 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Scalar,
     {
-        type Hash = Point2<NotNan<T>>;
+        type Hash = Point2<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Point2::new(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Point2::new(
+                Finite::from_raw_float(self.x).unwrap(),
+                Finite::from_raw_float(self.y).unwrap(),
+            )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new(hash.x.into_inner(), hash.y.into_inner())
+            Point2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
         }
     }
 
@@ -293,21 +305,21 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Scalar,
     {
-        type Hash = Point3<NotNan<T>>;
+        type Hash = Point3<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Point3::new(
-                NotNan::new(self.x).unwrap(),
-                NotNan::new(self.y).unwrap(),
-                NotNan::new(self.z).unwrap(),
+                Finite::from_raw_float(self.x).unwrap(),
+                Finite::from_raw_float(self.y).unwrap(),
+                Finite::from_raw_float(self.z).unwrap(),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
             Point3::new(
-                hash.x.into_inner(),
-                hash.y.into_inner(),
-                hash.z.into_inner(),
+                hash.x.into_raw_float(),
+                hash.y.into_raw_float(),
+                hash.z.into_raw_float(),
             )
         }
     }
@@ -316,14 +328,17 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Scalar,
     {
-        type Hash = Vector2<NotNan<T>>;
+        type Hash = Vector2<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Vector2::new(NotNan::new(self.x).unwrap(), NotNan::new(self.y).unwrap())
+            Vector2::new(
+                Finite::from_raw_float(self.x).unwrap(),
+                Finite::from_raw_float(self.y).unwrap(),
+            )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
+            Vector2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
         }
     }
 
@@ -331,21 +346,21 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Scalar,
     {
-        type Hash = Vector3<NotNan<T>>;
+        type Hash = Vector3<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Vector3::new(
-                NotNan::new(self.x).unwrap(),
-                NotNan::new(self.y).unwrap(),
-                NotNan::new(self.z).unwrap(),
+                Finite::from_raw_float(self.x).unwrap(),
+                Finite::from_raw_float(self.y).unwrap(),
+                Finite::from_raw_float(self.z).unwrap(),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
             Vector3::new(
-                hash.x.into_inner(),
-                hash.y.into_inner(),
-                hash.z.into_inner(),
+                hash.x.into_raw_float(),
+                hash.y.into_raw_float(),
+                hash.z.into_raw_float(),
             )
         }
     }

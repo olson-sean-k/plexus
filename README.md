@@ -44,6 +44,7 @@ queried and manipulated in ways that generators and iterator expressions
 cannot.
 
 ```rust
+use decorum::R32;
 use nalgebra::Point3;
 use plexus::generate::sphere;
 use plexus::graph::Mesh;
@@ -51,9 +52,8 @@ use plexus::prelude::*;
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
 // to `Point3` via the `FromGeometry` trait in this example.
-let mut mesh = sphere::UVSphere::<f32>::with_unit_radius(8, 8)
+let mut mesh = sphere::UVSphere::<R32>::with_unit_radius(8, 8)
     .polygons_with_position()
-    .map_vertices(|position| position.into_hash())
     .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
 let key = mesh.faces().nth(0).unwrap().key();
@@ -112,25 +112,25 @@ reliable, and is used by `collect` (which can be overridden via
 values, which do not implement `Hash`. An `LruIndexer` can also be used, but
 can be slower and requires a sufficient capacity to work correctly.
 
-The [ordered-float](https://crates.io/crates/ordered-float) crate is used by
-the `ordered` module to ease this problem. Common geometric types implement
-traits that provide conversions to and from a conjugate type that implements
-`Hash` (via the `into_hash` and `from_hash` functions). Some geometric types
-can be constructed from these conjugate types, as seen in the `Mesh` example.
+The [decorum](https://crates.io/crates/decorum) crate is used to ease
+this problem. Hashable types like `NotNan`, `Finite`, `R32`, etc. can be used
+as geometric data. Common geometric types also implement traits that provide
+conversions to and from a conjugate type that implements `Hash` (via the
+`into_hash` and `from_hash` functions).
 
-The `ordered` module also exposes some hashing functions for floating point
+The `decorum` crate also exposes some hashing functions for floating point
 primitives, which can be used to directly implement `Hash`. With the
 [derivative](https://crates.io/crates/derivative) crate, floating point fields
 can be hashed using one of these functions while deriving `Hash`. The `Vertex`
 type used in the above example could be defined as follows:
 
 ```rust
-use plexus::ordered;
+use decorum;
 
 #[derive(Derivative)]
 #[derivative(Hash)]
 pub struct Vertex {
-    #[derivative(Hash(hash_with = "ordered::hash_float_array"))]
+    #[derivative(Hash(hash_with = "decorum::hash_float_array"))]
     pub position: [f32; 3],
     ...
 }

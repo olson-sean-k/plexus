@@ -5,31 +5,12 @@
 //! identifying unique geometry in an iterator expression or `Mesh`, such as
 //! using a `HashIndexer`.
 //!
-//! This code is best used with the
-//! [derivative](https://crates.io/crates/derivative) crate, which can be used
-//! to specify a particular hashing function for a given field. See the
-//! [ordered-float](https://crates.io/crates/ordered-float) crate for details
-//! about the hashing strategy.
+//! The [decorum](https://crates.io/crates/decorum) crate is used for ordering
+//! and hashing floating point data. See that crate for details of its hashing
+//! strategy and how it can be used to create hashable types containing
+//! floating point data.
 //!
 //! # Examples
-//!
-//! Creating a basic vertex type that can be used for rendering and implements
-//! `Hash`:
-//!
-//! ```rust
-//! # #[macro_use]
-//! # extern crate derivative;
-//! # extern crate plexus;
-//! use plexus::ordered;
-//!
-//! #[derive(Derivative)]
-//! #[derivative(Hash)]
-//! pub struct Vertex {
-//!     #[derivative(Hash(hash_with = "ordered::hash_float_array"))]
-//!     pub position: [f32; 3],
-//! }
-//! # fn main() {}
-//! ```
 //!
 //! Converting generator types into a hashable type via `HashConjugate`:
 //!
@@ -45,18 +26,11 @@
 //!     .index_vertices(HashIndexer::default());
 //! ```
 
-use num::Float;
-use ordered_float;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
-// TODO: https://github.com/reem/rust-ordered-float/pull/28
-pub type NotNan<T> = ordered_float::NotNaN<T>;
-pub use ordered_float::OrderedFloat;
-
-#[allow(non_camel_case_types)]
-pub type r32 = NotNan<f32>;
-#[allow(non_camel_case_types)]
-pub type r64 = NotNan<f64>;
+// TODO: This module is limited and `HashConjugate` isn't too useful. Instead,
+//       types like `NotNan`, `Finite`, `R32`, etc. can be used directly in
+//       generators.
 
 /// Provides conversion to and from a conjugate type that can be hashed.
 ///
@@ -72,56 +46,3 @@ pub trait HashConjugate: Sized {
     /// Converts from the conjugate type.
     fn from_hash(hash: Self::Hash) -> Self;
 }
-
-/// Hashes a floating point value.
-#[inline(always)]
-pub fn hash_float<F, H>(f: &F, state: &mut H)
-where
-    F: Float,
-    H: Hasher,
-{
-    OrderedFloat::from(*f).hash(state)
-}
-
-/// Hashes a slice of floating point values.
-pub fn hash_float_slice<F, H>(slice: &[F], state: &mut H)
-where
-    F: Float,
-    H: Hasher,
-{
-    for f in slice {
-        hash_float(f, state);
-    }
-}
-
-pub trait HashFloatArray {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher;
-}
-
-/// Hashes an array of floating point values.
-pub fn hash_float_array<F, H>(array: &F, state: &mut H)
-where
-    F: HashFloatArray,
-    H: Hasher,
-{
-    array.hash(state);
-}
-
-macro_rules! hash_float_array {
-    (lengths => $($N:expr),*) => {$(
-        impl<T> HashFloatArray for [T; $N]
-        where
-            T: Float,
-        {
-            fn hash<H>(&self, state: &mut H)
-            where
-                H: Hasher
-            {
-                hash_float_slice(self, state)
-            }
-        }
-    )*};
-}
-hash_float_array!(lengths => 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
