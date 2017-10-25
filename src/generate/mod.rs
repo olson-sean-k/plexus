@@ -9,6 +9,15 @@
 //! components like vertices, lines, and polygons. Generation and decomposition
 //! operations are exposed via traits.
 //!
+//! Generator traits implemented by primitives expose verbose function names
+//! like `polygons_with_index` or `vertices_with_position` to avoid ambiguity.
+//! For example, a shorter name like `index_polygons` is confusing: is "index"
+//! a noun or verb? Adjectives are also not too usesful: `indexed_polygons` is
+//! very similar to `index_polygons`, which is an operation exposed by
+//! unrelated traits. For normal vectors, obvious adjectives would be synthetic
+//! or confusing, such as "normaled". Instead, longer but clearer names are
+//! used.
+//!
 //! # Examples
 //!
 //! Generating position and index buffers for a scaled sphere:

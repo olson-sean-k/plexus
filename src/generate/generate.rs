@@ -1,5 +1,5 @@
 //! This module provides a generic iterator and traits for mapping from an
-//! index to a topology from some shape.
+//! index to a topology of a primitive.
 
 use std::ops::Range;
 
