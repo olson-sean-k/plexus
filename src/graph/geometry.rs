@@ -8,7 +8,7 @@ use std::ops::Sub;
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use geometry::ops::{Average, Cross, Normalize};
+use geometry::ops::{Average, Cross, Interpolate, Normalize};
 use graph::topology::{EdgeRef, FaceRef};
 use self::alias::*;
 
@@ -57,6 +57,27 @@ where
         Ok(G::Vertex::average(
             face.vertices().map(|vertex| vertex.geometry.clone()),
         ))
+    }
+}
+
+pub trait EdgeMidpoint: Geometry {
+    type Midpoint;
+
+    fn midpoint(edge: EdgeRef<Self>) -> Result<Self::Midpoint, ()>;
+}
+
+impl<G> EdgeMidpoint for G
+where
+    G: Geometry,
+    G::Vertex: AsPosition,
+    VertexPosition<G>: Clone + Interpolate,
+{
+    type Midpoint = <VertexPosition<G> as Interpolate>::Output;
+
+    fn midpoint(edge: EdgeRef<Self>) -> Result<Self::Midpoint, ()> {
+        let a = edge.source_vertex().geometry.as_position().clone();
+        let b = edge.destination_vertex().geometry.as_position().clone();
+        Ok(a.midpoint(b))
     }
 }
 

@@ -3,7 +3,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::geometry::LateralNormal;
+use graph::geometry::{EdgeMidpoint, LateralNormal};
 use graph::geometry::alias::{ScaledLateralNormal, VertexPosition};
 use graph::mesh::{Edge, Mesh};
 use graph::storage::{EdgeKey, VertexKey};
@@ -151,6 +151,88 @@ where
     #[allow(dead_code)]
     fn with_mesh_mut(&mut self) -> EdgeView<&mut Mesh<G>, G> {
         EdgeView::new(self.mesh.as_mut(), self.key)
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
+    G: EdgeMidpoint + Geometry,
+    G::Vertex: AsPosition,
+{
+    pub fn split(mut self) -> Result<VertexView<M, G>, ()>
+    where
+        G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
+    {
+        // Insert a new vertex at the midpoint.
+        let m = {
+            let mut m = self.source_vertex().geometry.clone();
+            *m.as_position_mut() = G::midpoint(self.with_mesh_ref())?;
+            self.mesh.as_mut().insert_vertex(m)
+        };
+        // Get both half-edges to be split (where the opposite edge may not
+        // exist).
+        let edge = self.key();
+        let opposite = self.opposite_edge().map(|opposite| opposite.key());
+        let mut mesh = self.mesh;
+        // Perform the splits. Split the edge, then its opposite, then connect
+        // the splits to their neighbors.
+        let head = Self::split_half_at(&mut mesh, edge, m)?;
+        if let Some(opposite) = opposite {
+            let head = Self::split_half_at(&mut mesh, opposite, m)?;
+            Self::connect_half_over(&mut mesh, opposite, head);
+        }
+        Self::connect_half_over(&mut mesh, edge, head);
+        Ok(VertexView::new(mesh, m))
+    }
+
+    fn split_half_at(mesh: &mut M, edge: EdgeKey, m: VertexKey) -> Result<EdgeKey, ()> {
+        // Remove the edge and insert two truncated edges in its place.
+        let source = mesh.as_mut().edges.remove(&edge).unwrap();
+        let (a, b) = edge.to_vertex_keys();
+        let am = mesh.as_mut().insert_edge((a, m), source.geometry.clone())?;
+        let mb = mesh.as_mut().insert_edge((m, b), source.geometry.clone())?;
+        {
+            let mut edge = mesh.as_mut().edges.get_mut(&am).unwrap();
+            edge.next = Some(mb);
+            edge.face = source.face
+        }
+        {
+            let mut edge = mesh.as_mut().edges.get_mut(&mb).unwrap();
+            edge.next = source.next;
+            edge.face = source.face;
+        }
+        // Update the associated face, if any, because it may refer to the
+        // removed edge.
+        if let Some(face) = source.face {
+            mesh.as_mut().faces.get_mut(&face).unwrap().edge = am;
+        }
+        Ok(am)
+    }
+
+    fn connect_half_over(mesh: &mut M, edge: EdgeKey, head: EdgeKey) {
+        // Find the leading edge and set its next edge to the head (emitted by
+        // `split_half_at`). This ensures that the split is connected to its
+        // neighbors.
+        if let Some(leader) = Self::leader(mesh, edge) {
+            mesh.as_mut().edges.get_mut(&leader).unwrap().next = Some(head);
+        }
+    }
+
+    // TODO: This only works if there are opposing faces (though it does not
+    //       strictly require a closed face). If edges also included a link to
+    //       the previous edge, this would be trivial (while complicating many
+    //       other operations).
+    fn leader(mesh: &M, edge: EdgeKey) -> Option<EdgeKey> {
+        let vertex = VertexView::new(mesh, edge.to_vertex_keys().0);
+        vertex
+            .edges()
+            .filter(|incoming| match incoming.next_edge() {
+                Some(next) => next.key() == edge,
+                _ => false,
+            })
+            .map(|leader| leader.key())
+            .nth(0)
     }
 }
 
@@ -365,5 +447,47 @@ impl EdgeKeyTopology {
 
     pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use decorum::R32;
+    use nalgebra::Point3;
+
+    use generate::*;
+    use graph::*;
+
+    #[test]
+    fn split_edge() {
+        let (indeces, vertices) = cube::Cube::<R32>::with_unit_radius()
+            .polygons_with_position() // 6 quads, 24 vertices.
+            .index_vertices(HashIndexer::default());
+        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
+        let key = mesh.edges().nth(0).unwrap().key();
+        let vertex = mesh.edge_mut(key).unwrap().split().unwrap();
+
+        assert_eq!(
+            5,
+            vertex
+                .outgoing_edge()
+                .unwrap()
+                .face()
+                .unwrap()
+                .edges()
+                .count()
+        );
+        assert_eq!(
+            5,
+            vertex
+                .outgoing_edge()
+                .unwrap()
+                .opposite_edge()
+                .unwrap()
+                .face()
+                .unwrap()
+                .edges()
+                .count()
+        );
     }
 }
