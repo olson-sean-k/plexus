@@ -39,7 +39,7 @@ geometry-nalgebra = ["alga", "nalgebra"]
 
 [dependencies]
 arrayvec = "0.3.*"
-decorum = "0.0.2" # Unstable. Depend on exact version only.
+decorum = "0.0.5" # Unstable. Depend on exact version only.
 derivative = "1.0.*"
 itertools = "0.6.*"
 num = "0.1.*"

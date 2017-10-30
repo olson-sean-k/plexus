@@ -1,4 +1,4 @@
-use decorum::Finite;
+use decorum::{Finite, Primitive};
 use num::Float;
 use std::hash::Hash;
 
@@ -74,14 +74,14 @@ pub trait HashConjugate: Sized {
 
 impl<T> HashConjugate for Duplet<T>
 where
-    T: Float,
+    T: Float + Primitive,
 {
     type Hash = Duplet<Finite<T>>;
 
     fn into_hash(self) -> Self::Hash {
         Duplet(
-            Finite::from_raw_float(self.0).unwrap(),
-            Finite::from_raw_float(self.1).unwrap(),
+            Finite::from_raw_float(self.0),
+            Finite::from_raw_float(self.1),
         )
     }
 
@@ -92,15 +92,15 @@ where
 
 impl<T> HashConjugate for Triplet<T>
 where
-    T: Float,
+    T: Float + Primitive,
 {
     type Hash = Triplet<Finite<T>>;
 
     fn into_hash(self) -> Self::Hash {
         Triplet(
-            Finite::from_raw_float(self.0).unwrap(),
-            Finite::from_raw_float(self.1).unwrap(),
-            Finite::from_raw_float(self.2).unwrap(),
+            Finite::from_raw_float(self.0),
+            Finite::from_raw_float(self.1),
+            Finite::from_raw_float(self.2),
         )
     }
 
@@ -122,7 +122,7 @@ where
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
-    use decorum::Finite;
+    use decorum::{Finite, Primitive};
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
@@ -147,7 +147,7 @@ mod feature_geometry_cgmath {
 
     impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
     where
-        T: BaseFloat + BaseNum,
+        T: BaseFloat + BaseNum + Primitive,
     {
         fn from_geometry(other: Triplet<Finite<T>>) -> Self {
             Point3::new(
@@ -160,7 +160,7 @@ mod feature_geometry_cgmath {
 
     impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
     where
-        T: BaseFloat + BaseNum,
+        T: BaseFloat + BaseNum + Primitive,
     {
         fn from_geometry(other: Point3<Finite<T>>) -> Self {
             Point3::new(
@@ -207,7 +207,7 @@ mod feature_geometry_cgmath {
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
-    use decorum::Finite;
+    use decorum::{Finite, Primitive};
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::Float;
 
@@ -234,7 +234,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         fn from_geometry(other: Triplet<Finite<T>>) -> Self {
             Point3::new(
@@ -247,7 +247,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         fn from_geometry(other: Point3<Finite<T>>) -> Self {
             Point3::new(
@@ -293,14 +293,14 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Point2<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         type Hash = Point2<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Point2::new(
-                Finite::from_raw_float(self.x).unwrap(),
-                Finite::from_raw_float(self.y).unwrap(),
+                Finite::from_raw_float(self.x),
+                Finite::from_raw_float(self.y),
             )
         }
 
@@ -311,15 +311,15 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Point3<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         type Hash = Point3<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Point3::new(
-                Finite::from_raw_float(self.x).unwrap(),
-                Finite::from_raw_float(self.y).unwrap(),
-                Finite::from_raw_float(self.z).unwrap(),
+                Finite::from_raw_float(self.x),
+                Finite::from_raw_float(self.y),
+                Finite::from_raw_float(self.z),
             )
         }
 
@@ -334,14 +334,14 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Vector2<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         type Hash = Vector2<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Vector2::new(
-                Finite::from_raw_float(self.x).unwrap(),
-                Finite::from_raw_float(self.y).unwrap(),
+                Finite::from_raw_float(self.x),
+                Finite::from_raw_float(self.y),
             )
         }
 
@@ -352,15 +352,15 @@ mod feature_geometry_nalgebra {
 
     impl<T> HashConjugate for Vector3<T>
     where
-        T: Float + Scalar,
+        T: Float + Primitive + Scalar,
     {
         type Hash = Vector3<Finite<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Vector3::new(
-                Finite::from_raw_float(self.x).unwrap(),
-                Finite::from_raw_float(self.y).unwrap(),
-                Finite::from_raw_float(self.z).unwrap(),
+                Finite::from_raw_float(self.x),
+                Finite::from_raw_float(self.y),
+                Finite::from_raw_float(self.z),
             )
         }
 
