@@ -1,10 +1,14 @@
 use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
+use geometry::convert::AsPosition;
+use graph::geometry::LateralNormal;
+use graph::geometry::alias::{ScaledLateralNormal, VertexPosition};
 use graph::mesh::{Edge, Mesh};
 use graph::storage::{EdgeKey, VertexKey};
-use graph::topology::{OrphanView, Topological, View};
+use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
+                      VertexView, View};
 
 pub struct EdgeView<M, G>
 where
@@ -59,6 +63,27 @@ where
         next.map(|next| EdgeView::new(mesh, next))
     }
 
+    pub fn vertex(&self) -> VertexView<&Mesh<G>, G> {
+        VertexView::new(self.mesh.as_ref(), self.vertex)
+    }
+
+    pub fn into_vertex(self) -> VertexView<M, G> {
+        let vertex = self.vertex;
+        let mesh = self.mesh;
+        VertexView::new(mesh, vertex)
+    }
+
+    pub fn face(&self) -> Option<FaceView<&Mesh<G>, G>> {
+        self.face
+            .map(|face| FaceView::new(self.mesh.as_ref(), face))
+    }
+
+    pub fn into_face(self) -> Option<FaceView<M, G>> {
+        let face = self.face;
+        let mesh = self.mesh;
+        face.map(|face| FaceView::new(mesh, face))
+    }
+
     // Resolve the `M` parameter to a concrete reference.
     #[allow(dead_code)]
     fn with_mesh_ref(&self) -> EdgeView<&Mesh<G>, G> {
@@ -88,10 +113,85 @@ where
         })
     }
 
+    pub fn vertex_mut(&mut self) -> OrphanVertexView<G> {
+        let vertex = self.vertex;
+        OrphanVertexView::new(
+            self.mesh.as_mut().vertices.get_mut(&vertex).unwrap(),
+            vertex,
+        )
+    }
+
+    pub fn face_mut(&mut self) -> Option<OrphanFaceView<G>> {
+        let face = self.face;
+        face.map(move |face| {
+            OrphanFaceView::new(self.mesh.as_mut().faces.get_mut(&face).unwrap(), face)
+        })
+    }
+
     // Resolve the `M` parameter to a concrete reference.
     #[allow(dead_code)]
     fn with_mesh_mut(&mut self) -> EdgeView<&mut Mesh<G>, G> {
         EdgeView::new(self.mesh.as_mut(), self.key)
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
+    G: Geometry + LateralNormal,
+    G::Vertex: AsPosition,
+{
+    pub fn extrude<T>(mut self, distance: T) -> Result<Self, ()>
+    where
+        G::Normal: Mul<T>,
+        ScaledLateralNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledLateralNormal<G, T>, Output = VertexPosition<G>> + Clone,
+    {
+        if self.opposite.is_some() {
+            return Err(());
+        }
+        // Insert new vertices with the specified translation and get all
+        // vertex keys.
+        let (a, b, c, d) = {
+            // Get the originating vertices and their geometry.
+            let (a, ag, b, bg) = {
+                let next = self.next().ok_or(())?;
+                let a = self.vertex();
+                let b = next.vertex();
+                (a.key(), a.geometry.clone(), b.key(), b.geometry.clone())
+            };
+            // Clone the geometry and translate it using the lateral normal,
+            // then insert the new vertex geometry and yield the vertex keys.
+            let translation = G::normal(self.with_mesh_ref())? * distance;
+            let mut cg = bg.clone();
+            let mut dg = ag.clone();
+            *cg.as_position_mut() = bg.as_position().clone() + translation.clone();
+            *dg.as_position_mut() = ag.as_position().clone() + translation;
+            (
+                a,
+                b,
+                self.mesh.as_mut().insert_vertex(cg),
+                self.mesh.as_mut().insert_vertex(dg),
+            )
+        };
+        // Insert the edges and faces (two triangles forming a quad) and get
+        // the extruded edge's key.
+        let extrusion = {
+            let face = self.face().ok_or(())?.geometry.clone();
+            let mesh = self.mesh.as_mut();
+            // Triangle of b-a-d.
+            let ba = mesh.insert_edge((b, a), G::Edge::default())?;
+            let ad = mesh.insert_edge((a, d), G::Edge::default())?;
+            let db = mesh.insert_edge((d, b), G::Edge::default())?;
+            // Triangle of b-d-c.
+            let bd = mesh.insert_edge((b, d), G::Edge::default())?;
+            let dc = mesh.insert_edge((d, c), G::Edge::default())?;
+            let cb = mesh.insert_edge((c, b), G::Edge::default())?;
+            mesh.insert_face(&[ba, ad, db], face.clone())?;
+            mesh.insert_face(&[bd, dc, cb], face)?;
+            dc
+        };
+        Ok(EdgeView::new(self.mesh, extrusion))
     }
 }
 

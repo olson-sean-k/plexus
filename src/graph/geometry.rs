@@ -9,7 +9,7 @@ use std::ops::Sub;
 use geometry::Geometry;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Normalize};
-use graph::topology::FaceRef;
+use graph::topology::{EdgeRef, FaceRef};
 use self::alias::*;
 
 pub trait FaceNormal: Geometry {
@@ -26,7 +26,7 @@ where
     <VertexPosition<G> as Sub>::Output: Cross,
     <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
 {
-    type Normal = <<<G::Vertex as AsPosition>::Target as Sub>::Output as Cross>::Output;
+    type Normal = <<VertexPosition<G> as Sub>::Output as Cross>::Output;
 
     fn normal(face: FaceRef<Self>) -> Result<Self::Normal, ()> {
         let positions = face.vertices()
@@ -60,6 +60,40 @@ where
     }
 }
 
+pub trait LateralNormal: Geometry {
+    type Normal;
+
+    fn normal(edge: EdgeRef<Self>) -> Result<Self::Normal, ()>;
+}
+
+// TODO: rustfmt mangles the type constraints here.
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl<G> LateralNormal for G
+where
+    G: FaceNormal + Geometry,
+    G::Vertex: AsPosition,
+    VertexPosition<G>: Clone + Sub,
+    <VertexPosition<G> as Sub>::Output: Cross,
+    <VertexPosition<G> as Sub>::Output: Cross<<G as FaceNormal>::Normal>,
+    <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
+    <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output: Normalize,
+{
+    type Normal = <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output;
+
+    fn normal(edge: EdgeRef<Self>) -> Result<Self::Normal, ()> {
+        let a = edge.vertex().geometry.as_position().clone();
+        let b = edge.next()
+            .ok_or(())?
+            .vertex()
+            .geometry
+            .as_position()
+            .clone();
+        let ab = a - b;
+        let normal = <G as FaceNormal>::normal(edge.face().ok_or(())?)?;
+        Ok(ab.cross(normal).normalize())
+    }
+}
+
 pub mod alias {
     use std::ops::Mul;
 
@@ -69,4 +103,6 @@ pub mod alias {
         <<G as Geometry>::Vertex as AsPosition>::Target;
     pub type ScaledFaceNormal<G, T> =
         <<G as FaceNormal>::Normal as Mul<T>>::Output;
+    pub type ScaledLateralNormal<G, T> =
+        <<G as LateralNormal>::Normal as Mul<T>>::Output;
 }
