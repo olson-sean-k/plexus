@@ -66,6 +66,12 @@ impl OpaqueKey for VertexKey {
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EdgeKey(Key, Key);
 
+impl EdgeKey {
+    pub(crate) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
+        (self.0.into(), self.1.into())
+    }
+}
+
 impl OpaqueKey for EdgeKey {
     type RawKey = (Key, Key);
     type Generator = ();

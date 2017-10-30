@@ -532,13 +532,20 @@ where
         // then remove it from the graph.
         for edge in edges {
             let (a, opposite) = {
+                let (a, _) = edge.to_vertex_keys();
                 let edge = self.edges.get(&edge).unwrap();
-                (edge.vertex, edge.opposite)
+                (a, edge.opposite)
             };
             if let Some(edge) = opposite.map(|opposite| self.edges.get_mut(&opposite).unwrap()) {
                 edge.opposite = None;
             }
             // Disconnect the originating vertex, if any.
+            // TODO: This should be an invariant of the data in the mesh: if an
+            //       edge from `a` to `b` exists in the mesh, then the
+            //       originating vertex `a` should refer to that edge.
+            //
+            //       This code should either assume this is the case or panic
+            //       if the invariant is violated.
             let vertex = self.vertices.get_mut(&a).unwrap();
             if vertex
                 .edge

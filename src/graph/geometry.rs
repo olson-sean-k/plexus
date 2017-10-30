@@ -81,13 +81,8 @@ where
     type Normal = <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output;
 
     fn normal(edge: EdgeRef<Self>) -> Result<Self::Normal, ()> {
-        let a = edge.vertex().geometry.as_position().clone();
-        let b = edge.next()
-            .ok_or(())?
-            .vertex()
-            .geometry
-            .as_position()
-            .clone();
+        let a = edge.source_vertex().geometry.as_position().clone();
+        let b = edge.destination_vertex().geometry.as_position().clone();
         let ab = a - b;
         let normal = <G as FaceNormal>::normal(edge.face().ok_or(())?)?;
         Ok(ab.cross(normal).normalize())

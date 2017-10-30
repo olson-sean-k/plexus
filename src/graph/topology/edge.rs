@@ -38,39 +38,50 @@ where
     }
 
     pub fn to_key_topology(&self) -> EdgeKeyTopology {
-        EdgeKeyTopology::new(self.key, (self.vertex, self.next().map(|edge| edge.vertex)))
+        EdgeKeyTopology::new(self.key, self.key.to_vertex_keys())
     }
 
-    pub fn opposite(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+    pub fn source_vertex(&self) -> VertexView<&Mesh<G>, G> {
+        let (vertex, _) = self.key.to_vertex_keys();
+        VertexView::new(self.mesh.as_ref(), vertex)
+    }
+
+    pub fn into_source_vertex(self) -> VertexView<M, G> {
+        let (vertex, _) = self.key.to_vertex_keys();
+        let mesh = self.mesh;
+        VertexView::new(mesh, vertex)
+    }
+
+    pub fn destination_vertex(&self) -> VertexView<&Mesh<G>, G> {
+        VertexView::new(self.mesh.as_ref(), self.vertex)
+    }
+
+    pub fn into_destination_vertex(self) -> VertexView<M, G> {
+        let vertex = self.vertex;
+        let mesh = self.mesh;
+        VertexView::new(mesh, vertex)
+    }
+
+    pub fn opposite_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.opposite
             .map(|opposite| EdgeView::new(self.mesh.as_ref(), opposite))
     }
 
-    pub fn into_opposite(self) -> Option<Self> {
+    pub fn into_opposite_edge(self) -> Option<Self> {
         let opposite = self.opposite;
         let mesh = self.mesh;
         opposite.map(|opposite| EdgeView::new(mesh, opposite))
     }
 
-    pub fn next(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+    pub fn next_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
         self.next
             .map(|next| EdgeView::new(self.mesh.as_ref(), next))
     }
 
-    pub fn into_next(self) -> Option<Self> {
+    pub fn into_next_edge(self) -> Option<Self> {
         let next = self.next;
         let mesh = self.mesh;
         next.map(|next| EdgeView::new(mesh, next))
-    }
-
-    pub fn vertex(&self) -> VertexView<&Mesh<G>, G> {
-        VertexView::new(self.mesh.as_ref(), self.vertex)
-    }
-
-    pub fn into_vertex(self) -> VertexView<M, G> {
-        let vertex = self.vertex;
-        let mesh = self.mesh;
-        VertexView::new(mesh, vertex)
     }
 
     pub fn face(&self) -> Option<FaceView<&Mesh<G>, G>> {
@@ -96,7 +107,7 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
-    pub fn opposite_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub fn opposite_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let opposite = self.opposite;
         opposite.map(move |opposite| {
             OrphanEdgeView::new(
@@ -106,14 +117,22 @@ where
         })
     }
 
-    pub fn next_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub fn next_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
         let next = self.next;
         next.map(move |next| {
             OrphanEdgeView::new(self.mesh.as_mut().edges.get_mut(&next).unwrap(), next)
         })
     }
 
-    pub fn vertex_mut(&mut self) -> OrphanVertexView<G> {
+    pub fn source_vertex_mut(&mut self) -> OrphanVertexView<G> {
+        let (vertex, _) = self.key().to_vertex_keys();
+        OrphanVertexView::new(
+            self.mesh.as_mut().vertices.get_mut(&vertex).unwrap(),
+            vertex,
+        )
+    }
+
+    pub fn destination_vertex_mut(&mut self) -> OrphanVertexView<G> {
         let vertex = self.vertex;
         OrphanVertexView::new(
             self.mesh.as_mut().vertices.get_mut(&vertex).unwrap(),
@@ -155,9 +174,8 @@ where
         let (a, b, c, d) = {
             // Get the originating vertices and their geometry.
             let (a, ag, b, bg) = {
-                let next = self.next().ok_or(())?;
-                let a = self.vertex();
-                let b = next.vertex();
+                let a = self.source_vertex();
+                let b = self.destination_vertex();
                 (a.key(), a.geometry.clone(), b.key(), b.geometry.clone())
             };
             // Clone the geometry and translate it using the lateral normal,
@@ -330,11 +348,11 @@ where
 
 pub struct EdgeKeyTopology {
     key: EdgeKey,
-    vertices: (VertexKey, Option<VertexKey>),
+    vertices: (VertexKey, VertexKey),
 }
 
 impl EdgeKeyTopology {
-    fn new(edge: EdgeKey, vertices: (VertexKey, Option<VertexKey>)) -> Self {
+    fn new(edge: EdgeKey, vertices: (VertexKey, VertexKey)) -> Self {
         EdgeKeyTopology {
             key: edge,
             vertices: vertices,
@@ -345,7 +363,7 @@ impl EdgeKeyTopology {
         self.key
     }
 
-    pub fn vertices(&self) -> (VertexKey, Option<VertexKey>) {
+    pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
     }
 }

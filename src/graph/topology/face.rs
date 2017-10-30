@@ -100,7 +100,7 @@ where
 {
     pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, ()> {
         let perimeter = self.edges()
-            .map(|edge| (edge.vertex, edge.next().unwrap().vertex))
+            .map(|edge| (edge.vertex, edge.next_edge().unwrap().vertex))
             .collect::<Vec<_>>();
         if perimeter.len() <= 3 {
             return Ok(None);
