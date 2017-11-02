@@ -69,6 +69,7 @@ where
     pub(super) vertex: VertexKey,
     pub(super) opposite: Option<EdgeKey>,
     pub(super) next: Option<EdgeKey>,
+    pub(super) previous: Option<EdgeKey>,
     pub(super) face: Option<FaceKey>,
 }
 
@@ -82,6 +83,7 @@ where
             vertex: vertex,
             opposite: None,
             next: None,
+            previous: None,
             face: None,
         }
     }
@@ -99,6 +101,7 @@ where
             vertex: edge.vertex,
             opposite: edge.opposite,
             next: edge.next,
+            previous: edge.previous,
             face: edge.face,
         }
     }
@@ -482,13 +485,32 @@ where
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
+        // If the edge already exists, then fail. This ensures an important
+        // invariant: edges may only have two adjacent faces. That is, a
+        // half-edge may only have one associated face, at most one preceding
+        // half-edge, at most one following half-edge, and may form at most one
+        // closed loop.
+        if self.edges.contains_key(&ab) {
+            return Err(());
+        }
+        let vertex = {
+            if !self.vertices.contains_key(&b) {
+                return Err(());
+            }
+            match self.vertices.get_mut(&a) {
+                Some(vertex) => vertex,
+                _ => {
+                    return Err(());
+                }
+            }
+        };
         let mut edge = Edge::new(b, geometry);
         if let Some(opposite) = self.edges.get_mut(&ba) {
             edge.opposite = Some(ba);
             opposite.opposite = Some(ab);
         }
         self.edges.insert_with_key(&ab, edge);
-        self.vertices.get_mut(&a).unwrap().edge = Some(ab);
+        vertex.edge = Some(ab);
         Ok(ab)
     }
 
@@ -505,20 +527,35 @@ where
         if edges.len() < 3 {
             return Err(());
         }
+        // Fail if any of the edges are missing or if any edge already refers
+        // to a face.
+        for edge in edges {
+            if match self.edge(*edge) {
+                Some(edge) => edge.face().is_some(),
+                _ => true,
+            } {
+                return Err(());
+            }
+        }
         let face = self.faces
             .insert_with_generator(Face::new(edges[0], geometry));
         for index in 0..edges.len() {
-            // TODO: Connecting these edges creates a cycle. This means code
-            //       must be aware of and able to detect these cycles. Is this
-            //       okay?
+            // Connecting these edges creates a cycle. This means code must be
+            // aware of and able to detect these cycles.
             self.connect_edges_in_face(face, (edges[index], edges[(index + 1) % edges.len()]));
         }
         Ok(face)
     }
 
-    // TODO: This code orphans vertices; it does not remove vertices with no
-    //       remaining associated edges. `FaceView::extrude` currently relies
-    //       on this behavior. Is this okay?
+    // This code orphans vertices; it does not remove vertices with no
+    // remaining associated edges. `FaceView::extrude` currently relies on this
+    // behavior, for example.
+    //
+    // This code operates on a face; it currently does not remove references to
+    // the face's edges that persist after the face's edges are removed. This
+    // shouldn't be a problem so long as edges do not share more than two faces
+    // (an invariant that should be enforced by meshes anyway; such an edge
+    // would consist of three logical half-edges).
     pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
         // Get all of the edges forming the face.
         let edges = {
@@ -561,9 +598,15 @@ where
     }
 
     fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
-        let edge = self.edges.get_mut(&edges.0).unwrap();
-        edge.next = Some(edges.1);
-        edge.face = Some(face);
+        {
+            let edge = self.edges.get_mut(&edges.0).unwrap();
+            edge.next = Some(edges.1);
+            edge.face = Some(face);
+        }
+        {
+            let edge = self.edges.get_mut(&edges.1).unwrap();
+            edge.previous = Some(edges.0);
+        }
     }
 }
 
@@ -777,5 +820,26 @@ mod tests {
             // Geometry should be mutable.
             vertex.geometry += Vector3::zero();
         }
+    }
+
+    #[test]
+    fn error_on_non_manifold_mesh() {
+        // Construct a mesh with a "fan" of three triangles sharing the same
+        // edge along the Z-axis. The edge would have three associated faces,
+        // which should not be possible.
+        let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
+            vec![0, 1, 2, 0, 1, 3, 0, 1, 4],
+            vec![
+                Point3::<i32>::new(0, 0, 1),
+                Point3::<i32>::new(0, 0, -1),
+                Point3::<i32>::new(1, 0, 0),
+                Point3::<i32>::new(0, 1, 0),
+                Point3::<i32>::new(1, 1, 0),
+            ],
+            3,
+        );
+
+        // TODO: Verify the exact error.
+        assert!(mesh.is_err());
     }
 }

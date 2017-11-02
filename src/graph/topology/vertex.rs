@@ -403,17 +403,4 @@ mod tests {
             assert_eq!(4, vertex.edges().count());
         }
     }
-
-    #[test]
-    fn circulate_over_many_edges() {
-        let mesh = sphere::UVSphere::<R32>::with_unit_radius(16, 16)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
-
-        // All faces should be triangles and all vertices should have 4
-        // (incoming) edges.
-        for vertex in mesh.vertices() {
-            vertex.edges().count();
-        }
-    }
 }

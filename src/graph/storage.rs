@@ -1,7 +1,7 @@
 /// Storage for topological data in a mesh.
 
 use std::collections::HashMap;
-use std::collections::hash_map;
+use std::collections::hash_map::{Iter, IterMut};
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 
@@ -111,12 +111,8 @@ impl OpaqueKey for FaceKey {
     }
 }
 
-pub type StorageIter<'a, T> = hash_map::Iter<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
-pub type StorageIterMut<'a, T> = hash_map::IterMut<
-    'a,
-    <<T as Topological>::Key as OpaqueKey>::RawKey,
-    T,
->;
+pub type StorageIter<'a, T> = Iter<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
+pub type StorageIterMut<'a, T> = IterMut<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
 
 pub struct Storage<T>(
     <<T as Topological>::Key as OpaqueKey>::Generator,
@@ -149,8 +145,8 @@ where
     }
 
     #[inline(always)]
-    pub fn insert_with_key(&mut self, key: &T::Key, item: T) {
-        self.1.insert(key.to_inner(), item);
+    pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
+        self.1.insert(key.to_inner(), item)
     }
 
     #[inline(always)]
