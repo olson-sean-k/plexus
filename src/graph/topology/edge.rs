@@ -215,13 +215,13 @@ where
         let mb = mesh.as_mut().insert_edge((m, b), source.geometry.clone())?;
         // Connect the new edges to each other and their leading edges.
         {
-            let mut edge = mesh.as_mut().edges.get_mut(&am).unwrap();
+            let edge = mesh.as_mut().edges.get_mut(&am).unwrap();
             edge.next = Some(mb);
             edge.previous = source.previous;
             edge.face = source.face
         }
         {
-            let mut edge = mesh.as_mut().edges.get_mut(&mb).unwrap();
+            let edge = mesh.as_mut().edges.get_mut(&mb).unwrap();
             edge.next = source.next;
             edge.previous = Some(am);
             edge.face = source.face;
@@ -253,11 +253,12 @@ where
         ScaledLateralNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledLateralNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
+        let face = self.face().ok_or(())?.geometry.clone();
         // Insert new vertices with the specified translation and get all
         // vertex keys.
         let (a, b, c, d) = {
             // Get the originating vertices and their geometry.
-            let (a, ag, b, bg) = {
+            let (a, mut d, b, mut c) = {
                 let a = self.source_vertex();
                 let b = self.destination_vertex();
                 (a.key(), a.geometry.clone(), b.key(), b.geometry.clone())
@@ -265,21 +266,18 @@ where
             // Clone the geometry and translate it using the lateral normal,
             // then insert the new vertex geometry and yield the vertex keys.
             let translation = G::normal(self.with_mesh_ref())? * distance;
-            let mut cg = bg.clone();
-            let mut dg = ag.clone();
-            *cg.as_position_mut() = bg.as_position().clone() + translation.clone();
-            *dg.as_position_mut() = ag.as_position().clone() + translation;
+            *c.as_position_mut() = c.as_position().clone() + translation.clone();
+            *d.as_position_mut() = d.as_position().clone() + translation;
             (
                 a,
                 b,
-                self.mesh.as_mut().insert_vertex(cg),
-                self.mesh.as_mut().insert_vertex(dg),
+                self.mesh.as_mut().insert_vertex(c),
+                self.mesh.as_mut().insert_vertex(d),
             )
         };
         // Insert the edges and faces (two triangles forming a quad) and get
         // the extruded edge's key.
         let extrusion = {
-            let face = self.face().ok_or(())?.geometry.clone();
             let mesh = self.mesh.as_mut();
             // Triangle of b-a-d.
             let ba = mesh.insert_edge((b, a), G::Edge::default())?;
