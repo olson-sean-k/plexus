@@ -457,6 +457,7 @@ mod tests {
 
     use generate::*;
     use graph::*;
+    use graph::storage::Key;
 
     #[test]
     fn extrude_edge() {
@@ -475,6 +476,34 @@ mod tests {
 
         assert_eq!(10, mesh.edge_count());
         assert_eq!(3, mesh.face_count());
+    }
+
+    #[test]
+    fn join_edges() {
+        // Construct a mesh with two independent quads.
+        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![
+                Point3::<f32>::new(-2.0, 0.0, 0.0),
+                Point3::<f32>::new(-1.0, 0.0, 0.0), // 1
+                Point3::<f32>::new(-1.0, 1.0, 0.0), // 2
+                Point3::<f32>::new(-2.0, 1.0, 0.0),
+                Point3::<f32>::new(1.0, 0.0, 0.0), // 4
+                Point3::<f32>::new(2.0, 0.0, 0.0),
+                Point3::<f32>::new(2.0, 1.0, 0.0),
+                Point3::<f32>::new(1.0, 1.0, 0.0), // 7
+            ],
+            4,
+        ).unwrap();
+        // TODO: This is fragile. It would probably be best for `Mesh` to
+        //       provide a more convenient way to search for topology.
+        // Construct the keys for the nearby edges.
+        let source = (VertexKey::from(Key::new(1)), VertexKey::from(Key::new(2))).into();
+        let destination = (VertexKey::from(Key::new(7)), VertexKey::from(Key::new(4))).into();
+        mesh.edge_mut(source).unwrap().join(destination).unwrap();
+
+        assert_eq!(14, mesh.edge_count());
+        assert_eq!(4, mesh.face_count());
     }
 
     #[test]
