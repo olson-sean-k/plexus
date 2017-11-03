@@ -147,6 +147,31 @@ where
         })
     }
 
+    pub fn join<T>(mut self, edge: EdgeKey) -> Result<Self, ()> {
+        if self.mesh.as_ref().edges.get(&edge).is_none() {
+            return Err(());
+        }
+        let (a, b) = self.key().to_vertex_keys();
+        let (c, d) = edge.to_vertex_keys();
+        // Insert the edges and faces (two triangles forming a quad).
+        let extrusion = {
+            let face = self.face().ok_or(())?.geometry.clone();
+            let mesh = self.mesh.as_mut();
+            // Triangle of b-a-d.
+            let ba = mesh.insert_edge((b, a), G::Edge::default())?;
+            let ad = mesh.insert_edge((a, d), G::Edge::default())?;
+            let db = mesh.insert_edge((d, b), G::Edge::default())?;
+            // Triangle of b-d-c.
+            let bd = mesh.insert_edge((b, d), G::Edge::default())?;
+            let dc = mesh.insert_edge((d, c), G::Edge::default())?;
+            let cb = mesh.insert_edge((c, b), G::Edge::default())?;
+            mesh.insert_face(&[ba, ad, db], face.clone())?;
+            mesh.insert_face(&[bd, dc, cb], face)?;
+            dc
+        };
+        Ok(EdgeView::new(self.mesh, extrusion))
+    }
+
     // Resolve the `M` parameter to a concrete reference.
     #[allow(dead_code)]
     fn with_mesh_mut(&mut self) -> EdgeView<&mut Mesh<G>, G> {
@@ -228,9 +253,6 @@ where
         ScaledLateralNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledLateralNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        if self.opposite.is_some() {
-            return Err(());
-        }
         // Insert new vertices with the specified translation and get all
         // vertex keys.
         let (a, b, c, d) = {
