@@ -147,7 +147,7 @@ where
         })
     }
 
-    pub fn join<T>(mut self, edge: EdgeKey) -> Result<Self, ()> {
+    pub fn join(mut self, edge: EdgeKey) -> Result<Self, ()> {
         if self.mesh.as_ref().edges.get(&edge).is_none() {
             return Err(());
         }

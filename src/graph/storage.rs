@@ -67,6 +67,13 @@ impl OpaqueKey for VertexKey {
 pub struct EdgeKey(Key, Key);
 
 impl EdgeKey {
+    // TODO: This may be useful in some existing code that constructs the
+    //       opposite edge key.
+    #[allow(dead_code)]
+    pub(crate) fn to_opposite_key(&self) -> EdgeKey {
+        EdgeKey(self.1, self.0)
+    }
+
     pub(crate) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
         (self.0.into(), self.1.into())
     }

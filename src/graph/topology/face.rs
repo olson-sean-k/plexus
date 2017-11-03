@@ -81,6 +81,38 @@ where
         FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
+    pub fn join(self, face: FaceKey) -> Result<(), ()> {
+        // Ensure that the opposite face exists and has the same arity.
+        let arity = self.arity();
+        match self.mesh.as_ref().face(face) {
+            Some(opposite) => if opposite.arity() != arity {
+                return Err(());
+            },
+            _ => {
+                return Err(());
+            }
+        }
+        // Decompose the faces into their key topology and remove them.
+        let source = self.to_key_topology();
+        let mut mesh = self.remove()?;
+        let opposite = mesh.as_mut().face_mut(face).ok_or(())?;
+        let destination = opposite.to_key_topology();
+        let mesh = opposite.remove()?.as_mut();
+        // TODO: Is it always correct to reverse the order of the opposite
+        //       face's edges?
+        // Re-insert the edges of the faces and join the mutual edges.
+        for (source, destination) in source.edges().iter().zip(destination.edges().iter().rev()) {
+            let (a, b) = source.vertices();
+            let (c, d) = destination.vertices();
+            let ab = mesh.insert_edge((a, b), G::Edge::default())?;
+            let cd = mesh.insert_edge((c, d), G::Edge::default())?;
+            let edge = mesh.edge_mut(ab).unwrap();
+            edge.join(cd)?;
+        }
+        // TODO: Is there any reasonable topology this can return?
+        Ok(())
+    }
+
     fn remove(self) -> Result<M, ()> {
         let FaceView { mut mesh, key, .. } = self;
         mesh.as_mut().remove_face(key)?;
