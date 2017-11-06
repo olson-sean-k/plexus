@@ -34,6 +34,10 @@ let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
+For an example of rendering, see the viewer example.
+
+![Viewer](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/viewer.png)
+
 ## Half-Edge Graph Meshes
 
 Generators are flexible and easy to use, but only represent vertex geometry and
