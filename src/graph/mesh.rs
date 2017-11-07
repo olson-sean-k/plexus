@@ -764,7 +764,7 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.input.next().map(|mut entry| {
+        self.input.next().map(|entry| {
             T::from_topology(
                 unsafe {
                     use std::mem;
@@ -774,7 +774,7 @@ where
                     // lifetime `'a`. Therefore, the (disjoint) geometry data
                     // within the mesh should also be valid over the lifetime
                     // '`a'.
-                    mem::transmute::<_, &'a mut T::Topology>(&mut entry.1)
+                    mem::transmute::<_, &'a mut T::Topology>(entry.1)
                 },
                 (*entry.0).into(),
             )
@@ -789,6 +789,7 @@ mod tests {
     use num::Zero;
 
     use generate::*;
+    use geometry::*;
     use graph::*;
 
     #[test]
@@ -841,5 +842,37 @@ mod tests {
 
         // TODO: Verify the exact error.
         assert!(mesh.is_err());
+    }
+
+    // This test is a sanity check for mesh iterators, topological views, and
+    // the unsafe transmutations used to coerce lifetimes.
+    #[test]
+    fn read_write_geometry_ref() {
+        impl Attribute for f32 {}
+
+        struct ValueGeometry;
+
+        impl Geometry for ValueGeometry {
+            type Vertex = Point3<f32>;
+            type Edge = ();
+            type Face = f32;
+        }
+
+        // Create a mesh with a floating point value associated with each face.
+        // Use a mutable iterator to write to the geometry of each face.
+        let mut mesh = sphere::UVSphere::<R32>::with_unit_width(4, 4)
+            .polygons_with_position()
+            .map_vertices(|position| -> Point3<R32> { position.into() })
+            .collect::<Mesh<ValueGeometry>>();
+        let value = 3.14;
+        for mut face in mesh.faces_mut() {
+            face.geometry = value;
+        }
+
+        // Read the geometry of each face using an immutable iterator to ensure
+        // it is what we expect.
+        for face in mesh.faces() {
+            assert_eq!(value, face.geometry);
+        }
     }
 }
