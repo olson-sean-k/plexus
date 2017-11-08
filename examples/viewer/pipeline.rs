@@ -1,7 +1,7 @@
 use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
-use num::{One, Zero};
+use num::One;
 use rand::{self, Rand};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -15,24 +15,25 @@ where
 
 impl<T> Color4<T>
 where
-    T: One + Scalar + Zero,
+    T: Scalar,
 {
     pub fn new(r: T, g: T, b: T, a: T) -> Self {
         Color4(Vector4::new(r, g, b, a))
-    }
-
-    pub fn white() -> Self {
-        Color4::new(T::one(), T::one(), T::one(), T::one())
-    }
-
-    pub fn black() -> Self {
-        Color4::new(T::zero(), T::zero(), T::zero(), T::one())
     }
 }
 
 impl<T> Color4<T>
 where
-    T: One + Rand + Scalar + Zero,
+    T: One + Scalar,
+{
+    pub fn white() -> Self {
+        Color4::new(T::one(), T::one(), T::one(), T::one())
+    }
+}
+
+impl<T> Color4<T>
+where
+    T: One + Rand + Scalar,
 {
     pub fn random() -> Self {
         Color4::new(
@@ -46,7 +47,7 @@ where
 
 impl<T> Default for Color4<T>
 where
-    T: One + Scalar + Zero,
+    T: One + Scalar,
 {
     fn default() -> Self {
         Color4::white()
