@@ -102,6 +102,12 @@ pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef,
                          OrphanEdgeMut, OrphanFaceMut, OrphanVertexMut, VertexMut, VertexRef};
 
+// TODO: Do not re-export these types. This is only done so that they show up
+//       in documentation. Client code should not interact with these types.
+//       See: https://github.com/rust-lang/rust/issues/39437
+pub use self::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView,
+                         VertexView};
+
 /// Provides an iterator over a window of duplets that includes the first value
 /// in the sequence at the beginning and end of the iteration.
 trait Perimeter<'a, T, U>

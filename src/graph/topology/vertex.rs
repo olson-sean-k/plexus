@@ -7,6 +7,11 @@ use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological,
                       View};
 
+/// Do **not** use this type directly. Use `VertexRef` and `VertexMut` instead.
+///
+/// This type is only re-exported so that its members are shown in
+/// documentation. See this issue:
+/// https://github.com/rust-lang/rust/issues/39437
 pub struct VertexView<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -160,6 +165,11 @@ where
     }
 }
 
+/// Do **not** use this type directly. Use `OrphanVertexMut` instead.
+///
+/// This type is only re-exported so that its members are shown in
+/// documentation. See this issue:
+/// https://github.com/rust-lang/rust/issues/39437
 pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,

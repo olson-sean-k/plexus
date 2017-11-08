@@ -10,6 +10,11 @@ use graph::storage::{EdgeKey, VertexKey};
 use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
                       VertexView, View};
 
+/// Do **not** use this type directly. Use `EdgeRef` and `EdgeMut` instead.
+///
+/// This type is only re-exported so that its members are shown in
+/// documentation. See this issue:
+/// https://github.com/rust-lang/rust/issues/39437
 pub struct EdgeView<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -390,6 +395,11 @@ where
     }
 }
 
+/// Do **not** use this type directly. Use `OrphanEdgeMut` instead.
+///
+/// This type is only re-exported so that its members are shown in
+/// documentation. See this issue:
+/// https://github.com/rust-lang/rust/issues/39437
 pub struct OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
