@@ -27,6 +27,7 @@ rustdoc-args = ["--no-defaults",
                 "--passes=unindent-comments"]
 
 [badges]
+appveyor = { repository = "olson-sean-k/plexus" }
 travis-ci = { repository = "olson-sean-k/plexus" }
 
 [[example]]
