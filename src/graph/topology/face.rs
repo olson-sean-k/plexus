@@ -127,6 +127,16 @@ where
 
 impl<M, G> FaceView<M, G>
 where
+    M: AsRef<Mesh<G>>,
+    G: FaceCentroid + Geometry,
+{
+    pub fn centroid(&self) -> Result<G::Centroid, ()> {
+        G::centroid(self.with_mesh_ref())
+    }
+}
+
+impl<M, G> FaceView<M, G>
+where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
@@ -138,7 +148,7 @@ where
             return Ok(None);
         }
         let face = self.geometry.clone();
-        let centroid = G::centroid(self.with_mesh_ref())?;
+        let centroid = self.centroid()?;
         let mut mesh = self.remove()?;
         let c = mesh.as_mut().insert_vertex(centroid);
         for (a, b) in perimeter {
@@ -156,6 +166,16 @@ where
                 .unwrap();
         }
         Ok(Some(VertexView::new(mesh, c)))
+    }
+}
+
+impl<M, G> FaceView<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: FaceNormal + Geometry,
+{
+    pub fn normal(&self) -> Result<G::Normal, ()> {
+        G::normal(self.with_mesh_ref())
     }
 }
 
@@ -215,7 +235,7 @@ where
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        let translation = G::normal(self.with_mesh_ref())? * distance;
+        let translation = self.normal()? * distance;
         Ok(
             self.vertices()
                 .map(|vertex| {

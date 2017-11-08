@@ -3,8 +3,8 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::geometry::{EdgeMidpoint, LateralNormal};
-use graph::geometry::alias::{ScaledLateralNormal, VertexPosition};
+use graph::geometry::{EdgeLateral, EdgeMidpoint};
+use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::mesh::{Edge, Mesh};
 use graph::storage::{EdgeKey, VertexKey};
 use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
@@ -181,6 +181,16 @@ where
 
 impl<M, G> EdgeView<M, G>
 where
+    M: AsRef<Mesh<G>>,
+    G: EdgeMidpoint + Geometry,
+{
+    pub fn midpoint(&self) -> Result<G::Midpoint, ()> {
+        G::midpoint(self.with_mesh_ref())
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: EdgeMidpoint + Geometry,
     G::Vertex: AsPosition,
@@ -192,7 +202,7 @@ where
         // Insert a new vertex at the midpoint.
         let m = {
             let mut m = self.source_vertex().geometry.clone();
-            *m.as_position_mut() = G::midpoint(self.with_mesh_ref())?;
+            *m.as_position_mut() = self.midpoint()?;
             self.mesh.as_mut().insert_vertex(m)
         };
         // Get both half-edges to be split.
@@ -243,15 +253,25 @@ where
 
 impl<M, G> EdgeView<M, G>
 where
+    M: AsRef<Mesh<G>>,
+    G: Geometry + EdgeLateral,
+{
+    pub fn lateral(&self) -> Result<G::Lateral, ()> {
+        G::lateral(self.with_mesh_ref())
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
-    G: Geometry + LateralNormal,
+    G: Geometry + EdgeLateral,
     G::Vertex: AsPosition,
 {
     pub fn extrude<T>(mut self, distance: T) -> Result<Self, ()>
     where
-        G::Normal: Mul<T>,
-        ScaledLateralNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledLateralNormal<G, T>, Output = VertexPosition<G>> + Clone,
+        G::Lateral: Mul<T>,
+        ScaledEdgeLateral<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
         let face = self.face().ok_or(())?.geometry.clone();
         // Insert new vertices with the specified translation and get all
@@ -265,7 +285,7 @@ where
             };
             // Clone the geometry and translate it using the lateral normal,
             // then insert the new vertex geometry and yield the vertex keys.
-            let translation = G::normal(self.with_mesh_ref())? * distance;
+            let translation = self.lateral()? * distance;
             *c.as_position_mut() = c.as_position().clone() + translation.clone();
             *d.as_position_mut() = d.as_position().clone() + translation;
             (

@@ -81,15 +81,15 @@ where
     }
 }
 
-pub trait LateralNormal: Geometry {
-    type Normal;
+pub trait EdgeLateral: Geometry {
+    type Lateral;
 
-    fn normal(edge: EdgeRef<Self>) -> Result<Self::Normal, ()>;
+    fn lateral(edge: EdgeRef<Self>) -> Result<Self::Lateral, ()>;
 }
 
 // TODO: rustfmt mangles the type constraints here.
 #[cfg_attr(rustfmt, rustfmt_skip)]
-impl<G> LateralNormal for G
+impl<G> EdgeLateral for G
 where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
@@ -99,9 +99,9 @@ where
     <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
     <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output: Normalize,
 {
-    type Normal = <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output;
+    type Lateral = <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output;
 
-    fn normal(edge: EdgeRef<Self>) -> Result<Self::Normal, ()> {
+    fn lateral(edge: EdgeRef<Self>) -> Result<Self::Lateral, ()> {
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
         let ab = a - b;
@@ -119,6 +119,6 @@ pub mod alias {
         <<G as Geometry>::Vertex as AsPosition>::Target;
     pub type ScaledFaceNormal<G, T> =
         <<G as FaceNormal>::Normal as Mul<T>>::Output;
-    pub type ScaledLateralNormal<G, T> =
-        <<G as LateralNormal>::Normal as Mul<T>>::Output;
+    pub type ScaledEdgeLateral<G, T> =
+        <<G as EdgeLateral>::Lateral as Mul<T>>::Output;
 }
