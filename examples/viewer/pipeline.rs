@@ -9,33 +9,33 @@ use std::ops::{Deref, DerefMut};
 pub use self::pipeline::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct Color<T>(Vector4<T>)
+pub struct Color4<T>(Vector4<T>)
 where
     T: Scalar;
 
-impl<T> Color<T>
+impl<T> Color4<T>
 where
     T: One + Scalar + Zero,
 {
     pub fn new(r: T, g: T, b: T, a: T) -> Self {
-        Color(Vector4::new(r, g, b, a))
+        Color4(Vector4::new(r, g, b, a))
     }
 
     pub fn white() -> Self {
-        Color::new(T::one(), T::one(), T::one(), T::one())
+        Color4::new(T::one(), T::one(), T::one(), T::one())
     }
 
     pub fn black() -> Self {
-        Color::new(T::zero(), T::zero(), T::zero(), T::one())
+        Color4::new(T::zero(), T::zero(), T::zero(), T::one())
     }
 }
 
-impl<T> Color<T>
+impl<T> Color4<T>
 where
     T: One + Rand + Scalar + Zero,
 {
     pub fn random() -> Self {
-        Color::new(
+        Color4::new(
             rand::random::<T>(),
             rand::random::<T>(),
             rand::random::<T>(),
@@ -44,16 +44,16 @@ where
     }
 }
 
-impl<T> Default for Color<T>
+impl<T> Default for Color4<T>
 where
     T: One + Scalar + Zero,
 {
     fn default() -> Self {
-        Color::white()
+        Color4::white()
     }
 }
 
-impl<T> Deref for Color<T>
+impl<T> Deref for Color4<T>
 where
     T: Scalar,
 {
@@ -64,7 +64,7 @@ where
     }
 }
 
-impl<T> DerefMut for Color<T>
+impl<T> DerefMut for Color4<T>
 where
     T: Scalar,
 {
@@ -119,7 +119,7 @@ gfx_vertex_struct! {
 }
 
 impl Vertex {
-    pub fn new(position: &Point3<f32>, color: &Color<f32>) -> Self {
+    pub fn new(position: &Point3<f32>, color: &Color4<f32>) -> Self {
         Vertex {
             position: [position[0], position[1], position[2]],
             color: [color[0], color[1], color[2], color[3]],

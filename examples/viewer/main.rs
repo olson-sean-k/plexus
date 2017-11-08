@@ -24,10 +24,10 @@ use plexus::graph::Mesh;
 use plexus::prelude::*;
 
 use camera::Camera;
-use pipeline::{Color, Transform, Vertex};
+use pipeline::{Color4, Transform, Vertex};
 use renderer::{GlutinRenderer, Renderer};
 
-impl<T> Attribute for Color<T>
+impl<T> Attribute for Color4<T>
 where
     T: Scalar,
 {
@@ -38,7 +38,7 @@ struct FaceColorGeometry;
 impl Geometry for FaceColorGeometry {
     type Vertex = Point3<f32>;
     type Edge = ();
-    type Face = Color<f32>;
+    type Face = Color4<f32>;
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
@@ -47,7 +47,7 @@ fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
         .map_vertices(|position| -> Point3<R32> { position.into() })
         .collect::<Mesh<FaceColorGeometry>>();
     for mut face in mesh.faces_mut() {
-        face.geometry = Color::random();
+        face.geometry = Color4::random();
     }
     mesh.to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))
         .unwrap()
