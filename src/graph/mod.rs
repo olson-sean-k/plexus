@@ -102,43 +102,47 @@ pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef,
                          OrphanEdgeMut, OrphanFaceMut, OrphanVertexMut, VertexMut, VertexRef};
 
-trait VecExt<T>
+/// Provides an iterator over a window of duplets that includes the first value
+/// in the sequence at the beginning and end of the iteration.
+trait Perimeter<'a, T, U>
 where
-    T: Copy,
+    T: 'a + AsRef<[U]>,
+    U: Copy,
 {
-    fn duplet_circuit_windows(&self) -> DupletCircuitWindows<T>;
+    fn perimeter(&self) -> PerimeterIter<U>;
 }
 
-impl<T> VecExt<T> for Vec<T>
+impl<'a, T, U> Perimeter<'a, T, U> for T
 where
-    T: Copy,
+    T: 'a + AsRef<[U]>,
+    U: Copy,
 {
-    fn duplet_circuit_windows(&self) -> DupletCircuitWindows<T> {
-        DupletCircuitWindows::new(self)
+    fn perimeter(&self) -> PerimeterIter<U> {
+        PerimeterIter::new(self.as_ref())
     }
 }
 
-struct DupletCircuitWindows<'a, T>
+struct PerimeterIter<'a, T>
 where
     T: 'a + Copy,
 {
-    input: &'a Vec<T>,
+    input: &'a [T],
     index: usize,
 }
 
-impl<'a, T> DupletCircuitWindows<'a, T>
+impl<'a, T> PerimeterIter<'a, T>
 where
     T: 'a + Copy,
 {
-    fn new(input: &'a Vec<T>) -> Self {
-        DupletCircuitWindows {
+    fn new(input: &'a [T]) -> Self {
+        PerimeterIter {
             input: input,
             index: 0,
         }
     }
 }
 
-impl<'a, T> Iterator for DupletCircuitWindows<'a, T>
+impl<'a, T> Iterator for PerimeterIter<'a, T>
 where
     T: 'a + Copy,
 {

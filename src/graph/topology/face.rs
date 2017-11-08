@@ -3,7 +3,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::VecExt;
+use graph::Perimeter;
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
@@ -208,13 +208,13 @@ where
                 .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1)))
                 .collect::<Vec<_>>();
             let edges = vertices
-                .duplet_circuit_windows()
+                .perimeter()
                 .map(|((_, a), (_, b))| {
                     mesh.insert_edge((a, b), G::Edge::default()).unwrap()
                 })
                 .collect::<Vec<_>>();
             let extrusion = mesh.insert_face(&edges, face).unwrap();
-            for ((d, c), (a, b)) in vertices.duplet_circuit_windows() {
+            for ((d, c), (a, b)) in vertices.perimeter() {
                 let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
                 let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
                 let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();

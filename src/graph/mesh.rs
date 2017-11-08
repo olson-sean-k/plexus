@@ -9,7 +9,7 @@ use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTrian
                IntoVertices, Triangle, Triangulate};
 use geometry::Geometry;
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
-use graph::VecExt;
+use graph::Perimeter;
 use graph::geometry::FaceCentroid;
 use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
@@ -243,7 +243,7 @@ where
                 return Err(());
             }
             let mut edges = Vec::with_capacity(arity);
-            for (a, b) in face.duplet_circuit_windows() {
+            for (a, b) in face.perimeter() {
                 let a = *vertices.get(a).ok_or(())?;
                 let b = *vertices.get(b).ok_or(())?;
                 edges.push(mesh.insert_edge((a, b), G::Edge::default())?);
@@ -539,10 +539,10 @@ where
         }
         let face = self.faces
             .insert_with_generator(Face::new(edges[0], geometry));
-        for index in 0..edges.len() {
+        for (ab, bc) in edges.perimeter() {
             // Connecting these edges creates a cycle. This means code must be
             // aware of and able to detect these cycles.
-            self.connect_edges_in_face(face, (edges[index], edges[(index + 1) % edges.len()]));
+            self.connect_edges_in_face(face, (ab, bc));
         }
         Ok(face)
     }
