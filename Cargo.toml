@@ -16,10 +16,10 @@ rustdoc-args = ["--no-defaults",
                 "--passes=collapse-docs",
                 "--passes=strip-hidden",
                 # Omitting this pass exposes documentation for aliased and
-                # dereferenced types, as well as types that are not
-                # re-exported. When this is used, the documentation is
-                # incomplete. However, it also generates a lot of spurious
-                # documentation.
+                # dereferenced types that are not re-exported. However, it also
+                # generates a lot of spurious documentation. When enabled, the
+                # documentation is more clean but incomplete. Topological views
+                # are undocumented, for example.
                 #
                 # https://github.com/rust-lang/rust/issues/39437
                 "--passes=strip-private",
