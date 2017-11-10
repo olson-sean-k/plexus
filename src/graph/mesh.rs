@@ -542,7 +542,15 @@ where
         for (ab, bc) in edges.perimeter() {
             // Connecting these edges creates a cycle. This means code must be
             // aware of and able to detect these cycles.
-            self.connect_edges_in_face(face, (ab, bc));
+            {
+                let edge = self.edges.get_mut(&ab).unwrap();
+                edge.next = Some(bc);
+                edge.face = Some(face);
+            }
+            {
+                let edge = self.edges.get_mut(&bc).unwrap();
+                edge.previous = Some(ab);
+            }
         }
         Ok(face)
     }
@@ -595,18 +603,6 @@ where
         }
         self.faces.remove(&face);
         Ok(())
-    }
-
-    fn connect_edges_in_face(&mut self, face: FaceKey, edges: (EdgeKey, EdgeKey)) {
-        {
-            let edge = self.edges.get_mut(&edges.0).unwrap();
-            edge.next = Some(edges.1);
-            edge.face = Some(face);
-        }
-        {
-            let edge = self.edges.get_mut(&edges.1).unwrap();
-            edge.previous = Some(edges.0);
-        }
     }
 }
 
