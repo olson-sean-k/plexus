@@ -97,16 +97,16 @@ impl Transform {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         Transform {
             camera: [
-                [camera[0], camera[4], camera[ 8], camera[12]],
-                [camera[1], camera[5], camera[ 9], camera[13]],
-                [camera[2], camera[6], camera[10], camera[14]],
-                [camera[3], camera[7], camera[11], camera[15]],
+                [camera[ 0], camera[ 1], camera[ 2], camera[ 3]],
+                [camera[ 4], camera[ 5], camera[ 6], camera[ 7]],
+                [camera[ 8], camera[ 9], camera[10], camera[11]],
+                [camera[12], camera[13], camera[14], camera[15]],
             ],
             model: [
-                [model[0], model[4], model[ 8], model[12]],
-                [model[1], model[5], model[ 9], model[13]],
-                [model[2], model[6], model[10], model[14]],
-                [model[3], model[7], model[11], model[15]],
+                [model[ 0], model[ 1], model[ 2], model[ 3]],
+                [model[ 4], model[ 5], model[ 6], model[ 7]],
+                [model[ 8], model[ 9], model[10], model[11]],
+                [model[12], model[13], model[14], model[15]],
             ],
         }
     }

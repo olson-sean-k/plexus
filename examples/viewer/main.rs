@@ -42,7 +42,7 @@ impl Geometry for FaceColorGeometry {
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
-    let mut mesh = UVSphere::<R32>::with_unit_width(32, 32)
+    let mut mesh = UVSphere::<R32>::with_unit_radius(32, 32)
         .polygons_with_position()
         .map_vertices(|position| -> Point3<R32> { position.into() })
         .collect::<Mesh<FaceColorGeometry>>();
@@ -54,8 +54,8 @@ fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
 }
 
 fn new_camera(aspect: f32) -> Camera<f32> {
-    let mut camera = Camera::<f32>::new(aspect, FloatConst::FRAC_PI_3(), -1.0, 1.0);
-    camera.look_at(&Point3::new(0.0, 0.0, 1.0), &Point3::origin());
+    let mut camera = Camera::new(aspect, 45.0, -1.0, 2.0);
+    camera.look_at(&Point3::new(2.0, 1.0, 2.0), &Point3::origin());
     camera
 }
 
