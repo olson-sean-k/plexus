@@ -16,7 +16,6 @@ mod renderer;
 use decorum::R32;
 use nalgebra::{Matrix4, Point3, Scalar};
 use glutin::{ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent};
-use num::traits::FloatConst;
 use plexus::buffer::MeshBuffer;
 use plexus::generate::sphere::UVSphere;
 use plexus::geometry::{Attribute, Geometry};
