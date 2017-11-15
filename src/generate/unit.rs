@@ -1,4 +1,4 @@
-use decorum::{N32, N64, R32, R64};
+use decorum::{N32, N64, Ordered, R32, R64};
 use num::Num;
 
 pub trait Unit: Copy + Num {
@@ -36,4 +36,4 @@ macro_rules! unit {
     )*};
 }
 unit!(integer => i8, i16, i32, i64, u8, u16, u32, u64);
-unit!(real => f32, f64, N32, N64, R32, R64);
+unit!(real => f32, f64, Ordered<f32>, Ordered<f64>, N32, N64, R32, R64);

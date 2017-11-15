@@ -9,17 +9,18 @@
 //! Generating a `MeshBuffer` from a primitive:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
 //! use plexus::generate::sphere::UVSphere;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let buffer = UVSphere::<f32>::with_unit_radius(16, 16)
+//! let buffer = UVSphere::<R32>::with_unit_radius(16, 16)
 //!     .polygons_with_position()
-//!     .map_vertices(|position| position.into_hash())
 //!     .collect::<MeshBuffer<u32, Point3<f32>>>();
 //! let indeces = buffer.as_index_slice();
 //! let positions = buffer.as_vertex_slice();
@@ -29,8 +30,10 @@
 //! Converting a `Mesh` to a `MeshBuffer`:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
 //! use plexus::generate::cube::Cube;
@@ -38,9 +41,8 @@
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mesh = Cube::<f32>::with_unit_width()
+//! let mesh = Cube::<R32>::with_unit_width()
 //!     .polygons_with_position()
-//!     .map_vertices(|position| position.into_hash())
 //!     .collect::<Mesh<Point3<f32>>>();
 //! let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
 //! # }

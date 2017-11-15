@@ -10,11 +10,6 @@ use num::{self, Num, NumCast};
 pub mod convert;
 pub mod ops;
 
-// TODO: `Finite` is used as a hash conjugate and is convertible in geometric
-//       types. It may also be good to support `NotNan` for geometric
-//       conversions. Is there a way to do that generically (without copying
-//       the `Finite` implementations)?
-
 pub trait Attribute: Clone {}
 
 pub trait Geometry: Sized {

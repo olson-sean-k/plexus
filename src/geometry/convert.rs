@@ -1,4 +1,4 @@
-use decorum::{Finite, Primitive};
+use decorum::{Ordered, Primitive};
 use num::Float;
 use std::hash::Hash;
 
@@ -76,12 +76,12 @@ impl<T> HashConjugate for Duplet<T>
 where
     T: Float + Primitive,
 {
-    type Hash = Duplet<Finite<T>>;
+    type Hash = Duplet<Ordered<T>>;
 
     fn into_hash(self) -> Self::Hash {
         Duplet(
-            Finite::from_raw_float(self.0),
-            Finite::from_raw_float(self.1),
+            Ordered::from_raw_float(self.0),
+            Ordered::from_raw_float(self.1),
         )
     }
 
@@ -94,13 +94,13 @@ impl<T> HashConjugate for Triplet<T>
 where
     T: Float + Primitive,
 {
-    type Hash = Triplet<Finite<T>>;
+    type Hash = Triplet<Ordered<T>>;
 
     fn into_hash(self) -> Self::Hash {
         Triplet(
-            Finite::from_raw_float(self.0),
-            Finite::from_raw_float(self.1),
-            Finite::from_raw_float(self.2),
+            Ordered::from_raw_float(self.0),
+            Ordered::from_raw_float(self.1),
+            Ordered::from_raw_float(self.2),
         )
     }
 
@@ -113,16 +113,16 @@ where
     }
 }
 
-// TODO: `Finite` cannot be used as scalar values with cgmath types, because it
-//       does not implement `Float` and therefore cannot implement `BaseFloat`.
-//       This means cgmath does not support `HashConjugate`.
-//
-//       The decorum crate could probably provide a hashable type that has no
-//       constraints on its value.
+// TODO: Implement `FromGeometry` for more proxy types than just `Finite`
+//       (using specialization or otherwise).
+// TODO: Implement `FromGeometry` for points and vectors with `FloatProxy`
+//       scalars once specialization lands. This isn't possible now, because it
+//       would conflict with the blanket implementation for some shared scalar
+//       type `T`, which is arguably a more important implementation.
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
-    use decorum::{Finite, Primitive};
+    use decorum::{Finite, Ordered, Primitive};
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
@@ -203,11 +203,93 @@ mod feature_geometry_cgmath {
             self
         }
     }
+
+    impl<T> HashConjugate for Point2<T>
+    where
+        T: BaseFloat + Float + Primitive,
+    {
+        type Hash = Point2<Ordered<T>>;
+
+        fn into_hash(self) -> Self::Hash {
+            Point2::new(
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+            )
+        }
+
+        fn from_hash(hash: Self::Hash) -> Self {
+            Point2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+        }
+    }
+
+    impl<T> HashConjugate for Point3<T>
+    where
+        T: BaseFloat + Float + Primitive,
+    {
+        type Hash = Point3<Ordered<T>>;
+
+        fn into_hash(self) -> Self::Hash {
+            Point3::new(
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+                Ordered::from_raw_float(self.z),
+            )
+        }
+
+        fn from_hash(hash: Self::Hash) -> Self {
+            Point3::new(
+                hash.x.into_raw_float(),
+                hash.y.into_raw_float(),
+                hash.z.into_raw_float(),
+            )
+        }
+    }
+
+    impl<T> HashConjugate for Vector2<T>
+    where
+        T: BaseFloat + Float + Primitive,
+    {
+        type Hash = Vector2<Ordered<T>>;
+
+        fn into_hash(self) -> Self::Hash {
+            Vector2::new(
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+            )
+        }
+
+        fn from_hash(hash: Self::Hash) -> Self {
+            Vector2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+        }
+    }
+
+    impl<T> HashConjugate for Vector3<T>
+    where
+        T: BaseFloat + Float + Primitive,
+    {
+        type Hash = Vector3<Ordered<T>>;
+
+        fn into_hash(self) -> Self::Hash {
+            Vector3::new(
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+                Ordered::from_raw_float(self.z),
+            )
+        }
+
+        fn from_hash(hash: Self::Hash) -> Self {
+            Vector3::new(
+                hash.x.into_raw_float(),
+                hash.y.into_raw_float(),
+                hash.z.into_raw_float(),
+            )
+        }
+    }
 }
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
-    use decorum::{Finite, Primitive};
+    use decorum::{Finite, Ordered, Primitive};
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::Float;
 
@@ -295,12 +377,12 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Primitive + Scalar,
     {
-        type Hash = Point2<Finite<T>>;
+        type Hash = Point2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Point2::new(
-                Finite::from_raw_float(self.x),
-                Finite::from_raw_float(self.y),
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
             )
         }
 
@@ -313,13 +395,13 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Primitive + Scalar,
     {
-        type Hash = Point3<Finite<T>>;
+        type Hash = Point3<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Point3::new(
-                Finite::from_raw_float(self.x),
-                Finite::from_raw_float(self.y),
-                Finite::from_raw_float(self.z),
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+                Ordered::from_raw_float(self.z),
             )
         }
 
@@ -336,12 +418,12 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Primitive + Scalar,
     {
-        type Hash = Vector2<Finite<T>>;
+        type Hash = Vector2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Vector2::new(
-                Finite::from_raw_float(self.x),
-                Finite::from_raw_float(self.y),
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
             )
         }
 
@@ -354,13 +436,13 @@ mod feature_geometry_nalgebra {
     where
         T: Float + Primitive + Scalar,
     {
-        type Hash = Vector3<Finite<T>>;
+        type Hash = Vector3<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
             Vector3::new(
-                Finite::from_raw_float(self.x),
-                Finite::from_raw_float(self.y),
-                Finite::from_raw_float(self.z),
+                Ordered::from_raw_float(self.x),
+                Ordered::from_raw_float(self.y),
+                Ordered::from_raw_float(self.z),
             )
         }
 
