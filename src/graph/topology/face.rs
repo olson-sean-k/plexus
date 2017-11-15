@@ -97,22 +97,40 @@ where
                 return Err(());
             }
         }
-        // Decompose the faces into their key topology and remove them.
+        // Decompose the faces into their key topology and remove them. Pair
+        // the topology with edge geometry for the source face. At this point,
+        // we can assume that the faces exist and no failures should occur;
+        // unwrap results.
         let source = self.to_key_topology();
-        let mut mesh = self.remove()?;
-        let opposite = mesh.as_mut().face_mut(face).ok_or(())?;
+        let source = source
+            .edges()
+            .iter()
+            .map(|topology| {
+                (
+                    topology,
+                    self.mesh
+                        .as_ref()
+                        .edge(topology.key())
+                        .unwrap()
+                        .geometry
+                        .clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut mesh = self.remove().unwrap();
+        let opposite = mesh.as_mut().face_mut(face).unwrap();
         let destination = opposite.to_key_topology();
-        let mesh = opposite.remove()?.as_mut();
+        let mesh = opposite.remove().unwrap().as_mut();
         // TODO: Is it always correct to reverse the order of the opposite
         //       face's edges?
         // Re-insert the edges of the faces and join the mutual edges.
-        for (source, destination) in source.edges().iter().zip(destination.edges().iter().rev()) {
-            let (a, b) = source.vertices();
+        for (source, destination) in source.into_iter().zip(destination.edges().iter().rev()) {
+            let (a, b) = source.0.vertices();
             let (c, d) = destination.vertices();
-            let ab = mesh.insert_edge((a, b), G::Edge::default())?;
-            let cd = mesh.insert_edge((c, d), G::Edge::default())?;
+            let ab = mesh.insert_edge((a, b), source.1.clone()).unwrap();
+            let cd = mesh.insert_edge((c, d), source.1).unwrap();
             let edge = mesh.edge_mut(ab).unwrap();
-            edge.join(cd)?;
+            edge.join(cd).unwrap();
         }
         // TODO: Is there any reasonable topology this can return?
         Ok(())
@@ -200,6 +218,9 @@ where
         // geometries.
         let vertices = self.extrude_vertex_geometry(distance)?;
         let face = self.geometry.clone();
+        // This is the point of no return; the mesh has been mutated. Moreover,
+        // operations should not fail, as they act on the interior topology of
+        // the removed face; unwrap results.
         let mut mesh = self.remove()?;
         // Use the keys for the existing vertices and the translated geometries
         // to construct the extruded face and its connective faces.

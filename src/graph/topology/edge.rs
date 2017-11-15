@@ -3,6 +3,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
+use graph::Perimeter;
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::mesh::{Edge, Mesh};
@@ -158,20 +159,30 @@ where
         }
         let (a, b) = self.key().to_vertex_keys();
         let (c, d) = edge.to_vertex_keys();
-        // Insert the edges and faces (two triangles forming a quad).
+        // At this point, we can assume the points a, b, c, and d exist in the
+        // mesh. Before mutating the mesh, ensure that there are no edges
+        // connecting their interior.
+        for ab in [d, c, b, a].perimeter() {
+            if self.mesh.as_ref().edges.get(&ab.into()).is_some() {
+                return Err(());
+            }
+        }
+        // Insert the edges and faces (two triangles forming a quad). These
+        // operations should not fail; unwrap their results.
         let extrusion = {
+            let edge = self.geometry.clone();
             let face = self.face().ok_or(())?.geometry.clone();
             let mesh = self.mesh.as_mut();
             // Triangle of b-a-d.
-            let ba = mesh.insert_edge((b, a), G::Edge::default())?;
-            let ad = mesh.insert_edge((a, d), G::Edge::default())?;
-            let db = mesh.insert_edge((d, b), G::Edge::default())?;
+            let ba = mesh.insert_edge((b, a), edge.clone()).unwrap();
+            let ad = mesh.insert_edge((a, d), edge.clone()).unwrap();
+            let db = mesh.insert_edge((d, b), edge.clone()).unwrap();
             // Triangle of b-d-c.
-            let bd = mesh.insert_edge((b, d), G::Edge::default())?;
-            let dc = mesh.insert_edge((d, c), G::Edge::default())?;
-            let cb = mesh.insert_edge((c, b), G::Edge::default())?;
-            mesh.insert_face(&[ba, ad, db], face.clone())?;
-            mesh.insert_face(&[bd, dc, cb], face)?;
+            let bd = mesh.insert_edge((b, d), edge.clone()).unwrap();
+            let dc = mesh.insert_edge((d, c), edge.clone()).unwrap();
+            let cb = mesh.insert_edge((c, b), edge).unwrap();
+            mesh.insert_face(&[ba, ad, db], face.clone()).unwrap();
+            mesh.insert_face(&[bd, dc, cb], face).unwrap();
             dc
         };
         Ok(EdgeView::new(self.mesh, extrusion))
@@ -208,16 +219,17 @@ where
         let m = {
             let mut m = self.source_vertex().geometry.clone();
             *m.as_position_mut() = self.midpoint()?;
+            // This is the point of no return; the mesh has been mutated.
             self.mesh.as_mut().insert_vertex(m)
         };
         // Get both half-edges to be split.
         let edge = self.key();
         let opposite = self.opposite_edge().map(|opposite| opposite.key());
         let mut mesh = self.mesh;
-        // Split the half-edges.
-        Self::split_half_at(&mut mesh, edge, m)?;
+        // Split the half-edges. This should not fail; unwrap the results.
+        Self::split_half_at(&mut mesh, edge, m).unwrap();
         if let Some(opposite) = opposite {
-            Self::split_half_at(&mut mesh, opposite, m)?;
+            Self::split_half_at(&mut mesh, opposite, m).unwrap();
         }
         Ok(VertexView::new(mesh, m))
     }
@@ -296,24 +308,27 @@ where
             (
                 a,
                 b,
+                // This is the point of no return; the mesh has been mutated.
                 self.mesh.as_mut().insert_vertex(c),
                 self.mesh.as_mut().insert_vertex(d),
             )
         };
         // Insert the edges and faces (two triangles forming a quad) and get
-        // the extruded edge's key.
+        // the extruded edge's key. These operations should not fail; unwrap
+        // their results.
         let extrusion = {
+            let edge = self.geometry.clone();
             let mesh = self.mesh.as_mut();
             // Triangle of b-a-d.
-            let ba = mesh.insert_edge((b, a), G::Edge::default())?;
-            let ad = mesh.insert_edge((a, d), G::Edge::default())?;
-            let db = mesh.insert_edge((d, b), G::Edge::default())?;
+            let ba = mesh.insert_edge((b, a), edge.clone()).unwrap();
+            let ad = mesh.insert_edge((a, d), edge.clone()).unwrap();
+            let db = mesh.insert_edge((d, b), edge.clone()).unwrap();
             // Triangle of b-d-c.
-            let bd = mesh.insert_edge((b, d), G::Edge::default())?;
-            let dc = mesh.insert_edge((d, c), G::Edge::default())?;
-            let cb = mesh.insert_edge((c, b), G::Edge::default())?;
-            mesh.insert_face(&[ba, ad, db], face.clone())?;
-            mesh.insert_face(&[bd, dc, cb], face)?;
+            let bd = mesh.insert_edge((b, d), edge.clone()).unwrap();
+            let dc = mesh.insert_edge((d, c), edge.clone()).unwrap();
+            let cb = mesh.insert_edge((c, b), edge).unwrap();
+            mesh.insert_face(&[ba, ad, db], face.clone()).unwrap();
+            mesh.insert_face(&[bd, dc, cb], face).unwrap();
             dc
         };
         Ok(EdgeView::new(self.mesh, extrusion))
