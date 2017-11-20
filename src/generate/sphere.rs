@@ -1,60 +1,75 @@
-use decorum::Real;
-use num::NumCast;
+use decorum::{R32, Real};
+use num::{NumCast, One};
 use num::traits::FloatConst;
 use std::cmp;
-use std::marker::PhantomData;
 
-use generate::generate::{IndexPolygonGenerator, PolygonGenerator, PositionPolygonGenerator,
-                         PositionVertexGenerator, VertexGenerator};
+use generate::Half;
+use generate::generate::{IndexGenerator, IndexPolygonGenerator, PolygonGenerator,
+                         PositionGenerator, PositionPolygonGenerator, PositionVertexGenerator,
+                         VertexGenerator};
 use generate::topology::{Polygon, Quad, Triangle};
-use generate::unit::Unit;
 use geometry::Triplet;
 
-#[derive(Clone)]
-pub struct UVSphere<T = f32>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
-    nu: usize, // Meridians.
-    nv: usize, // Parallels.
-    unit: T,
-    phantom: PhantomData<T>,
+#[derive(Clone, Copy)]
+pub struct Bounds {
+    radius: R32,
 }
 
-impl<T> UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
-    fn new(nu: usize, nv: usize, upper: T) -> Self {
-        let nu = cmp::max(3, nu);
-        let nv = cmp::max(2, nv);
-        UVSphere {
-            nu: nu,
-            nv: nv,
-            unit: upper,
-            phantom: PhantomData,
+impl Bounds {
+    pub fn with_unit_radius() -> Self {
+        Bounds { radius: R32::one() }
+    }
+
+    pub fn with_unit_width() -> Self {
+        Bounds {
+            radius: R32::half(),
+        }
+    }
+}
+
+impl Default for Bounds {
+    fn default() -> Self {
+        Self::with_unit_radius()
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct UvSphere {
+    nu: usize, // Meridians.
+    nv: usize, // Parallels.
+}
+
+impl UvSphere {
+    pub fn new(nu: usize, nv: usize) -> Self {
+        UvSphere {
+            nu: cmp::max(3, nu),
+            nv: cmp::max(2, nv),
         }
     }
 
-    pub fn with_unit_radius(nu: usize, nv: usize) -> Self {
-        Self::new(nu, nv, T::unit_radius().1)
-    }
-
-    pub fn with_unit_width(nu: usize, nv: usize) -> Self {
-        Self::new(nu, nv, T::unit_width().1)
-    }
-
-    fn vertex_with_position(&self, u: usize, v: usize) -> Triplet<T> {
-        let u = (T::from(u).unwrap() / T::from(self.nu).unwrap()) * T::PI() * (T::one() + T::one());
-        let v = (T::from(v).unwrap() / T::from(self.nv).unwrap()) * T::PI();
+    fn vertex_with_position_with(
+        &self,
+        state: &<Self as PositionGenerator>::State,
+        u: usize,
+        v: usize,
+    ) -> Triplet<R32> {
+        let u = (<R32 as NumCast>::from(u).unwrap() / <R32 as NumCast>::from(self.nu).unwrap())
+            * R32::PI() * 2.0;
+        let v = (<R32 as NumCast>::from(v).unwrap() / <R32 as NumCast>::from(self.nv).unwrap())
+            * R32::PI();
         Triplet(
-            self.unit * u.cos() * v.sin(),
-            self.unit * u.sin() * v.sin(),
-            self.unit * v.cos(),
+            state.radius * u.cos() * v.sin(),
+            state.radius * u.sin() * v.sin(),
+            state.radius * v.cos(),
         )
     }
 
-    fn vertex_with_index(&self, u: usize, v: usize) -> usize {
+    fn vertex_with_index_with(
+        &self,
+        _: &<Self as IndexGenerator>::State,
+        u: usize,
+        v: usize,
+    ) -> usize {
         if v == 0 {
             0
         }
@@ -71,51 +86,49 @@ where
     }
 }
 
-impl<T> VertexGenerator for UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
+impl Default for UvSphere {
+    fn default() -> Self {
+        UvSphere::new(16, 16)
+    }
+}
+
+impl VertexGenerator for UvSphere {
     fn vertex_count(&self) -> usize {
         (self.nv - 1) * self.nu + 2
     }
 }
 
-impl<T> PositionVertexGenerator for UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
-    type Output = Triplet<T>;
-
-    fn vertex_with_position(&self, index: usize) -> Self::Output {
-        if index == 0 {
-            self.vertex_with_position(0, 0)
-        }
-        else if index == self.vertex_count() - 1 {
-            self.vertex_with_position(0, self.nv)
-        }
-        else {
-            let index = index - 1;
-            self.vertex_with_position(index % self.nu, (index / self.nu) + 1)
-        }
-    }
-}
-
-impl<T> PolygonGenerator for UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
+impl PolygonGenerator for UvSphere {
     fn polygon_count(&self) -> usize {
         self.nu * self.nv
     }
 }
 
-impl<T> PositionPolygonGenerator for UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
-    type Output = Polygon<Triplet<T>>;
+impl PositionGenerator for UvSphere {
+    type State = Bounds;
+}
 
-    fn polygon_with_position(&self, index: usize) -> Self::Output {
+impl PositionVertexGenerator for UvSphere {
+    type Output = Triplet<R32>;
+
+    fn vertex_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+        if index == 0 {
+            self.vertex_with_position_with(state, 0, 0)
+        }
+        else if index == self.vertex_count() - 1 {
+            self.vertex_with_position_with(state, 0, self.nv)
+        }
+        else {
+            let index = index - 1;
+            self.vertex_with_position_with(state, index % self.nu, (index / self.nu) + 1)
+        }
+    }
+}
+
+impl PositionPolygonGenerator for UvSphere {
+    type Output = Polygon<Triplet<R32>>;
+
+    fn polygon_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
         // values for `(u, v)` into `(p, q)`. This is important for indexing
         // geometry, because small differences in the computation of spatial
@@ -136,58 +149,71 @@ where
         // Generate the vertices at the requested meridian and parallel. The
         // lower bound of `(u, v)` is always used, so compute that in advance
         // (`lower`). Emit triangles at the poles, otherwise quads.
-        let lower = self.vertex_with_position(u, v);
+        let lower = self.vertex_with_position_with(state, u, v);
         if v == 0 {
             Polygon::Triangle(Triangle::new(
                 lower,
-                self.vertex_with_position(u, q),
-                self.vertex_with_position(p, q),
+                self.vertex_with_position_with(state, u, q),
+                self.vertex_with_position_with(state, p, q),
             ))
         }
         else if v == self.nv - 1 {
             Polygon::Triangle(Triangle::new(
                 // Normalize `u` at the pole, using `(0, nv)` in place of
                 // `(p, q)`.
-                self.vertex_with_position(0, self.nv),
-                self.vertex_with_position(p, v),
+                self.vertex_with_position_with(state, 0, self.nv),
+                self.vertex_with_position_with(state, p, v),
                 lower,
             ))
         }
         else {
             Polygon::Quad(Quad::new(
                 lower,
-                self.vertex_with_position(u, q),
-                self.vertex_with_position(p, q),
-                self.vertex_with_position(p, v),
+                self.vertex_with_position_with(state, u, q),
+                self.vertex_with_position_with(state, p, q),
+                self.vertex_with_position_with(state, p, v),
             ))
         }
     }
 }
 
-impl<T> IndexPolygonGenerator for UVSphere<T>
-where
-    T: FloatConst + NumCast + Real + Unit,
-{
+impl IndexGenerator for UvSphere {
+    type State = ();
+}
+
+impl IndexPolygonGenerator for UvSphere {
     type Output = Polygon<usize>;
 
-    fn polygon_with_index(&self, index: usize) -> <Self as IndexPolygonGenerator>::Output {
+    fn polygon_with_index_with(
+        &self,
+        state: &Self::State,
+        index: usize,
+    ) -> <Self as IndexPolygonGenerator>::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
-        let low = self.vertex_with_index(u, v);
-        let high = self.vertex_with_index(p, q);
+        let low = self.vertex_with_index_with(state, u, v);
+        let high = self.vertex_with_index_with(state, p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.vertex_with_index(u, q), high))
+            Polygon::Triangle(Triangle::new(
+                low,
+                self.vertex_with_index_with(state, u, q),
+                high,
+            ))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.vertex_with_index(p, v), low))
+            Polygon::Triangle(Triangle::new(
+                high,
+                self.vertex_with_index_with(state, p, v),
+                low,
+            ))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.vertex_with_index(u, q),
+                self.vertex_with_index_with(state, u, q),
                 high,
-                self.vertex_with_index(p, v),
+                self.vertex_with_index_with(state, p, v),
             ))
         }
     }
@@ -204,7 +230,7 @@ mod tests {
     fn vertex_count() {
         assert_eq!(
             5,
-            sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            sphere::UvSphere::new(3, 2)
                 .vertices_with_position() // 5 conjoint vertices.
                 .count()
         );
@@ -214,7 +240,7 @@ mod tests {
     fn polygon_vertex_count() {
         assert_eq!(
             18,
-            sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            sphere::UvSphere::new(3, 2)
                 .polygons_with_position() // 6 triangles, 18 vertices.
                 .vertices()
                 .count()
@@ -225,11 +251,10 @@ mod tests {
     fn index_to_vertex_mapping() {
         assert_eq!(
             5,
-            BTreeSet::from_iter(
-                sphere::UVSphere::<f32>::with_unit_radius(3, 2)
+            BTreeSet::from_iter(sphere::UvSphere::new(3, 2)
                     .polygons_with_index() // 18 vertices, 5 indeces.
-                    .vertices()
-            ).len()
+                    .vertices())
+                .len()
         )
     }
 }

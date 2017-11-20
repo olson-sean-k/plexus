@@ -55,17 +55,15 @@
 //! Generating a mesh from a primitive:
 //!
 //! ```rust
-//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
-//! use decorum::R32;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere::UVSphere;
+//! use plexus::generate::sphere::UvSphere;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mut mesh = UVSphere::<R32>::with_unit_radius(16, 16)
+//! let mut mesh = UvSphere::new(16, 16)
 //!     .polygons_with_position()
 //!     .collect::<Mesh<Point3<f32>>>();
 //! # }
@@ -79,12 +77,12 @@
 //! # extern crate plexus;
 //! use decorum::R32;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere::UVSphere;
+//! use plexus::generate::sphere::UvSphere;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mut mesh = UVSphere::<R32>::with_unit_radius(16, 16)
+//! let mut mesh = UvSphere::new(16, 16)
 //!     .polygons_with_position()
 //!     .collect::<Mesh<Point3<f32>>>();
 //! let key = mesh.faces().nth(0).unwrap().key(); // Get the key of the first face.

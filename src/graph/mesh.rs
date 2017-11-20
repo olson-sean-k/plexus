@@ -159,10 +159,11 @@ where
     type Attribute = G::Face;
 }
 
-/// Half-edge graph representation of a mesh. Provides topological data in the
-/// form of vertices, half-edges, and faces. A half-edge is directed from one
-/// vertex to another, with an opposing half-edge joining the vertices in the
-/// other direction.
+/// Half-edge graph representation of a mesh.
+///
+/// Provides topological data in the form of vertices, half-edges, and faces. A
+/// half-edge is directed from one vertex to another, with an opposing
+/// half-edge joining the vertices in the other direction.
 ///
 /// `Mesh`es expose topological views, which can be used to traverse and
 /// manipulate topology and geometry.
@@ -214,16 +215,16 @@ where
     /// # extern crate plexus;
     /// use nalgebra::Point3;
     /// use plexus::generate::LruIndexer;
-    /// use plexus::generate::sphere::UVSphere;
+    /// use plexus::generate::sphere::UvSphere;
     /// use plexus::graph::Mesh;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let (indeces, positions) = UVSphere::<f32>::with_unit_radius(16, 16)
+    /// let (indeces, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
     ///     .index_vertices(LruIndexer::with_capacity(256));
-    /// let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, positions, 3);
+    /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, ()>
@@ -780,7 +781,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::R32;
     use nalgebra::{Point3, Vector3};
     use num::Zero;
 
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn collect_topology_into_mesh() {
-        let mesh = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
+        let mesh = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<Mesh<Point3<f32>>>();
 
@@ -801,7 +801,7 @@ mod tests {
 
     #[test]
     fn iterate_mesh_topology() {
-        let mut mesh = sphere::UVSphere::<R32>::with_unit_radius(4, 2)
+        let mut mesh = sphere::UvSphere::new(4, 2)
             .polygons_with_position() // 8 triangles, 24 vertices.
             .collect::<Mesh<Point3<f32>>>();
 
@@ -856,9 +856,8 @@ mod tests {
 
         // Create a mesh with a floating point value associated with each face.
         // Use a mutable iterator to write to the geometry of each face.
-        let mut mesh = sphere::UVSphere::<R32>::with_unit_width(4, 4)
+        let mut mesh = sphere::UvSphere::new(4, 4)
             .polygons_with_position()
-            .map_vertices(|position| -> Point3<R32> { position.into() })
             .collect::<Mesh<ValueGeometry>>();
         let value = 3.14;
         for mut face in mesh.faces_mut() {

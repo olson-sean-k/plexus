@@ -60,66 +60,103 @@ where
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
+    use num::{NumCast, ToPrimitive};
 
     use geometry::*;
 
-    impl<T> From<Point2<T>> for Duplet<T> {
-        fn from(other: Point2<T>) -> Self {
-            Duplet(other.x, other.y)
-        }
-    }
-
-    impl<T> From<Vector2<T>> for Duplet<T> {
-        fn from(other: Vector2<T>) -> Self {
-            Duplet(other.x, other.y)
-        }
-    }
-
-    impl<T> Into<Point2<T>> for Duplet<T>
+    impl<T, U> From<Point2<U>> for Duplet<T>
     where
-        T: BaseNum,
+        T: NumCast,
+        U: BaseNum + ToPrimitive,
+    {
+        fn from(other: Point2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
+        }
+    }
+
+    impl<T, U> From<Vector2<U>> for Duplet<T>
+    where
+        T: NumCast,
+        U: BaseNum + ToPrimitive,
+    {
+        fn from(other: Vector2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
+        }
+    }
+
+    impl<T, U> Into<Point2<T>> for Duplet<U>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
         fn into(self) -> Point2<T> {
-            Point2::new(self.0, self.1)
+            Point2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
         }
     }
 
-    impl<T> Into<Vector2<T>> for Duplet<T>
+    impl<T, U> Into<Vector2<T>> for Duplet<U>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
         fn into(self) -> Vector2<T> {
-            Vector2::new(self.0, self.1)
+            Vector2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
         }
     }
 
-    impl<T> From<Point3<T>> for Triplet<T> {
-        fn from(other: Point3<T>) -> Self {
-            Triplet(other.x, other.y, other.z)
-        }
-    }
-
-    impl<T> From<Vector3<T>> for Triplet<T> {
-        fn from(other: Vector3<T>) -> Self {
-            Triplet(other.x, other.y, other.z)
-        }
-    }
-
-    impl<T> Into<Point3<T>> for Triplet<T>
+    impl<T, U> From<Point3<U>> for Triplet<T>
     where
-        T: BaseNum,
+        T: NumCast,
+        U: BaseNum + ToPrimitive,
+    {
+        fn from(other: Point3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> From<Vector3<U>> for Triplet<T>
+    where
+        T: NumCast,
+        U: BaseNum + ToPrimitive,
+    {
+        fn from(other: Vector3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> Into<Point3<T>> for Triplet<U>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
         fn into(self) -> Point3<T> {
-            Point3::new(self.0, self.1, self.2)
+            Point3::new(
+                T::from(self.0).unwrap(),
+                T::from(self.1).unwrap(),
+                T::from(self.2).unwrap(),
+            )
         }
     }
 
-    impl<T> Into<Vector3<T>> for Triplet<T>
+    impl<T, U> Into<Vector3<T>> for Triplet<U>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
         fn into(self) -> Vector3<T> {
-            Vector3::new(self.0, self.1, self.2)
+            Vector3::new(
+                T::from(self.0).unwrap(),
+                T::from(self.1).unwrap(),
+                T::from(self.2).unwrap(),
+            )
         }
     }
 
@@ -142,78 +179,103 @@ mod feature_geometry_cgmath {
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
+    use num::{NumCast, ToPrimitive};
 
     use geometry::*;
 
-    impl<T> From<Point2<T>> for Duplet<T>
+    impl<T, U> From<Point2<U>> for Duplet<T>
     where
-        T: Scalar,
+        T: NumCast,
+        U: Scalar + ToPrimitive,
     {
-        fn from(other: Point2<T>) -> Self {
-            Duplet(other.x, other.y)
+        fn from(other: Point2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
         }
     }
 
-    impl<T> From<Vector2<T>> for Duplet<T>
+    impl<T, U> From<Vector2<U>> for Duplet<T>
     where
-        T: Scalar,
+        T: NumCast,
+        U: Scalar + ToPrimitive,
     {
-        fn from(other: Vector2<T>) -> Self {
-            Duplet(other.x, other.y)
+        fn from(other: Vector2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
         }
     }
 
-    impl<T> Into<Point2<T>> for Duplet<T>
+    impl<T, U> Into<Point2<T>> for Duplet<U>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
         fn into(self) -> Point2<T> {
-            Point2::new(self.0, self.1)
+            Point2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
         }
     }
 
-    impl<T> Into<Vector2<T>> for Duplet<T>
+    impl<T, U> Into<Vector2<T>> for Duplet<U>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
         fn into(self) -> Vector2<T> {
-            Vector2::new(self.0, self.1)
+            Vector2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
         }
     }
 
-    impl<T> From<Point3<T>> for Triplet<T>
+    impl<T, U> From<Point3<U>> for Triplet<T>
     where
-        T: Scalar,
+        T: NumCast,
+        U: Scalar + ToPrimitive,
     {
-        fn from(other: Point3<T>) -> Self {
-            Triplet(other.x, other.y, other.z)
+        fn from(other: Point3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
         }
     }
 
-    impl<T> From<Vector3<T>> for Triplet<T>
+    impl<T, U> From<Vector3<U>> for Triplet<T>
     where
-        T: Scalar,
+        T: NumCast,
+        U: Scalar + ToPrimitive,
     {
-        fn from(other: Vector3<T>) -> Self {
-            Triplet(other.x, other.y, other.z)
+        fn from(other: Vector3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
         }
     }
 
-    impl<T> Into<Point3<T>> for Triplet<T>
+    impl<T, U> Into<Point3<T>> for Triplet<U>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
         fn into(self) -> Point3<T> {
-            Point3::new(self.0, self.1, self.2)
+            Point3::new(
+                T::from(self.0).unwrap(),
+                T::from(self.1).unwrap(),
+                T::from(self.2).unwrap(),
+            )
         }
     }
 
-    impl<T> Into<Vector3<T>> for Triplet<T>
+    impl<T, U> Into<Vector3<T>> for Triplet<U>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
         fn into(self) -> Vector3<T> {
-            Vector3::new(self.0, self.1, self.2)
+            Vector3::new(
+                T::from(self.0).unwrap(),
+                T::from(self.1).unwrap(),
+                T::from(self.2).unwrap(),
+            )
         }
     }
 

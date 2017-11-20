@@ -395,7 +395,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::R32;
     use nalgebra::Point3;
 
     use generate::*;
@@ -403,7 +402,7 @@ mod tests {
 
     #[test]
     fn circulate_over_edges() {
-        let mesh = sphere::UVSphere::<R32>::with_unit_radius(4, 2)
+        let mesh = sphere::UvSphere::new(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<Mesh<Point3<f32>>>();
 

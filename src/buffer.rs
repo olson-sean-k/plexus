@@ -9,17 +9,15 @@
 //! Generating a `MeshBuffer` from a primitive:
 //!
 //! ```rust
-//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
-//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
-//! use plexus::generate::sphere::UVSphere;
+//! use plexus::generate::sphere::UvSphere;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let buffer = UVSphere::<R32>::with_unit_radius(16, 16)
+//! let buffer = UvSphere::new(16, 16)
 //!     .polygons_with_position()
 //!     .collect::<MeshBuffer<u32, Point3<f32>>>();
 //! let indeces = buffer.as_index_slice();
@@ -30,10 +28,8 @@
 //! Converting a `Mesh` to a `MeshBuffer`:
 //!
 //! ```rust
-//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
-//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
 //! use plexus::generate::cube::Cube;
@@ -41,10 +37,10 @@
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mesh = Cube::<R32>::with_unit_width()
+//! let mesh = Cube::new()
 //!     .polygons_with_position()
 //!     .collect::<Mesh<Point3<f32>>>();
-//! let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
+//! let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<f32>>().unwrap();
 //! # }
 //! ```
 
@@ -84,7 +80,7 @@ where
     /// use plexus::buffer::MeshBuffer;
     /// use plexus::geometry::Triplet;
     ///
-    /// let buffer = MeshBuffer::<u32, Triplet<f32>>::new();
+    /// let buffer = MeshBuffer::<u32, Triplet<f64>>::new();
     /// ```
     pub fn new() -> Self {
         Self::default()
@@ -108,7 +104,7 @@ where
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let cube = Cube::<f32>::with_unit_width();
+    /// let cube = Cube::new();
     /// let indeces = cube
     ///     .polygons_with_index()
     ///     .triangulate()
@@ -116,7 +112,7 @@ where
     ///     .collect::<Vec<_>>();
     /// let vertices = cube
     ///     .vertices_with_position()
-    ///     .map(|position| -> Point3<_> { position.into() })
+    ///     .map(|position| -> Point3<f32> { position.into() })
     ///     .collect::<Vec<_>>();
     /// let buffer = MeshBuffer::from_raw_buffers(indeces, vertices).unwrap();
     /// # }
@@ -216,7 +212,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::R32;
     use nalgebra::Point3;
 
     use buffer::*;
@@ -225,7 +220,7 @@ mod tests {
 
     #[test]
     fn collect_topology_into_buffer() {
-        let buffer = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
+        let buffer = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshBuffer<u32, Point3<f32>>>();
 
@@ -235,10 +230,10 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
-        let mesh = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
+        let mesh = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<Mesh<Point3<f32>>>();
-        let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<_>>().unwrap();
+        let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<f32>>().unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -246,10 +241,10 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_face() {
-        let mesh = sphere::UVSphere::<R32>::with_unit_radius(3, 2)
+        let mesh = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<Mesh<Point3<f32>>>();
-        let buffer = mesh.to_mesh_buffer_by_face::<u32, Point3<_>>().unwrap();
+        let buffer = mesh.to_mesh_buffer_by_face::<u32, Point3<f32>>().unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(18, buffer.as_vertex_slice().len());

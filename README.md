@@ -25,9 +25,9 @@ use plexus::prelude::*;
 use render::{self, Color, Vertex};
 
 // Construct a buffer of index and vertex data from a sphere primitive.
-let buffer = sphere::UVSphere::<f32>::with_unit_radius(16, 16)
+let buffer = sphere::UvSphere::new(16, 16)
     .polygons_with_position()
-    .map_vertices(|position| -> Point3<_> { position.into() })
+    .map_vertices(|position| -> Point3<f32> { position.into() })
     .map_vertices(|position| position * 10.0)
     .map_vertices(|position| Vertex::new(position, Color::white()))
     .collect::<MeshBuffer<u32, Vertex>>();
@@ -48,7 +48,6 @@ queried and manipulated in ways that generators and iterator expressions
 cannot.
 
 ```rust
-use decorum::R32;
 use nalgebra::Point3;
 use plexus::generate::sphere;
 use plexus::graph::Mesh;
@@ -56,7 +55,7 @@ use plexus::prelude::*;
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
 // to `Point3` via the `FromGeometry` trait in this example.
-let mut mesh = sphere::UVSphere::<R32>::with_unit_radius(8, 8)
+let mut mesh = sphere::UvSphere::new(8, 8)
     .polygons_with_position()
     .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
@@ -116,11 +115,10 @@ reliable, and is used by `collect` (which can be overridden via
 values, which do not implement `Hash`. An `LruIndexer` can also be used, but
 can be slower and requires a sufficient capacity to work correctly.
 
-The [decorum](https://crates.io/crates/decorum) crate is used to ease
-this problem. Hashable types like `NotNan`, `Finite`, `R32`, etc. can be used
-as geometric data. Common geometric types also implement traits that provide
-conversions to and from a conjugate type that implements `Hash` (via the
-`into_hash` and `from_hash` functions).
+The [decorum](https://crates.io/crates/decorum) crate is used to ease this
+problem. Hashable types like `NotNan`, `Finite`, `R32`, etc. can be used as
+geometric data and are emitted by primitive generators like `UvSphere` and
+`Cube`.
 
 The `decorum` crate also exposes some hashing functions for floating point
 primitives, which can be used to directly implement `Hash`. With the

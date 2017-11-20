@@ -26,14 +26,14 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere::UVSphere;
+//! use plexus::generate::sphere;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let sphere = UVSphere::<f32>::with_unit_radius(16, 16);
+//! let sphere = sphere::UvSphere::new(16, 16);
 //! let positions: Vec<_> = sphere
 //!     .vertices_with_position() // Generate the unique set of positional vertices.
-//!     .map(|position| -> Point3<_> { position.into() }) // Convert into a nalgebra type.
+//!     .map(|position| -> Point3<f32> { position.into() }) // Convert into a nalgebra type.
 //!     .map(|position| position * 10.0) // Scale the positions by 10.
 //!     .collect();
 //! let indeces: Vec<_> = sphere
@@ -47,22 +47,14 @@
 //!
 //! ```rust
 //! use plexus::generate::LruIndexer;
-//! use plexus::generate::cube::Cube;
+//! use plexus::generate::cube;
 //! use plexus::prelude::*;
 //!
-//! let (indeces, positions) = Cube::<f32>::with_unit_width()
-//!     .polygons_with_position()
+//! let (indeces, positions) = cube::Cube::new()
+//!     .polygons_with_position_with(cube::Bounds::with_unit_radius())
 //!     .triangulate()
 //!     .index_vertices(LruIndexer::default());
 //! ```
-
-// TODO: Primitives are parameterized over the type of scalars used for spatial
-//       data. This can be interpreted as the vector space and affects the
-//       internal data describing the primitive. See the `Unit` trait. Other
-//       data, like texture coordinates, are not parameterized at all. It may
-//       be more consistent to parameterize all of this data, either as
-//       individual type parameters or via a trait (like `Geometry`). Default
-//       type parameters are also provided.
 
 pub mod cube;
 mod decompose;
@@ -70,7 +62,10 @@ mod generate;
 mod index;
 pub mod sphere;
 mod topology;
-mod unit;
+
+use decorum::Real;
+use num::{One, Zero};
+use std::ops::Div;
 
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
 pub(crate) use self::index::{FromIndexer, Indexer};
@@ -81,3 +76,17 @@ pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPositi
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
                          Triangle};
+
+trait Half {
+    fn half() -> Self;
+}
+
+impl<T> Half for T
+where
+    T: Div<T, Output = T> + One + Real + Zero,
+{
+    fn half() -> Self {
+        let one = T::one();
+        one / (one + one)
+    }
+}

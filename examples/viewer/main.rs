@@ -13,11 +13,10 @@ mod camera;
 mod pipeline;
 mod renderer;
 
-use decorum::R32;
 use nalgebra::{Matrix4, Point3, Scalar};
 use glutin::{ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent};
 use plexus::buffer::MeshBuffer;
-use plexus::generate::sphere::UVSphere;
+use plexus::generate::sphere;
 use plexus::geometry::{Attribute, Geometry};
 use plexus::graph::Mesh;
 use plexus::prelude::*;
@@ -41,9 +40,8 @@ impl Geometry for FaceColorGeometry {
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
-    let mut mesh = UVSphere::<R32>::with_unit_radius(32, 32)
+    let mut mesh = sphere::UvSphere::new(32, 32)
         .polygons_with_position()
-        .map_vertices(|position| -> Point3<R32> { position.into() })
         .collect::<Mesh<FaceColorGeometry>>();
     for mut face in mesh.faces_mut() {
         face.geometry = Color4::random();

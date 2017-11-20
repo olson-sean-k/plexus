@@ -429,19 +429,3 @@ where
     }
     topologies
 }
-
-#[cfg(test)]
-mod tests {
-    use decorum::R32;
-
-    use generate::*;
-
-    #[test]
-    fn decompose_index_r32_geometry() {
-        let _ = cube::Cube::<R32>::with_unit_radius()
-            .polygons_with_position() // 6 quads, 24 vertices.
-            .subdivide() // 24 quads, 96 vertices.
-            .triangulate() // 48 triangles, 144 vertices.
-            .index_vertices(HashIndexer::default());
-    }
-}

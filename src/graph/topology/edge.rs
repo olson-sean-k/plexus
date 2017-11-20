@@ -497,7 +497,6 @@ impl EdgeKeyTopology {
 
 #[cfg(test)]
 mod tests {
-    use decorum::R32;
     use nalgebra::Point3;
 
     use generate::*;
@@ -580,7 +579,7 @@ mod tests {
 
     #[test]
     fn split_full_edge() {
-        let (indeces, vertices) = cube::Cube::<R32>::with_unit_radius()
+        let (indeces, vertices) = cube::Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .index_vertices(HashIndexer::default());
         let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();

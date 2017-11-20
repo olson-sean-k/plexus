@@ -113,8 +113,6 @@ where
     }
 }
 
-// TODO: Implement `FromGeometry` for more proxy types than just `Finite`
-//       (using specialization or otherwise).
 // TODO: Implement `FromGeometry` for points and vectors with `FloatProxy`
 //       scalars once specialization lands. This isn't possible now, because it
 //       would conflict with the blanket implementation for some shared scalar
@@ -122,10 +120,45 @@ where
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
-    use decorum::{Finite, Ordered, Primitive};
+    use decorum::{Finite, NotNan, Ordered, Primitive};
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
+
+    // TODO: Implement `FromGeometry` for proxy types via specialization.
+    // TODO: Implement these conversions for two-dimensional points.
+    macro_rules! ordered {
+        (geometry => $g:ident, proxy => $p:ident) => {
+            impl<T> FromGeometry<$g<$p<T>>> for $g<T>
+            where
+                T: BaseFloat + BaseNum + Primitive,
+            {
+                fn from_geometry(other: $g<$p<T>>) -> Self {
+                    $g::new(
+                        other.x.into_raw_float(),
+                        other.y.into_raw_float(),
+                        other.z.into_raw_float(),
+                    )
+                }
+            }
+
+            impl<T> FromGeometry<$g<T>> for $g<$p<T>>
+            where
+                T: BaseFloat + BaseNum + Primitive,
+            {
+                fn from_geometry(other: $g<T>) -> Self {
+                    $g::new(
+                        $p::<T>::from_raw_float(other.x),
+                        $p::<T>::from_raw_float(other.y),
+                        $p::<T>::from_raw_float(other.z),
+                    )
+                }
+            }
+        };
+    }
+    ordered!(geometry => Point3, proxy => Finite);
+    ordered!(geometry => Point3, proxy => NotNan);
+    ordered!(geometry => Point3, proxy => Ordered);
 
     impl<T> FromGeometry<Duplet<T>> for Point2<T>
     where
@@ -142,32 +175,6 @@ mod feature_geometry_cgmath {
     {
         fn from_geometry(other: Triplet<T>) -> Self {
             Point3::new(other.0, other.1, other.2)
-        }
-    }
-
-    impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
-    where
-        T: BaseFloat + BaseNum + Primitive,
-    {
-        fn from_geometry(other: Triplet<Finite<T>>) -> Self {
-            Point3::new(
-                other.0.into_raw_float(),
-                other.1.into_raw_float(),
-                other.2.into_raw_float(),
-            )
-        }
-    }
-
-    impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
-    where
-        T: BaseFloat + BaseNum + Primitive,
-    {
-        fn from_geometry(other: Point3<Finite<T>>) -> Self {
-            Point3::new(
-                other.x.into_raw_float(),
-                other.y.into_raw_float(),
-                other.z.into_raw_float(),
-            )
         }
     }
 
@@ -229,19 +236,11 @@ mod feature_geometry_cgmath {
         type Hash = Point3<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Point3::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-                Ordered::from_raw_float(self.z),
-            )
+            self.into_geometry()
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point3::new(
-                hash.x.into_raw_float(),
-                hash.y.into_raw_float(),
-                hash.z.into_raw_float(),
-            )
+            hash.into_geometry()
         }
     }
 
@@ -289,72 +288,93 @@ mod feature_geometry_cgmath {
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
-    use decorum::{Finite, Ordered, Primitive};
+    use decorum::{Finite, NotNan, Ordered, Primitive};
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
-    use num::Float;
+    use num::{Float, NumCast, ToPrimitive};
 
     use geometry::{Duplet, Triplet};
     use geometry::convert::*;
 
-    impl<T> FromGeometry<Duplet<T>> for Point2<T>
+    // TODO: Implement `FromGeometry` for proxy types via specialization.
+    // TODO: Implement these conversions for two-dimensional points.
+    macro_rules! ordered {
+        (geometry => $g:ident, proxy => $p:ident) => {
+            impl<T> FromGeometry<$g<$p<T>>> for $g<T>
+            where
+                T: Float + Primitive + Scalar,
+            {
+                fn from_geometry(other: $g<$p<T>>) -> Self {
+                    $g::new(
+                        other.x.into_raw_float(),
+                        other.y.into_raw_float(),
+                        other.z.into_raw_float(),
+                    )
+                }
+            }
+
+            impl<T> FromGeometry<$g<T>> for $g<$p<T>>
+            where
+                T: Float + Primitive + Scalar,
+            {
+                fn from_geometry(other: $g<T>) -> Self {
+                    $g::new(
+                        $p::<T>::from_raw_float(other.x),
+                        $p::<T>::from_raw_float(other.y),
+                        $p::<T>::from_raw_float(other.z),
+                    )
+                }
+            }
+        };
+    }
+    ordered!(geometry => Point3, proxy => Finite);
+    ordered!(geometry => Point3, proxy => NotNan);
+    ordered!(geometry => Point3, proxy => Ordered);
+
+    impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Duplet<T>) -> Self {
-            Point2::new(other.0, other.1)
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Point2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
         }
     }
 
-    impl<T> FromGeometry<Triplet<T>> for Point3<T>
+    impl<T, U> FromGeometry<Triplet<U>> for Point3<T>
     where
-        T: Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Triplet<T>) -> Self {
-            Point3::new(other.0, other.1, other.2)
-        }
-    }
-
-    impl<T> FromGeometry<Triplet<Finite<T>>> for Point3<T>
-    where
-        T: Float + Primitive + Scalar,
-    {
-        fn from_geometry(other: Triplet<Finite<T>>) -> Self {
+        fn from_geometry(other: Triplet<U>) -> Self {
             Point3::new(
-                other.0.into_raw_float(),
-                other.1.into_raw_float(),
-                other.2.into_raw_float(),
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
             )
         }
     }
 
-    impl<T> FromGeometry<Point3<Finite<T>>> for Point3<T>
+    impl<T, U> FromGeometry<Duplet<U>> for Vector2<T>
     where
-        T: Float + Primitive + Scalar,
+        T: NumCast + Scalar,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Point3<Finite<T>>) -> Self {
-            Point3::new(
-                other.x.into_raw_float(),
-                other.y.into_raw_float(),
-                other.z.into_raw_float(),
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+        }
+    }
+
+    impl<T, U> FromGeometry<Triplet<U>> for Vector3<T>
+    where
+        T: NumCast + Scalar,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Triplet<U>) -> Self {
+            Vector3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
             )
-        }
-    }
-
-    impl<T> FromGeometry<Duplet<T>> for Vector2<T>
-    where
-        T: Scalar,
-    {
-        fn from_geometry(other: Duplet<T>) -> Self {
-            Vector2::new(other.0, other.1)
-        }
-    }
-
-    impl<T> FromGeometry<Triplet<T>> for Vector3<T>
-    where
-        T: Scalar,
-    {
-        fn from_geometry(other: Triplet<T>) -> Self {
-            Vector3::new(other.0, other.1, other.2)
         }
     }
 
@@ -398,19 +418,11 @@ mod feature_geometry_nalgebra {
         type Hash = Point3<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Point3::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-                Ordered::from_raw_float(self.z),
-            )
+            self.into_geometry()
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point3::new(
-                hash.x.into_raw_float(),
-                hash.y.into_raw_float(),
-                hash.z.into_raw_float(),
-            )
+            hash.into_geometry()
         }
     }
 

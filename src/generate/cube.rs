@@ -1,8 +1,11 @@
-use generate::generate::{Generate, IndexPolygonGenerator, PolygonGenerator,
-                         PositionPolygonGenerator, PositionVertexGenerator,
-                         TexturePolygonGenerator, VertexGenerator};
+use decorum::R32;
+use num::{One, Zero};
+
+use generate::Half;
+use generate::generate::{Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator,
+                         PositionGenerator, PositionPolygonGenerator, PositionVertexGenerator,
+                         TextureGenerator, TexturePolygonGenerator, VertexGenerator};
 use generate::topology::{MapVerticesInto, Quad};
-use generate::unit::Unit;
 use geometry::{Duplet, Triplet};
 
 #[derive(Clone, Copy)]
@@ -15,41 +18,52 @@ pub enum Plane {
     XNZ,
 }
 
-#[derive(Clone)]
-pub struct Cube<T = f32>
-where
-    T: Unit,
-{
-    lower: T,
-    upper: T,
+#[derive(Clone, Copy)]
+pub struct Bounds {
+    lower: R32,
+    upper: R32,
 }
 
-impl<T> Cube<T>
-where
-    T: Unit,
-{
-    fn new(lower: T, upper: T) -> Self {
-        Cube {
-            lower: lower,
-            upper: upper,
+impl Bounds {
+    pub fn with_unit_radius() -> Self {
+        Bounds {
+            lower: -R32::one(),
+            upper: R32::one(),
         }
     }
 
-    pub fn with_unit_radius() -> Self {
-        let (lower, upper) = T::unit_radius();
-        Cube::new(lower, upper)
-    }
-
     pub fn with_unit_width() -> Self {
-        let (lower, upper) = T::unit_width();
-        Cube::new(lower, upper)
+        Bounds {
+            lower: -R32::half(),
+            upper: R32::half(),
+        }
+    }
+}
+
+impl Default for Bounds {
+    fn default() -> Self {
+        Self::with_unit_width()
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Cube;
+
+impl Cube {
+    pub fn new() -> Self {
+        Cube
     }
 
-    pub fn polygons_with_plane(&self) -> Generate<Self, Quad<Plane>> {
-        Generate::new(self, 0..self.polygon_count(), Cube::polygon_with_plane)
+    pub fn polygons_with_plane(&self) -> Generate<Self, (), Quad<Plane>> {
+        Generate::new(
+            self,
+            (),
+            0..self.polygon_count(),
+            Cube::polygon_with_plane_with,
+        )
     }
 
-    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
+    fn polygon_with_plane_with(&self, _: &(), index: usize) -> Quad<Plane> {
         match index {
             0 => Quad::converged(Plane::XY),  // front
             1 => Quad::converged(Plane::NZY), // right
@@ -62,58 +76,61 @@ where
     }
 }
 
-impl<T> VertexGenerator for Cube<T>
-where
-    T: Unit,
-{
+impl Default for Cube {
+    fn default() -> Self {
+        Cube::new()
+    }
+}
+
+impl VertexGenerator for Cube {
     fn vertex_count(&self) -> usize {
         8
     }
 }
 
-impl<T> PositionVertexGenerator for Cube<T>
-where
-    T: Unit,
-{
-    type Output = Triplet<T>;
-
-    #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn vertex_with_position(&self, index: usize) -> Self::Output {
-        let x = if index & 0b100 == 0b100 { self.upper } else { self.lower };
-        let y = if index & 0b010 == 0b010 { self.upper } else { self.lower };
-        let z = if index & 0b001 == 0b001 { self.upper } else { self.lower };
-        Triplet(x, y, z)
-    }
-}
-
-impl<T> PolygonGenerator for Cube<T>
-where
-    T: Unit,
-{
+impl PolygonGenerator for Cube {
     fn polygon_count(&self) -> usize {
         6
     }
 }
 
-impl<T> PositionPolygonGenerator for Cube<T>
-where
-    T: Unit,
-{
-    type Output = Quad<Triplet<T>>;
+impl PositionGenerator for Cube {
+    type State = Bounds;
+}
 
-    fn polygon_with_position(&self, index: usize) -> Self::Output {
-        self.polygon_with_index(index)
-            .map_vertices_into(|index| self.vertex_with_position(index))
+impl PositionVertexGenerator for Cube {
+    type Output = Triplet<R32>;
+
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn vertex_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+        let x = if index & 0b100 == 0b100 { state.upper } else { state.lower };
+        let y = if index & 0b010 == 0b010 { state.upper } else { state.lower };
+        let z = if index & 0b001 == 0b001 { state.upper } else { state.lower };
+        Triplet(x, y, z)
     }
 }
 
-impl<T> IndexPolygonGenerator for Cube<T>
-where
-    T: Unit,
-{
+impl PositionPolygonGenerator for Cube {
+    type Output = Quad<Triplet<R32>>;
+
+    fn polygon_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+        self.polygon_with_index_with(&Default::default(), index)
+            .map_vertices_into(|index| self.vertex_with_position_with(state, index))
+    }
+}
+
+impl IndexGenerator for Cube {
+    type State = ();
+}
+
+impl IndexPolygonGenerator for Cube {
     type Output = Quad<usize>;
 
-    fn polygon_with_index(&self, index: usize) -> <Self as IndexPolygonGenerator>::Output {
+    fn polygon_with_index_with(
+        &self,
+        _: &Self::State,
+        index: usize,
+    ) -> <Self as IndexPolygonGenerator>::Output {
         match index {
             0 => Quad::new(5, 7, 3, 1), // front
             1 => Quad::new(6, 7, 5, 4), // right
@@ -126,17 +143,22 @@ where
     }
 }
 
-impl<T> TexturePolygonGenerator for Cube<T>
-where
-    T: Unit,
-{
-    type Output = Quad<Duplet<f32>>;
+impl TextureGenerator for Cube {
+    type State = ();
+}
 
-    fn polygon_with_texture(&self, index: usize) -> <Self as TexturePolygonGenerator>::Output {
-        let uu = Duplet(1.0, 1.0);
-        let ul = Duplet(1.0, 0.0);
-        let ll = Duplet(0.0, 0.0);
-        let lu = Duplet(0.0, 1.0);
+impl TexturePolygonGenerator for Cube {
+    type Output = Quad<Duplet<R32>>;
+
+    fn polygon_with_texture_with(
+        &self,
+        _: &Self::State,
+        index: usize,
+    ) -> <Self as TexturePolygonGenerator>::Output {
+        let uu = Duplet(One::one(), One::one());
+        let ul = Duplet(One::one(), Zero::zero());
+        let ll = Duplet(Zero::zero(), Zero::zero());
+        let lu = Duplet(Zero::zero(), One::one());
         match index {
             0 | 4 | 5 => Quad::new(uu, ul, ll, lu), // front | bottom | back
             1 => Quad::new(ul, ll, lu, uu),         // right
