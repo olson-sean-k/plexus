@@ -43,7 +43,7 @@ geometry-cgmath = ["cgmath"]
 geometry-nalgebra = ["alga", "nalgebra"]
 
 [dependencies]
-arrayvec = "0.3.*"
+arrayvec = "0.4.*"
 decorum = "0.0.7" # Unstable. Depend on exact version only.
 derivative = "1.0.*"
 itertools = "0.6.*"
