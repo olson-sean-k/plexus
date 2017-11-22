@@ -87,8 +87,6 @@ pub trait EdgeLateral: Geometry {
     fn lateral(edge: EdgeRef<Self>) -> Result<Self::Lateral, ()>;
 }
 
-// TODO: rustfmt mangles the type constraints here.
-#[cfg_attr(rustfmt, rustfmt_skip)]
 impl<G> EdgeLateral for G
 where
     G: FaceNormal + Geometry,
@@ -115,10 +113,7 @@ pub mod alias {
 
     use super::*;
 
-    pub type VertexPosition<G> =
-        <<G as Geometry>::Vertex as AsPosition>::Target;
-    pub type ScaledFaceNormal<G, T> =
-        <<G as FaceNormal>::Normal as Mul<T>>::Output;
-    pub type ScaledEdgeLateral<G, T> =
-        <<G as EdgeLateral>::Lateral as Mul<T>>::Output;
+    pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
+    pub type ScaledFaceNormal<G, T> = <<G as FaceNormal>::Normal as Mul<T>>::Output;
+    pub type ScaledEdgeLateral<G, T> = <<G as EdgeLateral>::Lateral as Mul<T>>::Output;
 }
