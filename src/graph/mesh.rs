@@ -826,13 +826,7 @@ mod tests {
         // which should not be possible.
         let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
             vec![0, 1, 2, 0, 1, 3, 0, 1, 4],
-            vec![
-                Point3::<i32>::new(0, 0, 1),
-                Point3::<i32>::new(0, 0, -1),
-                Point3::<i32>::new(1, 0, 0),
-                Point3::<i32>::new(0, 1, 0),
-                Point3::<i32>::new(1, 1, 0),
-            ],
+            vec![(0, 0, 1), (0, 0, -1), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
             3,
         );
 

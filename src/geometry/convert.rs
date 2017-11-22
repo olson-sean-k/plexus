@@ -1,5 +1,5 @@
 use decorum::{Ordered, Primitive};
-use num::Float;
+use num::{Float, NumCast, ToPrimitive};
 use std::hash::Hash;
 
 use geometry::{Duplet, Triplet};
@@ -24,6 +24,30 @@ where
 impl<T> FromGeometry<T> for T {
     fn from_geometry(other: T) -> Self {
         other
+    }
+}
+
+impl<T, U> FromGeometry<(U, U)> for Duplet<T>
+where
+    T: NumCast,
+    U: ToPrimitive,
+{
+    fn from_geometry(other: (U, U)) -> Self {
+        Duplet(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+    }
+}
+
+impl<T, U> FromGeometry<(U, U, U)> for Triplet<T>
+where
+    T: NumCast,
+    U: ToPrimitive,
+{
+    fn from_geometry(other: (U, U, U)) -> Self {
+        Triplet(
+            T::from(other.0).unwrap(),
+            T::from(other.1).unwrap(),
+            T::from(other.2).unwrap(),
+        )
     }
 }
 
@@ -160,39 +184,99 @@ mod feature_geometry_cgmath {
     ordered!(geometry => Point3, proxy => NotNan);
     ordered!(geometry => Point3, proxy => Ordered);
 
-    impl<T> FromGeometry<Duplet<T>> for Point2<T>
+    impl<T, U> FromGeometry<(U, U)> for Point2<T>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Duplet<T>) -> Self {
-            Point2::new(other.0, other.1)
+        fn from_geometry(other: (U, U)) -> Self {
+            Point2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
         }
     }
 
-    impl<T> FromGeometry<Triplet<T>> for Point3<T>
+    impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Triplet<T>) -> Self {
-            Point3::new(other.0, other.1, other.2)
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Point3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
         }
     }
 
-    impl<T> FromGeometry<Duplet<T>> for Vector2<T>
+    impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Duplet<T>) -> Self {
-            Vector2::new(other.0, other.1)
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Point2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
         }
     }
 
-    impl<T> FromGeometry<Triplet<T>> for Vector3<T>
+    impl<T, U> FromGeometry<Triplet<U>> for Point3<T>
     where
-        T: BaseNum,
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
     {
-        fn from_geometry(other: Triplet<T>) -> Self {
-            Vector3::new(other.0, other.1, other.2)
+        fn from_geometry(other: Triplet<U>) -> Self {
+            Point3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U)> for Vector2<T>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U)) -> Self {
+            Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U, U)> for Vector3<T>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Vector3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> FromGeometry<Duplet<U>> for Vector2<T>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+        }
+    }
+
+    impl<T, U> FromGeometry<Triplet<U>> for Vector3<T>
+    where
+        T: BaseNum + NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Triplet<U>) -> Self {
+            Vector3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
         }
     }
 
@@ -330,6 +414,30 @@ mod feature_geometry_nalgebra {
     ordered!(geometry => Point3, proxy => NotNan);
     ordered!(geometry => Point3, proxy => Ordered);
 
+    impl<T, U> FromGeometry<(U, U)> for Point2<T>
+    where
+        T: NumCast + Scalar,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U)) -> Self {
+            Point2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
+    where
+        T: NumCast + Scalar,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Point3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
+        }
+    }
+
     impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
     where
         T: NumCast + Scalar,
@@ -347,6 +455,30 @@ mod feature_geometry_nalgebra {
     {
         fn from_geometry(other: Triplet<U>) -> Self {
             Point3::new(
+                T::from(other.0).unwrap(),
+                T::from(other.1).unwrap(),
+                T::from(other.2).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U)> for Vector2<T>
+    where
+        T: NumCast + Scalar,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U)) -> Self {
+            Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U, U)> for Vector3<T>
+    where
+        T: NumCast + Scalar,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Vector3::new(
                 T::from(other.0).unwrap(),
                 T::from(other.1).unwrap(),
                 T::from(other.2).unwrap(),
