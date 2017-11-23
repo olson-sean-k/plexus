@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use num::Integer;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -321,7 +322,7 @@ where
     T: Clone,
 {
     fn rotate(&mut self, n: isize) {
-        let n = umod(n, 3);
+        let n = umod(n, Self::ARITY as isize);
         if n == 1 {
             mem::swap(&mut self.a, &mut self.b);
             mem::swap(&mut self.b, &mut self.c);
@@ -409,7 +410,7 @@ where
     T: Clone,
 {
     fn rotate(&mut self, n: isize) {
-        let n = umod(n, 4);
+        let n = umod(n, Self::ARITY as isize);
         if n == 1 {
             mem::swap(&mut self.a, &mut self.b);
             mem::swap(&mut self.b, &mut self.c);
@@ -449,10 +450,16 @@ impl<T> FromIterator<T> for Polygon<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let input = input.into_iter().collect::<Vec<_>>();
+        // Associated constants cannot be used in constant expressions, so the
+        // size of the `ArrayVec` uses a literal instead of `Quad::<T>::ARITY`.
+        let input = input
+            .into_iter()
+            .take(Quad::<T>::ARITY)
+            .collect::<ArrayVec<[T; 4]>>();
         match input.len() {
-            n if n >= 4 => Polygon::Quad(Quad::from_iter(input)),
-            _ => Polygon::Triangle(Triangle::from_iter(input)),
+            Quad::<T>::ARITY => Polygon::Quad(Quad::from_iter(input)),
+            Triangle::<T>::ARITY => Polygon::Triangle(Triangle::from_iter(input)),
+            _ => panic!(),
         }
     }
 }
