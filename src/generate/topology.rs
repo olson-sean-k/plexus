@@ -1,9 +1,9 @@
 use num::Integer;
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::mem;
 
-// TODO: Traits like `MapVertices` and `Ordered` are concerned with geometry.
-//       Should they be moved to the `geometry` module?
+use generate::decompose::IntoVertices;
 
 pub trait Topological: Sized {
     type Vertex: Clone;
@@ -35,6 +35,93 @@ where
     fn map_vertices<F>(self, f: F) -> Map<Self, T, U, F>
     where
         F: FnMut(T) -> U;
+}
+
+/// Zips the vertices of topologies into a single topology.
+///
+/// For example, given three `Triangle`s with vertex types of `A`, `B`, and
+/// `C`, the result of the zip would be a single `Triangle` with a vertex type
+/// of `(A, B, C)`. This is useful for unifying topology streams of different
+/// attributes like position, index, and normal into a single stream.
+///
+/// This trait is implemented for tuples of topological types (`Triangle`,
+/// `Polygon`, etc.).
+///
+/// # Examples
+///
+/// Zip the vertices of three `Triangle`s:
+///
+/// ```rust
+/// # extern crate nalgebra;
+/// # extern crate num;
+/// # extern crate plexus;
+/// use nalgebra::{Point3, Vector3};
+/// use num::Zero;
+/// use plexus::generate::Triangle;
+/// use plexus::prelude::*;
+///
+/// # fn main() {
+/// let t1 = Triangle::converged(Point3::<f32>::origin());
+/// let t2 = Triangle::converged(Vector3::<f32>::zero());
+/// let t3 = Triangle::converged(0u32);
+/// let tz = (t1, t2, t3).zip_vertices_into();
+/// let (point, vector, scalar) = tz.a;
+/// # }
+/// ```
+///
+/// Create a topological stream of position and texture coordinate data for a
+/// cube using `izip` from the [itertools](https://crates.io/crates/itertools)
+/// crate:
+///
+/// ```rust
+/// # extern crate decorum;
+/// # #[macro_use]
+/// # extern crate itertools;
+/// # extern crate num;
+/// # extern crate plexus;
+/// use plexus::generate::cube::Cube;
+/// use plexus::prelude::*;
+///
+/// # use decorum::R32;
+/// # use num::One;
+/// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
+/// #     Triplet(One::one(), One::one(), One::one())
+/// # }
+///
+/// # fn main() {
+/// let cube = Cube::new();
+/// let polygons = izip!(
+///     cube.polygons_with_position(),
+///     cube.polygons_with_texture()
+/// ).map(|polygons| polygons.zip_vertices_into())
+///     .map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
+///     .triangulate()
+///     .collect::<Vec<_>>();
+/// # }
+/// ```
+pub trait ZipVerticesInto {
+    type Output: FromIterator<<Self::Output as Topological>::Vertex> + Topological;
+
+    fn zip_vertices_into(self) -> Self::Output;
+}
+
+// TODO: Using `FromIterator` to implement this is fragile. This is especially
+//       true for `Polygon`, because the arity of the polygons that are zipped
+//       may not be the same. This could cause panics or unexpected behavior.
+//       It may be a better idea to hide `ZipVerticesInto` behind a more
+//       restricted interface.
+macro_rules! zip_vertices_into {
+    (topology => $t:ident, geometries => ($($g:ident),*)) => (
+        #[allow(non_snake_case)]
+        impl<$($g: Clone),*> ZipVerticesInto for ($($t<$g>),*) {
+            type Output = $t<($($g),*)>;
+
+            fn zip_vertices_into(self) -> Self::Output {
+                let ($($g,)*) = self;
+                izip!($($g.into_vertices()),*).collect()
+            }
+        }
+    );
 }
 
 pub trait Rotate {
@@ -98,7 +185,7 @@ pub struct Line<T> {
 
 impl<T> Line<T> {
     pub fn new(a: T, b: T) -> Self {
-        Line { a: a, b: b }
+        Line { a, b }
     }
 
     pub fn converged(value: T) -> Self
@@ -112,6 +199,19 @@ impl<T> Line<T> {
 impl<T> Arity for Line<T> {
     const ARITY: usize = 2;
 }
+
+impl<T> FromIterator<T> for Line<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut input = input.into_iter();
+        Line::new(input.next().unwrap(), input.next().unwrap())
+    }
+}
+zip_vertices_into!(topology => Line, geometries => (A, B));
+zip_vertices_into!(topology => Line, geometries => (A, B, C));
+zip_vertices_into!(topology => Line, geometries => (A, B, C, D));
 
 impl<T, U> MapVerticesInto<T, U> for Line<T>
 where
@@ -155,7 +255,7 @@ pub struct Triangle<T> {
 
 impl<T> Triangle<T> {
     pub fn new(a: T, b: T, c: T) -> Self {
-        Triangle { a: a, b: b, c: c }
+        Triangle { a, b, c }
     }
 
     pub fn converged(value: T) -> Self
@@ -169,6 +269,23 @@ impl<T> Triangle<T> {
 impl<T> Arity for Triangle<T> {
     const ARITY: usize = 3;
 }
+
+impl<T> FromIterator<T> for Triangle<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut input = input.into_iter();
+        Triangle::new(
+            input.next().unwrap(),
+            input.next().unwrap(),
+            input.next().unwrap(),
+        )
+    }
+}
+zip_vertices_into!(topology => Triangle, geometries => (A, B));
+zip_vertices_into!(topology => Triangle, geometries => (A, B, C));
+zip_vertices_into!(topology => Triangle, geometries => (A, B, C, D));
 
 impl<T, U> MapVerticesInto<T, U> for Triangle<T>
 where
@@ -225,12 +342,7 @@ pub struct Quad<T> {
 
 impl<T> Quad<T> {
     pub fn new(a: T, b: T, c: T, d: T) -> Self {
-        Quad {
-            a: a,
-            b: b,
-            c: c,
-            d: d,
-        }
+        Quad { a, b, c, d }
     }
 
     pub fn converged(value: T) -> Self
@@ -244,6 +356,24 @@ impl<T> Quad<T> {
 impl<T> Arity for Quad<T> {
     const ARITY: usize = 4;
 }
+
+impl<T> FromIterator<T> for Quad<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let mut input = input.into_iter();
+        Quad::new(
+            input.next().unwrap(),
+            input.next().unwrap(),
+            input.next().unwrap(),
+            input.next().unwrap(),
+        )
+    }
+}
+zip_vertices_into!(topology => Quad, geometries => (A, B));
+zip_vertices_into!(topology => Quad, geometries => (A, B, C));
+zip_vertices_into!(topology => Quad, geometries => (A, B, C, D));
 
 impl<T, U> MapVerticesInto<T, U> for Quad<T>
 where
@@ -313,6 +443,22 @@ impl<T> From<Quad<T>> for Polygon<T> {
         Polygon::Quad(quad)
     }
 }
+
+impl<T> FromIterator<T> for Polygon<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let input = input.into_iter().collect::<Vec<_>>();
+        match input.len() {
+            n if n >= 4 => Polygon::Quad(Quad::from_iter(input)),
+            _ => Polygon::Triangle(Triangle::from_iter(input)),
+        }
+    }
+}
+zip_vertices_into!(topology => Polygon, geometries => (A, B));
+zip_vertices_into!(topology => Polygon, geometries => (A, B, C));
+zip_vertices_into!(topology => Polygon, geometries => (A, B, C, D));
 
 impl<T, U> MapVerticesInto<T, U> for Polygon<T>
 where

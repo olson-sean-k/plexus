@@ -12,6 +12,7 @@ extern crate cgmath;
 extern crate decorum;
 #[macro_use]
 extern crate derivative;
+#[macro_use]
 extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;
@@ -25,7 +26,7 @@ pub mod graph;
 pub mod prelude {
     pub use generate::{CollectWithIndexer, IndexVertices, MapVertices, PolygonGenerator,
                        PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Triangulate,
-                       VertexGenerator, Vertices, VerticesWithPosition};
+                       VertexGenerator, Vertices, VerticesWithPosition, ZipVerticesInto};
     pub use geometry::{Duplet, Triplet};
     pub use geometry::convert::HashConjugate;
 }

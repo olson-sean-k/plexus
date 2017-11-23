@@ -75,7 +75,7 @@ pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPositi
                          PolygonsWithTexture, VertexGenerator, VerticesWithPosition};
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
 pub use self::topology::{Line, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological,
-                         Triangle};
+                         Triangle, ZipVerticesInto};
 
 trait Half {
     fn half() -> Self;
