@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
+use itertools::structs::Zip;
 use num::Integer;
-use std::iter::FromIterator;
+use std::iter::{self, FromIterator};
 use std::marker::PhantomData;
 use std::mem;
 
@@ -38,79 +39,12 @@ where
         F: FnMut(T) -> U;
 }
 
-/// Zips the vertices of topologies into a single topology.
-///
-/// For example, given three `Triangle`s with vertex types of `A`, `B`, and
-/// `C`, the result of the zip would be a single `Triangle` with a vertex type
-/// of `(A, B, C)`. This is useful for unifying topology streams of different
-/// attributes like position, index, and normal into a single stream.
-///
-/// This trait is implemented for tuples of topological types (`Triangle`,
-/// `Polygon`, etc.).
-///
-/// # Examples
-///
-/// Zip the vertices of three `Triangle`s:
-///
-/// ```rust
-/// # extern crate nalgebra;
-/// # extern crate num;
-/// # extern crate plexus;
-/// use nalgebra::{Point3, Vector3};
-/// use num::Zero;
-/// use plexus::generate::Triangle;
-/// use plexus::prelude::*;
-///
-/// # fn main() {
-/// let t1 = Triangle::converged(Point3::<f32>::origin());
-/// let t2 = Triangle::converged(Vector3::<f32>::zero());
-/// let t3 = Triangle::converged(0u32);
-/// let tz = (t1, t2, t3).zip_vertices_into();
-/// let (point, vector, scalar) = tz.a;
-/// # }
-/// ```
-///
-/// Create a topological stream of position and texture coordinate data for a
-/// cube using `izip` from the [itertools](https://crates.io/crates/itertools)
-/// crate:
-///
-/// ```rust
-/// # extern crate decorum;
-/// # #[macro_use]
-/// # extern crate itertools;
-/// # extern crate num;
-/// # extern crate plexus;
-/// use plexus::generate::cube::Cube;
-/// use plexus::prelude::*;
-///
-/// # use decorum::R32;
-/// # use num::One;
-/// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
-/// #     Triplet(One::one(), One::one(), One::one())
-/// # }
-///
-/// # fn main() {
-/// let cube = Cube::new();
-/// let polygons = izip!(
-///     cube.polygons_with_position(),
-///     cube.polygons_with_texture()
-/// ).map(|polygons| polygons.zip_vertices_into())
-///     .map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
-///     .triangulate()
-///     .collect::<Vec<_>>();
-/// # }
-/// ```
 pub trait ZipVerticesInto {
     type Output: FromIterator<<Self::Output as Topological>::Vertex> + Topological;
 
     fn zip_vertices_into(self) -> Self::Output;
 }
 
-// TODO: Using `FromIterator` to implement this is fragile. This is especially
-//       true for `Polygon`, because the arity of the polygons that are zipped
-//       may not be the same. This could cause panics or unexpected behavior.
-//       It may be a better idea to hide `ZipVerticesInto` behind a more
-//       restricted interface.
 macro_rules! zip_vertices_into {
     (topology => $t:ident, geometries => ($($g:ident),*)) => (
         #[allow(non_snake_case)]
@@ -515,4 +449,59 @@ where
     T: Copy + Integer,
 {
     ((n % m) + m) % m
+}
+
+pub type ZipVertices<T> = iter::Map<
+    Zip<T>,
+    fn(<Zip<T> as Iterator>::Item) -> <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output,
+>;
+
+/// Zips the vertices of topologies from multiple iterators into a single
+/// topology stream.
+///
+/// # Examples
+///
+/// Create a topological stream of position and texture coordinate data for a
+/// cube:
+///
+/// ```rust
+/// # extern crate decorum;
+/// # extern crate num;
+/// # extern crate plexus;
+/// use plexus::generate;
+/// use plexus::generate::cube::Cube;
+/// use plexus::prelude::*;
+///
+/// # use decorum::R32;
+/// # use num::One;
+/// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
+/// #     Triplet(One::one(), One::one(), One::one())
+/// # }
+///
+/// # fn main() {
+/// let cube = Cube::new();
+/// let polygons = generate::zip_vertices((
+///     cube.polygons_with_position(),
+///     cube.polygons_with_texture(),
+/// )).map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
+///     .triangulate()
+///     .collect::<Vec<_>>();
+/// # }
+/// ```
+pub fn zip_vertices<T, U>(tuple: U) -> ZipVertices<T>
+where
+    Zip<T>: From<U> + Iterator,
+    <Zip<T> as Iterator>::Item: ZipVerticesInto,
+{
+    Zip::from(tuple).map(zip_vertices_into)
+}
+
+fn zip_vertices_into<T>(
+    item: <Zip<T> as Iterator>::Item,
+) -> <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output
+where
+    Zip<T>: Iterator,
+    <Zip<T> as Iterator>::Item: ZipVerticesInto,
+{
+    item.zip_vertices_into()
 }
