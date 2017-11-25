@@ -456,8 +456,12 @@ pub type ZipVertices<T> = iter::Map<
     fn(<Zip<T> as Iterator>::Item) -> <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output,
 >;
 
-/// Zips the vertices of topologies from multiple iterators into a single
-/// topology stream.
+/// Zips the vertices and topologies from multiple iterators into a single
+/// iterator.
+///
+/// This is useful for zipping different attributes of a primitive generator.
+/// For example, it can be used to combine position, plane, and texture
+/// coordinate data of a cube into a single topology stream.
 ///
 /// # Examples
 ///
@@ -483,7 +487,9 @@ pub type ZipVertices<T> = iter::Map<
 /// let polygons = generate::zip_vertices((
 ///     cube.polygons_with_position(),
 ///     cube.polygons_with_texture(),
-/// )).map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
+/// )).map_vertices(|(position, texture)| {
+///     (position, texture, map_to_color(&texture))
+/// })
 ///     .triangulate()
 ///     .collect::<Vec<_>>();
 /// # }

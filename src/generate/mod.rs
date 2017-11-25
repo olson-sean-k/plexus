@@ -31,16 +31,16 @@
 //!
 //! # fn main() {
 //! let sphere = sphere::UvSphere::new(16, 16);
-//! let positions: Vec<_> = sphere
+//! let positions = sphere
 //!     .vertices_with_position() // Generate the unique set of positional vertices.
 //!     .map(|position| -> Point3<f32> { position.into() }) // Convert into a nalgebra type.
 //!     .map(|position| position * 10.0) // Scale the positions by 10.
-//!     .collect();
-//! let indeces: Vec<_> = sphere
+//!     .collect::<Vec<_>>();
+//! let indeces = sphere
 //!     .polygons_with_index() // Generate polygons indexing the unique set of vertices.
 //!     .triangulate() // Decompose the polygons into triangles.
 //!     .vertices() // Decompose the triangles into vertices (indeces).
-//!     .collect();
+//!     .collect::<Vec<_>>();
 //! # }
 //! ```
 //! Generating position and index buffers using an indexer:
