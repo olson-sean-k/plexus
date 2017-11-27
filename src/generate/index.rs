@@ -154,7 +154,7 @@ pub trait IndexVertices<T>: Sized
 where
     T: Arity + IntoVertices + Topological,
 {
-    fn index_vertices_with_key<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
         N: Indexer<T, K>,
         F: Fn(&T::Vertex) -> &K;
@@ -163,7 +163,7 @@ where
     where
         N: Indexer<T, T::Vertex>,
     {
-        self.index_vertices_with_key::<N, T::Vertex, _>(indexer, |vertex| vertex)
+        self.index_vertices_with::<N, T::Vertex, _>(indexer, |vertex| vertex)
     }
 }
 
@@ -172,7 +172,7 @@ where
     I: Iterator<Item = T>,
     T: Arity + IntoVertices + Topological,
 {
-    fn index_vertices_with_key<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
     where
         N: Indexer<T, K>,
         F: Fn(&T::Vertex) -> &K,
