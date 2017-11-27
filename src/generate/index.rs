@@ -30,7 +30,7 @@ where
     T: IntoVertices + Topological,
     K: Clone + Eq + Hash,
 {
-    fn new() -> Self {
+    pub fn new() -> Self {
         HashIndexer {
             hash: HashMap::new(),
             n: 0,
