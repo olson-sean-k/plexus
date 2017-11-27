@@ -6,7 +6,7 @@ use std::collections::{vec_deque, VecDeque};
 use std::iter::{Chain, IntoIterator, Rev};
 use std::vec;
 
-use generate::topology::{Line, Polygon, Polygonal, Quad, Topological, Triangle};
+use generate::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 use geometry::ops::Interpolate;
 
 pub struct Decompose<I, P, Q, R>
@@ -77,10 +77,10 @@ pub trait IntoVertices: Topological {
     fn into_vertices(self) -> Self::Output;
 }
 
-pub trait IntoLines: Topological {
-    type Output: IntoIterator<Item = Line<Self::Vertex>>;
+pub trait IntoEdges: Topological {
+    type Output: IntoIterator<Item = Edge<Self::Vertex>>;
 
-    fn into_lines(self) -> Self::Output;
+    fn into_edges(self) -> Self::Output;
 }
 
 pub trait IntoTriangles: Polygonal {
@@ -105,14 +105,14 @@ where
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]>;
 }
 
-impl<T> IntoVertices for Line<T>
+impl<T> IntoVertices for Edge<T>
 where
     T: Clone,
 {
     type Output = ArrayVec<[Self::Vertex; 2]>;
 
     fn into_vertices(self) -> Self::Output {
-        let Line { a, b } = self;
+        let Edge { a, b } = self;
         ArrayVec::from([a, b])
     }
 }
@@ -155,60 +155,60 @@ where
     }
 }
 
-impl<T> IntoLines for Line<T>
+impl<T> IntoEdges for Edge<T>
 where
     T: Clone,
 {
-    type Output = ArrayVec<[Line<Self::Vertex>; 1]>;
+    type Output = ArrayVec<[Edge<Self::Vertex>; 1]>;
 
-    fn into_lines(self) -> Self::Output {
+    fn into_edges(self) -> Self::Output {
         ArrayVec::from([self])
     }
 }
 
-impl<T> IntoLines for Triangle<T>
+impl<T> IntoEdges for Triangle<T>
 where
     T: Clone,
 {
-    type Output = ArrayVec<[Line<Self::Vertex>; 3]>;
+    type Output = ArrayVec<[Edge<Self::Vertex>; 3]>;
 
-    fn into_lines(self) -> Self::Output {
+    fn into_edges(self) -> Self::Output {
         let Triangle { a, b, c } = self;
         ArrayVec::from([
-            Line::new(a.clone(), b.clone()),
-            Line::new(b, c.clone()),
-            Line::new(c, a),
+            Edge::new(a.clone(), b.clone()),
+            Edge::new(b, c.clone()),
+            Edge::new(c, a),
         ])
     }
 }
 
-impl<T> IntoLines for Quad<T>
+impl<T> IntoEdges for Quad<T>
 where
     T: Clone,
 {
-    type Output = ArrayVec<[Line<Self::Vertex>; 4]>;
+    type Output = ArrayVec<[Edge<Self::Vertex>; 4]>;
 
-    fn into_lines(self) -> Self::Output {
+    fn into_edges(self) -> Self::Output {
         let Quad { a, b, c, d } = self;
         ArrayVec::from([
-            Line::new(a.clone(), b.clone()),
-            Line::new(b, c.clone()),
-            Line::new(c, d.clone()),
-            Line::new(d, a),
+            Edge::new(a.clone(), b.clone()),
+            Edge::new(b, c.clone()),
+            Edge::new(c, d.clone()),
+            Edge::new(d, a),
         ])
     }
 }
 
-impl<T> IntoLines for Polygon<T>
+impl<T> IntoEdges for Polygon<T>
 where
     T: Clone,
 {
-    type Output = Vec<Line<Self::Vertex>>;
+    type Output = Vec<Edge<Self::Vertex>>;
 
-    fn into_lines(self) -> Self::Output {
+    fn into_edges(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => triangle.into_lines().into_iter().collect(),
-            Polygon::Quad(quad) => quad.into_lines().into_iter().collect(),
+            Polygon::Triangle(triangle) => triangle.into_edges().into_iter().collect(),
+            Polygon::Quad(quad) => quad.into_edges().into_iter().collect(),
         }
     }
 }
@@ -346,21 +346,21 @@ where
     }
 }
 
-pub trait Lines<P>: Sized
+pub trait Edges<P>: Sized
 where
-    P: IntoLines,
+    P: IntoEdges,
 {
-    fn lines(self) -> Decompose<Self, P, Line<P::Vertex>, P::Output>;
+    fn edges(self) -> Decompose<Self, P, Edge<P::Vertex>, P::Output>;
 }
 
-impl<I, P> Lines<P> for I
+impl<I, P> Edges<P> for I
 where
     I: Iterator<Item = P>,
-    P: IntoLines,
+    P: IntoEdges,
     P::Vertex: Clone,
 {
-    fn lines(self) -> Decompose<Self, P, Line<P::Vertex>, P::Output> {
-        Decompose::new(self, P::into_lines)
+    fn edges(self) -> Decompose<Self, P, Edge<P::Vertex>, P::Output> {
+        Decompose::new(self, P::into_edges)
     }
 }
 

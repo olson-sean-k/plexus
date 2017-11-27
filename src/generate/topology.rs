@@ -113,65 +113,65 @@ where
     }
 }
 
-pub struct Line<T> {
+pub struct Edge<T> {
     pub a: T,
     pub b: T,
 }
 
-impl<T> Line<T> {
+impl<T> Edge<T> {
     pub fn new(a: T, b: T) -> Self {
-        Line { a, b }
+        Edge { a, b }
     }
 
     pub fn converged(value: T) -> Self
     where
         T: Clone,
     {
-        Line::new(value.clone(), value)
+        Edge::new(value.clone(), value)
     }
 }
 
-impl<T> Arity for Line<T> {
+impl<T> Arity for Edge<T> {
     const ARITY: usize = 2;
 }
 
-impl<T> FromIterator<T> for Line<T> {
+impl<T> FromIterator<T> for Edge<T> {
     fn from_iter<I>(input: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
         let mut input = input.into_iter();
-        Line::new(input.next().unwrap(), input.next().unwrap())
+        Edge::new(input.next().unwrap(), input.next().unwrap())
     }
 }
-zip_vertices_into!(topology => Line, geometries => (A, B));
-zip_vertices_into!(topology => Line, geometries => (A, B, C));
-zip_vertices_into!(topology => Line, geometries => (A, B, C, D));
+zip_vertices_into!(topology => Edge, geometries => (A, B));
+zip_vertices_into!(topology => Edge, geometries => (A, B, C));
+zip_vertices_into!(topology => Edge, geometries => (A, B, C, D));
 
-impl<T, U> MapVerticesInto<T, U> for Line<T>
+impl<T, U> MapVerticesInto<T, U> for Edge<T>
 where
     T: Clone,
     U: Clone,
 {
-    type Output = Line<U>;
+    type Output = Edge<U>;
 
     fn map_vertices_into<F>(self, mut f: F) -> Self::Output
     where
         F: FnMut(T) -> U,
     {
-        let Line { a, b } = self;
-        Line::new(f(a), f(b))
+        let Edge { a, b } = self;
+        Edge::new(f(a), f(b))
     }
 }
 
-impl<T> Topological for Line<T>
+impl<T> Topological for Edge<T>
 where
     T: Clone,
 {
     type Vertex = T;
 }
 
-impl<T> Rotate for Line<T>
+impl<T> Rotate for Edge<T>
 where
     T: Clone,
 {

@@ -70,11 +70,11 @@ use std::ops::Div;
 pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
 pub(crate) use self::index::{FromIndexer, Indexer};
 
-pub use self::decompose::{Lines, Subdivide, Tetrahedrons, Triangulate, Vertices};
+pub use self::decompose::{Edges, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
                          PolygonsWithTexture, VertexGenerator, VerticesWithPosition};
 pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
-pub use self::topology::{zip_vertices, Line, MapVertices, Polygon, Polygonal, Quad, Rotate,
+pub use self::topology::{zip_vertices, Edge, MapVertices, Polygon, Polygonal, Quad, Rotate,
                          Topological, Triangle};
 
 trait Half {
