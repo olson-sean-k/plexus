@@ -130,22 +130,23 @@ impl OpaqueKey for FaceKey {
 pub type StorageIter<'a, T> = Iter<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
 pub type StorageIterMut<'a, T> = IterMut<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
 
-pub struct Storage<T>(
-    <<T as Topological>::Key as OpaqueKey>::Generator,
-    HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>,
-)
+pub struct Storage<T>
 where
-    T: Topological;
+    T: Topological,
+{
+    generator: <<T as Topological>::Key as OpaqueKey>::Generator,
+    hash: HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>,
+}
 
 impl<T> Storage<T>
 where
     T: Topological,
 {
     pub fn new() -> Self {
-        Storage(
-            <<T as Topological>::Key as OpaqueKey>::Generator::default(),
-            HashMap::new(),
-        )
+        Storage {
+            generator: Default::default(),
+            hash: HashMap::new(),
+        }
     }
 
     pub fn map_values_into<U, F>(self, mut f: F) -> Storage<U>
@@ -154,35 +155,38 @@ where
         F: FnMut(T) -> U,
     {
         let mut hash = HashMap::new();
-        for (key, value) in self.1 {
+        for (key, value) in self.hash {
             hash.insert(key, f(value));
         }
-        Storage(self.0, hash)
+        Storage {
+            generator: self.generator,
+            hash: hash,
+        }
     }
 
     #[inline(always)]
     pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
-        self.1.insert(key.to_inner(), item)
+        self.hash.insert(key.to_inner(), item)
     }
 
     #[inline(always)]
     pub fn contains_key(&self, key: &T::Key) -> bool {
-        self.1.contains_key(&key.to_inner())
+        self.hash.contains_key(&key.to_inner())
     }
 
     #[inline(always)]
     pub fn get(&self, key: &T::Key) -> Option<&T> {
-        self.1.get(&key.to_inner())
+        self.hash.get(&key.to_inner())
     }
 
     #[inline(always)]
     pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
-        self.1.get_mut(&key.to_inner())
+        self.hash.get_mut(&key.to_inner())
     }
 
     #[inline(always)]
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
-        self.1.remove(&key.to_inner())
+        self.hash.remove(&key.to_inner())
     }
 }
 
@@ -192,9 +196,9 @@ where
     T::Key: From<Key> + OpaqueKey<RawKey = Key, Generator = Key>,
 {
     pub fn insert_with_generator(&mut self, item: T) -> T::Key {
-        let key = self.0;
-        self.1.insert(key, item);
-        self.0 = self.0.next();
+        let key = self.generator;
+        self.hash.insert(key, item);
+        self.generator = self.generator.next();
         key.into()
     }
 }
@@ -206,7 +210,7 @@ where
     type Target = HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.1
+        &self.hash
     }
 }
 
@@ -215,6 +219,6 @@ where
     T: Topological,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.1
+        &mut self.hash
     }
 }
