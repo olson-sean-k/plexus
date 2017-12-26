@@ -17,16 +17,15 @@ pub trait Arity {
     const ARITY: usize;
 }
 
-pub trait MapVerticesInto<T, U>: Topological<Vertex = T>
+pub trait MapVerticesInto<U>: Topological
 where
-    T: Clone,
     U: Clone,
 {
     type Output: Topological<Vertex = U>;
 
     fn map_vertices_into<F>(self, f: F) -> Self::Output
     where
-        F: FnMut(T) -> U;
+        F: FnMut(Self::Vertex) -> U;
 }
 
 pub trait MapVertices<T, U>: Sized
@@ -66,7 +65,7 @@ pub trait Rotate {
 impl<I, T, U, P, Q> MapVertices<T, U> for I
 where
     I: Iterator<Item = P>,
-    P: MapVerticesInto<T, U, Output = Q>,
+    P: MapVerticesInto<U, Output = Q> + Topological<Vertex = T>,
     Q: Topological<Vertex = U>,
     T: Clone,
     U: Clone,
@@ -99,7 +98,7 @@ impl<I, T, U, F, P, Q> Iterator for Map<I, T, U, F>
 where
     I: Iterator<Item = P>,
     F: FnMut(T) -> U,
-    P: MapVerticesInto<T, U, Output = Q>,
+    P: MapVerticesInto<U, Output = Q> + Topological<Vertex = T>,
     Q: Topological<Vertex = U>,
     T: Clone,
     U: Clone,
@@ -148,7 +147,7 @@ zip_vertices_into!(topology => Edge, geometries => (A, B));
 zip_vertices_into!(topology => Edge, geometries => (A, B, C));
 zip_vertices_into!(topology => Edge, geometries => (A, B, C, D));
 
-impl<T, U> MapVerticesInto<T, U> for Edge<T>
+impl<T, U> MapVerticesInto<U> for Edge<T>
 where
     T: Clone,
     U: Clone,
@@ -222,7 +221,7 @@ zip_vertices_into!(topology => Triangle, geometries => (A, B));
 zip_vertices_into!(topology => Triangle, geometries => (A, B, C));
 zip_vertices_into!(topology => Triangle, geometries => (A, B, C, D));
 
-impl<T, U> MapVerticesInto<T, U> for Triangle<T>
+impl<T, U> MapVerticesInto<U> for Triangle<T>
 where
     T: Clone,
     U: Clone,
@@ -310,7 +309,7 @@ zip_vertices_into!(topology => Quad, geometries => (A, B));
 zip_vertices_into!(topology => Quad, geometries => (A, B, C));
 zip_vertices_into!(topology => Quad, geometries => (A, B, C, D));
 
-impl<T, U> MapVerticesInto<T, U> for Quad<T>
+impl<T, U> MapVerticesInto<U> for Quad<T>
 where
     T: Clone,
     U: Clone,
@@ -401,7 +400,7 @@ zip_vertices_into!(topology => Polygon, geometries => (A, B));
 zip_vertices_into!(topology => Polygon, geometries => (A, B, C));
 zip_vertices_into!(topology => Polygon, geometries => (A, B, C, D));
 
-impl<T, U> MapVerticesInto<T, U> for Polygon<T>
+impl<T, U> MapVerticesInto<U> for Polygon<T>
 where
     T: Clone,
     U: Clone,

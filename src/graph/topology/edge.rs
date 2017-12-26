@@ -581,7 +581,7 @@ mod tests {
     fn split_full_edge() {
         let (indeces, vertices) = cube::Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
-            .index_vertices(HashIndexer::default());
+            .flat_index_vertices(HashIndexer::default());
         let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
         let key = mesh.edges().nth(0).unwrap().key();
         let vertex = mesh.edge_mut(key).unwrap().split().unwrap();

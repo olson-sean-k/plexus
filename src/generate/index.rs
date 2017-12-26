@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use generate::decompose::IntoVertices;
-use generate::topology::{Arity, Topological};
+use generate::decompose::{IntoVertices, Vertices};
+use generate::topology::{Arity, MapVerticesInto, Topological};
 
 pub trait Indexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
 {
     fn index<F>(&mut self, vertex: T::Vertex, f: F) -> (usize, Option<T::Vertex>)
     where
@@ -17,7 +17,7 @@ where
 
 pub struct HashIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + Eq + Hash,
 {
     hash: HashMap<K, usize>,
@@ -27,7 +27,7 @@ where
 
 impl<T, K> HashIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + Eq + Hash,
 {
     pub fn new() -> Self {
@@ -41,7 +41,7 @@ where
 
 impl<T, K> Default for HashIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + Eq + Hash,
 {
     fn default() -> Self {
@@ -51,7 +51,7 @@ where
 
 impl<T, K> Indexer<T, K> for HashIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + Eq + Hash,
 {
     fn index<F>(&mut self, input: T::Vertex, f: F) -> (usize, Option<T::Vertex>)
@@ -73,7 +73,7 @@ where
 
 pub struct LruIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + PartialEq,
 {
     lru: Vec<(K, usize)>,
@@ -84,7 +84,7 @@ where
 
 impl<T, K> LruIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + PartialEq,
 {
     pub fn new() -> Self {
@@ -112,7 +112,7 @@ where
 
 impl<T, K> Default for LruIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + PartialEq,
 {
     fn default() -> Self {
@@ -122,7 +122,7 @@ where
 
 impl<T, K> Indexer<T, K> for LruIndexer<T, K>
 where
-    T: IntoVertices + Topological,
+    T: Topological,
     K: Clone + PartialEq,
 {
     fn index<F>(&mut self, input: T::Vertex, f: F) -> (usize, Option<T::Vertex>)
@@ -150,52 +150,98 @@ where
     }
 }
 
-pub trait IndexVertices<T>: Sized
+pub trait IndexVertices<P>: Sized
 where
-    T: Arity + IntoVertices + Topological,
+    P: MapVerticesInto<usize> + Topological,
 {
-    fn index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with<N, K, F>(
+        self,
+        indexer: N,
+        f: F,
+    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
     where
-        N: Indexer<T, K>,
-        F: Fn(&T::Vertex) -> &K;
+        N: Indexer<P, K>,
+        F: Fn(&P::Vertex) -> &K;
 
-    fn index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices<N>(
+        self,
+        indexer: N,
+    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
     where
-        N: Indexer<T, T::Vertex>,
+        N: Indexer<P, P::Vertex>,
     {
-        self.index_vertices_with::<N, T::Vertex, _>(indexer, |vertex| vertex)
+        self.index_vertices_with::<N, P::Vertex, _>(indexer, |vertex| vertex)
     }
 }
 
-impl<T, I> IndexVertices<T> for I
+impl<P, I> IndexVertices<P> for I
 where
-    I: Iterator<Item = T>,
-    T: Arity + IntoVertices + Topological,
+    I: Iterator<Item = P>,
+    P: MapVerticesInto<usize> + Topological,
 {
-    fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<T::Vertex>)
+    fn index_vertices_with<N, K, F>(
+        self,
+        mut indexer: N,
+        f: F,
+    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
     where
-        N: Indexer<T, K>,
-        F: Fn(&T::Vertex) -> &K,
+        N: Indexer<P, K>,
+        F: Fn(&P::Vertex) -> &K,
     {
         let mut indeces = Vec::new();
         let mut vertices = Vec::new();
         for topology in self {
-            for vertex in topology.into_vertices() {
+            indeces.push(topology.map_vertices_into(|vertex| {
                 let (index, vertex) = indexer.index(vertex, &f);
-                indeces.push(index);
                 if let Some(vertex) = vertex {
                     vertices.push(vertex);
                 }
-            }
+                index
+            }));
         }
         (indeces, vertices)
     }
 }
 
+// TODO: This is a bit questionable; it is relatively trivial to flatten the
+//       index polygons and may not warrant another trait. Moreover, the name
+//       `(indeces, vertices)` for the output is a bit misleading. Perhaps
+//       `(indeces, geometry)` would be less ambiguous, especially when
+//       neighboring a call to `into_iter().vertices()`.
+pub trait FlatIndexVertices<P>: IndexVertices<P>
+where
+    P: Arity + MapVerticesInto<usize> + Topological,
+    P::Output: IntoVertices,
+{
+    fn flat_index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
+    where
+        N: Indexer<P, K>,
+        F: Fn(&P::Vertex) -> &K,
+    {
+        let (indeces, vertices) = self.index_vertices_with::<N, K, F>(indexer, f);
+        (indeces.into_iter().vertices().collect(), vertices)
+    }
+
+    fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
+    where
+        N: Indexer<P, P::Vertex>,
+    {
+        self.flat_index_vertices_with::<N, P::Vertex, _>(indexer, |vertex| vertex)
+    }
+}
+
+impl<P, I> FlatIndexVertices<P> for I
+where
+    I: IndexVertices<P> + Iterator<Item = P>,
+    P: Arity + MapVerticesInto<usize> + Topological,
+    P::Output: IntoVertices,
+{
+}
+
 pub trait FromIndexer<P, Q>
 where
-    P: IntoVertices + Topological,
-    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+    P: Topological,
+    Q: Topological<Vertex = P::Vertex>,
 {
     fn from_indexer<I, N>(input: I, indexer: N) -> Self
     where
@@ -205,8 +251,8 @@ where
 
 pub trait CollectWithIndexer<P, Q>
 where
-    P: IntoVertices + Topological,
-    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+    P: Topological,
+    Q: Topological<Vertex = P::Vertex>,
 {
     fn collect_with_indexer<T, N>(self, indexer: N) -> T
     where
@@ -217,8 +263,8 @@ where
 impl<P, Q, I> CollectWithIndexer<P, Q> for I
 where
     I: Iterator<Item = P>,
-    P: IntoVertices + Topological,
-    Q: IntoVertices + Topological<Vertex = P::Vertex>,
+    P: Topological,
+    Q: Topological<Vertex = P::Vertex>,
 {
     fn collect_with_indexer<T, N>(self, indexer: N) -> T
     where

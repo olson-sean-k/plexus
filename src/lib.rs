@@ -24,9 +24,10 @@ pub mod geometry;
 pub mod graph;
 
 pub mod prelude {
-    pub use generate::{CollectWithIndexer, IndexVertices, MapVertices, PolygonGenerator,
-                       PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Triangulate,
-                       VertexGenerator, Vertices, VerticesWithPosition};
+    pub use generate::{CollectWithIndexer, FlatIndexVertices, IndexVertices, MapVertices,
+                       PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
+                       PolygonsWithTexture, Triangulate, VertexGenerator, Vertices,
+                       VerticesWithPosition};
     pub use geometry::{Duplet, Triplet};
     pub use geometry::convert::HashConjugate;
 }

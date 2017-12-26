@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 use num::{Integer, NumCast, Unsigned};
 use std::collections::HashMap;
@@ -5,8 +6,8 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 
 use buffer::MeshBuffer;
-use generate::{self, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles,
-               IntoVertices, Triangle, Triangulate};
+use generate::{self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices,
+               MapVerticesInto, Quad};
 use geometry::Geometry;
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
 use graph::Perimeter;
@@ -223,7 +224,7 @@ where
     /// let (indeces, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
-    ///     .index_vertices(LruIndexer::with_capacity(256));
+    ///     .flat_index_vertices(LruIndexer::with_capacity(256));
     /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
     /// # }
     /// ```
@@ -647,35 +648,38 @@ where
     }
 }
 
-impl<G, P> FromIndexer<P, Triangle<P::Vertex>> for Mesh<G>
+impl<G, P> FromIndexer<P, P> for Mesh<G>
 where
     G: Geometry,
-    P: IntoTriangles + IntoVertices + generate::Topological,
+    P: MapVerticesInto<usize> + generate::Topological,
+    P::Output: IntoVertices,
+    <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: IntoGeometry<G::Vertex>,
 {
     fn from_indexer<I, N>(input: I, indexer: N) -> Self
     where
         I: IntoIterator<Item = P>,
-        N: Indexer<Triangle<P::Vertex>, P::Vertex>,
+        N: Indexer<P, P::Vertex>,
     {
         let mut mesh = Mesh::new();
-        let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
+        let (indeces, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
             .map(|vertex| mesh.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
-        for mut triangle in &indeces.into_iter().chunks(3) {
-            let (a, b, c) = (
-                vertices[triangle.next().unwrap()],
-                vertices[triangle.next().unwrap()],
-                vertices[triangle.next().unwrap()],
-            );
-            let (ab, bc, ca) = (
-                mesh.insert_edge((a, b), G::Edge::default()).unwrap(),
-                mesh.insert_edge((b, c), G::Edge::default()).unwrap(),
-                mesh.insert_edge((c, a), G::Edge::default()).unwrap(),
-            );
-            mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
+        for face in indeces.into_iter() {
+            let face = face.into_vertices();
+            // The topology with the greatest arity emitted by indexing is a
+            // quad. Avoid allocations by using an `ArrayVec`.
+            // TODO: There is more than once place that maximum arity is useful.
+            //       Consider exposing this as a dedicated constant.
+            let mut edges = ArrayVec::<[EdgeKey; Quad::<usize>::ARITY]>::new();
+            for (a, b) in face.perimeter() {
+                let a = vertices[a];
+                let b = vertices[b];
+                edges.push(mesh.insert_edge((a, b), G::Edge::default()).unwrap());
+            }
+            mesh.insert_face(&edges, G::Face::default()).unwrap();
         }
         mesh
     }
@@ -684,7 +688,9 @@ where
 impl<G, P> FromIterator<P> for Mesh<G>
 where
     G: Geometry,
-    P: IntoTriangles + IntoVertices + generate::Topological,
+    P: MapVerticesInto<usize> + generate::Topological,
+    P::Output: IntoVertices,
+    <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
 {
     fn from_iter<I>(input: I) -> Self

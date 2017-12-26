@@ -254,9 +254,7 @@ where
 
     fn next(&mut self) -> Option<EdgeKey> {
         self.edge
-            .map(|outgoing| {
-                self.vertex.mesh.as_ref().edges.get(&outgoing).unwrap()
-            })
+            .map(|outgoing| self.vertex.mesh.as_ref().edges.get(&outgoing).unwrap())
             .and_then(|outgoing| outgoing.opposite)
             .and_then(|incoming| {
                 let outgoing = self.vertex.mesh.as_ref().edges.get(&incoming).unwrap().next;
@@ -332,9 +330,10 @@ where
     }
 
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(edge) = self.inner.next().map(|edge| {
-            self.inner.vertex.mesh.as_ref().edges.get(&edge).unwrap()
-        }) {
+        while let Some(edge) = self.inner
+            .next()
+            .map(|edge| self.inner.vertex.mesh.as_ref().edges.get(&edge).unwrap())
+        {
             if let Some(face) = edge.face {
                 return Some(face);
             }

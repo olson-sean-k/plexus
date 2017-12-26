@@ -67,13 +67,15 @@ use decorum::Real;
 use num::{One, Zero};
 use std::ops::Div;
 
-pub(crate) use self::decompose::{IntoTriangles, IntoVertices};
+pub(crate) use self::decompose::IntoVertices;
 pub(crate) use self::index::{FromIndexer, Indexer};
+pub(crate) use self::topology::{Arity, MapVerticesInto};
 
 pub use self::decompose::{Edges, Subdivide, Tetrahedrons, Triangulate, Vertices};
 pub use self::generate::{PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
                          PolygonsWithTexture, VertexGenerator, VerticesWithPosition};
-pub use self::index::{CollectWithIndexer, HashIndexer, IndexVertices, LruIndexer};
+pub use self::index::{CollectWithIndexer, FlatIndexVertices, HashIndexer, IndexVertices,
+                      LruIndexer};
 pub use self::topology::{zip_vertices, Edge, MapVertices, Polygon, Polygonal, Quad, Rotate,
                          Topological, Triangle};
 

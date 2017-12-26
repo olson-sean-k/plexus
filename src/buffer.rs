@@ -19,6 +19,7 @@
 //! # fn main() {
 //! let buffer = UvSphere::new(16, 16)
 //!     .polygons_with_position()
+//!     .triangulate()
 //!     .collect::<MeshBuffer<u32, Point3<f32>>>();
 //! let indeces = buffer.as_index_slice();
 //! let positions = buffer.as_vertex_slice();
@@ -48,8 +49,8 @@ use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{FromIndexer, HashIndexer, IndexVertices, Indexer, IntoTriangles, IntoVertices,
-               Topological, Triangle, Triangulate};
+use generate::{Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices,
+               MapVerticesInto};
 use geometry::convert::IntoGeometry;
 
 /// Linear buffer of mesh data.
@@ -174,20 +175,24 @@ where
     }
 }
 
-impl<N, V, P> FromIndexer<P, Triangle<P::Vertex>> for MeshBuffer<N, V>
+impl<N, V, P> FromIndexer<P, P> for MeshBuffer<N, V>
 where
-    P: IntoTriangles + IntoVertices + Topological,
+    P: Arity + MapVerticesInto<usize>,
+    P::Output: IntoVertices,
     P::Vertex: IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
     fn from_indexer<I, M>(input: I, indexer: M) -> Self
     where
         I: IntoIterator<Item = P>,
-        M: Indexer<Triangle<P::Vertex>, P::Vertex>,
+        M: Indexer<P, P::Vertex>,
     {
-        let (indeces, vertices) = input.into_iter().triangulate().index_vertices(indexer);
+        let (indeces, vertices) = input.into_iter().index_vertices(indexer);
         MeshBuffer::from_raw_buffers(
-            indeces.into_iter().map(|index| N::from(index).unwrap()),
+            indeces
+                .into_iter()
+                .flat_map(|topology| topology.into_vertices())
+                .map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
         ).unwrap()
     }
@@ -195,7 +200,8 @@ where
 
 impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
-    P: IntoTriangles + IntoVertices + Topological,
+    P: Arity + MapVerticesInto<usize>,
+    P::Output: IntoVertices,
     P::Vertex: Eq + Hash + IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
@@ -222,6 +228,7 @@ mod tests {
     fn collect_topology_into_buffer() {
         let buffer = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
+            .triangulate()
             .collect::<MeshBuffer<u32, Point3<f32>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
