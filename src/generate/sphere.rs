@@ -16,11 +16,11 @@ pub struct Bounds {
 }
 
 impl Bounds {
-    pub fn with_unit_radius() -> Self {
+    pub fn unit_radius() -> Self {
         Bounds { radius: R32::one() }
     }
 
-    pub fn with_unit_width() -> Self {
+    pub fn unit_width() -> Self {
         Bounds {
             radius: R32::half(),
         }
@@ -29,7 +29,7 @@ impl Bounds {
 
 impl Default for Bounds {
     fn default() -> Self {
-        Self::with_unit_radius()
+        Self::unit_radius()
     }
 }
 

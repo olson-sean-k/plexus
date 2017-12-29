@@ -51,7 +51,7 @@
 //! use plexus::prelude::*;
 //!
 //! let (indeces, positions) = cube::Cube::new()
-//!     .polygons_with_position_with(cube::Bounds::with_unit_radius())
+//!     .polygons_with_position_with(cube::Bounds::unit_radius())
 //!     .triangulate()
 //!     .index_vertices(LruIndexer::default());
 //! ```
