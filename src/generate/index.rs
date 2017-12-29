@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use generate::decompose::{IntoVertices, Vertices};
+use generate::decompose::IntoVertices;
 use generate::topology::{Arity, MapVerticesInto, Topological};
 
 pub trait Indexer<T, K>
@@ -174,6 +174,9 @@ where
     }
 }
 
+// TODO: The name `(indeces, vertices)` that is commonly used for indexing
+//       output is a bit ambiguous. The indeces are contained in topological
+//       structures which have vertices.
 impl<P, I> IndexVertices<P> for I
 where
     I: Iterator<Item = P>,
@@ -203,24 +206,14 @@ where
     }
 }
 
-// TODO: This is a bit questionable; it is relatively trivial to flatten the
-//       index polygons and may not warrant another trait. Moreover, the name
-//       `(indeces, vertices)` for the output is a bit misleading. Perhaps
-//       `(indeces, geometry)` would be less ambiguous, especially when
-//       neighboring a call to `into_iter().vertices()`.
-pub trait FlatIndexVertices<P>: IndexVertices<P>
+pub trait FlatIndexVertices<P>: Sized
 where
-    P: Arity + MapVerticesInto<usize> + Topological,
-    P::Output: IntoVertices,
+    P: Arity + IntoVertices + Topological,
 {
     fn flat_index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
-        F: Fn(&P::Vertex) -> &K,
-    {
-        let (indeces, vertices) = self.index_vertices_with::<N, K, F>(indexer, f);
-        (indeces.into_iter().vertices().collect(), vertices)
-    }
+        F: Fn(&P::Vertex) -> &K;
 
     fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
     where
@@ -232,10 +225,29 @@ where
 
 impl<P, I> FlatIndexVertices<P> for I
 where
-    I: IndexVertices<P> + Iterator<Item = P>,
-    P: Arity + MapVerticesInto<usize> + Topological,
-    P::Output: IntoVertices,
+    I: Iterator<Item = P>,
+    P: Arity + IntoVertices + Topological,
 {
+    fn flat_index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
+    where
+        N: Indexer<P, K>,
+        F: Fn(&P::Vertex) -> &K,
+    {
+        // Do not use `index_vertices`, because flattening index topologies
+        // would require allocated an additional `Vec`.
+        let mut indeces = Vec::new();
+        let mut vertices = Vec::new();
+        for topology in self {
+            for vertex in topology.into_vertices() {
+                let (index, vertex) = indexer.index(vertex, &f);
+                if let Some(vertex) = vertex {
+                    vertices.push(vertex);
+                }
+                indeces.push(index);
+            }
+        }
+        (indeces, vertices)
+    }
 }
 
 pub trait FromIndexer<P, Q>
