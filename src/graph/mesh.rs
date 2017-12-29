@@ -671,9 +671,7 @@ where
             let face = face.into_vertices();
             // The topology with the greatest arity emitted by indexing is a
             // quad. Avoid allocations by using an `ArrayVec`.
-            // TODO: There is more than once place that maximum arity is useful.
-            //       Consider exposing this as a dedicated constant.
-            let mut edges = ArrayVec::<[EdgeKey; Quad::<usize>::ARITY]>::new();
+            let mut edges = ArrayVec::<[_; Quad::<usize>::ARITY]>::new();
             for (a, b) in face.perimeter() {
                 let a = vertices[a];
                 let b = vertices[b];
