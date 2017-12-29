@@ -34,14 +34,13 @@ let buffer = sphere::UvSphere::new(16, 16)
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
-For an example of rendering, see the viewer example.
-
-![Viewer](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/viewer.png)
+For an example of rendering, see the [viewer
+example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 
 ## Half-Edge Graph Meshes
 
-Generators are flexible and easy to use, but only represent vertex geometry and
-are difficult to query and manipulate. A `Mesh`, represented as a [half-edge
+Generators are flexible and easy to use, but only represent a stream of
+topology and vertex geometry. A `Mesh`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
 arbitrary geometry for vertices, edges, and faces. The graph can also be
 queried and manipulated in ways that generators and iterator expressions
@@ -63,11 +62,17 @@ let key = mesh.faces().nth(0).unwrap().key();
 let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
 ```
 
+Plexus avoids exposing very basic topological operations like inserting
+individual vertices, because they can easily be done incorrectly and lead to
+invalid topologies. Instead, meshes are manipulated with higher-level
+operations, like extrusion and joining.
+
 ## Geometric Traits
 
-Meshes support arbitrary geometry via optional traits. Implementing these
-traits allows more operations to be supported, but only two basic traits are
-required: `Geometry` and `Attribute`.
+Meshes support arbitrary geometry for vertices, edges, and faces (including no
+geometry at all) via optional traits. Implementing these traits allows more
+operations to be supported, but only two basic traits are required: `Geometry`
+and `Attribute`.
 
 ```rust
 use nalgebra::{Point3, Vector3};
@@ -104,7 +109,8 @@ impl AsPosition for VertexGeometry {
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
 [cgmath](https://crates.io/crates/cgmath) crates so that common types can be
-used right away for vertex geometry.
+used right away for vertex geometry. See the `geometry-cgmath` and
+`geometry-nalgebra` (enabled by default) crate features.
 
 ## Hashing Floating-Point Values
 
@@ -113,27 +119,10 @@ used to transform the geometry into raw buffers. `HashIndexer` is fast and
 reliable, and is used by `collect` (which can be overridden via
 `collect_with_indexer`). However, geometry often contains floating point
 values, which do not implement `Hash`. An `LruIndexer` can also be used, but
-can be slower and requires a sufficient capacity to work correctly.
+may be slower and requires a sufficient capacity to work correctly.
 
 The [decorum](https://crates.io/crates/decorum) crate is used to ease this
 problem. Hashable types like `NotNan`, `Finite`, `R32`, etc. can be used as
 geometric data and are emitted by primitive generators like `UvSphere` and
-`Cube`.
-
-The `decorum` crate also exposes some hashing functions for floating point
-primitives, which can be used to directly implement `Hash`. With the
-[derivative](https://crates.io/crates/derivative) crate, floating point fields
-can be hashed using one of these functions while deriving `Hash`. The `Vertex`
-type used in the above example could be defined as follows:
-
-```rust
-use decorum;
-
-#[derive(Derivative)]
-#[derivative(Hash)]
-pub struct Vertex {
-    #[derivative(Hash(hash_with = "decorum::hash_float_array"))]
-    pub position: [f32; 3],
-    ...
-}
-```
+`Cube`. Decorum can also be used to more easily make custom geometric data
+hashable.
