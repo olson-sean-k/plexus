@@ -34,6 +34,10 @@ travis-ci = { repository = "olson-sean-k/plexus" }
 name = "viewer"
 path = "examples/viewer/main.rs"
 
+[[example]]
+name = "zip"
+path = "examples/zip.rs"
+
 [lib]
 name = "plexus"
 

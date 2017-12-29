@@ -8,7 +8,7 @@ use generate::generate::{Generate, IndexGenerator, IndexPolygonGenerator, Polygo
 use generate::topology::{MapVerticesInto, Quad};
 use geometry::{Duplet, Triplet};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Plane {
     XY,
     NXY,
