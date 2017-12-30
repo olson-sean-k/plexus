@@ -103,14 +103,11 @@ where
     type Hash = Duplet<Ordered<T>>;
 
     fn into_hash(self) -> Self::Hash {
-        Duplet(
-            Ordered::from_raw_float(self.0),
-            Ordered::from_raw_float(self.1),
-        )
+        Duplet(Ordered::from_inner(self.0), Ordered::from_inner(self.1))
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
-        Duplet((hash.0).into_raw_float(), (hash.1).into_raw_float())
+        Duplet((hash.0).into_inner(), (hash.1).into_inner())
     }
 }
 
@@ -122,17 +119,17 @@ where
 
     fn into_hash(self) -> Self::Hash {
         Triplet(
-            Ordered::from_raw_float(self.0),
-            Ordered::from_raw_float(self.1),
-            Ordered::from_raw_float(self.2),
+            Ordered::from_inner(self.0),
+            Ordered::from_inner(self.1),
+            Ordered::from_inner(self.2),
         )
     }
 
     fn from_hash(hash: Self::Hash) -> Self {
         Triplet(
-            (hash.0).into_raw_float(),
-            (hash.1).into_raw_float(),
-            (hash.2).into_raw_float(),
+            (hash.0).into_inner(),
+            (hash.1).into_inner(),
+            (hash.2).into_inner(),
         )
     }
 }
@@ -159,9 +156,9 @@ mod feature_geometry_cgmath {
             {
                 fn from_geometry(other: $g<$p<T>>) -> Self {
                     $g::new(
-                        other.x.into_raw_float(),
-                        other.y.into_raw_float(),
-                        other.z.into_raw_float(),
+                        other.x.into_inner(),
+                        other.y.into_inner(),
+                        other.z.into_inner(),
                     )
                 }
             }
@@ -172,9 +169,9 @@ mod feature_geometry_cgmath {
             {
                 fn from_geometry(other: $g<T>) -> Self {
                     $g::new(
-                        $p::<T>::from_raw_float(other.x),
-                        $p::<T>::from_raw_float(other.y),
-                        $p::<T>::from_raw_float(other.z),
+                        $p::<T>::from_inner(other.x),
+                        $p::<T>::from_inner(other.y),
+                        $p::<T>::from_inner(other.z),
                     )
                 }
             }
@@ -302,14 +299,11 @@ mod feature_geometry_cgmath {
         type Hash = Point2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Point2::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-            )
+            Point2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+            Point2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -335,14 +329,11 @@ mod feature_geometry_cgmath {
         type Hash = Vector2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Vector2::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-            )
+            Vector2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -354,17 +345,17 @@ mod feature_geometry_cgmath {
 
         fn into_hash(self) -> Self::Hash {
             Vector3::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-                Ordered::from_raw_float(self.z),
+                Ordered::from_inner(self.x),
+                Ordered::from_inner(self.y),
+                Ordered::from_inner(self.z),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
             Vector3::new(
-                hash.x.into_raw_float(),
-                hash.y.into_raw_float(),
-                hash.z.into_raw_float(),
+                hash.x.into_inner(),
+                hash.y.into_inner(),
+                hash.z.into_inner(),
             )
         }
     }
@@ -389,9 +380,9 @@ mod feature_geometry_nalgebra {
             {
                 fn from_geometry(other: $g<$p<T>>) -> Self {
                     $g::new(
-                        other.x.into_raw_float(),
-                        other.y.into_raw_float(),
-                        other.z.into_raw_float(),
+                        other.x.into_inner(),
+                        other.y.into_inner(),
+                        other.z.into_inner(),
                     )
                 }
             }
@@ -402,9 +393,9 @@ mod feature_geometry_nalgebra {
             {
                 fn from_geometry(other: $g<T>) -> Self {
                     $g::new(
-                        $p::<T>::from_raw_float(other.x),
-                        $p::<T>::from_raw_float(other.y),
-                        $p::<T>::from_raw_float(other.z),
+                        $p::<T>::from_inner(other.x),
+                        $p::<T>::from_inner(other.y),
+                        $p::<T>::from_inner(other.z),
                     )
                 }
             }
@@ -532,14 +523,11 @@ mod feature_geometry_nalgebra {
         type Hash = Point2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Point2::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-            )
+            Point2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+            Point2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -565,14 +553,11 @@ mod feature_geometry_nalgebra {
         type Hash = Vector2<Ordered<T>>;
 
         fn into_hash(self) -> Self::Hash {
-            Vector2::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-            )
+            Vector2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new(hash.x.into_raw_float(), hash.y.into_raw_float())
+            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
         }
     }
 
@@ -584,17 +569,17 @@ mod feature_geometry_nalgebra {
 
         fn into_hash(self) -> Self::Hash {
             Vector3::new(
-                Ordered::from_raw_float(self.x),
-                Ordered::from_raw_float(self.y),
-                Ordered::from_raw_float(self.z),
+                Ordered::from_inner(self.x),
+                Ordered::from_inner(self.y),
+                Ordered::from_inner(self.z),
             )
         }
 
         fn from_hash(hash: Self::Hash) -> Self {
             Vector3::new(
-                hash.x.into_raw_float(),
-                hash.y.into_raw_float(),
-                hash.z.into_raw_float(),
+                hash.x.into_inner(),
+                hash.y.into_inner(),
+                hash.z.into_inner(),
             )
         }
     }

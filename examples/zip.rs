@@ -26,18 +26,14 @@ fn main() {
     let polygons = generate::zip_vertices((
         cube.polygons_with_position()
             .map_vertices(|position| -> Point3<R32> { position.into() })
-            .map_vertices(|position| position * R32::from_raw_float(8.0)),
+            .map_vertices(|position| position * 8.0.into()),
         cube.polygons_with_plane(),
     ));
     // Use the position and plane to map texture coordinates and then
     // triangulate the polygons and index them.
     let (_, _) = polygons
         .map_vertices(|(position, plane)| {
-            (
-                position,
-                plane,
-                map_unit_uv(position, plane, R32::from_raw_float(8.0)),
-            )
+            (position, plane, map_unit_uv(position, plane, 8.0.into()))
         })
         .triangulate()
         .index_vertices(HashIndexer::default());
