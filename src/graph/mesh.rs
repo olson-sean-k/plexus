@@ -579,7 +579,7 @@ where
             .map(|edge| {
                 let vertex = edge.source_vertex();
                 let outgoing = vertex
-                    .edges()
+                    .incoming_edges()
                     .filter_map(|incoming| incoming.into_opposite_edge())
                     .map(|outgoing| outgoing.key())
                     .find(|outgoing| *outgoing != edge.key());
@@ -820,7 +820,7 @@ mod tests {
         for vertex in mesh.vertices() {
             // Every vertex is connected to 4 triangles with 4 (incoming)
             // edges. Traversal of topology should be possible.
-            assert_eq!(4, vertex.edges().count());
+            assert_eq!(4, vertex.incoming_edges().count());
         }
         for mut vertex in mesh.vertices_mut() {
             // Geometry should be mutable.

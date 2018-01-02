@@ -50,12 +50,12 @@ where
         edge.map(|edge| EdgeView::new(mesh, edge))
     }
 
-    pub fn edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
+    pub fn incoming_edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
         EdgeCirculator::new(self.with_mesh_ref())
     }
 
     pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
-        FaceCirculator::from_edge_circulator(self.edges())
+        FaceCirculator::from_edge_circulator(self.incoming_edges())
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -76,12 +76,12 @@ where
         })
     }
 
-    pub fn edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
+    pub fn incoming_edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
         EdgeCirculator::new(self.with_mesh_mut())
     }
 
     pub fn faces_mut(&mut self) -> FaceCirculator<&mut Mesh<G>, G> {
-        FaceCirculator::from_edge_circulator(self.edges_mut())
+        FaceCirculator::from_edge_circulator(self.incoming_edges_mut())
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -408,7 +408,7 @@ mod tests {
         // All faces should be triangles and all vertices should have 4
         // (incoming) edges.
         for vertex in mesh.vertices() {
-            assert_eq!(4, vertex.edges().count());
+            assert_eq!(4, vertex.incoming_edges().count());
         }
     }
 }
