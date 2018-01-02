@@ -567,42 +567,47 @@ where
     // (an invariant that should be enforced by meshes anyway; such an edge
     // would consist of three logical half-edges).
     pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
-        // Get all of the edges forming the face.
-        let edges = {
-            self.face(face)
-                .unwrap()
-                .edges()
-                .map(|edge| edge.key())
-                .collect::<Vec<_>>()
-        };
+        // Get a grouping for each edge forming the face consisting of:
+        //
+        //   1. A pair of edge keys for the edge and its (optional) opposite
+        //      edge.
+        //   2. The source vertex of the edge and an (optional) alternative
+        //      outgoing edge.
+        let edges = self.face(face)
+            .unwrap()
+            .edges()
+            .map(|edge| {
+                let vertex = edge.source_vertex();
+                let outgoing = vertex
+                    .edges()
+                    .filter_map(|incoming| incoming.into_opposite_edge())
+                    .map(|outgoing| outgoing.key())
+                    .find(|outgoing| *outgoing != edge.key());
+                (
+                    (
+                        edge.key(),
+                        edge.into_opposite_edge().map(|opposite| opposite.key()),
+                    ),
+                    (vertex.key(), outgoing),
+                )
+            })
+            .collect::<Vec<_>>();
         // For each edge, disconnect its opposite edge and originating vertex,
         // then remove it from the graph.
-        for edge in edges {
-            let (a, opposite) = {
-                let (a, _) = edge.to_vertex_keys();
-                let edge = self.edges.get(&edge).unwrap();
-                (a, edge.opposite)
-            };
-            if let Some(edge) = opposite.map(|opposite| self.edges.get_mut(&opposite).unwrap()) {
+        for ((ab, ba), (a, ax)) in edges {
+            if let Some(edge) = ba.map(|ba| self.edges.get_mut(&ba).unwrap()) {
                 edge.opposite = None;
             }
             // Disconnect the originating vertex, if any.
-            // TODO: This should be an invariant of the data in the mesh: if an
-            //       edge from `a` to `b` exists in the mesh, then the
-            //       originating vertex `a` should refer to that edge.
-            //
-            //       This code should either assume this is the case or panic
-            //       if the invariant is violated.
             let vertex = self.vertices.get_mut(&a).unwrap();
-            if vertex
-                .edge
-                .map(|outgoing| outgoing == edge)
-                .unwrap_or(false)
-            {
-                vertex.edge = None;
+            if vertex.edge.map(|outgoing| outgoing == ab).unwrap_or(false) {
+                // `ax` should never be the same as `ab`; it is an opposing
+                // edge or `None`.
+                vertex.edge = ax;
             }
-            self.edges.remove(&edge);
+            self.edges.remove(&ab);
         }
+        // Finally, remove the face from the graph.
         self.faces.remove(&face);
         Ok(())
     }
