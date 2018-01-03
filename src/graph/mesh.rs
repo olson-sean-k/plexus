@@ -573,8 +573,8 @@ where
         //      edge.
         //   2. The source vertex of the edge and an (optional) alternative
         //      outgoing edge.
-        let edges = self.face(face)
-            .unwrap()
+        let perimeter = self.face(face)
+            .ok_or(())?
             .edges()
             .map(|edge| {
                 let vertex = edge.source_vertex();
@@ -594,7 +594,7 @@ where
             .collect::<Vec<_>>();
         // For each edge, disconnect its opposite edge and originating vertex,
         // then remove it from the graph.
-        for ((ab, ba), (a, ax)) in edges {
+        for ((ab, ba), (a, ax)) in perimeter {
             if let Some(edge) = ba.map(|ba| self.edges.get_mut(&ba).unwrap()) {
                 edge.opposite = None;
             }
