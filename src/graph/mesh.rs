@@ -557,15 +557,9 @@ where
         Ok(face)
     }
 
-    // This code orphans vertices; it does not remove vertices with no
-    // remaining associated edges. `FaceView::extrude` currently relies on this
-    // behavior, for example.
-    //
-    // This code operates on a face; it currently does not remove references to
-    // the face's edges that persist after the face's edges are removed. This
-    // shouldn't be a problem so long as edges do not share more than two faces
-    // (an invariant that should be enforced by meshes anyway; such an edge
-    // would consist of three logical half-edges).
+    // Removes a face and its edges but never its vertices.
+    // `FaceView::extrude` currently relies on this behavior and uses the
+    // vertices to construct new topology.
     pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
         // Get a grouping for each edge forming the face consisting of:
         //
