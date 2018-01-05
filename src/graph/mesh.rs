@@ -1,5 +1,5 @@
 use arrayvec::ArrayVec;
-use failure::Error;
+use failure::{Error, Fail};
 use itertools::Itertools;
 use num::{Integer, NumCast, Unsigned};
 use std::collections::HashMap;
@@ -246,7 +246,8 @@ where
                 return Err(GraphError::ArityConflict {
                     expected: arity,
                     actual: face.len(),
-                }.into());
+                }.context("index buffer lenght is not a multiple of arity")
+                    .into());
             }
             let mut edges = Vec::with_capacity(arity);
             for (a, b) in face.perimeter() {
@@ -420,21 +421,17 @@ where
             (keys, vertices)
         };
         let indeces = {
-            let arity = self.faces()
-                .nth(0)
-                .ok_or(Error::from(GraphError::TopologyNotFound))?
-                .arity();
+            let arity = match self.faces().nth(0) {
+                Some(face) => face.arity(),
+                _ => 0,
+            };
             let mut indeces = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
                     return Err(GraphError::ArityNonConstant.into());
                 }
                 for vertex in face.vertices() {
-                    indeces.push(
-                        N::from(*keys.get(&vertex.key())
-                            .ok_or(Error::from(GraphError::TopologyNotFound))?)
-                            .unwrap(),
-                    );
+                    indeces.push(N::from(*keys.get(&vertex.key()).unwrap()).unwrap());
                 }
             }
             indeces
@@ -474,10 +471,10 @@ where
         F: FnMut(FaceRef<G>, VertexRef<G>) -> V,
     {
         let vertices = {
-            let arity = self.faces()
-                .nth(0)
-                .ok_or(GraphError::TopologyNotFound)?
-                .arity();
+            let arity = match self.faces().nth(0) {
+                Some(face) => face.arity(),
+                _ => 0,
+            };
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
@@ -548,7 +545,9 @@ where
         // is true. Panics resulting from faces with fewer than three vertices
         // are bugs.
         if edges.len() < 3 {
-            return Err(GraphError::TopologyMalformed.into());
+            return Err(GraphError::TopologyMalformed
+                .context("three or more edges required")
+                .into());
         }
         // Fail if any of the edges are missing or if any edge already refers
         // to a face.
@@ -556,7 +555,9 @@ where
             match self.edge(*edge) {
                 Some(edge) => {
                     if edge.face().is_some() {
-                        return Err(GraphError::TopologyConflict.into());
+                        return Err(GraphError::TopologyConflict
+                            .context("edge already refers to a face")
+                            .into());
                     }
                 }
                 _ => {
