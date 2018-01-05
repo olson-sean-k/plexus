@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use failure::Error;
 use itertools::Itertools;
 use num::{Integer, NumCast, Unsigned};
 use std::collections::HashMap;
@@ -10,7 +11,7 @@ use generate::{self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, In
                MapVerticesInto, Quad};
 use geometry::Geometry;
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
-use graph::Perimeter;
+use graph::{GraphError, Perimeter};
 use graph::geometry::FaceCentroid;
 use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
@@ -228,7 +229,7 @@ where
     /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, ()>
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, Error>
     where
         I: IntoIterator<Item = usize>,
         J: IntoIterator,
@@ -242,12 +243,19 @@ where
         for face in &indeces.into_iter().chunks(arity) {
             let face = face.collect::<Vec<_>>();
             if face.len() != arity {
-                return Err(());
+                return Err(GraphError::ArityConflict {
+                    expected: arity,
+                    actual: face.len(),
+                }.into());
             }
             let mut edges = Vec::with_capacity(arity);
             for (a, b) in face.perimeter() {
-                let a = *vertices.get(a).ok_or(())?;
-                let b = *vertices.get(b).ok_or(())?;
+                let a = *vertices
+                    .get(a)
+                    .ok_or(Error::from(GraphError::TopologyNotFound))?;
+                let b = *vertices
+                    .get(b)
+                    .ok_or(Error::from(GraphError::TopologyNotFound))?;
                 edges.push(mesh.insert_edge((a, b), G::Edge::default())?);
             }
             mesh.insert_face(&edges, G::Face::default())?;
@@ -354,7 +362,7 @@ where
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
-    pub fn triangulate(&mut self) -> Result<(), ()>
+    pub fn triangulate(&mut self) -> Result<(), Error>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
     {
@@ -377,7 +385,7 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
+    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, Error>
     where
         G::Vertex: IntoGeometry<V>,
         N: Copy + Integer + NumCast + Unsigned,
@@ -394,7 +402,10 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_vertex_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
+    pub fn to_mesh_buffer_by_vertex_with<N, V, F>(
+        &self,
+        mut f: F,
+    ) -> Result<MeshBuffer<N, V>, Error>
     where
         N: Copy + Integer + NumCast + Unsigned,
         F: FnMut(VertexRef<G>) -> V,
@@ -409,14 +420,21 @@ where
             (keys, vertices)
         };
         let indeces = {
-            let arity = self.faces().nth(0).ok_or(())?.arity();
+            let arity = self.faces()
+                .nth(0)
+                .ok_or(Error::from(GraphError::TopologyNotFound))?
+                .arity();
             let mut indeces = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(());
+                    return Err(GraphError::ArityNonConstant.into());
                 }
                 for vertex in face.vertices() {
-                    indeces.push(N::from(*keys.get(&vertex.key()).ok_or(())?).unwrap());
+                    indeces.push(
+                        N::from(*keys.get(&vertex.key())
+                            .ok_or(Error::from(GraphError::TopologyNotFound))?)
+                            .unwrap(),
+                    );
                 }
             }
             indeces
@@ -433,7 +451,7 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, ()>
+    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, Error>
     where
         G::Vertex: IntoGeometry<V>,
         N: Copy + Integer + NumCast + Unsigned,
@@ -450,17 +468,20 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, ()>
+    pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, Error>
     where
         N: Copy + Integer + NumCast + Unsigned,
         F: FnMut(FaceRef<G>, VertexRef<G>) -> V,
     {
         let vertices = {
-            let arity = self.faces().nth(0).ok_or(())?.arity();
+            let arity = self.faces()
+                .nth(0)
+                .ok_or(GraphError::TopologyNotFound)?
+                .arity();
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(());
+                    return Err(GraphError::ArityNonConstant.into());
                 }
                 for vertex in face.vertices() {
                     vertices.push(f(face, vertex));
@@ -483,7 +504,7 @@ where
         &mut self,
         vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
-    ) -> Result<EdgeKey, ()> {
+    ) -> Result<EdgeKey, Error> {
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
@@ -493,16 +514,16 @@ where
         // half-edge, at most one following half-edge, and may form at most one
         // closed loop.
         if self.edges.contains_key(&ab) {
-            return Err(());
+            return Err(GraphError::TopologyConflict.into());
         }
         let vertex = {
             if !self.vertices.contains_key(&b) {
-                return Err(());
+                return Err(GraphError::TopologyNotFound.into());
             }
             match self.vertices.get_mut(&a) {
                 Some(vertex) => vertex,
                 _ => {
-                    return Err(());
+                    return Err(GraphError::TopologyNotFound.into());
                 }
             }
         };
@@ -520,23 +541,27 @@ where
         &mut self,
         edges: &[EdgeKey],
         geometry: G::Face,
-    ) -> Result<FaceKey, ()> {
+    ) -> Result<FaceKey, Error> {
         // A face requires at least three vertices (and edges). This invariant
         // should be maintained by any code that is able to mutate the mesh,
         // such that code manipulating faces (via `FaceView`) may assume this
         // is true. Panics resulting from faces with fewer than three vertices
         // are bugs.
         if edges.len() < 3 {
-            return Err(());
+            return Err(GraphError::TopologyMalformed.into());
         }
         // Fail if any of the edges are missing or if any edge already refers
         // to a face.
         for edge in edges {
-            if match self.edge(*edge) {
-                Some(edge) => edge.face().is_some(),
-                _ => true,
-            } {
-                return Err(());
+            match self.edge(*edge) {
+                Some(edge) => {
+                    if edge.face().is_some() {
+                        return Err(GraphError::TopologyConflict.into());
+                    }
+                }
+                _ => {
+                    return Err(GraphError::TopologyNotFound.into());
+                }
             }
         }
         let face = self.faces
@@ -560,7 +585,7 @@ where
     // Removes a face and its edges but never its vertices.
     // `FaceView::extrude` currently relies on this behavior and uses the
     // vertices to construct new topology.
-    pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), ()> {
+    pub(crate) fn remove_face(&mut self, face: FaceKey) -> Result<(), Error> {
         // Get a grouping for each edge forming the face consisting of:
         //
         //   1. A pair of edge keys for the edge and its (optional) opposite
@@ -568,7 +593,7 @@ where
         //   2. The source vertex of the edge and an (optional) alternative
         //      outgoing edge.
         let perimeter = self.face(face)
-            .ok_or(())?
+            .ok_or(Error::from(GraphError::TopologyNotFound))?
             .edges()
             .map(|edge| {
                 let vertex = edge.source_vertex();
@@ -833,8 +858,12 @@ mod tests {
             3,
         );
 
-        // TODO: Verify the exact error.
-        assert!(mesh.is_err());
+        assert!(
+            match mesh.err().unwrap().downcast::<GraphError>().unwrap() {
+                GraphError::TopologyConflict => true,
+                _ => false,
+            }
+        );
     }
 
     // This test is a sanity check for mesh iterators, topological views, and

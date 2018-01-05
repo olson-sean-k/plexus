@@ -50,6 +50,7 @@ geometry-nalgebra = ["alga", "nalgebra"]
 arrayvec = "0.4.*"
 decorum = "0.0.8" # Unstable. Depend on exact version only.
 derivative = "1.0.*"
+failure = "0.1.*"
 itertools = "0.6.*"
 num = "0.1.*"
 

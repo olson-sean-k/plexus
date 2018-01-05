@@ -1,9 +1,10 @@
+use failure::Error;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::Perimeter;
+use graph::{GraphError, Perimeter};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::mesh::{Edge, Mesh};
@@ -153,9 +154,9 @@ where
         })
     }
 
-    pub fn join(mut self, edge: EdgeKey) -> Result<Self, ()> {
+    pub fn join(mut self, edge: EdgeKey) -> Result<Self, Error> {
         if self.mesh.as_ref().edges.get(&edge).is_none() {
-            return Err(());
+            return Err(GraphError::TopologyNotFound.into());
         }
         let (a, b) = self.key().to_vertex_keys();
         let (c, d) = edge.to_vertex_keys();
@@ -164,14 +165,17 @@ where
         // connecting their interior.
         for ab in [d, c, b, a].perimeter() {
             if self.mesh.as_ref().edges.get(&ab.into()).is_some() {
-                return Err(());
+                return Err(GraphError::TopologyConflict.into());
             }
         }
         // Insert the edges and faces (two triangles forming a quad). These
         // operations should not fail; unwrap their results.
         let extrusion = {
             let edge = self.geometry.clone();
-            let face = self.face().ok_or(())?.geometry.clone();
+            let face = self.face()
+                .ok_or(Error::from(GraphError::TopologyNotFound))?
+                .geometry
+                .clone();
             let mesh = self.mesh.as_mut();
             // Triangle of b-a-d.
             let ba = mesh.insert_edge((b, a), edge.clone()).unwrap();
@@ -200,7 +204,7 @@ where
     M: AsRef<Mesh<G>>,
     G: EdgeMidpoint + Geometry,
 {
-    pub fn midpoint(&self) -> Result<G::Midpoint, ()> {
+    pub fn midpoint(&self) -> Result<G::Midpoint, Error> {
         G::midpoint(self.with_mesh_ref())
     }
 }
@@ -211,7 +215,7 @@ where
     G: EdgeMidpoint + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn split(mut self) -> Result<VertexView<M, G>, ()>
+    pub fn split(mut self) -> Result<VertexView<M, G>, Error>
     where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
     {
@@ -234,7 +238,11 @@ where
         Ok(VertexView::new(mesh, m))
     }
 
-    fn split_half_at(mesh: &mut M, edge: EdgeKey, m: VertexKey) -> Result<(EdgeKey, EdgeKey), ()> {
+    fn split_half_at(
+        mesh: &mut M,
+        edge: EdgeKey,
+        m: VertexKey,
+    ) -> Result<(EdgeKey, EdgeKey), Error> {
         // Remove the edge and insert two truncated edges in its place.
         let source = mesh.as_mut().edges.remove(&edge).unwrap();
         let (a, b) = edge.to_vertex_keys();
@@ -273,7 +281,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry + EdgeLateral,
 {
-    pub fn lateral(&self) -> Result<G::Lateral, ()> {
+    pub fn lateral(&self) -> Result<G::Lateral, Error> {
         G::lateral(self.with_mesh_ref())
     }
 }
@@ -284,13 +292,16 @@ where
     G: Geometry + EdgeLateral,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(mut self, distance: T) -> Result<Self, ()>
+    pub fn extrude<T>(mut self, distance: T) -> Result<Self, Error>
     where
         G::Lateral: Mul<T>,
         ScaledEdgeLateral<G, T>: Clone,
         VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        let face = self.face().ok_or(())?.geometry.clone();
+        let face = self.face()
+            .ok_or(Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .clone();
         // Insert new vertices with the specified translation and get all
         // vertex keys.
         let (a, b, c, d) = {

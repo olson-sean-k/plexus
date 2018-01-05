@@ -13,6 +13,8 @@ extern crate decorum;
 #[macro_use]
 extern crate derivative;
 #[macro_use]
+extern crate failure;
+#[macro_use]
 extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;

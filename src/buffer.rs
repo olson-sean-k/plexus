@@ -45,6 +45,7 @@
 //! # }
 //! ```
 
+use failure::Error;
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -52,6 +53,11 @@ use std::iter::FromIterator;
 use generate::{Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices,
                MapVerticesInto};
 use geometry::convert::IntoGeometry;
+
+#[derive(Debug, Fail)]
+pub enum BufferError {
+    #[fail(display = "index into vertex data out of bounds")] IndexOutOfBounds,
+}
 
 /// Linear buffer of mesh data.
 ///
@@ -118,7 +124,7 @@ where
     /// let buffer = MeshBuffer::from_raw_buffers(indeces, vertices).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, ()>
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, Error>
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = V>,
@@ -127,7 +133,7 @@ where
         let vertices = vertices.into_iter().collect::<Vec<_>>();
         let len = N::from(vertices.len()).unwrap();
         if indeces.iter().any(|index| *index >= len) {
-            Err(())
+            Err(BufferError::IndexOutOfBounds.into())
         }
         else {
             Ok(MeshBuffer { indeces, vertices })

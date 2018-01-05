@@ -1,9 +1,10 @@
+use failure::Error;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::Perimeter;
+use graph::{GraphError, Perimeter};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
@@ -86,15 +87,15 @@ where
         FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
-    pub fn join(self, face: FaceKey) -> Result<(), ()> {
+    pub fn join(self, face: FaceKey) -> Result<(), Error> {
         // Ensure that the opposite face exists and has the same arity.
         let arity = self.arity();
         match self.mesh.as_ref().face(face) {
             Some(opposite) => if opposite.arity() != arity {
-                return Err(());
+                return Err(GraphError::ArityNonConstant.into());
             },
             _ => {
-                return Err(());
+                return Err(GraphError::TopologyNotFound.into());
             }
         }
         // Decompose the faces into their key topology and remove them. Pair
@@ -136,7 +137,7 @@ where
         Ok(())
     }
 
-    fn remove(self) -> Result<M, ()> {
+    fn remove(self) -> Result<M, Error> {
         let FaceView { mut mesh, key, .. } = self;
         mesh.as_mut().remove_face(key)?;
         Ok(mesh)
@@ -153,7 +154,7 @@ where
     M: AsRef<Mesh<G>>,
     G: FaceCentroid + Geometry,
 {
-    pub fn centroid(&self) -> Result<G::Centroid, ()> {
+    pub fn centroid(&self) -> Result<G::Centroid, Error> {
         G::centroid(self.with_mesh_ref())
     }
 }
@@ -163,7 +164,7 @@ where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, ()> {
+    pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, Error> {
         let perimeter = self.edges()
             .map(|edge| (edge.vertex, edge.next_edge().unwrap().vertex))
             .collect::<Vec<_>>();
@@ -197,7 +198,7 @@ where
     M: AsRef<Mesh<G>>,
     G: FaceNormal + Geometry,
 {
-    pub fn normal(&self) -> Result<G::Normal, ()> {
+    pub fn normal(&self) -> Result<G::Normal, Error> {
         G::normal(self.with_mesh_ref())
     }
 }
@@ -208,7 +209,7 @@ where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<Self, ()>
+    pub fn extrude<T>(self, distance: T) -> Result<Self, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
@@ -253,7 +254,7 @@ where
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<(VertexKey, G::Vertex)>, ()>
+    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<(VertexKey, G::Vertex)>, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,

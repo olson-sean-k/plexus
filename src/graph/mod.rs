@@ -106,6 +106,19 @@ pub use self::topology::{EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, Fac
 pub use self::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView,
                          VertexView};
 
+#[derive(Debug, Fail)]
+pub enum GraphError {
+    #[fail(display = "required topology not found")] TopologyNotFound,
+    #[fail(display = "conflicting topology found")] TopologyConflict,
+    #[fail(display = "topology malformed")] TopologyMalformed,
+    #[fail(display = "conflicting arity; expected {}, but got {}", expected, actual)]
+    ArityConflict {
+        expected: usize,
+        actual: usize,
+    },
+    #[fail(display = "face arity is non-constant")] ArityNonConstant,
+}
+
 /// Provides an iterator over a window of duplets that includes the first value
 /// in the sequence at the beginning and end of the iteration.
 trait Perimeter<'a, T, U>
