@@ -1,3 +1,5 @@
+#![allow(derive_hash_xor_eq)]
+
 use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};

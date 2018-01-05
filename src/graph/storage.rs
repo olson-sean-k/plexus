@@ -14,7 +14,7 @@ impl Key {
     // TODO: This allows tests to be more terse, but in a very fragile way.
     //       Replace this with an alternative way to find relevant topology.
     #[cfg(test)]
-    pub(crate) fn new(value: u64) -> Self {
+    pub(in graph) fn new(value: u64) -> Self {
         Key(value)
     }
 }
@@ -79,11 +79,11 @@ impl EdgeKey {
     // TODO: This may be useful in some existing code that constructs the
     //       opposite edge key.
     #[allow(dead_code)]
-    pub(crate) fn to_opposite_key(&self) -> EdgeKey {
+    pub(in graph) fn to_opposite_key(&self) -> EdgeKey {
         EdgeKey(self.1, self.0)
     }
 
-    pub(crate) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
+    pub(in graph) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
         (self.0.into(), self.1.into())
     }
 }
@@ -164,27 +164,22 @@ where
         }
     }
 
-    #[inline(always)]
     pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
         self.hash.insert(key.to_inner(), item)
     }
 
-    #[inline(always)]
     pub fn contains_key(&self, key: &T::Key) -> bool {
         self.hash.contains_key(&key.to_inner())
     }
 
-    #[inline(always)]
     pub fn get(&self, key: &T::Key) -> Option<&T> {
         self.hash.get(&key.to_inner())
     }
 
-    #[inline(always)]
     pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
         self.hash.get_mut(&key.to_inner())
     }
 
-    #[inline(always)]
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
         self.hash.remove(&key.to_inner())
     }

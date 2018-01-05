@@ -105,8 +105,8 @@ where
         self.lru
             .iter()
             .enumerate()
-            .find(|&(_, ref entry)| entry.0 == *key)
-            .map(|(index, ref entry)| (index, entry.1))
+            .find(|&(_, entry)| entry.0 == *key)
+            .map(|(index, entry)| (index, entry.1))
     }
 }
 

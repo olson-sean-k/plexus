@@ -1,3 +1,5 @@
+#![allow(unknown_lints)] // Allow clippy lints.
+
 extern crate decorum;
 #[macro_use]
 extern crate gfx;

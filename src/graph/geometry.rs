@@ -105,8 +105,9 @@ where
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
         let ab = a - b;
-        let normal = <G as FaceNormal>::normal(edge.face()
-            .ok_or(Error::from(GraphError::TopologyNotFound))?)?;
+        let normal = <G as FaceNormal>::normal(edge.into_opposite_edge()
+            .into_face()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?)?;
         Ok(ab.cross(normal).normalize())
     }
 }

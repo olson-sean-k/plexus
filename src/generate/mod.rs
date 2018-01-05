@@ -58,6 +58,7 @@
 
 pub mod cube;
 mod decompose;
+#[allow(module_inception)]
 mod generate;
 mod index;
 pub mod sphere;

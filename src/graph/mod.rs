@@ -90,6 +90,7 @@
 
 mod geometry;
 mod mesh;
+mod mutation;
 mod storage;
 mod topology;
 

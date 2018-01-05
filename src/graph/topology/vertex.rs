@@ -11,7 +11,7 @@ use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, Orphan
 ///
 /// This type is only re-exported so that its members are shown in
 /// documentation. See this issue:
-/// https://github.com/rust-lang/rust/issues/39437
+/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct VertexView<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -27,7 +27,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    pub(crate) fn new(mesh: M, vertex: VertexKey) -> Self {
+    pub(in graph) fn new(mesh: M, vertex: VertexKey) -> Self {
         VertexView {
             mesh: mesh,
             key: vertex,
@@ -39,15 +39,12 @@ where
         self.key
     }
 
-    pub fn outgoing_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
-        self.edge
-            .map(|edge| EdgeView::new(self.mesh.as_ref(), edge))
+    pub fn outgoing_edge(&self) -> EdgeView<&Mesh<G>, G> {
+        self.raw_outgoing_edge().unwrap()
     }
 
-    pub fn into_outgoing_edge(self) -> Option<EdgeView<M, G>> {
-        let edge = self.edge;
-        let mesh = self.mesh;
-        edge.map(|edge| EdgeView::new(mesh, edge))
+    pub fn into_outgoing_edge(self) -> EdgeView<M, G> {
+        self.into_raw_outgoing_edge().unwrap()
     }
 
     pub fn incoming_edges(&self) -> EdgeCirculator<&Mesh<G>, G> {
@@ -64,16 +61,31 @@ where
     }
 }
 
+/// Raw API.
+impl<M, G> VertexView<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    pub(in graph) fn raw_outgoing_edge(&self) -> Option<EdgeView<&Mesh<G>, G>> {
+        self.edge
+            .map(|edge| EdgeView::new(self.mesh.as_ref(), edge))
+    }
+
+    pub(in graph) fn into_raw_outgoing_edge(self) -> Option<EdgeView<M, G>> {
+        let edge = self.edge;
+        let mesh = self.mesh;
+        edge.map(|edge| EdgeView::new(mesh, edge))
+    }
+}
+
 impl<M, G> VertexView<M, G>
 where
     M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry,
 {
-    pub fn outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
-        let edge = self.edge;
-        edge.map(move |edge| {
-            OrphanEdgeView::new(self.mesh.as_mut().edges.get_mut(&edge).unwrap(), edge)
-        })
+    pub fn outgoing_edge_mut(&mut self) -> OrphanEdgeView<G> {
+        self.raw_outgoing_edge_mut().unwrap()
     }
 
     pub fn incoming_edges_mut(&mut self) -> EdgeCirculator<&mut Mesh<G>, G> {
@@ -87,6 +99,18 @@ where
     // Resolve the `M` parameter to a concrete reference.
     fn with_mesh_mut(&mut self) -> VertexView<&mut Mesh<G>, G> {
         VertexView::new(self.mesh.as_mut(), self.key)
+    }
+}
+
+/// Raw API.
+impl<M, G> VertexView<M, G>
+where
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
+    G: Geometry,
+{
+    pub(in graph) fn raw_outgoing_edge_mut(&mut self) -> Option<OrphanEdgeView<G>> {
+        let edge = self.edge;
+        edge.map(move |edge| self.mesh.as_mut().orphan_edge_mut(edge).unwrap())
     }
 }
 
@@ -140,7 +164,7 @@ where
     fn clone(&self) -> Self {
         VertexView {
             mesh: self.mesh.clone(),
-            key: self.key.clone(),
+            key: self.key,
             phantom: PhantomData,
         }
     }
@@ -169,7 +193,7 @@ where
 ///
 /// This type is only re-exported so that its members are shown in
 /// documentation. See this issue:
-/// https://github.com/rust-lang/rust/issues/39437
+/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
@@ -182,7 +206,7 @@ impl<'a, G> OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub(crate) fn new(vertex: &'a mut Vertex<G>, key: VertexKey) -> Self {
+    pub(in graph) fn new(vertex: &'a mut Vertex<G>, key: VertexKey) -> Self {
         OrphanVertexView {
             key: key,
             vertex: vertex,

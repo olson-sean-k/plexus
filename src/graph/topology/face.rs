@@ -8,7 +8,8 @@ use graph::{GraphError, Perimeter};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
-use graph::storage::{EdgeKey, FaceKey, VertexKey};
+use graph::mutation::Mutation;
+use graph::storage::{EdgeKey, FaceKey};
 use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, OrphanView,
                       Topological, VertexView, View};
 
@@ -16,7 +17,7 @@ use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexVie
 ///
 /// This type is only re-exported so that its members are shown in
 /// documentation. See this issue:
-/// https://github.com/rust-lang/rust/issues/39437
+/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct FaceView<M, G>
 where
     M: AsRef<Mesh<G>>,
@@ -32,7 +33,7 @@ where
     M: AsRef<Mesh<G>>,
     G: Geometry,
 {
-    pub(crate) fn new(mesh: M, face: FaceKey) -> Self {
+    pub(in graph) fn new(mesh: M, face: FaceKey) -> Self {
         FaceView {
             mesh: mesh,
             key: face,
@@ -121,15 +122,19 @@ where
         let mut mesh = self.remove().unwrap();
         let opposite = mesh.as_mut().face_mut(face).unwrap();
         let destination = opposite.to_key_topology();
-        let mesh = opposite.remove().unwrap().as_mut();
+        let mesh = opposite.remove().unwrap();
         // TODO: Is it always correct to reverse the order of the opposite
         //       face's edges?
         // Re-insert the edges of the faces and join the mutual edges.
         for (source, destination) in source.into_iter().zip(destination.edges().iter().rev()) {
             let (a, b) = source.0.vertices();
             let (c, d) = destination.vertices();
-            let ab = mesh.insert_edge((a, b), source.1.clone()).unwrap();
-            let cd = mesh.insert_edge((c, d), source.1).unwrap();
+            let ab = Mutation::immediate(mesh)
+                .insert_edge((a, b), source.1.clone())
+                .unwrap();
+            let cd = Mutation::immediate(mesh)
+                .insert_edge((c, d), source.1)
+                .unwrap();
             let edge = mesh.edge_mut(ab).unwrap();
             edge.join(cd).unwrap();
         }
@@ -139,7 +144,7 @@ where
 
     fn remove(self) -> Result<M, Error> {
         let FaceView { mut mesh, key, .. } = self;
-        mesh.as_mut().remove_face(key)?;
+        Mutation::immediate(mesh.as_mut()).remove_face(key)?;
         Ok(mesh)
     }
 
@@ -166,27 +171,20 @@ where
 {
     pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, Error> {
         let perimeter = self.edges()
-            .map(|edge| (edge.vertex, edge.next_edge().unwrap().vertex))
+            .map(|edge| (edge.vertex, edge.next_edge().vertex))
             .collect::<Vec<_>>();
         if perimeter.len() <= 3 {
             return Ok(None);
         }
         let face = self.geometry.clone();
         let centroid = self.centroid()?;
-        let mut mesh = self.remove()?;
-        let c = mesh.as_mut().insert_vertex(centroid);
+        // This is the point of no return; the mesh has mutated. Unwrap
+        // results.
+        let mut mesh = self.remove().unwrap();
+        let c = Mutation::immediate(mesh.as_mut()).insert_vertex(centroid);
         for (a, b) in perimeter {
-            let ab = mesh.as_mut()
-                .insert_edge((a, b), G::Edge::default())
-                .unwrap();
-            let bc = mesh.as_mut()
-                .insert_edge((b, c), G::Edge::default())
-                .unwrap();
-            let ca = mesh.as_mut()
-                .insert_edge((c, a), G::Edge::default())
-                .unwrap();
-            mesh.as_mut()
-                .insert_face(&[ab, bc, ca], face.clone())
+            Mutation::immediate(mesh.as_mut())
+                .insert_face(&[a, b, c], (Default::default(), face.clone()))
                 .unwrap();
         }
         Ok(Some(VertexView::new(mesh, c)))
@@ -209,7 +207,7 @@ where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<Self, Error>
+    pub fn extrude<T>(mut self, distance: T) -> Result<Self, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
@@ -217,44 +215,38 @@ where
     {
         // Collect all the vertex keys of the face along with their translated
         // geometries.
-        let vertices = self.extrude_vertex_geometry(distance)?;
+        let sources = self.vertices()
+            .map(|vertex| vertex.key())
+            .collect::<Vec<_>>();
+        let destinations = self.extrude_vertex_geometry(distance)?;
         let face = self.geometry.clone();
-        // This is the point of no return; the mesh has been mutated. Moreover,
-        // operations should not fail, as they act on the interior topology of
-        // the removed face; unwrap results.
-        let mut mesh = self.remove()?;
+        // This is the point of no return; the mesh has been mutated. Unwrap
+        // results.
+        let destinations = destinations
+            .into_iter()
+            .map(|vertex| Mutation::immediate(self.mesh.as_mut()).insert_vertex(vertex))
+            .collect::<Vec<_>>();
+        let mut mesh = self.remove().unwrap();
         // Use the keys for the existing vertices and the translated geometries
         // to construct the extruded face and its connective faces.
-        //
-        // The winding of the faces is important; the extruded face must use
-        // opposing edges to its neighboring connective faces.
-        let extrusion = {
-            let mesh = mesh.as_mut();
-            let vertices = vertices
-                .into_iter()
-                .map(|vertex| (vertex.0, mesh.insert_vertex(vertex.1)))
-                .collect::<Vec<_>>();
-            let edges = vertices
-                .perimeter()
-                .map(|((_, a), (_, b))| mesh.insert_edge((a, b), G::Edge::default()).unwrap())
-                .collect::<Vec<_>>();
-            let extrusion = mesh.insert_face(&edges, face).unwrap();
-            for ((d, c), (a, b)) in vertices.perimeter() {
-                let ab = mesh.insert_edge((a, b), G::Edge::default()).unwrap();
-                let bc = mesh.insert_edge((b, c), G::Edge::default()).unwrap();
-                let cd = mesh.insert_edge((c, d), G::Edge::default()).unwrap();
-                let da = mesh.insert_edge((d, a), G::Edge::default()).unwrap();
-                let ca = mesh.insert_edge((c, a), G::Edge::default()).unwrap(); // Diagonal.
-                let ac = mesh.insert_edge((a, c), G::Edge::default()).unwrap(); // Diagonal.
-                mesh.insert_face(&[ab, bc, ca], G::Face::default()).unwrap();
-                mesh.insert_face(&[ac, cd, da], G::Face::default()).unwrap();
-            }
-            extrusion
-        };
+        let extrusion = Mutation::immediate(mesh.as_mut())
+            .insert_face(&destinations, (Default::default(), face))
+            .unwrap();
+        for ((a, c), (b, d)) in sources
+            .into_iter()
+            .zip(destinations.into_iter())
+            .collect::<Vec<_>>()
+            .perimeter()
+        {
+            // TODO: Split these faces to form triangles.
+            Mutation::immediate(mesh.as_mut())
+                .insert_face(&[a, b, d, c], Default::default())
+                .unwrap();
+        }
         Ok(FaceView::new(mesh, extrusion))
     }
 
-    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<(VertexKey, G::Vertex)>, Error>
+    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<G::Vertex>, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
@@ -265,7 +257,7 @@ where
             .map(|vertex| {
                 let mut geometry = vertex.geometry.clone();
                 *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
-                (vertex.key(), geometry)
+                geometry
             })
             .collect())
     }
@@ -321,7 +313,7 @@ where
     fn clone(&self) -> Self {
         FaceView {
             mesh: self.mesh.clone(),
-            key: self.key.clone(),
+            key: self.key,
             phantom: PhantomData,
         }
     }
@@ -350,7 +342,7 @@ where
 ///
 /// This type is only re-exported so that its members are shown in
 /// documentation. See this issue:
-/// https://github.com/rust-lang/rust/issues/39437
+/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
@@ -363,7 +355,7 @@ impl<'a, G> OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub(crate) fn new(face: &'a mut Face<G>, key: FaceKey) -> Self {
+    pub(in graph) fn new(face: &'a mut Face<G>, key: FaceKey) -> Self {
         OrphanFaceView {
             key: key,
             face: face,
@@ -704,14 +696,13 @@ mod tests {
         }
 
         assert_eq!(8, mesh.vertex_count());
-        // The mesh begins with 18 edges. The additional edges are derived from
-        // seven new triangles, but three edges are shared, so there are `(7 *
-        // 3) - 3` new edges.
-        assert_eq!(36, mesh.edge_count());
+        // The mesh begins with 18 edges. The extrusion adds three quads with
+        // four interior edges each, so there are `18 + (3 * 4)` edges.
+        assert_eq!(30, mesh.edge_count());
         // All faces are triangles and the mesh begins with six such faces. The
         // extruded face remains, in addition to three connective faces, each
-        // of which is constructed from two triangular faces.
-        assert_eq!(12, mesh.face_count());
+        // of which is constructed from quads.
+        assert_eq!(9, mesh.face_count());
     }
 
     #[test]
