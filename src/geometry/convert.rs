@@ -1,6 +1,4 @@
-use decorum::{Ordered, Primitive};
-use num::{Float, NumCast, ToPrimitive};
-use std::hash::Hash;
+use num::{NumCast, ToPrimitive};
 
 use geometry::{Duplet, Triplet};
 
@@ -79,59 +77,6 @@ pub trait AsPosition {
 
     fn as_position(&self) -> &Self::Target;
     fn as_position_mut(&mut self) -> &mut Self::Target;
-}
-
-/// Provides conversion to and from a conjugate type that can be hashed.
-///
-/// This trait is primarily used to convert geometry to and from hashable data
-/// for indexing.
-pub trait HashConjugate: Sized {
-    /// Conjugate type that provides `Eq` and `Hash` implementations.
-    type Hash: Eq + Hash;
-
-    /// Converts into the conjugate type.
-    fn into_hash(self) -> Self::Hash;
-
-    /// Converts from the conjugate type.
-    fn from_hash(hash: Self::Hash) -> Self;
-}
-
-impl<T> HashConjugate for Duplet<T>
-where
-    T: Float + Primitive,
-{
-    type Hash = Duplet<Ordered<T>>;
-
-    fn into_hash(self) -> Self::Hash {
-        Duplet(Ordered::from_inner(self.0), Ordered::from_inner(self.1))
-    }
-
-    fn from_hash(hash: Self::Hash) -> Self {
-        Duplet((hash.0).into_inner(), (hash.1).into_inner())
-    }
-}
-
-impl<T> HashConjugate for Triplet<T>
-where
-    T: Float + Primitive,
-{
-    type Hash = Triplet<Ordered<T>>;
-
-    fn into_hash(self) -> Self::Hash {
-        Triplet(
-            Ordered::from_inner(self.0),
-            Ordered::from_inner(self.1),
-            Ordered::from_inner(self.2),
-        )
-    }
-
-    fn from_hash(hash: Self::Hash) -> Self {
-        Triplet(
-            (hash.0).into_inner(),
-            (hash.1).into_inner(),
-            (hash.2).into_inner(),
-        )
-    }
 }
 
 // TODO: Implement `FromGeometry` for points and vectors with `FloatProxy`
@@ -291,74 +236,6 @@ mod feature_geometry_cgmath {
             self
         }
     }
-
-    impl<T> HashConjugate for Point2<T>
-    where
-        T: BaseFloat + Float + Primitive,
-    {
-        type Hash = Point2<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Point2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new(hash.x.into_inner(), hash.y.into_inner())
-        }
-    }
-
-    impl<T> HashConjugate for Point3<T>
-    where
-        T: BaseFloat + Float + Primitive,
-    {
-        type Hash = Point3<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            self.into_geometry()
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            hash.into_geometry()
-        }
-    }
-
-    impl<T> HashConjugate for Vector2<T>
-    where
-        T: BaseFloat + Float + Primitive,
-    {
-        type Hash = Vector2<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Vector2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
-        }
-    }
-
-    impl<T> HashConjugate for Vector3<T>
-    where
-        T: BaseFloat + Float + Primitive,
-    {
-        type Hash = Vector3<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Vector3::new(
-                Ordered::from_inner(self.x),
-                Ordered::from_inner(self.y),
-                Ordered::from_inner(self.z),
-            )
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Vector3::new(
-                hash.x.into_inner(),
-                hash.y.into_inner(),
-                hash.z.into_inner(),
-            )
-        }
-    }
 }
 
 #[cfg(feature = "geometry-nalgebra")]
@@ -513,74 +390,6 @@ mod feature_geometry_nalgebra {
 
         fn as_position_mut(&mut self) -> &mut Self::Target {
             self
-        }
-    }
-
-    impl<T> HashConjugate for Point2<T>
-    where
-        T: Float + Primitive + Scalar,
-    {
-        type Hash = Point2<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Point2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Point2::new(hash.x.into_inner(), hash.y.into_inner())
-        }
-    }
-
-    impl<T> HashConjugate for Point3<T>
-    where
-        T: Float + Primitive + Scalar,
-    {
-        type Hash = Point3<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            self.into_geometry()
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            hash.into_geometry()
-        }
-    }
-
-    impl<T> HashConjugate for Vector2<T>
-    where
-        T: Float + Primitive + Scalar,
-    {
-        type Hash = Vector2<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Vector2::new(Ordered::from_inner(self.x), Ordered::from_inner(self.y))
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Vector2::new(hash.x.into_inner(), hash.y.into_inner())
-        }
-    }
-
-    impl<T> HashConjugate for Vector3<T>
-    where
-        T: Float + Primitive + Scalar,
-    {
-        type Hash = Vector3<Ordered<T>>;
-
-        fn into_hash(self) -> Self::Hash {
-            Vector3::new(
-                Ordered::from_inner(self.x),
-                Ordered::from_inner(self.y),
-                Ordered::from_inner(self.z),
-            )
-        }
-
-        fn from_hash(hash: Self::Hash) -> Self {
-            Vector3::new(
-                hash.x.into_inner(),
-                hash.y.into_inner(),
-                hash.z.into_inner(),
-            )
         }
     }
 }

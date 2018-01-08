@@ -34,5 +34,4 @@ pub mod prelude {
                        PolygonsWithTexture, Triangulate, VertexGenerator, Vertices,
                        VerticesWithPosition};
     pub use geometry::{Duplet, Triplet};
-    pub use geometry::convert::HashConjugate;
 }
