@@ -25,7 +25,10 @@ pub mod generate;
 pub mod geometry;
 pub mod graph;
 
+pub use decorum::{R32, R64};
+
 pub mod prelude {
+    pub use {R32, R64};
     pub use generate::{CollectWithIndexer, FlatIndexVertices, IndexVertices, MapVertices,
                        PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition,
                        PolygonsWithTexture, Triangulate, VertexGenerator, Vertices,

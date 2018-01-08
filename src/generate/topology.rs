@@ -468,14 +468,12 @@ pub type ZipVertices<T> = iter::Map<
 /// cube:
 ///
 /// ```rust
-/// # extern crate decorum;
 /// # extern crate num;
 /// # extern crate plexus;
 /// use plexus::generate;
 /// use plexus::generate::cube::Cube;
 /// use plexus::prelude::*;
 ///
-/// # use decorum::R32;
 /// # use num::One;
 /// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
 /// #     Triplet(One::one(), One::one(), One::one())

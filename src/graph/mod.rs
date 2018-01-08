@@ -72,10 +72,8 @@
 //! Manipulating a face in a mesh:
 //!
 //! ```rust
-//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
-//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::generate::sphere::UvSphere;
 //! use plexus::graph::Mesh;
