@@ -726,9 +726,6 @@ where
     where
         I: IntoIterator<Item = P>,
     {
-        // TODO: This is fast and reliable, but the requirements on `P::Vertex`
-        //       are difficult to achieve. Would `LruIndexer` be a better
-        //       choice?
         Self::from_indexer(input, HashIndexer::default())
     }
 }
