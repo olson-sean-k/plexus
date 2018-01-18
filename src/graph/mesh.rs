@@ -888,6 +888,34 @@ mod tests {
         });
     }
 
+    #[test]
+    fn error_on_singularity_mesh() {
+        // Construct a mesh with three triangles sharing a single vertex.
+        let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
+            vec![0, 1, 2, 0, 3, 4, 0, 5, 6],
+            vec![
+                (0, 0, 0),
+                (1, -1, 0),
+                (-1, -1, 0),
+                (-3, 1, 0),
+                (-2, 1, 0),
+                (2, 1, 0),
+                (3, 1, 0),
+            ],
+            3,
+        );
+
+        assert!(match *mesh.err()
+            .unwrap()
+            .root_cause()
+            .downcast_ref::<GraphError>()
+            .unwrap()
+        {
+            GraphError::TopologyMalformed => true,
+            _ => false,
+        });
+    }
+
     // This test is a sanity check for mesh iterators, topological views, and
     // the unsafe transmutations used to coerce lifetimes.
     #[test]
