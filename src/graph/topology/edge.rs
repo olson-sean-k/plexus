@@ -593,7 +593,7 @@ impl EdgeKeyTopology {
 
 #[cfg(test)]
 mod tests {
-    use nalgebra::Point3;
+    use nalgebra::{Point2, Point3};
 
     use generate::*;
     use graph::*;
@@ -601,14 +601,9 @@ mod tests {
 
     #[test]
     fn extrude_edge() {
-        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(
+        let mut mesh = Mesh::<Point2<f32>>::from_raw_buffers(
             vec![0, 1, 2, 3],
-            vec![
-                (0.0, 0.0, 0.0),
-                (1.0, 0.0, 0.0),
-                (1.0, 1.0, 0.0),
-                (0.0, 1.0, 0.0),
-            ],
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
         ).unwrap();
         let key = mesh.edges()

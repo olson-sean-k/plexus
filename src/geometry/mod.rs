@@ -32,10 +32,25 @@ pub struct Duplet<T>(pub T, pub T);
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Triplet<T>(pub T, pub T, pub T);
 
+impl<T> Attribute for Duplet<T>
+where
+    T: Clone,
+{
+}
+
 impl<T> Attribute for Triplet<T>
 where
     T: Clone,
 {
+}
+
+impl<T> Geometry for Duplet<T>
+where
+    T: Clone,
+{
+    type Vertex = Self;
+    type Edge = ();
+    type Face = ();
 }
 
 impl<T> Geometry for Triplet<T>
@@ -160,10 +175,25 @@ mod feature_geometry_cgmath {
         }
     }
 
+    impl<T> Attribute for Point2<T>
+    where
+        T: Clone,
+    {
+    }
+
     impl<T> Attribute for Point3<T>
     where
         T: Clone,
     {
+    }
+
+    impl<T> Geometry for Point2<T>
+    where
+        T: Clone,
+    {
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
     }
 
     impl<T> Geometry for Point3<T>
@@ -279,10 +309,25 @@ mod feature_geometry_nalgebra {
         }
     }
 
+    impl<T> Attribute for Point2<T>
+    where
+        T: Scalar,
+    {
+    }
+
     impl<T> Attribute for Point3<T>
     where
         T: Scalar,
     {
+    }
+
+    impl<T> Geometry for Point2<T>
+    where
+        T: Scalar,
+    {
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
     }
 
     impl<T> Geometry for Point3<T>

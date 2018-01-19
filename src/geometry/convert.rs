@@ -222,6 +222,21 @@ mod feature_geometry_cgmath {
         }
     }
 
+    impl<T> AsPosition for Point2<T>
+    where
+        T: BaseNum,
+    {
+        type Target = Self;
+
+        fn as_position(&self) -> &Self::Target {
+            self
+        }
+
+        fn as_position_mut(&mut self) -> &mut Self::Target {
+            self
+        }
+    }
+
     impl<T> AsPosition for Point3<T>
     where
         T: BaseNum,
@@ -375,6 +390,21 @@ mod feature_geometry_nalgebra {
                 T::from(other.1).unwrap(),
                 T::from(other.2).unwrap(),
             )
+        }
+    }
+
+    impl<T> AsPosition for Point2<T>
+    where
+        T: Scalar,
+    {
+        type Target = Self;
+
+        fn as_position(&self) -> &Self::Target {
+            self
+        }
+
+        fn as_position_mut(&mut self) -> &mut Self::Target {
+            self
         }
     }
 
