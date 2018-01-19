@@ -5,12 +5,11 @@
 //! constraints.
 
 use failure::Error;
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 
 use geometry::Geometry;
 use geometry::convert::AsPosition;
-use geometry::ops::{Average, Cross, Interpolate, Normalize};
-use graph::GraphError;
+use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use graph::topology::{EdgeRef, FaceRef};
 use self::alias::*;
 
@@ -91,24 +90,28 @@ pub trait EdgeLateral: Geometry {
 
 impl<G> EdgeLateral for G
 where
-    G: FaceNormal + Geometry,
+    G: Geometry,
     G::Vertex: AsPosition,
-    VertexPosition<G>: Clone + Sub,
-    <VertexPosition<G> as Sub>::Output: Cross,
-    <VertexPosition<G> as Sub>::Output: Cross<<G as FaceNormal>::Normal>,
-    <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
-    <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output: Normalize,
+    VertexPosition<G>: Clone
+        + Add<<<VertexPosition<G> as Sub>::Output as Project>::Output, Output = VertexPosition<G>>
+        + Sub,
+    <VertexPosition<G> as Sub>::Output: Normalize + Project,
 {
-    type Lateral = <<VertexPosition<G> as Sub>::Output as Cross<<G as FaceNormal>::Normal>>::Output;
+    type Lateral = <VertexPosition<G> as Sub>::Output;
 
     fn lateral(edge: EdgeRef<Self>) -> Result<Self::Lateral, Error> {
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
-        let ab = a - b;
-        let normal = <G as FaceNormal>::normal(edge.into_opposite_edge()
-            .into_face()
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?)?;
-        Ok(ab.cross(normal).normalize())
+        let c = edge.opposite_edge()
+            .previous_edge()
+            .destination_vertex()
+            .geometry
+            .as_position()
+            .clone();
+        let ab = a - b.clone();
+        let cb = c.clone() - b.clone();
+        let p = b + ab.project(cb);
+        Ok((p - c).normalize())
     }
 }
 

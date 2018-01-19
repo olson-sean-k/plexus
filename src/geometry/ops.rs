@@ -1,4 +1,5 @@
 use num::{Num, NumCast};
+use std::ops::{Div, Mul};
 
 use geometry::{self, Duplet, Triplet};
 
@@ -22,10 +23,36 @@ pub trait Interpolate<T = Self>: Sized {
     }
 }
 
+pub trait Dot<T = Self> {
+    type Output;
+
+    fn dot(self, other: T) -> Self::Output;
+}
+
 pub trait Cross<T = Self> {
     type Output;
 
     fn cross(self, other: T) -> Self::Output;
+}
+
+pub trait Project<T = Self> {
+    type Output;
+
+    fn project(self, other: T) -> Self::Output;
+}
+
+impl<T> Project<T> for T
+where
+    T: Dot + Clone + Mul<<<Self as Dot>::Output as Div>::Output, Output = Self>,
+    <T as Dot>::Output: Div,
+{
+    type Output = T;
+
+    fn project(self, other: T) -> Self::Output {
+        let n = other.dot(self.clone());
+        let d = self.clone().dot(self.clone());
+        self * (n / d)
+    }
 }
 
 impl<T> Interpolate for Duplet<T>
@@ -67,11 +94,19 @@ mod feature_geometry_cgmath {
     use geometry;
     use geometry::ops::*;
 
+    impl<T> Normalize for Vector2<T>
+    where
+        T: ApproxEq + BaseFloat + BaseNum,
+    {
+        fn normalize(self) -> Self {
+            <Self as InnerSpace>::normalize(self)
+        }
+    }
+
     impl<T> Normalize for Vector3<T>
     where
         T: ApproxEq + BaseFloat + BaseNum,
     {
-        #[inline(always)]
         fn normalize(self) -> Self {
             <Self as InnerSpace>::normalize(self)
         }
@@ -156,13 +191,34 @@ mod feature_geometry_cgmath {
         }
     }
 
+    impl<T> Dot for Vector2<T>
+    where
+        T: BaseFloat + BaseNum,
+    {
+        type Output = T;
+
+        fn dot(self, other: Self) -> Self::Output {
+            <Self as InnerSpace>::dot(self, other)
+        }
+    }
+
+    impl<T> Dot for Vector3<T>
+    where
+        T: BaseFloat + BaseNum,
+    {
+        type Output = T;
+
+        fn dot(self, other: Self) -> Self::Output {
+            <Self as InnerSpace>::dot(self, other)
+        }
+    }
+
     impl<T> Cross for Vector3<T>
     where
         T: BaseFloat + BaseNum,
     {
         type Output = Self;
 
-        #[inline(always)]
         fn cross(self, other: Self) -> Self::Output {
             Self::cross(self, other)
         }
@@ -179,6 +235,15 @@ mod feature_geometry_nalgebra {
 
     use geometry;
     use geometry::ops::*;
+
+    impl<T> Normalize for Vector2<T>
+    where
+        T: Float + Real + Scalar,
+    {
+        fn normalize(self) -> Self {
+            Matrix::normalize(&self)
+        }
+    }
 
     impl<T> Normalize for Vector3<T>
     where
@@ -266,6 +331,28 @@ mod feature_geometry_nalgebra {
                 geometry::lerp(self.y, other.y, f),
                 geometry::lerp(self.z, other.z, f),
             )
+        }
+    }
+
+    impl<T> Dot for Vector2<T>
+    where
+        T: AddAssign + Float + MulAssign + Scalar,
+    {
+        type Output = T;
+
+        fn dot(self, other: Self) -> Self::Output {
+            Matrix::dot(&self, &other)
+        }
+    }
+
+    impl<T> Dot for Vector3<T>
+    where
+        T: AddAssign + Float + MulAssign + Scalar,
+    {
+        type Output = T;
+
+        fn dot(self, other: Self) -> Self::Output {
+            Matrix::dot(&self, &other)
         }
     }
 
