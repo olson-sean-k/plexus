@@ -596,8 +596,37 @@ mod tests {
     use nalgebra::{Point2, Point3};
 
     use generate::*;
+    use geometry::*;
+    use geometry::convert::IntoGeometry;
     use graph::*;
-    use graph::storage::Key;
+
+    fn find_vertex_with_geometry<G, T>(mesh: &Mesh<G>, geometry: T) -> Option<VertexKey>
+    where
+        G: Geometry,
+        G::Vertex: PartialEq,
+        T: IntoGeometry<G::Vertex>,
+    {
+        let geometry = geometry.into_geometry();
+        mesh.vertices()
+            .find(|vertex| vertex.geometry == geometry)
+            .map(|vertex| vertex.key())
+    }
+
+    fn find_edge_with_geometry<G, T>(mesh: &Mesh<G>, geometry: (T, T)) -> Option<EdgeKey>
+    where
+        G: Geometry,
+        G::Vertex: PartialEq,
+        T: IntoGeometry<G::Vertex>,
+    {
+        let (source, destination) = geometry;
+        match (
+            find_vertex_with_geometry(mesh, source),
+            find_vertex_with_geometry(mesh, destination),
+        ) {
+            (Some(source), Some(destination)) => Some((source, destination).into()),
+            _ => None,
+        }
+    }
 
     #[test]
     fn extrude_edge() {
@@ -606,12 +635,8 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
         ).unwrap();
-        let key = mesh.edges()
-            .flat_map(|edge| edge.into_boundary_edge())
-            .nth(0)
-            .unwrap()
-            .key();
-        mesh.edge_mut(key).unwrap().extrude(1.0).unwrap();
+        let source = find_edge_with_geometry(&mesh, ((1.0, 1.0), (1.0, 0.0))).unwrap();
+        mesh.edge_mut(source).unwrap().extrude(1.0).unwrap();
 
         assert_eq!(14, mesh.edge_count());
         assert_eq!(2, mesh.face_count());
@@ -634,11 +659,9 @@ mod tests {
             ],
             4,
         ).unwrap();
-        // TODO: This is fragile. It would probably be best for `Mesh` to
-        //       provide a more convenient way to search for topology.
-        // Construct the keys for the nearby edges.
-        let source = (VertexKey::from(Key::new(2)), VertexKey::from(Key::new(1))).into();
-        let destination = (VertexKey::from(Key::new(4)), VertexKey::from(Key::new(7))).into();
+        let source = find_edge_with_geometry(&mesh, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
+        let destination =
+            find_edge_with_geometry(&mesh, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
         mesh.edge_mut(source).unwrap().join(destination).unwrap();
 
         assert_eq!(20, mesh.edge_count());

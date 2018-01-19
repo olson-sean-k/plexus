@@ -10,15 +10,6 @@ use graph::topology::Topological;
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Key(u64);
 
-impl Key {
-    // TODO: This allows tests to be more terse, but in a very fragile way.
-    //       Replace this with an alternative way to find relevant topology.
-    #[cfg(test)]
-    pub(in graph) fn new(value: u64) -> Self {
-        Key(value)
-    }
-}
-
 impl Deref for Key {
     type Target = u64;
 
