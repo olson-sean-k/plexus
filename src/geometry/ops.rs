@@ -112,6 +112,27 @@ mod feature_geometry_cgmath {
         }
     }
 
+    impl<T> Average for Point2<T>
+    where
+        T: AddAssign + BaseNum + MulAssign + NumCast,
+    {
+        fn average<I>(values: I) -> Self
+        where
+            I: IntoIterator<Item = Self>,
+        {
+            let values = values.into_iter().collect::<Vec<_>>();
+            let n = <T as NumCast>::from(values.len()).unwrap();
+            let sum = {
+                let mut sum = Point2::origin();
+                for point in values {
+                    sum += Vector2::<T>::new(point.x, point.y);
+                }
+                sum
+            };
+            sum * (T::one() / n)
+        }
+    }
+
     impl<T> Average for Point3<T>
     where
         T: AddAssign + BaseNum + MulAssign + NumCast,
@@ -255,6 +276,27 @@ mod feature_geometry_nalgebra {
     }
 
     // TODO: Implement `Average` for points and vectors of arbitrary dimension.
+    impl<T> Average for Point2<T>
+    where
+        T: AddAssign + MulAssign + Num + NumCast + Scalar,
+    {
+        fn average<I>(values: I) -> Self
+        where
+            I: IntoIterator<Item = Self>,
+        {
+            let values = values.into_iter().collect::<Vec<_>>();
+            let n = <T as NumCast>::from(values.len()).unwrap();
+            let sum = {
+                let mut sum = Point2::origin();
+                for point in values {
+                    sum += Vector2::<T>::new(point.x, point.y);
+                }
+                sum
+            };
+            sum * (T::one() / n)
+        }
+    }
+
     impl<T> Average for Point3<T>
     where
         T: AddAssign + MulAssign + Num + NumCast + Scalar,
