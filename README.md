@@ -9,11 +9,12 @@
 
 ## Generation and Iterator Expressions
 
-Meshes can be generated from primitives like cubes and spheres using iterator
-expressions. Primitives emit topological structures like `Triangle`s or
-`Quad`s, which contain arbitrary geometric data in their vertices. These can be
-transformed and decomposed into other topologies and geometric data via
-triangulation, tesselation, and conversion into rendering pipeline data.
+Streams of topological and geometric data can be generated from primitives like
+cubes and spheres using iterator expressions. Primitives emit topological
+structures like `Triangle`s or `Quad`s, which contain arbitrary geometric data
+in their vertices. These can be transformed and decomposed into other
+topologies and geometric data via triangulation, tesselation, and other
+operations.
 
 ```rust
 use nalgebra::Point3;
@@ -39,12 +40,12 @@ example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 
 ## Half-Edge Graph Meshes
 
-Generators are flexible and easy to use, but only represent a stream of
-topology and vertex geometry. A `Mesh`, represented as a [half-edge
+Generators produce an ephemeral stream of topology and vertex geometry. A
+`Mesh`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
 arbitrary geometry for vertices, edges, and faces. The graph can also be
-queried and manipulated in ways that generators and iterator expressions
-cannot.
+traversed and manipulated in ways that generators and iterator expressions
+cannot, such as circulation, extrusion, merging, and joining.
 
 ```rust
 use nalgebra::Point3;
@@ -65,14 +66,14 @@ let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
 Plexus avoids exposing very basic topological operations like inserting
 individual vertices, because they can easily be done incorrectly and lead to
 invalid topologies. Instead, meshes are manipulated with higher-level
-operations, like extrusion and joining.
+operations like extrusion and joining.
 
 ## Geometric Traits
 
 Meshes support arbitrary geometry for vertices, edges, and faces (including no
-geometry at all) via optional traits. Implementing these traits allows more
-operations to be supported, but only two basic traits are required: `Geometry`
-and `Attribute`.
+geometry at all) via optional traits. Implementing these traits enables more
+operations and features, but only two basic traits are required: `Geometry` and
+`Attribute`.
 
 ```rust
 use nalgebra::{Point3, Vector3};
@@ -110,7 +111,8 @@ Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
 [cgmath](https://crates.io/crates/cgmath) crates so that common types can be
 used right away for vertex geometry. See the `geometry-cgmath` and
-`geometry-nalgebra` (enabled by default) crate features.
+`geometry-nalgebra` (enabled by default) crate features. Both 2D and 3D
+geometry are supported by mesh operations.
 
 ## Hashing Floating-Point Values
 
