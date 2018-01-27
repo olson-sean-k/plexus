@@ -8,10 +8,10 @@ use graph::{GraphError, Perimeter};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
-use graph::mutation::Mutation;
-use graph::storage::{EdgeKey, FaceKey};
-use graph::topology::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, OrphanView,
-                      Topological, VertexView, View};
+use graph::mutation::{ModalMutation, Mutation};
+use graph::storage::{EdgeKey, FaceKey, VertexKey};
+use graph::topology::{edge, EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView,
+                      OrphanView, Topological, VertexView, View};
 
 /// Do **not** use this type directly. Use `FaceRef` and `FaceMut` instead.
 ///
@@ -88,69 +88,24 @@ where
         FaceCirculator::from_edge_circulator(self.edges_mut())
     }
 
-    pub fn join(self, face: FaceKey) -> Result<(), Error> {
-        // Ensure that the opposite face exists and has the same arity.
-        let arity = self.arity();
-        match self.mesh.as_ref().face(face) {
-            Some(opposite) => if opposite.arity() != arity {
-                return Err(GraphError::ArityNonConstant.into());
-            },
-            _ => {
-                return Err(GraphError::TopologyNotFound.into());
-            }
-        }
-        // Decompose the faces into their key topology and remove them. Pair
-        // the topology with edge geometry for the source face. At this point,
-        // we can assume that the faces exist and no failures should occur;
-        // unwrap results.
-        let source = self.to_key_topology();
-        let source = source
-            .edges()
-            .iter()
-            .map(|topology| {
-                (
-                    topology,
-                    self.mesh
-                        .as_ref()
-                        .edge(topology.key())
-                        .unwrap()
-                        .geometry
-                        .clone(),
-                )
-            })
-            .collect::<Vec<_>>();
-        let mut mesh = self.remove().unwrap();
-        let opposite = mesh.as_mut().face_mut(face).unwrap();
-        let destination = opposite.to_key_topology();
-        let mesh = opposite.remove().unwrap();
-        // TODO: Is it always correct to reverse the order of the opposite
-        //       face's edges?
-        // Re-insert the edges of the faces and join the mutual edges.
-        for (source, destination) in source.into_iter().zip(destination.edges().iter().rev()) {
-            let (a, b) = source.0.vertices();
-            let (c, d) = destination.vertices();
-            let ab = Mutation::immediate(mesh)
-                .insert_edge((a, b), source.1.clone())
-                .unwrap();
-            let cd = Mutation::immediate(mesh)
-                .insert_edge((c, d), source.1)
-                .unwrap();
-            let edge = mesh.edge_mut(ab).unwrap();
-            edge.join(cd).unwrap();
-        }
-        // TODO: Is there any reasonable topology this can return?
-        Ok(())
-    }
-
-    fn remove(self) -> Result<M, Error> {
-        let FaceView { mut mesh, key, .. } = self;
-        Mutation::immediate(mesh.as_mut()).remove_face(key)?;
-        Ok(mesh)
-    }
-
     // Resolve the `M` parameter to a concrete reference.
     fn with_mesh_mut(&mut self) -> FaceView<&mut Mesh<G>, G> {
         FaceView::new(self.mesh.as_mut(), self.key)
+    }
+}
+
+impl<'a, G> FaceView<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    pub fn join(self, destination: FaceKey) -> Result<(), Error> {
+        let FaceView {
+            mesh, key: source, ..
+        } = self;
+        let mut mutation = Mutation::replace(mesh, Mesh::empty());
+        join(&mut *mutation, source, destination)?;
+        mutation.commit()?;
+        Ok(())
     }
 }
 
@@ -164,30 +119,17 @@ where
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<'a, G> FaceView<&'a mut Mesh<G>, G>
 where
-    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<M, G>>, Error> {
-        let perimeter = self.edges()
-            .map(|edge| (edge.vertex, edge.next_edge().vertex))
-            .collect::<Vec<_>>();
-        if perimeter.len() <= 3 {
-            return Ok(None);
-        }
-        let face = self.geometry.clone();
-        let centroid = self.centroid()?;
-        // This is the point of no return; the mesh has mutated. Unwrap
-        // results.
-        let mut mesh = self.remove().unwrap();
-        let c = Mutation::immediate(mesh.as_mut()).insert_vertex(centroid);
-        for (a, b) in perimeter {
-            Mutation::immediate(mesh.as_mut())
-                .insert_face(&[a, b, c], (Default::default(), face.clone()))
-                .unwrap();
-        }
-        Ok(Some(VertexView::new(mesh, c)))
+    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut Mesh<G>, G>>, Error> {
+        let FaceView { mesh, key: abc, .. } = self;
+        let mut mutation = Mutation::immediate(mesh);
+        Ok(match triangulate(&mut mutation, abc)? {
+            Some(vertex) => Some(VertexView::new(mutation.commit(), vertex)),
+            _ => None,
+        })
     }
 }
 
@@ -201,65 +143,21 @@ where
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<'a, G> FaceView<&'a mut Mesh<G>, G>
 where
-    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(mut self, distance: T) -> Result<Self, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut Mesh<G>, G>, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        // Collect all the vertex keys of the face along with their translated
-        // geometries.
-        let sources = self.vertices()
-            .map(|vertex| vertex.key())
-            .collect::<Vec<_>>();
-        let destinations = self.extrude_vertex_geometry(distance)?;
-        let face = self.geometry.clone();
-        // This is the point of no return; the mesh has been mutated. Unwrap
-        // results.
-        let destinations = destinations
-            .into_iter()
-            .map(|vertex| Mutation::immediate(self.mesh.as_mut()).insert_vertex(vertex))
-            .collect::<Vec<_>>();
-        let mut mesh = self.remove().unwrap();
-        // Use the keys for the existing vertices and the translated geometries
-        // to construct the extruded face and its connective faces.
-        let extrusion = Mutation::immediate(mesh.as_mut())
-            .insert_face(&destinations, (Default::default(), face))
-            .unwrap();
-        for ((a, c), (b, d)) in sources
-            .into_iter()
-            .zip(destinations.into_iter())
-            .collect::<Vec<_>>()
-            .perimeter()
-        {
-            // TODO: Split these faces to form triangles.
-            Mutation::immediate(mesh.as_mut())
-                .insert_face(&[a, b, d, c], Default::default())
-                .unwrap();
-        }
-        Ok(FaceView::new(mesh, extrusion))
-    }
-
-    fn extrude_vertex_geometry<T>(&self, distance: T) -> Result<Vec<G::Vertex>, Error>
-    where
-        G::Normal: Mul<T>,
-        ScaledFaceNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
-    {
-        let translation = self.normal()? * distance;
-        Ok(self.vertices()
-            .map(|vertex| {
-                let mut geometry = vertex.geometry.clone();
-                *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
-                geometry
-            })
-            .collect())
+        let FaceView { mesh, key: abc, .. } = self;
+        let mut mutation = Mutation::replace(mesh, Mesh::empty());
+        let face = extrude(&mut *mutation, abc, distance)?;
+        Ok(FaceView::new(mutation.commit().unwrap(), face))
     }
 }
 
@@ -401,6 +299,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct FaceKeyTopology {
     key: FaceKey,
     edges: Vec<EdgeKeyTopology>,
@@ -650,6 +549,165 @@ where
             )
         })
     }
+}
+
+pub(in graph) fn triangulate<'a, M, G>(
+    mutation: &mut M,
+    abc: FaceKey,
+) -> Result<Option<VertexKey>, Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+{
+    let (perimeter, centroid, face) = {
+        let face = match mutation.as_mesh().face(abc) {
+            Some(face) => face,
+            _ => return Err(GraphError::TopologyNotFound.into()),
+        };
+        let perimeter = face.edges()
+            .map(|edge| (edge.vertex, edge.next_edge().vertex))
+            .collect::<Vec<_>>();
+        if perimeter.len() <= 3 {
+            return Ok(None);
+        }
+        (perimeter, face.centroid()?, face.geometry.clone())
+    };
+    // This is the point of no return; the mesh has mutated. Unwrap
+    // results.
+    mutation.remove_face(abc).unwrap();
+    let c = mutation.insert_vertex(centroid);
+    for (a, b) in perimeter {
+        mutation
+            .insert_face(&[a, b, c], (Default::default(), face.clone()))
+            .unwrap();
+    }
+    Ok(Some(c))
+}
+
+pub(in graph) fn join<'a, M, G>(
+    mutation: &mut M,
+    source: FaceKey,
+    destination: FaceKey,
+) -> Result<(), Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + Geometry,
+{
+    let (sources, destination) = {
+        let source = match mutation.as_mesh().face(source) {
+            Some(face) => face,
+            _ => return Err(GraphError::TopologyNotFound.into()),
+        };
+        // Ensure that the opposite face exists and has the same arity.
+        let arity = source.arity();
+        let destination = match mutation.as_mesh().face(destination) {
+            Some(destination) => {
+                if destination.arity() != arity {
+                    return Err(GraphError::ArityNonConstant.into());
+                }
+                destination
+            }
+            _ => {
+                return Err(GraphError::TopologyNotFound.into());
+            }
+        };
+        // Decompose the faces into their key topologies.
+        (
+            source
+                .to_key_topology()
+                .edges()
+                .iter()
+                .map(|topology| {
+                    (
+                        topology.clone(),
+                        mutation
+                            .as_mesh()
+                            .edge(topology.key())
+                            .unwrap()
+                            .geometry
+                            .clone(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+            destination.to_key_topology(),
+        )
+    };
+    // Remove the source and destination faces. Pair the topology with edge
+    // geometry for the source face. At this point, we can assume that the
+    // faces exist and no failures should occur; unwrap results.
+    mutation.remove_face(source)?;
+    mutation.remove_face(destination.key())?;
+    // TODO: Is it always correct to reverse the order of the opposite
+    //       face's edges?
+    // Re-insert the edges of the faces and join the mutual edges.
+    for (source, destination) in sources.into_iter().zip(destination.edges().iter().rev()) {
+        let (a, b) = source.0.vertices();
+        let (c, d) = destination.vertices();
+        let ab = mutation.insert_edge((a, b), source.1.clone()).unwrap();
+        let cd = mutation.insert_edge((c, d), source.1).unwrap();
+        edge::join(mutation, ab, cd).unwrap();
+    }
+    // TODO: Is there any reasonable topology this can return?
+    Ok(())
+}
+
+pub(in graph) fn extrude<'a, M, G, T>(
+    mutation: &mut M,
+    abc: FaceKey,
+    distance: T,
+) -> Result<FaceKey, Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + FaceNormal + Geometry,
+    G::Normal: Mul<T>,
+    G::Vertex: AsPosition,
+    ScaledFaceNormal<G, T>: Clone,
+    VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
+{
+    // Collect all the vertex keys of the face along with their translated
+    // geometries.
+    let (sources, destinations, face) = {
+        let face = match mutation.as_mesh().face(abc) {
+            Some(face) => face,
+            _ => return Err(GraphError::TopologyNotFound.into()),
+        };
+        let translation = face.normal()? * distance;
+        let sources = face.vertices()
+            .map(|vertex| vertex.key())
+            .collect::<Vec<_>>();
+        let destinations = face.vertices()
+            .map(|vertex| {
+                let mut geometry = vertex.geometry.clone();
+                *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
+                geometry
+            })
+            .collect::<Vec<_>>();
+        (sources, destinations, face.geometry.clone())
+    };
+    // This is the point of no return; the mesh has been mutated. Unwrap
+    // results.
+    mutation.remove_face(abc).unwrap();
+    let destinations = destinations
+        .into_iter()
+        .map(|vertex| mutation.insert_vertex(vertex))
+        .collect::<Vec<_>>();
+    // Use the keys for the existing vertices and the translated geometries
+    // to construct the extruded face and its connective faces.
+    let extrusion = mutation
+        .insert_face(&destinations, (Default::default(), face))
+        .unwrap();
+    for ((a, c), (b, d)) in sources
+        .into_iter()
+        .zip(destinations.into_iter())
+        .collect::<Vec<_>>()
+        .perimeter()
+    {
+        // TODO: Split these faces to form triangles.
+        mutation
+            .insert_face(&[a, b, d, c], Default::default())
+            .unwrap();
+    }
+    Ok(extrusion)
 }
 
 #[cfg(test)]

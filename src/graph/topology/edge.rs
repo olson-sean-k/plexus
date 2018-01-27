@@ -8,7 +8,7 @@ use graph::{GraphError, Perimeter};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::mesh::{Edge, Mesh};
-use graph::mutation::Mutation;
+use graph::mutation::{ModalMutation, Mutation};
 use graph::storage::{EdgeKey, VertexKey};
 use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
                       VertexView, View};
@@ -225,51 +225,27 @@ where
         }
     }
 
-    // TODO: Rename this to something like "extend". It is very similar to
-    //       `extrude`. Terms like "join" or "merge" are better suited for
-    //       directly joining two adjacent faces over a shared edge.
-    pub fn join(mut self, edge: EdgeKey) -> Result<Self, Error> {
-        if self.mesh.as_ref().edge(edge).is_none() {
-            return Err(GraphError::TopologyNotFound.into());
-        }
-        let (a, b) = self.key().to_vertex_keys();
-        let (c, d) = edge.to_vertex_keys();
-        // At this point, we can assume the points a, b, c, and d exist in the
-        // mesh. Before mutating the mesh, ensure that existing interior edges
-        // are boundaries.
-        for edge in [a, b, c, d]
-            .perimeter()
-            .flat_map(|ab| self.mesh.as_ref().edge(ab.into()))
-        {
-            if !edge.is_boundary_edge() {
-                return Err(GraphError::TopologyConflict.into());
-            }
-        }
-        // Insert a quad joining the edges. These operations should not fail;
-        // unwrap their results.
-        let edge = self.geometry.clone();
-        let face = self.opposite_edge()
-            .face()
-            .map(|face| face.geometry.clone())
-            .unwrap_or_else(Default::default);
-        // TODO: Split the face to form triangles.
-        Mutation::immediate(self.mesh.as_mut())
-            .insert_face(&[a, b, c, d], (edge, face))
-            .unwrap();
-        Ok(EdgeView::new(self.mesh, (c, d).into()))
-    }
-
-    #[allow(dead_code)]
-    fn remove(self) -> Result<M, Error> {
-        let EdgeView { mut mesh, key, .. } = self;
-        Mutation::immediate(mesh.as_mut()).remove_edge(key)?;
-        Ok(mesh)
-    }
-
     // Resolve the `M` parameter to a concrete reference.
     #[allow(dead_code)]
     fn with_mesh_mut(&mut self) -> EdgeView<&mut Mesh<G>, G> {
         EdgeView::new(self.mesh.as_mut(), self.key)
+    }
+}
+
+impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    // TODO: Rename this to something like "extend". It is very similar to
+    //       `extrude`. Terms like "join" or "merge" are better suited for
+    //       directly joining two adjacent faces over a shared edge.
+    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut Mesh<G>, G>, Error> {
+        let EdgeView {
+            mesh, key: source, ..
+        } = self;
+        let mut mutation = Mutation::immediate(mesh);
+        let edge = join(&mut mutation, source, destination)?;
+        Ok(EdgeView::new(mutation.commit(), edge))
     }
 }
 
@@ -305,79 +281,19 @@ where
     }
 }
 
-impl<M, G> EdgeView<M, G>
+impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
 where
-    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: EdgeMidpoint + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn split(mut self) -> Result<VertexView<M, G>, Error>
+    pub fn split(self) -> Result<VertexView<&'a mut Mesh<G>, G>, Error>
     where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
     {
-        // Insert a new vertex at the midpoint.
-        let m = {
-            let mut m = self.source_vertex().geometry.clone();
-            *m.as_position_mut() = self.midpoint()?;
-            // This is the point of no return; the mesh has been mutated.
-            Mutation::immediate(self.mesh.as_mut()).insert_vertex(m)
-        };
-        // TODO: This will not attempt to split the opposite edge if it does
-        //       not exist. How should this tend to work? Should mutations like
-        //       this panic if the mesh is inconsistent, or should mutations
-        //       avoid panics? Will this kind of mutation be used internally
-        //       when a mesh is in an intermediate state?
-        // Get both half-edges to be split.
-        let edge = self.key();
-        let opposite = self.raw_opposite_edge().map(|opposite| opposite.key());
-        let mut mesh = self.mesh;
-        // Split the half-edges. This should not fail; unwrap the results.
-        Self::split_half_at(&mut mesh, edge, m).unwrap();
-        if let Some(opposite) = opposite {
-            Self::split_half_at(&mut mesh, opposite, m).unwrap();
-        }
-        Ok(VertexView::new(mesh, m))
-    }
-
-    fn split_half_at(
-        mesh: &mut M,
-        edge: EdgeKey,
-        m: VertexKey,
-    ) -> Result<(EdgeKey, EdgeKey), Error> {
-        // Remove the edge and insert two truncated edges in its place.
-        let (a, b) = edge.to_vertex_keys();
-        let (source, am, mb) = {
-            let mut mutation = Mutation::immediate(mesh.as_mut());
-            let source = mutation.remove_edge(edge).unwrap();
-            let am = mutation.insert_edge((a, m), source.geometry.clone())?;
-            let mb = mutation.insert_edge((m, b), source.geometry.clone())?;
-            (source, am, mb)
-        };
-        // Connect the new edges to each other and their leading edges.
-        {
-            let mut edge = mesh.as_mut().edge_mut(am).unwrap();
-            edge.next = Some(mb);
-            edge.previous = source.previous;
-            edge.face = source.face
-        }
-        {
-            let mut edge = mesh.as_mut().edge_mut(mb).unwrap();
-            edge.next = source.next;
-            edge.previous = Some(am);
-            edge.face = source.face;
-        }
-        if let Some(pa) = source.previous {
-            mesh.as_mut().edge_mut(pa).unwrap().next = Some(am);
-        }
-        if let Some(bn) = source.next {
-            mesh.as_mut().edge_mut(bn).unwrap().previous = Some(mb);
-        }
-        // Update the associated face, if any, because it may refer to the
-        // removed edge.
-        if let Some(face) = source.face {
-            mesh.as_mut().face_mut(face).unwrap().edge = am;
-        }
-        Ok((am, mb))
+        let EdgeView { mesh, key: ab, .. } = self;
+        let mut mutation = Mutation::immediate(mesh.as_mut());
+        let vertex = split(&mut mutation, ab)?;
+        Ok(VertexView::new(mutation.commit(), vertex))
     }
 }
 
@@ -391,43 +307,21 @@ where
     }
 }
 
-impl<M, G> EdgeView<M, G>
+impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
 where
-    M: AsRef<Mesh<G>> + AsMut<Mesh<G>>,
     G: Geometry + EdgeLateral,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(mut self, distance: T) -> Result<Self, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<EdgeView<&'a mut Mesh<G>, G>, Error>
     where
         G::Lateral: Mul<T>,
         ScaledEdgeLateral<G, T>: Clone,
         VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        if !self.is_boundary_edge() {
-            return Err(GraphError::TopologyConflict.into());
-        }
-        // Insert new vertices with the specified translation.
-        let (c, d) = {
-            let mut c = self.destination_vertex().geometry.clone();
-            let mut d = self.source_vertex().geometry.clone();
-            // Clone the geometry and translate it using the lateral normal,
-            // then insert the new vertex geometry and yield the vertex keys.
-            let translation = self.lateral()? * distance;
-            *c.as_position_mut() = c.as_position().clone() + translation.clone();
-            *d.as_position_mut() = d.as_position().clone() + translation;
-            let mut mutation = Mutation::immediate(self.mesh.as_mut());
-            (
-                // This is the point of no return; the mesh has been mutated.
-                // Unwrap results.
-                mutation.insert_vertex(c),
-                mutation.insert_vertex(d),
-            )
-        };
-        let edge = self.geometry.clone();
-        let cd = Mutation::immediate(self.mesh.as_mut())
-            .insert_edge((c, d), edge)
-            .unwrap();
-        Ok(self.join(cd).unwrap())
+        let EdgeView { mesh, key: ab, .. } = self;
+        let mut mutation = Mutation::immediate(mesh);
+        let edge = extrude(&mut mutation, ab, distance)?;
+        Ok(EdgeView::new(mutation.commit(), edge))
     }
 }
 
@@ -569,6 +463,7 @@ where
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct EdgeKeyTopology {
     key: EdgeKey,
     vertices: (VertexKey, VertexKey),
@@ -589,6 +484,162 @@ impl EdgeKeyTopology {
     pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
     }
+}
+
+pub(in graph) fn split<'a, M, G>(mutation: &mut M, ab: EdgeKey) -> Result<VertexKey, Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
+    G::Vertex: AsPosition,
+{
+    fn split_at_vertex<'a, M, G>(
+        mutation: &mut M,
+        ab: EdgeKey,
+        m: VertexKey,
+    ) -> Result<(EdgeKey, EdgeKey), Error>
+    where
+        M: ModalMutation<'a, G>,
+        G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
+        G::Vertex: AsPosition,
+    {
+        // Remove the edge and insert two truncated edges in its place.
+        let (a, b) = ab.to_vertex_keys();
+        let span = mutation.remove_edge(ab).unwrap();
+        let am = mutation.insert_edge((a, m), span.geometry.clone())?;
+        let mb = mutation.insert_edge((m, b), span.geometry.clone())?;
+        // Connect the new edges to each other and their leading edges.
+        {
+            let mut edge = mutation.as_mesh_mut().edge_mut(am).unwrap();
+            edge.next = Some(mb);
+            edge.previous = span.previous;
+            edge.face = span.face
+        }
+        {
+            let mut edge = mutation.as_mesh_mut().edge_mut(mb).unwrap();
+            edge.next = span.next;
+            edge.previous = Some(am);
+            edge.face = span.face;
+        }
+        if let Some(pa) = span.previous {
+            mutation.as_mesh_mut().edge_mut(pa).unwrap().next = Some(am);
+        }
+        if let Some(bn) = span.next {
+            mutation.as_mesh_mut().edge_mut(bn).unwrap().previous = Some(mb);
+        }
+        // Update the associated face, if any, because it may refer to the
+        // removed edge.
+        if let Some(face) = span.face {
+            mutation.as_mesh_mut().face_mut(face).unwrap().edge = am;
+        }
+        Ok((am, mb))
+    }
+
+    let (ba, m) = {
+        // Insert a new vertex at the midpoint.
+        let (ba, midpoint) = {
+            let edge = match mutation.as_mesh().edge(ab) {
+                Some(edge) => edge,
+                _ => return Err(GraphError::TopologyNotFound.into()),
+            };
+            let mut midpoint = edge.source_vertex().geometry.clone();
+            *midpoint.as_position_mut() = edge.midpoint()?;
+            (
+                edge.raw_opposite_edge().map(|opposite| opposite.key()),
+                midpoint,
+            )
+        };
+        (ba, mutation.insert_vertex(midpoint))
+    };
+    // Split the half-edges. This should not fail; unwrap the results.
+    split_at_vertex(mutation, ab, m).unwrap();
+    if let Some(ba) = ba {
+        split_at_vertex(mutation, ba, m).unwrap();
+    }
+    Ok(m)
+}
+
+pub(in graph) fn join<'a, M, G>(
+    mutation: &mut M,
+    source: EdgeKey,
+    destination: EdgeKey,
+) -> Result<EdgeKey, Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + Geometry,
+{
+    match (
+        mutation.as_mesh().edge(source),
+        mutation.as_mesh().edge(destination),
+    ) {
+        (Some(_), Some(_)) => {}
+        _ => return Err(GraphError::TopologyNotFound.into()),
+    }
+    let (a, b) = source.to_vertex_keys();
+    let (c, d) = destination.to_vertex_keys();
+    // At this point, we can assume the points a, b, c, and d exist in the
+    // mesh. Before mutating the mesh, ensure that existing interior edges
+    // are boundaries.
+    for edge in [a, b, c, d]
+        .perimeter()
+        .flat_map(|ab| mutation.as_mesh().edge(ab.into()))
+    {
+        if !edge.is_boundary_edge() {
+            return Err(GraphError::TopologyConflict.into());
+        }
+    }
+    // Insert a quad joining the edges. These operations should not fail;
+    // unwrap their results.
+    let (edge, face) = {
+        let source = mutation.as_mesh().edge(source).unwrap();
+        (
+            source.geometry.clone(),
+            source
+                .opposite_edge()
+                .face()
+                .map(|face| face.geometry.clone())
+                .unwrap_or_else(Default::default),
+        )
+    };
+    // TODO: Split the face to form triangles.
+    mutation.insert_face(&[a, b, c, d], (edge, face)).unwrap();
+    Ok(source)
+}
+
+pub(in graph) fn extrude<'a, M, G, T>(
+    mutation: &mut M,
+    ab: EdgeKey,
+    distance: T,
+) -> Result<EdgeKey, Error>
+where
+    M: ModalMutation<'a, G>,
+    G: 'a + Geometry + EdgeLateral,
+    G::Lateral: Mul<T>,
+    G::Vertex: AsPosition,
+    ScaledEdgeLateral<G, T>: Clone,
+    VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
+{
+    // Get the extruded geometry.
+    let (vertices, edge) = {
+        let edge = match mutation.as_mesh().edge(ab) {
+            Some(edge) => edge,
+            _ => return Err(GraphError::TopologyNotFound.into()),
+        };
+        if !edge.is_boundary_edge() {
+            return Err(GraphError::TopologyConflict.into());
+        }
+        let mut vertices = (
+            edge.destination_vertex().geometry.clone(),
+            edge.source_vertex().geometry.clone(),
+        );
+        let translation = edge.lateral()? * distance;
+        *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
+        *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
+        (vertices, edge.geometry.clone())
+    };
+    let c = mutation.insert_vertex(vertices.0);
+    let d = mutation.insert_vertex(vertices.1);
+    let cd = mutation.insert_edge((c, d), edge).unwrap();
+    Ok(join(mutation, ab, cd).unwrap())
 }
 
 #[cfg(test)]

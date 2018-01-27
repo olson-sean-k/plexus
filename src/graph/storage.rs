@@ -140,6 +140,15 @@ where
         }
     }
 
+    // This function isn't strictly necessary, because `HashMap::new` begins
+    // with a capacity of zero and does not allocate (and is used in
+    // `Storage::new`). However, `Storage` abstracts its underlying data
+    // structure, so the notion of an unallocated and empty container is
+    // explicit.
+    pub fn empty() -> Self {
+        Self::new()
+    }
+
     pub fn map_values_into<U, F>(self, mut f: F) -> Storage<U>
     where
         U: Topological<Key = T::Key>,

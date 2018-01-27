@@ -14,7 +14,7 @@ use geometry::Geometry;
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
 use graph::{GraphError, Perimeter};
 use graph::geometry::FaceCentroid;
-use graph::mutation::Mutation;
+use graph::mutation::{ModalMutation, Mutation};
 use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                       OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
@@ -227,6 +227,18 @@ where
             vertices: Storage::new(),
             edges: Storage::new(),
             faces: Storage::new(),
+        }
+    }
+
+    /// Creates an empty `Mesh`.
+    ///
+    /// Underlying storage has zero capacity and does not allocate until the
+    /// first insertion.
+    pub(in graph) fn empty() -> Self {
+        Mesh {
+            vertices: Storage::empty(),
+            edges: Storage::empty(),
+            faces: Storage::empty(),
         }
     }
 

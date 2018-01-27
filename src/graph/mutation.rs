@@ -1,5 +1,6 @@
 use failure::{Error, Fail};
 use std::collections::{HashMap, HashSet};
+use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
@@ -32,7 +33,14 @@ where
         }
     }
 
-    pub fn take(self) -> Option<Mesh<G>> {
+    pub fn take_immediate(self) -> Option<&'a mut Mesh<G>> {
+        match self {
+            Mode::Immediate(mesh) => Some(mesh),
+            _ => None,
+        }
+    }
+
+    pub fn take_batch(self) -> Option<Mesh<G>> {
         match self {
             Mode::Batch(mesh) => Some(mesh),
             _ => None,
@@ -60,6 +68,19 @@ where
     }
 }
 
+pub trait ModalMutation<'a, G>: Deref<Target = Mutation<'a, G>> + DerefMut
+where
+    G: 'a + Geometry,
+{
+    fn insert_face(
+        &mut self,
+        vertices: &[VertexKey],
+        geometry: (G::Edge, G::Face),
+    ) -> Result<FaceKey, Error>;
+
+    fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error>;
+}
+
 /// Mesh mutation.
 ///
 /// Mutates a `Mesh`. This type provides general operations that are supported
@@ -85,6 +106,18 @@ where
         BatchMutation::new(Mutation {
             mesh: Mode::Batch(mesh),
         })
+    }
+
+    pub fn replace(mesh: &'a mut Mesh<G>, replacement: Mesh<G>) -> ReplaceMutation<'a, G> {
+        ReplaceMutation::new(mesh, replacement)
+    }
+
+    pub fn as_mesh(&self) -> &Mesh<G> {
+        self.mesh.get()
+    }
+
+    pub fn as_mesh_mut(&mut self) -> &mut Mesh<G> {
+        self.mesh.get_mut()
     }
 }
 
@@ -257,6 +290,17 @@ where
         }
         Ok(())
     }
+
+    fn disconnect_face_interior(&mut self, face: FaceKey) -> Result<(), Error> {
+        for mut edge in self.mesh
+            .face_mut(face)
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .edges_mut()
+        {
+            edge.face = None;
+        }
+        Ok(())
+    }
 }
 
 /// Immediate mesh mutations.
@@ -279,17 +323,16 @@ where
         ImmediateMutation { mutation }
     }
 
-    // TODO: Is there some way to end the mutable borrow early?
-    //
-    //   pub fn commit(self) {}
+    pub fn commit(self) -> &'a mut Mesh<G> {
+        self.mutation.mesh.take_immediate().unwrap()
+    }
 }
 
-/// Face mutations.
-impl<'a, G> ImmediateMutation<'a, G>
+impl<'a, G> ModalMutation<'a, G> for ImmediateMutation<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub fn insert_face(
+    fn insert_face(
         &mut self,
         vertices: &[VertexKey],
         geometry: (G::Edge, G::Face),
@@ -322,27 +365,14 @@ where
         Ok(face)
     }
 
-    // TODO: This may need to interact with batch mutations. If a non-manifold
-    //       heals because of a face insertion, then a face removal could undo
-    //       that.  It may be necessary to update the errors tracked by
-    //       `BatchMutation` in this case. For now, restrict face removal to
-    //       immediate mutations.
-    // TODO: This should check to see if neighbors become non-manifold. For
-    //       example, imagine three triangles that share a vertex, with one
-    //       triangle sharing one side with each of its neighbors. Removing the
-    //       center triangle would result in two triangles connected by a
-    //       single point.
-    //
-    //       Technically, this is supported (exactly two faces connected by a
-    //       single vertex), but perhaps it should be rejected anyway.
-    pub fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error> {
-        for mut edge in self.mesh
-            .face_mut(face)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
-            .edges_mut()
-        {
-            edge.face = None;
-        }
+    // TODO: This should participate in consistency checks. Removing a face
+    //       could, for example, lead to singularities.
+    // TODO: Face removal raises questions about "empty regions". Should a mesh
+    //       be allowed to have "holes" in it? If not, what about orphaned
+    //       edges? If meshes need not be continuous, then "holes" should
+    //       probably be allowed.
+    fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error> {
+        self.disconnect_face_interior(face)?;
         Ok(self.mesh.faces.remove(&face).unwrap())
     }
 }
@@ -378,7 +408,7 @@ where
     G: 'a + Geometry,
 {
     mutation: Mutation<'a, G>,
-    non_manifold_vertices: HashMap<VertexKey, HashSet<FaceKey>>,
+    singularities: HashMap<VertexKey, HashSet<FaceKey>>,
 }
 
 impl<'a, G> BatchMutation<'a, G>
@@ -388,13 +418,13 @@ where
     fn new(mutation: Mutation<'a, G>) -> Self {
         BatchMutation {
             mutation: mutation,
-            non_manifold_vertices: HashMap::new(),
+            singularities: HashMap::new(),
         }
     }
 
     pub fn commit(self) -> Result<Mesh<G>, Error> {
-        let mesh = self.mutation.mesh.take().unwrap();
-        for (vertex, faces) in self.non_manifold_vertices {
+        let mesh = self.mutation.mesh.take_batch().unwrap();
+        for (vertex, faces) in self.singularities {
             // TODO: This will not detect exactly two faces joined by a single
             //       vertex. This is technically supported, but perhaps should
             //       be rejected.
@@ -417,12 +447,11 @@ where
     }
 }
 
-/// Face mutations.
-impl<'a, G> BatchMutation<'a, G>
+impl<'a, G> ModalMutation<'a, G> for BatchMutation<'a, G>
 where
     G: 'a + Geometry,
 {
-    pub fn insert_face(
+    fn insert_face(
         &mut self,
         vertices: &[VertexKey],
         geometry: (G::Edge, G::Face),
@@ -445,7 +474,7 @@ where
             .faces
             .insert_with_generator(Face::new(edges[0], geometry.1));
         if let Some(singularity) = singularity {
-            let faces = self.non_manifold_vertices
+            let faces = self.singularities
                 .entry(singularity.0)
                 .or_insert_with(Default::default);
             for face in singularity.1 {
@@ -457,6 +486,13 @@ where
         self.connect_face_exterior(&edges, (incoming, outgoing))
             .unwrap();
         Ok(face)
+    }
+
+    // TODO: This should participate in consistency checks. Removing a face
+    //       could, for example, lead to singularities.
+    fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error> {
+        self.disconnect_face_interior(face)?;
+        Ok(self.mesh.faces.remove(&face).unwrap())
     }
 }
 
@@ -472,6 +508,53 @@ where
 }
 
 impl<'a, G> DerefMut for BatchMutation<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mutation
+    }
+}
+
+pub struct ReplaceMutation<'a, G>
+where
+    G: 'a + Geometry,
+{
+    mesh: &'a mut Mesh<G>,
+    mutation: BatchMutation<'a, G>,
+}
+
+impl<'a, G> ReplaceMutation<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn new(mesh: &'a mut Mesh<G>, replacement: Mesh<G>) -> Self {
+        let mutant = mem::replace(mesh, replacement);
+        ReplaceMutation {
+            mesh: mesh,
+            mutation: Mutation::batch(mutant),
+        }
+    }
+
+    pub fn commit(self) -> Result<&'a mut Mesh<G>, Error> {
+        let ReplaceMutation { mesh, mutation } = self;
+        mem::replace(mesh, mutation.commit()?);
+        Ok(mesh)
+    }
+}
+
+impl<'a, G> Deref for ReplaceMutation<'a, G>
+where
+    G: 'a + Geometry,
+{
+    type Target = BatchMutation<'a, G>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.mutation
+    }
+}
+
+impl<'a, G> DerefMut for ReplaceMutation<'a, G>
 where
     G: 'a + Geometry,
 {
