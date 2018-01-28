@@ -33,14 +33,14 @@ where
         }
     }
 
-    pub fn take_immediate(self) -> Option<&'a mut Mesh<G>> {
+    pub fn immediate(self) -> Option<&'a mut Mesh<G>> {
         match self {
             Mode::Immediate(mesh) => Some(mesh),
             _ => None,
         }
     }
 
-    pub fn take_batch(self) -> Option<Mesh<G>> {
+    pub fn batch(self) -> Option<Mesh<G>> {
         match self {
             Mode::Batch(mesh) => Some(mesh),
             _ => None,
@@ -324,7 +324,7 @@ where
     }
 
     pub fn commit(self) -> &'a mut Mesh<G> {
-        self.mutation.mesh.take_immediate().unwrap()
+        self.mutation.mesh.immediate().unwrap()
     }
 }
 
@@ -423,7 +423,7 @@ where
     }
 
     pub fn commit(self) -> Result<Mesh<G>, Error> {
-        let mesh = self.mutation.mesh.take_batch().unwrap();
+        let mesh = self.mutation.mesh.batch().unwrap();
         for (vertex, faces) in self.singularities {
             // TODO: This will not detect exactly two faces joined by a single
             //       vertex. This is technically supported, but perhaps should
