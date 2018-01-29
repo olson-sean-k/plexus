@@ -33,14 +33,14 @@ where
         }
     }
 
-    pub fn immediate(self) -> Option<&'a mut Mesh<G>> {
+    pub fn into_immediate(self) -> Option<&'a mut Mesh<G>> {
         match self {
             Mode::Immediate(mesh) => Some(mesh),
             _ => None,
         }
     }
 
-    pub fn batch(self) -> Option<Mesh<G>> {
+    pub fn into_batch(self) -> Option<Mesh<G>> {
         match self {
             Mode::Batch(mesh) => Some(mesh),
             _ => None,
@@ -78,6 +78,10 @@ where
         geometry: (G::Edge, G::Face),
     ) -> Result<FaceKey, Error>;
 
+    // TODO: Face removal raises questions about "empty regions". Should a mesh
+    //       be allowed to have "holes" in it? If not, what about orphaned
+    //       edges? If meshes need not be continuous, then "holes" should
+    //       probably be allowed.
     fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error>;
 }
 
@@ -217,6 +221,13 @@ where
         }
         Ok(self.mesh.edges.remove(&edge).unwrap())
     }
+
+    fn remove_composite_edge(&mut self, edge: EdgeKey) -> Result<(Edge<G>, Edge<G>), Error> {
+        let (a, b) = edge.to_vertex_keys();
+        let edge = self.remove_edge((a, b).into())?;
+        let opposite = self.remove_edge((b, a).into())?;
+        Ok((edge, opposite))
+    }
 }
 
 /// Face mutations.
@@ -324,7 +335,7 @@ where
     }
 
     pub fn commit(self) -> &'a mut Mesh<G> {
-        self.mutation.mesh.immediate().unwrap()
+        self.mutation.mesh.into_immediate().unwrap()
     }
 }
 
@@ -365,14 +376,67 @@ where
         Ok(face)
     }
 
-    // TODO: This should participate in consistency checks. Removing a face
-    //       could, for example, lead to singularities.
-    // TODO: Face removal raises questions about "empty regions". Should a mesh
-    //       be allowed to have "holes" in it? If not, what about orphaned
-    //       edges? If meshes need not be continuous, then "holes" should
-    //       probably be allowed.
     fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error> {
+        let edges = {
+            let face = match self.mesh.face(face) {
+                Some(face) => face,
+                _ => return Err(GraphError::TopologyNotFound.into()),
+            };
+            // Iterate over the set of vertices shared between the face and all
+            // of its neighbors. These are potential singularities.
+            let vertices = face.faces()
+                .map(|face| {
+                    face.vertices()
+                        .map(|vertex| vertex.key())
+                        .collect::<HashSet<_>>()
+                })
+                .fold(
+                    face.vertices()
+                        .map(|vertex| vertex.key())
+                        .collect::<HashSet<_>>(),
+                    |intersection, vertices| {
+                        intersection.intersection(&vertices).cloned().collect()
+                    },
+                );
+            for vertex in vertices {
+                // Circulate (in order) over the neighboring faces of the
+                // potential singularity, ignoring the face to be removed.
+                // Count the number of gaps, where neighboring faces do not
+                // share any edges. Because a face is being ignored, exactly
+                // one gap is expected. If any additional gaps exist, then
+                // removal will create a singularity.
+                let vertex = self.mesh.vertex(vertex).unwrap();
+                let n = vertex
+                    .faces()
+                    .filter(|neighbor| neighbor.key() != face.key())
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .perimeter()
+                    .filter(|&(previous, next)| {
+                        let exterior = previous
+                            .edges()
+                            .map(|edge| edge.into_opposite_edge())
+                            .map(|edge| edge.key())
+                            .collect::<HashSet<_>>();
+                        let interior = next.edges().map(|edge| edge.key()).collect::<HashSet<_>>();
+                        exterior.intersection(&interior).count() == 0
+                    })
+                    .count();
+                if n > 1 {
+                    return Err(GraphError::TopologyConflict.into());
+                }
+            }
+            // Find any boundary edges. Once this face is removed, such edges
+            // will have no face on either side.
+            face.edges()
+                .flat_map(|edge| edge.into_boundary_edge())
+                .map(|edge| edge.key())
+                .collect::<Vec<_>>()
+        };
         self.disconnect_face_interior(face)?;
+        for edge in edges {
+            self.remove_composite_edge(edge).unwrap();
+        }
         Ok(self.mesh.faces.remove(&face).unwrap())
     }
 }
@@ -423,7 +487,7 @@ where
     }
 
     pub fn commit(self) -> Result<Mesh<G>, Error> {
-        let mesh = self.mutation.mesh.batch().unwrap();
+        let mesh = self.mutation.mesh.into_batch().unwrap();
         for (vertex, faces) in self.singularities {
             // TODO: This will not detect exactly two faces joined by a single
             //       vertex. This is technically supported, but perhaps should
@@ -491,7 +555,22 @@ where
     // TODO: This should participate in consistency checks. Removing a face
     //       could, for example, lead to singularities.
     fn remove_face(&mut self, face: FaceKey) -> Result<Face<G>, Error> {
+        let edges = {
+            let face = match self.mesh.face(face) {
+                Some(face) => face,
+                _ => return Err(GraphError::TopologyNotFound.into()),
+            };
+            // Find any boundary edges. Once this face is removed, such edges
+            // will have no face on either side.
+            face.edges()
+                .flat_map(|edge| edge.into_boundary_edge())
+                .map(|edge| edge.key())
+                .collect::<Vec<_>>()
+        };
         self.disconnect_face_interior(face)?;
+        for edge in edges {
+            self.remove_composite_edge(edge).unwrap();
+        }
         Ok(self.mesh.faces.remove(&face).unwrap())
     }
 }

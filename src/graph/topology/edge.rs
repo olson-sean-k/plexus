@@ -291,7 +291,7 @@ where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
     {
         let EdgeView { mesh, key: ab, .. } = self;
-        let mut mutation = Mutation::immediate(mesh.as_mut());
+        let mut mutation = Mutation::immediate(mesh);
         let vertex = split(&mut mutation, ab)?;
         Ok(VertexView::new(mutation.commit(), vertex))
     }

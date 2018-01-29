@@ -825,12 +825,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nalgebra::{Point3, Vector3};
+    use nalgebra::{Point2, Point3, Vector3};
     use num::Zero;
+    use std::collections::HashSet;
 
     use generate::*;
     use geometry::*;
     use graph::*;
+    use graph::mutation::{ModalMutation, Mutation};
 
     #[test]
     fn collect_topology_into_mesh() {
@@ -899,7 +901,8 @@ mod tests {
 
     #[test]
     fn error_on_singularity_mesh() {
-        // Construct a mesh with three triangles sharing a single vertex.
+        // Construct a mesh with three non-neighboring triangles sharing a
+        // single vertex.
         let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
             vec![0, 1, 2, 0, 3, 4, 0, 5, 6],
             vec![
@@ -921,6 +924,45 @@ mod tests {
             .unwrap()
         {
             GraphError::TopologyMalformed => true,
+            _ => false,
+        });
+
+        // Construct a mesh with three triangles forming a rectangle, where one
+        // vertex (at the origin) is shared by all three triangles.
+        let mut mesh = Mesh::<Point2<i32>>::from_raw_buffers(
+            vec![0, 1, 3, 1, 4, 3, 1, 2, 4],
+            vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
+            3,
+        ).unwrap();
+        // TODO: Create a shared testing geometry that allows topology to be
+        //       marked and more easily located. Finding very specific geometry
+        //       like this is cumbersome.
+        // Find the "center" triangle and use an immediate mutation to remove
+        // it. This creates a singularity, with the two remaining triangles
+        // sharing no edges but having a single common vertex.
+        let geometry = &[(0, 0), (1, 1), (-1, 1)]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        let key = mesh.faces()
+            .find(|face| {
+                face.vertices()
+                    .map(|vertex| vertex.geometry.clone())
+                    .map(|position| (position.x, position.y))
+                    .collect::<HashSet<_>>() == *geometry
+            })
+            .unwrap()
+            .key();
+        let mut mutation = Mutation::immediate(&mut mesh);
+        assert!(match *mutation
+            .remove_face(key)
+            .err()
+            .unwrap()
+            .root_cause()
+            .downcast_ref::<GraphError>()
+            .unwrap()
+        {
+            GraphError::TopologyConflict => true,
             _ => false,
         });
     }
