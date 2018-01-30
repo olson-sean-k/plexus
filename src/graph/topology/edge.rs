@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use failure::Error;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -7,9 +8,9 @@ use geometry::convert::AsPosition;
 use graph::{GraphError, Perimeter};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
-use graph::mesh::{Edge, Mesh};
+use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::mutation::{ModalMutation, Mutation};
-use graph::storage::{EdgeKey, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
                       VertexView, View};
 
@@ -131,6 +132,22 @@ where
 
     pub fn is_boundary_edge(&self) -> bool {
         self.face().is_none()
+    }
+
+    pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G> {
+        let (a, b) = self.key.to_vertex_keys();
+        VertexCirculator::new(self.mesh.as_ref(), ArrayVec::from([b, a]))
+    }
+
+    pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G> {
+        FaceCirculator::new(
+            self.mesh.as_ref(),
+            self.face()
+                .iter()
+                .map(|face| face.key())
+                .chain(self.opposite_edge().face().map(|face| face.key()))
+                .collect(),
+        )
     }
 
     // Resolve the `M` parameter to a concrete reference.
@@ -460,6 +477,136 @@ where
         key: <Self::Topology as Topological>::Key,
     ) -> Self {
         OrphanEdgeView::new(topology, key)
+    }
+}
+
+pub struct VertexCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    mesh: M,
+    vertices: ArrayVec<[VertexKey; 2]>,
+    phantom: PhantomData<G>,
+}
+
+impl<M, G> VertexCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    fn new(mesh: M, vertices: ArrayVec<[VertexKey; 2]>) -> Self {
+        VertexCirculator {
+            mesh,
+            vertices,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, G> Iterator for VertexCirculator<&'a Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = VertexView<&'a Mesh<G>, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.vertices
+            .pop()
+            .map(|vertex| VertexView::new(self.mesh, vertex))
+    }
+}
+
+impl<'a, G> Iterator for VertexCirculator<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = OrphanVertexView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.vertices.pop().map(|vertex| {
+            OrphanVertexView::new(
+                unsafe {
+                    use std::mem;
+
+                    // There is no way to bind the anonymous lifetime of this
+                    // function to `Self::Item`. This is problematic for the
+                    // call to `get_mut`, which requires autoref. However, this
+                    // should be safe, because the use of this iterator
+                    // requires a mutable borrow of the source mesh with
+                    // lifetime `'a`. Therefore, the (disjoint) geometry data
+                    // within the mesh should also be valid over the lifetime
+                    // '`a'.
+                    mem::transmute::<_, &'a mut Vertex<G>>(
+                        self.mesh.vertices.get_mut(&vertex).unwrap(),
+                    )
+                },
+                vertex,
+            )
+        })
+    }
+}
+
+pub struct FaceCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    mesh: M,
+    faces: ArrayVec<[FaceKey; 2]>,
+    phantom: PhantomData<G>,
+}
+
+impl<M, G> FaceCirculator<M, G>
+where
+    M: AsRef<Mesh<G>>,
+    G: Geometry,
+{
+    fn new(mesh: M, faces: ArrayVec<[FaceKey; 2]>) -> Self {
+        FaceCirculator {
+            mesh,
+            faces,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, G> Iterator for FaceCirculator<&'a Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = FaceView<&'a Mesh<G>, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.faces.pop().map(|face| FaceView::new(self.mesh, face))
+    }
+}
+
+impl<'a, G> Iterator for FaceCirculator<&'a mut Mesh<G>, G>
+where
+    G: Geometry,
+{
+    type Item = OrphanFaceView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.faces.pop().map(|face| {
+            OrphanFaceView::new(
+                unsafe {
+                    use std::mem;
+
+                    // There is no way to bind the anonymous lifetime of this
+                    // function to `Self::Item`. This is problematic for the
+                    // call to `get_mut`, which requires autoref. However, this
+                    // should be safe, because the use of this iterator
+                    // requires a mutable borrow of the source mesh with
+                    // lifetime `'a`. Therefore, the (disjoint) geometry data
+                    // within the mesh should also be valid over the lifetime
+                    // '`a'.
+                    mem::transmute::<_, &'a mut Face<G>>(self.mesh.faces.get_mut(&face).unwrap())
+                },
+                face,
+            )
+        })
     }
 }
 
