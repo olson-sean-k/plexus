@@ -13,8 +13,8 @@
 // accessor functions MUST yield orphans (or not exist at all).
 
 use geometry::{Attribute, Geometry};
-use graph::Mesh;
 use graph::storage::OpaqueKey;
+use graph::Mesh;
 
 mod edge;
 mod face;

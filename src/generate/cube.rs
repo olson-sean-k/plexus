@@ -1,11 +1,13 @@
 use decorum::R32;
 use num::{One, Zero};
 
-use generate::Half;
-use generate::generate::{Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator,
-                         PositionGenerator, PositionPolygonGenerator, PositionVertexGenerator,
-                         TextureGenerator, TexturePolygonGenerator, VertexGenerator};
+use generate::generate::{
+    Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
+    PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
+    VertexGenerator,
+};
 use generate::topology::{MapVerticesInto, Quad};
+use generate::Half;
 use geometry::{Duplet, Triplet};
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]

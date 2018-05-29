@@ -4,9 +4,9 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
-use graph::{GraphError, Mesh, Perimeter};
 use graph::mesh::{Connectivity, Edge, Face, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
+use graph::{GraphError, Mesh, Perimeter};
 
 enum Mode<I = (), B = ()> {
     Immediate(I),
@@ -131,9 +131,7 @@ where
     G: 'a + Geometry,
 {
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.mesh
-            .vertices
-            .insert(Vertex::new(geometry))
+        self.mesh.vertices.insert(Vertex::new(geometry))
     }
 }
 
@@ -303,7 +301,8 @@ where
     }
 
     fn disconnect_face_interior(&mut self, face: FaceKey) -> Result<(), Error> {
-        for mut edge in self.mesh
+        for mut edge in self
+            .mesh
             .face_mut(face)
             .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .edges_mut()
@@ -367,9 +366,7 @@ where
                     .0
             })
             .collect::<Vec<_>>();
-        let face = self.mesh
-            .faces
-            .insert(Face::new(edges[0], geometry.1));
+        let face = self.mesh.faces.insert(Face::new(edges[0], geometry.1));
         self.connect_face_interior(&edges, face).unwrap();
         self.connect_face_exterior(&edges, (incoming, outgoing))
             .unwrap();
@@ -384,7 +381,8 @@ where
             };
             // Iterate over the set of vertices shared between the face and all
             // of its neighbors. These are potential singularities.
-            let vertices = face.faces()
+            let vertices = face
+                .faces()
                 .map(|face| {
                     face.vertices()
                         .map(|vertex| vertex.key())
@@ -534,11 +532,10 @@ where
                     .0
             })
             .collect::<Vec<_>>();
-        let face = self.mesh
-            .faces
-            .insert(Face::new(edges[0], geometry.1));
+        let face = self.mesh.faces.insert(Face::new(edges[0], geometry.1));
         if let Some(singularity) = singularity {
-            let faces = self.singularities
+            let faces = self
+                .singularities
                 .entry(singularity.0)
                 .or_insert_with(Default::default);
             for face in singularity.1 {

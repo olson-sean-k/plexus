@@ -320,7 +320,8 @@ where
                 .into_iter()
                 .map(|triangle| triangle.into())
                 .collect(),
-            Polygon::Quad(quad) => quad.into_subdivisions()
+            Polygon::Quad(quad) => quad
+                .into_subdivisions()
                 .into_iter()
                 .map(|quad| quad.into())
                 .collect(),

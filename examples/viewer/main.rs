@@ -15,8 +15,10 @@ mod camera;
 mod pipeline;
 mod renderer;
 
+use glutin::{
+    ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
+};
 use nalgebra::{Matrix4, Point3, Scalar};
-use glutin::{ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent};
 use plexus::buffer::MeshBuffer;
 use plexus::generate::sphere;
 use plexus::geometry::{Attribute, Geometry};

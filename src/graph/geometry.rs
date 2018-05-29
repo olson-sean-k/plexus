@@ -7,11 +7,11 @@
 use failure::Error;
 use std::ops::{Add, Sub};
 
-use geometry::Geometry;
+use self::alias::*;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
+use geometry::Geometry;
 use graph::topology::{EdgeRef, FaceRef};
-use self::alias::*;
 
 pub trait FaceNormal: Geometry {
     type Normal;
@@ -30,7 +30,8 @@ where
     type Normal = <<VertexPosition<G> as Sub>::Output as Cross>::Output;
 
     fn normal(face: FaceRef<Self>) -> Result<Self::Normal, Error> {
-        let positions = face.vertices()
+        let positions = face
+            .vertices()
             .take(3)
             .map(|vertex| vertex.geometry.as_position().clone())
             .collect::<Vec<_>>();
@@ -93,7 +94,10 @@ where
     G: Geometry,
     G::Vertex: AsPosition,
     VertexPosition<G>: Clone
-        + Add<<<VertexPosition<G> as Sub>::Output as Project>::Output, Output = VertexPosition<G>>
+        + Add<
+            <<VertexPosition<G> as Sub>::Output as Project>::Output,
+            Output = VertexPosition<G>,
+        >
         + Sub,
     <VertexPosition<G> as Sub>::Output: Normalize + Project,
 {
@@ -102,7 +106,8 @@ where
     fn lateral(edge: EdgeRef<Self>) -> Result<Self::Lateral, Error> {
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
-        let c = edge.opposite_edge()
+        let c = edge
+            .opposite_edge()
             .previous_edge()
             .destination_vertex()
             .geometry

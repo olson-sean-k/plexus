@@ -88,13 +88,13 @@ mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
     use decorum::{Finite, NotNan, Ordered, Primitive};
 
-    use geometry::{Duplet, Triplet};
     use geometry::convert::*;
+    use geometry::{Duplet, Triplet};
 
     // TODO: Implement `FromGeometry` for proxy types via specialization.
     // TODO: Implement these conversions for two-dimensional points.
     macro_rules! ordered {
-        (geometry => $g:ident, proxy => $p:ident) => {
+        (geometry => $g:ident,proxy => $p:ident) => {
             impl<T> FromGeometry<$g<$p<T>>> for $g<T>
             where
                 T: BaseFloat + BaseNum + Primitive,
@@ -259,13 +259,13 @@ mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::{Float, NumCast, ToPrimitive};
 
-    use geometry::{Duplet, Triplet};
     use geometry::convert::*;
+    use geometry::{Duplet, Triplet};
 
     // TODO: Implement `FromGeometry` for proxy types via specialization.
     // TODO: Implement these conversions for two-dimensional points.
     macro_rules! ordered {
-        (geometry => $g:ident, proxy => $p:ident) => {
+        (geometry => $g:ident,proxy => $p:ident) => {
             impl<T> FromGeometry<$g<$p<T>>> for $g<T>
             where
                 T: Float + Primitive + Scalar,

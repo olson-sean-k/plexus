@@ -86,8 +86,9 @@ where
 
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
-    use cgmath::{ApproxEq, BaseFloat, BaseNum, EuclideanSpace, InnerSpace, Point2, Point3,
-                 Vector2, Vector3};
+    use cgmath::{
+        ApproxEq, BaseFloat, BaseNum, EuclideanSpace, InnerSpace, Point2, Point3, Vector2, Vector3,
+    };
     use num::NumCast;
     use std::ops::{AddAssign, MulAssign};
 
@@ -249,8 +250,8 @@ mod feature_geometry_cgmath {
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
     use alga::general::Real;
-    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use nalgebra::core::Matrix;
+    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::{Float, Num, NumCast};
     use std::ops::{AddAssign, MulAssign};
 

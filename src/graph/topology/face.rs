@@ -2,16 +2,18 @@ use failure::Error;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::{GraphError, Perimeter};
-use graph::geometry::{FaceCentroid, FaceNormal};
+use geometry::Geometry;
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
+use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::mutation::{ModalMutation, Mutation};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{edge, EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView,
-                      OrphanView, Topological, VertexView, View};
+use graph::topology::{
+    edge, EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, OrphanView, Topological,
+    VertexView, View,
+};
+use graph::{GraphError, Perimeter};
 
 /// Do **not** use this type directly. Use `FaceRef` and `FaceMut` instead.
 ///
@@ -486,11 +488,13 @@ where
     }
 
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(edge) = self.inner
+        while let Some(edge) = self
+            .inner
             .next()
             .map(|edge| self.inner.face.mesh.as_ref().edges.get(&edge).unwrap())
         {
-            if let Some(face) = edge.opposite
+            if let Some(face) = edge
+                .opposite
                 .map(|opposite| self.inner.face.mesh.as_ref().edges.get(&opposite).unwrap())
                 .and_then(|opposite| opposite.face)
             {
@@ -564,7 +568,8 @@ where
             Some(face) => face,
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
-        let perimeter = face.edges()
+        let perimeter = face
+            .edges()
             .map(|edge| (edge.vertex, edge.next_edge().vertex))
             .collect::<Vec<_>>();
         if perimeter.len() <= 3 {
@@ -672,10 +677,12 @@ where
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
         let translation = face.normal()? * distance;
-        let sources = face.vertices()
+        let sources = face
+            .vertices()
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
-        let destinations = face.vertices()
+        let destinations = face
+            .vertices()
             .map(|vertex| {
                 let mut geometry = vertex.geometry.clone();
                 *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();

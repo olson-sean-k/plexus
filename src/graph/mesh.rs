@@ -6,18 +6,22 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use BoolExt;
 use buffer::MeshBuffer;
-use generate::{self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices,
-               MapVerticesInto, Quad};
-use geometry::Geometry;
+use generate::{
+    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
+    Quad,
+};
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
-use graph::{GraphError, Perimeter};
+use geometry::Geometry;
 use graph::geometry::FaceCentroid;
 use graph::mutation::{ModalMutation, Mutation};
 use graph::storage::{self, EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
-                      OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
+use graph::topology::{
+    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut, OrphanVertexMut, OrphanView,
+    Topological, VertexMut, VertexRef, View,
+};
+use graph::{GraphError, Perimeter};
+use BoolExt;
 
 // TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
 #[derivative(Debug, Hash)]
@@ -26,7 +30,8 @@ pub struct Vertex<G>
 where
     G: Geometry,
 {
-    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Vertex,
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Vertex,
     pub(super) edge: Option<EdgeKey>,
 }
 
@@ -71,7 +76,8 @@ pub struct Edge<G>
 where
     G: Geometry,
 {
-    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Edge,
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Edge,
     pub(super) vertex: VertexKey,
     pub(super) opposite: Option<EdgeKey>,
     pub(super) next: Option<EdgeKey>,
@@ -128,7 +134,8 @@ pub struct Face<G>
 where
     G: Geometry,
 {
-    #[derivative(Debug = "ignore", Hash = "ignore")] pub geometry: G::Face,
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Face,
     pub(super) edge: EdgeKey,
 }
 
@@ -292,9 +299,11 @@ where
             }
             let mut perimeter = Vec::with_capacity(arity);
             for index in face {
-                perimeter.push(*vertices
-                    .get(index)
-                    .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?);
+                perimeter.push(
+                    *vertices
+                        .get(index)
+                        .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?,
+                );
             }
             mutation.insert_face(&perimeter, Default::default())?;
         }
@@ -419,7 +428,8 @@ where
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
     {
-        let faces = self.faces
+        let faces = self
+            .faces
             .keys()
             .map(|key| FaceKey::from(*key))
             .collect::<Vec<_>>();
@@ -624,7 +634,8 @@ where
             if let Some((vertex, _)) = outgoing.next() {
                 outgoing.next().map_or_else(
                     || {
-                        let faces = self.vertex(*vertex)
+                        let faces = self
+                            .vertex(*vertex)
                             .unwrap()
                             .faces()
                             .map(|face| face.key())
@@ -831,8 +842,8 @@ mod tests {
 
     use generate::*;
     use geometry::*;
-    use graph::*;
     use graph::mutation::{ModalMutation, Mutation};
+    use graph::*;
 
     #[test]
     fn collect_topology_into_mesh() {
@@ -888,7 +899,8 @@ mod tests {
             3,
         );
 
-        assert!(match *mesh.err()
+        assert!(match *mesh
+            .err()
             .unwrap()
             .root_cause()
             .downcast_ref::<GraphError>()
@@ -917,7 +929,8 @@ mod tests {
             3,
         );
 
-        assert!(match *mesh.err()
+        assert!(match *mesh
+            .err()
             .unwrap()
             .root_cause()
             .downcast_ref::<GraphError>()
@@ -944,7 +957,8 @@ mod tests {
             .iter()
             .cloned()
             .collect::<HashSet<_>>();
-        let key = mesh.faces()
+        let key = mesh
+            .faces()
             .find(|face| {
                 face.vertices()
                     .map(|vertex| vertex.geometry.clone())

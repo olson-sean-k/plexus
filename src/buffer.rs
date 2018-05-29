@@ -50,13 +50,15 @@ use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices,
-               MapVerticesInto};
+use generate::{
+    Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
+};
 use geometry::convert::IntoGeometry;
 
 #[derive(Debug, Fail)]
 pub enum BufferError {
-    #[fail(display = "index into vertex data out of bounds")] IndexOutOfBounds,
+    #[fail(display = "index into vertex data out of bounds")]
+    IndexOutOfBounds,
 }
 
 /// Linear buffer of mesh data.

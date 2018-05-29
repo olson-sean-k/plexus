@@ -120,8 +120,7 @@ pub trait IndexGenerator {
     type State: Default;
 }
 
-pub trait IndexPolygonGenerator
-    : IndexGenerator + PolygonGenerator + VertexGenerator {
+pub trait IndexPolygonGenerator: IndexGenerator + PolygonGenerator + VertexGenerator {
     type Output: Polygonal;
 
     fn polygon_with_index_with(

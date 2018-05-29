@@ -3,16 +3,17 @@ use failure::Error;
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use geometry::Geometry;
 use geometry::convert::AsPosition;
-use graph::{GraphError, Perimeter};
-use graph::geometry::{EdgeLateral, EdgeMidpoint};
+use geometry::Geometry;
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
+use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::mutation::{ModalMutation, Mutation};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological,
-                      VertexView, View};
+use graph::topology::{
+    FaceView, OrphanFaceView, OrphanVertexView, OrphanView, Topological, VertexView, View,
+};
+use graph::{GraphError, Perimeter};
 
 /// Do **not** use this type directly. Use `EdgeRef` and `EdgeMut` instead.
 ///
@@ -794,8 +795,8 @@ mod tests {
     use nalgebra::{Point2, Point3};
 
     use generate::*;
-    use geometry::*;
     use geometry::convert::IntoGeometry;
+    use geometry::*;
     use graph::*;
 
     fn find_vertex_with_geometry<G, T>(mesh: &Mesh<G>, geometry: T) -> Option<VertexKey>

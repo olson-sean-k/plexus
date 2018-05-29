@@ -4,8 +4,9 @@ use std::ops::{Deref, DerefMut};
 use geometry::Geometry;
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological,
-                      View};
+use graph::topology::{
+    EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanView, Topological, View,
+};
 
 /// Do **not** use this type directly. Use `VertexRef` and `VertexMut` instead.
 ///
@@ -354,7 +355,8 @@ where
     }
 
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(edge) = self.inner
+        while let Some(edge) = self
+            .inner
             .next()
             .map(|edge| self.inner.vertex.mesh.as_ref().edges.get(&edge).unwrap())
         {

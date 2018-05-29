@@ -1,13 +1,14 @@
 use decorum::{R32, Real};
-use num::{NumCast, One};
 use num::traits::FloatConst;
+use num::{NumCast, One};
 use std::cmp;
 
-use generate::Half;
-use generate::generate::{IndexGenerator, IndexPolygonGenerator, PolygonGenerator,
-                         PositionGenerator, PositionPolygonGenerator, PositionVertexGenerator,
-                         VertexGenerator};
+use generate::generate::{
+    IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
+    PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
+};
 use generate::topology::{Polygon, Quad, Triangle};
+use generate::Half;
 use geometry::Triplet;
 
 #[derive(Clone, Copy)]
@@ -54,7 +55,8 @@ impl UvSphere {
         v: usize,
     ) -> Triplet<R32> {
         let u = (<R32 as NumCast>::from(u).unwrap() / <R32 as NumCast>::from(self.nu).unwrap())
-            * R32::PI() * 2.0;
+            * R32::PI()
+            * 2.0;
         let v = (<R32 as NumCast>::from(v).unwrap() / <R32 as NumCast>::from(self.nv).unwrap())
             * R32::PI();
         Triplet(

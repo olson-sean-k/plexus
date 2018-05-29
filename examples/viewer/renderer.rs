@@ -1,8 +1,8 @@
-use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
 use gfx::format::{DepthStencil, Rgba8};
 use gfx::handle::{DepthStencilView, RenderTargetView};
 use gfx::state::Rasterizer;
 use gfx::traits::FactoryExt;
+use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
 use gfx_device_gl;
 use gfx_window_glutin;
 use glutin::{GlContext, GlWindow};
@@ -132,7 +132,8 @@ where
     pub fn set_transform(&mut self, transform: &Transform) -> Result<(), ()> {
         self.data.camera = transform.camera;
         self.data.model = transform.model;
-        match self.encoder
+        match self
+            .encoder
             .update_buffer(&self.data.transform, &[*transform], 0)
         {
             Ok(_) => Ok(()),
@@ -141,7 +142,8 @@ where
     }
 
     pub fn draw_mesh_buffer(&mut self, buffer: &MeshBuffer<u32, Vertex>) {
-        let (buffer, slice) = self.factory
+        let (buffer, slice) = self
+            .factory
             .create_vertex_buffer_with_slice(buffer.as_vertex_slice(), buffer.as_index_slice());
         self.data.buffer = buffer;
         self.encoder.draw(&slice, &self.state, &self.data);

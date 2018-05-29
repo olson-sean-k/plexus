@@ -4,8 +4,8 @@ extern crate plexus;
 
 use decorum::R32;
 use nalgebra::{Point2, Point3};
-use plexus::generate::{self, HashIndexer};
 use plexus::generate::cube::{Cube, Plane};
+use plexus::generate::{self, HashIndexer};
 use plexus::prelude::*;
 
 fn map_unit_uv(position: Point3<R32>, plane: Plane, unit: R32) -> Point2<R32> {
