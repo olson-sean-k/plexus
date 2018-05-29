@@ -133,7 +133,7 @@ where
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.mesh
             .vertices
-            .insert_with_generator(Vertex::new(geometry))
+            .insert(Vertex::new(geometry))
     }
 }
 
@@ -369,7 +369,7 @@ where
             .collect::<Vec<_>>();
         let face = self.mesh
             .faces
-            .insert_with_generator(Face::new(edges[0], geometry.1));
+            .insert(Face::new(edges[0], geometry.1));
         self.connect_face_interior(&edges, face).unwrap();
         self.connect_face_exterior(&edges, (incoming, outgoing))
             .unwrap();
@@ -536,7 +536,7 @@ where
             .collect::<Vec<_>>();
         let face = self.mesh
             .faces
-            .insert_with_generator(Face::new(edges[0], geometry.1));
+            .insert(Face::new(edges[0], geometry.1));
         if let Some(singularity) = singularity {
             let faces = self.singularities
                 .entry(singularity.0)

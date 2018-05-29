@@ -15,7 +15,7 @@ use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoIn
 use graph::{GraphError, Perimeter};
 use graph::geometry::FaceCentroid;
 use graph::mutation::{ModalMutation, Mutation};
-use graph::storage::{EdgeKey, FaceKey, Storage, StorageIter, StorageIterMut, VertexKey};
+use graph::storage::{self, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdgeMut, OrphanFaceMut,
                       OrphanVertexMut, OrphanView, Topological, VertexMut, VertexRef, View};
 
@@ -327,8 +327,8 @@ where
     }
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
-    pub fn vertices(&self) -> MeshIter<VertexRef<G>, G> {
-        MeshIter::new(self, self.vertices.iter())
+    pub fn vertices(&self) -> Iter<VertexRef<G>, G> {
+        Iter::new(self, self.vertices.iter())
     }
 
     /// Gets an iterator of orphan views over the vertices in the mesh.
@@ -336,8 +336,8 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
-    pub fn vertices_mut(&mut self) -> MeshIterMut<OrphanVertexMut<G>, G> {
-        MeshIterMut::new(self.vertices.iter_mut())
+    pub fn vertices_mut(&mut self) -> IterMut<OrphanVertexMut<G>, G> {
+        IterMut::new(self.vertices.iter_mut())
     }
 
     /// Gets the number of edges in the mesh.
@@ -364,8 +364,8 @@ where
     }
 
     /// Gets an iterator of immutable views over the edges in the mesh.
-    pub fn edges(&self) -> MeshIter<EdgeRef<G>, G> {
-        MeshIter::new(self, self.edges.iter())
+    pub fn edges(&self) -> Iter<EdgeRef<G>, G> {
+        Iter::new(self, self.edges.iter())
     }
 
     /// Gets an iterator of orphan views over the edges in the mesh.
@@ -373,8 +373,8 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
-    pub fn edges_mut(&mut self) -> MeshIterMut<OrphanEdgeMut<G>, G> {
-        MeshIterMut::new(self.edges.iter_mut())
+    pub fn edges_mut(&mut self) -> IterMut<OrphanEdgeMut<G>, G> {
+        IterMut::new(self.edges.iter_mut())
     }
 
     /// Gets the number of faces in the mesh.
@@ -401,8 +401,8 @@ where
     }
 
     /// Gets an iterator of immutable views over the faces in the mesh.
-    pub fn faces(&self) -> MeshIter<FaceRef<G>, G> {
-        MeshIter::new(self, self.faces.iter())
+    pub fn faces(&self) -> Iter<FaceRef<G>, G> {
+        Iter::new(self, self.faces.iter())
     }
 
     /// Gets an iterator of orphan views over the faces in the mesh.
@@ -410,8 +410,8 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
-    pub fn faces_mut(&mut self) -> MeshIterMut<OrphanFaceMut<G>, G> {
-        MeshIterMut::new(self.faces.iter_mut())
+    pub fn faces_mut(&mut self) -> IterMut<OrphanFaceMut<G>, G> {
+        IterMut::new(self.faces.iter_mut())
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
@@ -742,30 +742,30 @@ where
     }
 }
 
-pub struct MeshIter<'a, T, G>
+pub struct Iter<'a, T, G>
 where
     T: 'a + View<&'a Mesh<G>, G>,
     T::Topology: 'a,
     G: 'a + Geometry,
 {
     mesh: &'a Mesh<G>,
-    input: StorageIter<'a, T::Topology>,
+    input: storage::Iter<'a, T::Topology>,
 }
 
-impl<'a, T, G> MeshIter<'a, T, G>
+impl<'a, T, G> Iter<'a, T, G>
 where
     T: View<&'a Mesh<G>, G>,
     G: Geometry,
 {
-    fn new(mesh: &'a Mesh<G>, input: StorageIter<'a, T::Topology>) -> Self {
-        MeshIter {
+    fn new(mesh: &'a Mesh<G>, input: storage::Iter<'a, T::Topology>) -> Self {
+        Iter {
             mesh: mesh,
             input: input,
         }
     }
 }
 
-impl<'a, T, G> Iterator for MeshIter<'a, T, G>
+impl<'a, T, G> Iterator for Iter<'a, T, G>
 where
     T: View<&'a Mesh<G>, G>,
     G: Geometry,
@@ -779,25 +779,25 @@ where
     }
 }
 
-pub struct MeshIterMut<'a, T, G>
+pub struct IterMut<'a, T, G>
 where
     T: 'a + OrphanView<'a, G>,
     G: 'a + Geometry,
 {
-    input: StorageIterMut<'a, T::Topology>,
+    input: storage::IterMut<'a, T::Topology>,
 }
 
-impl<'a, T, G> MeshIterMut<'a, T, G>
+impl<'a, T, G> IterMut<'a, T, G>
 where
     T: OrphanView<'a, G>,
     G: Geometry,
 {
-    fn new(input: StorageIterMut<'a, T::Topology>) -> Self {
-        MeshIterMut { input: input }
+    fn new(input: storage::IterMut<'a, T::Topology>) -> Self {
+        IterMut { input: input }
     }
 }
 
-impl<'a, T, G> Iterator for MeshIterMut<'a, T, G>
+impl<'a, T, G> Iterator for IterMut<'a, T, G>
 where
     T: OrphanView<'a, G>,
     G: Geometry,

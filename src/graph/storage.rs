@@ -1,70 +1,51 @@
-/// Storage for topological data in a mesh.
+//! Storage for topological data in a mesh.
 
-use std::collections::HashMap;
-use std::collections::hash_map::{Iter, IterMut};
+use std::collections::{hash_map, HashMap};
 use std::hash::Hash;
-use std::ops::{Deref, DerefMut};
 
 use graph::topology::Topological;
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct Key(u64);
+pub trait ImplicitKey: Copy + Default + Sized {
+    fn into_next_key(self) -> Self;
+}
 
-impl Deref for Key {
-    type Target = u64;
+impl ImplicitKey for () {
+    fn into_next_key(self) -> Self {}
+}
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl ImplicitKey for u64 {
+    fn into_next_key(self) -> Self {
+        self + 1
     }
 }
 
-impl DerefMut for Key {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+pub trait OpaqueKey: Copy + Sized {
+    type Inner: Copy + Eq + Hash + Into<Self>;
+    type Implicit: ImplicitKey;
 
-pub trait Generator: Copy + Default {
-    fn next(&self) -> Self;
-}
-
-impl Generator for () {
-    fn next(&self) -> Self {}
-}
-
-impl Generator for Key {
-    fn next(&self) -> Self {
-        Key(**self + 1)
-    }
-}
-
-pub trait OpaqueKey: Sized {
-    type RawKey: Copy + Eq + Hash + Into<Self>;
-    type Generator: Generator;
-
-    fn to_inner(&self) -> Self::RawKey;
+    fn into_inner(self) -> Self::Inner;
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct VertexKey(Key);
+pub struct VertexKey(u64);
 
-impl From<Key> for VertexKey {
-    fn from(key: Key) -> Self {
+impl From<u64> for VertexKey {
+    fn from(key: u64) -> Self {
         VertexKey(key)
     }
 }
 
 impl OpaqueKey for VertexKey {
-    type RawKey = Key;
-    type Generator = Key;
+    type Inner = u64;
+    type Implicit = u64;
 
-    fn to_inner(&self) -> Self::RawKey {
+    fn into_inner(self) -> Self::Inner {
         self.0
     }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct EdgeKey(Key, Key);
+pub struct EdgeKey(u64, u64);
 
 impl EdgeKey {
     // TODO: This may be useful in some existing code that constructs the
@@ -80,53 +61,79 @@ impl EdgeKey {
 }
 
 impl OpaqueKey for EdgeKey {
-    type RawKey = (Key, Key);
-    type Generator = ();
+    type Inner = (u64, u64);
+    type Implicit = ();
 
-    fn to_inner(&self) -> Self::RawKey {
+    fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
     }
 }
 
-impl From<(Key, Key)> for EdgeKey {
-    fn from(key: (Key, Key)) -> Self {
+impl From<(u64, u64)> for EdgeKey {
+    fn from(key: (u64, u64)) -> Self {
         EdgeKey(key.0, key.1)
     }
 }
 
 impl From<(VertexKey, VertexKey)> for EdgeKey {
     fn from(key: (VertexKey, VertexKey)) -> Self {
-        EdgeKey(key.0.to_inner(), key.1.to_inner())
+        EdgeKey(key.0.into_inner(), key.1.into_inner())
     }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct FaceKey(Key);
+pub struct FaceKey(u64);
 
-impl From<Key> for FaceKey {
-    fn from(key: Key) -> Self {
+impl From<u64> for FaceKey {
+    fn from(key: u64) -> Self {
         FaceKey(key)
     }
 }
 
 impl OpaqueKey for FaceKey {
-    type RawKey = Key;
-    type Generator = Key;
+    type Inner = u64;
+    type Implicit = u64;
 
-    fn to_inner(&self) -> Self::RawKey {
+    fn into_inner(self) -> Self::Inner {
         self.0
     }
 }
 
-pub type StorageIter<'a, T> = Iter<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
-pub type StorageIterMut<'a, T> = IterMut<'a, <<T as Topological>::Key as OpaqueKey>::RawKey, T>;
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum Key {
+    Vertex(VertexKey),
+    Edge(EdgeKey),
+    Face(FaceKey),
+}
+
+impl From<VertexKey> for Key {
+    fn from(key: VertexKey) -> Self {
+        Key::Vertex(key)
+    }
+}
+
+impl From<EdgeKey> for Key {
+    fn from(key: EdgeKey) -> Self {
+        Key::Edge(key)
+    }
+}
+
+impl From<FaceKey> for Key {
+    fn from(key: FaceKey) -> Self {
+        Key::Face(key)
+    }
+}
+
+pub type Iter<'a, T> = hash_map::Iter<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
+pub type IterMut<'a, T> = hash_map::IterMut<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
+pub type Keys<'a, T> = hash_map::Keys<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
 
 pub struct Storage<T>
 where
     T: Topological,
 {
-    generator: <<T as Topological>::Key as OpaqueKey>::Generator,
-    hash: HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>,
+    implicit: <<T as Topological>::Key as OpaqueKey>::Implicit,
+    hash: HashMap<<<T as Topological>::Key as OpaqueKey>::Inner, T>,
 }
 
 impl<T> Storage<T>
@@ -135,7 +142,7 @@ where
 {
     pub fn new() -> Self {
         Storage {
-            generator: Default::default(),
+            implicit: Default::default(),
             hash: HashMap::new(),
         }
     }
@@ -159,61 +166,58 @@ where
             hash.insert(key, f(value));
         }
         Storage {
-            generator: self.generator,
+            implicit: self.implicit,
             hash: hash,
         }
     }
 
-    pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
-        self.hash.insert(key.to_inner(), item)
+    pub fn len(&self) -> usize {
+        self.hash.len()
+    }
+
+    pub fn iter(&self) -> Iter<T> {
+        self.hash.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        self.hash.iter_mut()
+    }
+
+    pub fn keys(&self) -> Keys<T> {
+        self.hash.keys()
     }
 
     pub fn contains_key(&self, key: &T::Key) -> bool {
-        self.hash.contains_key(&key.to_inner())
+        self.hash.contains_key(&key.into_inner())
     }
 
     pub fn get(&self, key: &T::Key) -> Option<&T> {
-        self.hash.get(&key.to_inner())
+        self.hash.get(&key.into_inner())
     }
 
     pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
-        self.hash.get_mut(&key.to_inner())
+        self.hash.get_mut(&key.into_inner())
+    }
+
+    pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
+        self.hash.insert(key.into_inner(), item)
     }
 
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
-        self.hash.remove(&key.to_inner())
+        self.hash.remove(&key.into_inner())
     }
 }
 
-impl<T> Storage<T>
+impl<T, K> Storage<T>
 where
     T: Topological,
-    T::Key: From<Key> + OpaqueKey<RawKey = Key, Generator = Key>,
+    T::Key: From<K> + OpaqueKey<Inner = K, Implicit = K>,
+    K: Eq + Hash + ImplicitKey,
 {
-    pub fn insert_with_generator(&mut self, item: T) -> T::Key {
-        let key = self.generator;
+    pub fn insert(&mut self, item: T) -> T::Key {
+        let key = self.implicit;
         self.hash.insert(key, item);
-        self.generator = self.generator.next();
+        self.implicit = self.implicit.into_next_key();
         key.into()
-    }
-}
-
-impl<T> Deref for Storage<T>
-where
-    T: Topological,
-{
-    type Target = HashMap<<<T as Topological>::Key as OpaqueKey>::RawKey, T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.hash
-    }
-}
-
-impl<T> DerefMut for Storage<T>
-where
-    T: Topological,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.hash
     }
 }
