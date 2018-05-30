@@ -48,7 +48,7 @@ fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
         .polygons_with_position()
         .triangulate()
         .collect::<Mesh<FaceColorGeometry>>();
-    for mut face in mesh.faces_mut() {
+    for mut face in mesh.orphan_faces() {
         face.geometry = Color4::random();
     }
     mesh.to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))

@@ -1,19 +1,31 @@
 //! Storage for topological data in a mesh.
 
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
 use std::hash::Hash;
 
-use graph::topology::Topological;
+use self::alias::*;
+use geometry::Attribute;
+use graph::storage::convert::{AsStorage, AsStorageMut};
 
-pub trait ImplicitKey: Copy + Default + Sized {
+pub mod convert;
+mod core;
+
+pub use self::core::{Bind, Core};
+
+pub trait Topological {
+    type Key: OpaqueKey;
+    type Attribute: Attribute;
+}
+
+pub trait KeySequence: Copy + Default + Sized {
     fn into_next_key(self) -> Self;
 }
 
-impl ImplicitKey for () {
+impl KeySequence for () {
     fn into_next_key(self) -> Self {}
 }
 
-impl ImplicitKey for u64 {
+impl KeySequence for u64 {
     fn into_next_key(self) -> Self {
         self + 1
     }
@@ -21,7 +33,7 @@ impl ImplicitKey for u64 {
 
 pub trait OpaqueKey: Copy + Sized {
     type Inner: Copy + Eq + Hash + Into<Self>;
-    type Implicit: ImplicitKey;
+    type Sequence: KeySequence;
 
     fn into_inner(self) -> Self::Inner;
 }
@@ -37,7 +49,7 @@ impl From<u64> for VertexKey {
 
 impl OpaqueKey for VertexKey {
     type Inner = u64;
-    type Implicit = u64;
+    type Sequence = u64;
 
     fn into_inner(self) -> Self::Inner {
         self.0
@@ -62,7 +74,7 @@ impl EdgeKey {
 
 impl OpaqueKey for EdgeKey {
     type Inner = (u64, u64);
-    type Implicit = ();
+    type Sequence = ();
 
     fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
@@ -92,7 +104,7 @@ impl From<u64> for FaceKey {
 
 impl OpaqueKey for FaceKey {
     type Inner = u64;
-    type Implicit = u64;
+    type Sequence = u64;
 
     fn into_inner(self) -> Self::Inner {
         self.0
@@ -124,16 +136,13 @@ impl From<FaceKey> for Key {
     }
 }
 
-pub type Iter<'a, T> = hash_map::Iter<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
-pub type IterMut<'a, T> = hash_map::IterMut<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
-pub type Keys<'a, T> = hash_map::Keys<'a, <<T as Topological>::Key as OpaqueKey>::Inner, T>;
-
+#[derive(Clone, Default)]
 pub struct Storage<T>
 where
     T: Topological,
 {
-    implicit: <<T as Topological>::Key as OpaqueKey>::Implicit,
-    hash: HashMap<<<T as Topological>::Key as OpaqueKey>::Inner, T>,
+    sequence: Sequence<T>,
+    hash: HashMap<InnerKey<T>, T>,
 }
 
 impl<T> Storage<T>
@@ -142,7 +151,7 @@ where
 {
     pub fn new() -> Self {
         Storage {
-            implicit: Default::default(),
+            sequence: Default::default(),
             hash: HashMap::new(),
         }
     }
@@ -166,7 +175,7 @@ where
             hash.insert(key, f(value));
         }
         Storage {
-            implicit: self.implicit,
+            sequence: self.sequence,
             hash: hash,
         }
     }
@@ -175,15 +184,15 @@ where
         self.hash.len()
     }
 
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> impl Iterator<Item = (&InnerKey<T>, &T)> {
         self.hash.iter()
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&InnerKey<T>, &mut T)> {
         self.hash.iter_mut()
     }
 
-    pub fn keys(&self) -> Keys<T> {
+    pub fn keys(&self) -> impl Iterator<Item = &InnerKey<T>> {
         self.hash.keys()
     }
 
@@ -211,13 +220,38 @@ where
 impl<T, K> Storage<T>
 where
     T: Topological,
-    T::Key: From<K> + OpaqueKey<Inner = K, Implicit = K>,
-    K: Eq + Hash + ImplicitKey,
+    T::Key: From<K> + OpaqueKey<Inner = K, Sequence = K>,
+    K: Eq + Hash + KeySequence,
 {
     pub fn insert(&mut self, item: T) -> T::Key {
-        let key = self.implicit;
+        let key = self.sequence;
         self.hash.insert(key, item);
-        self.implicit = self.implicit.into_next_key();
+        self.sequence = self.sequence.into_next_key();
         key.into()
     }
+}
+
+impl<T> AsStorage<T> for Storage<T>
+where
+    T: Topological,
+{
+    fn as_storage(&self) -> &Storage<T> {
+        self
+    }
+}
+
+impl<T> AsStorageMut<T> for Storage<T>
+where
+    T: Topological,
+{
+    fn as_storage_mut(&mut self) -> &mut Storage<T> {
+        self
+    }
+}
+
+pub mod alias {
+    use super::*;
+
+    pub type InnerKey<T> = <<T as Topological>::Key as OpaqueKey>::Inner;
+    pub type Sequence<T> = <<T as Topological>::Key as OpaqueKey>::Sequence;
 }

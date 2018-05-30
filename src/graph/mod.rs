@@ -135,19 +135,19 @@ mod geometry;
 mod mesh;
 mod mutation;
 mod storage;
-mod topology;
+mod view;
 
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
-pub use self::topology::{
-    EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef, OrphanEdgeMut,
-    OrphanFaceMut, OrphanVertexMut, VertexMut, VertexRef,
+pub use self::view::{
+    EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef, OrphanEdge, OrphanFace,
+    OrphanVertex, VertexMut, VertexRef,
 };
 
 // TODO: Do not re-export these types. This is only done so that they show up
 //       in documentation. Client code should not interact with these types.
 //       See: https://github.com/rust-lang/rust/issues/39437
-pub use self::topology::{
+pub use self::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
 
