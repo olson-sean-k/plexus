@@ -119,13 +119,12 @@
 //!
 //! // Traverse an edge and use a circulator to get the faces of a nearby vertex.
 //! let key = mesh.edges().nth(0).unwrap().key();
-//! for face in mesh.edge_mut(key)
+//! let mut vertex = mesh.edge_mut(key)
 //!     .unwrap()
 //!     .into_opposite_edge()
 //!     .into_next_edge()
-//!     .into_destination_vertex()
-//!     .faces_mut() // Circulator yields orphan views.
-//! {
+//!     .into_destination_vertex();
+//! for face in vertex.neighboring_orphan_faces() {
 //!     // ...
 //! }
 //! # }
@@ -136,6 +135,8 @@ mod mesh;
 mod mutation;
 mod storage;
 mod view;
+
+use failure::Error;
 
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
@@ -159,10 +160,48 @@ pub enum GraphError {
     TopologyConflict,
     #[fail(display = "topology malformed")]
     TopologyMalformed,
-    #[fail(display = "conflicting arity; expected {}, but got {}", expected, actual)]
+    #[fail(
+        display = "conflicting arity; expected {}, but got {}",
+        expected,
+        actual
+    )]
     ArityConflict { expected: usize, actual: usize },
     #[fail(display = "face arity is non-constant")]
     ArityNonConstant,
+}
+
+// TODO: Using `Error` so broadly is a misuse case. Look at how complex
+//       `ResultExt` is! Just use `GraphError` directly. Never use `Error`
+//       along "happy" or "expected" paths (this happens often in the
+//       `mutation` module.
+
+pub trait ResultExt<T>: Sized {
+    fn ignore_conflict(self) -> Result<Option<T>, Error>;
+
+    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    where
+        F: FnOnce() -> Result<T, Error>;
+}
+
+impl<T> ResultExt<T> for Result<T, Error> {
+    fn ignore_conflict(self) -> Result<Option<T>, Error> {
+        self.map(|value| Some(value)).or_else(|error| {
+            match error.downcast::<GraphError>().unwrap() {
+                GraphError::TopologyConflict => Ok(None),
+                error => Err(error.into()),
+            }
+        })
+    }
+
+    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    where
+        F: FnOnce() -> Result<T, Error>,
+    {
+        self.or_else(|error| match error.downcast::<GraphError>().unwrap() {
+            GraphError::TopologyConflict => f(),
+            error => Err(error.into()),
+        })
+    }
 }
 
 /// Provides an iterator over a window of duplets that includes the first value

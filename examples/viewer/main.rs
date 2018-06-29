@@ -29,11 +29,7 @@ use camera::Camera;
 use pipeline::{Color4, Transform, Vertex};
 use renderer::{GlutinRenderer, Renderer};
 
-impl<T> Attribute for Color4<T>
-where
-    T: Scalar,
-{
-}
+impl<T> Attribute for Color4<T> where T: Scalar {}
 
 struct FaceColorGeometry;
 

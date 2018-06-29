@@ -244,11 +244,7 @@ where
     type Vertex = T;
 }
 
-impl<T> Polygonal for Triangle<T>
-where
-    T: Clone,
-{
-}
+impl<T> Polygonal for Triangle<T> where T: Clone {}
 
 impl<T> Rotate for Triangle<T>
 where
@@ -332,11 +328,7 @@ where
     type Vertex = T;
 }
 
-impl<T> Polygonal for Quad<T>
-where
-    T: Clone,
-{
-}
+impl<T> Polygonal for Quad<T> where T: Clone {}
 
 impl<T> Rotate for Quad<T>
 where
@@ -425,11 +417,7 @@ where
     type Vertex = T;
 }
 
-impl<T> Polygonal for Polygon<T>
-where
-    T: Clone,
-{
-}
+impl<T> Polygonal for Polygon<T> where T: Clone {}
 
 impl<T> Rotate for Polygon<T>
 where

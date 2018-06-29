@@ -12,11 +12,35 @@
 // for example. While `into` and immutable accessor functions are okay, mutable
 // accessor functions MUST yield orphans (or not exist at all).
 
+// TODO: The use of `from_keyed_storage` is dangerous! It cannot encode
+//       consistency, and relies entirely on the caller to specify. Either it
+//       should always yield inconsistent views (requiring the use of traits
+//       whenever a consistent view is needed) or only the conversion traits
+//       (and their required constraints) should be used.
+
+#![macro_use]
+
+macro_rules! interior_deref {
+    (vertex => $v:expr) => {{
+        let (key, storage) = $v.into_keyed_storage();
+        VertexView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
+            .unwrap()
+    }};
+    (edge => $v:expr) => {{
+        let (key, storage) = $v.into_keyed_storage();
+        EdgeView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
+            .unwrap()
+    }};
+    (face => $v:expr) => {{
+        let (key, storage) = $v.into_keyed_storage();
+        FaceView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
+            .unwrap()
+    }};
+}
+
 use std::marker::PhantomData;
 
-use geometry::Geometry;
-use graph::mesh::{Edge, Face, Mesh, Vertex};
-use graph::storage::convert::{AsStorage, AsStorageMut};
+use graph::mesh::Mesh;
 
 pub mod convert;
 mod edge;
@@ -49,33 +73,6 @@ pub struct Inconsistent;
 
 impl Consistency for Inconsistent {}
 
-pub trait ReadStorage<G>: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>
-where
-    G: Geometry,
-{
-}
-
-impl<M, G> ReadStorage<G> for M
-where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
-    G: Geometry,
-{
-}
-
-pub trait WriteStorage<G>:
-    AsStorageMut<Edge<G>> + AsStorageMut<Face<G>> + AsStorageMut<Vertex<G>>
-where
-    G: Geometry,
-{
-}
-
-impl<M, G> WriteStorage<G> for M
-where
-    M: ReadStorage<G> + AsStorageMut<Edge<G>> + AsStorageMut<Face<G>> + AsStorageMut<Vertex<G>>,
-    G: Geometry,
-{
-}
-
 trait IteratorExt: Iterator + Sized {
     fn map_with_ref<F, R>(self, f: F) -> MapWithRef<Self, F, R>
     where
@@ -100,11 +97,7 @@ trait IteratorExt: Iterator + Sized {
     }
 }
 
-impl<I> IteratorExt for I
-where
-    I: Iterator + Sized,
-{
-}
+impl<I> IteratorExt for I where I: Iterator + Sized {}
 
 struct MapWithRef<I, F, R>
 where

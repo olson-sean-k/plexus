@@ -15,7 +15,7 @@ use generate::{
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
 use geometry::Geometry;
 use graph::geometry::FaceCentroid;
-use graph::mutation::{ModalMutation, Mutation};
+use graph::mutation::{Commit, Mutate, Mutation};
 use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::{Core, EdgeKey, FaceKey, Storage, Topological, VertexKey};
@@ -23,8 +23,7 @@ use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
 };
-use graph::{GraphError, Perimeter};
-use BoolExt;
+use graph::GraphError;
 
 // TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
 #[derivative(Debug, Hash)]
@@ -176,30 +175,6 @@ where
     type Attribute = G::Face;
 }
 
-/// Vertex-bounded region.
-///
-/// A unique set of vertices that forms a bounded region that can represent a
-/// face in a mesh.
-///
-/// See `Mesh::region`.
-#[derive(Clone, Copy, Debug)]
-pub struct Region<'a>(&'a [VertexKey]);
-
-impl<'a> Region<'a> {
-    pub fn as_vertices(&self) -> &[VertexKey] {
-        self.0
-    }
-}
-
-/// Vertex-bounded region connectivity.
-///
-/// Describes the per-vertex edge connectivity of a region bounded by a set of
-/// vertices. This is primarily used to connect exterior edges when a face is
-/// inserted into a mesh.
-pub type Connectivity = HashMap<VertexKey, Vec<EdgeKey>>;
-
-pub type Singularity = (VertexKey, Vec<FaceKey>);
-
 /// Half-edge graph representation of a mesh.
 ///
 /// Provides topological data in the form of vertices, half-edges, and faces. A
@@ -222,6 +197,30 @@ impl<G> Mesh<G>
 where
     G: Geometry,
 {
+    pub(in graph) fn from_disjoint_storage(
+        vertices: Storage<Vertex<G>>,
+        edges: Storage<Edge<G>>,
+        faces: Storage<Face<G>>,
+    ) -> Self {
+        Mesh::from(Core {
+            vertices,
+            edges,
+            faces,
+        })
+    }
+
+    pub(in graph) fn into_disjoint_storage(
+        self,
+    ) -> (Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>) {
+        let Mesh { core, .. } = self;
+        let Core {
+            vertices,
+            edges,
+            faces,
+        } = core;
+        (vertices, edges, faces)
+    }
+
     pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
     where
         Self: AsStorage<T>,
@@ -236,21 +235,6 @@ where
         T: Topological,
     {
         AsStorageMut::<T>::as_storage_mut(self)
-    }
-
-    pub(in graph) fn as_disjoint_storage_mut(
-        &mut self,
-    ) -> (
-        &mut Storage<Vertex<G>>,
-        &mut Storage<Edge<G>>,
-        &mut Storage<Face<G>>,
-    ) {
-        let Core {
-            ref mut vertices,
-            ref mut edges,
-            ref mut faces,
-        } = self.core;
-        (vertices, edges, faces)
     }
 }
 
@@ -268,11 +252,7 @@ where
     /// let mut mesh = Mesh::<()>::new();
     /// ```
     pub fn new() -> Self {
-        Mesh::from(Core {
-            vertices: Storage::new(),
-            edges: Storage::new(),
-            faces: Storage::new(),
-        })
+        Mesh::from_disjoint_storage(Storage::new(), Storage::new(), Storage::new())
     }
 
     /// Creates an empty `Mesh`.
@@ -280,11 +260,7 @@ where
     /// Underlying storage has zero capacity and does not allocate until the
     /// first insertion.
     pub(in graph) fn empty() -> Self {
-        Mesh::from(Core {
-            vertices: Storage::empty(),
-            edges: Storage::empty(),
-            faces: Storage::empty(),
-        })
+        Mesh::from_disjoint_storage(Storage::empty(), Storage::empty(), Storage::empty())
     }
 
     /// Creates a `Mesh` from raw index and vertex buffers. The arity of the
@@ -321,7 +297,7 @@ where
         J: IntoIterator,
         J::Item: IntoGeometry<G::Vertex>,
     {
-        let mut mutation = Mutation::batch(Mesh::new());
+        let mut mutation = Mutation::mutate(Mesh::new());
         let vertices = vertices
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
@@ -355,22 +331,18 @@ where
 
     /// Gets an immutable view of the vertex with the given key.
     pub fn vertex(&self, key: VertexKey) -> Option<VertexRef<G>> {
-        self.as_storage::<Vertex<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     /// Gets a mutable view of the vertex with the given key.
     pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexMut<G>> {
-        self.as_storage_mut::<Vertex<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     pub(in graph) fn orphan_vertex(&mut self, key: VertexKey) -> Option<OrphanVertex<G>> {
         self.as_storage_mut::<Vertex<G>>()
             .get_mut(&key)
-            .map(|topology| (key, topology).into_view())
+            .map(|topology| (key, topology).into_view().unwrap())
     }
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
@@ -394,22 +366,18 @@ where
 
     /// Gets an immutable view of the edge with the given key.
     pub fn edge(&self, key: EdgeKey) -> Option<EdgeRef<G>> {
-        self.as_storage::<Edge<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     /// Gets a mutable view of the edge with the given key.
     pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeMut<G>> {
-        self.as_storage_mut::<Edge<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     pub(in graph) fn orphan_edge(&mut self, key: EdgeKey) -> Option<OrphanEdge<G>> {
         self.as_storage_mut::<Edge<G>>()
             .get_mut(&key)
-            .map(|topology| (key, topology).into_view())
+            .map(|topology| (key, topology).into_view().unwrap())
     }
 
     /// Gets an iterator of immutable views over the edges in the mesh.
@@ -433,22 +401,18 @@ where
 
     /// Gets an immutable view of the face with the given key.
     pub fn face(&self, key: FaceKey) -> Option<FaceRef<G>> {
-        self.as_storage::<Face<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     /// Gets a mutable view of the face with the given key.
     pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceMut<G>> {
-        self.as_storage_mut::<Face<G>>()
-            .contains_key(&key)
-            .into_some((key, self).into_view())
+        (key, self).into_view()
     }
 
     pub(in graph) fn orphan_face(&mut self, key: FaceKey) -> Option<OrphanFace<G>> {
         self.as_storage_mut::<Face<G>>()
             .get_mut(&key)
-            .map(|topology| (key, topology).into_view())
+            .map(|topology| (key, topology).into_view().unwrap())
     }
 
     /// Gets an iterator of immutable views over the faces in the mesh.
@@ -475,7 +439,7 @@ where
             .map(|key| FaceKey::from(*key))
             .collect::<Vec<_>>();
         for face in faces {
-            let mut face = FaceMut::from_keyed_source((face, self));
+            let face = FaceMut::from_keyed_source((face, self)).unwrap();
             face.triangulate()?;
         }
         Ok(())
@@ -585,7 +549,7 @@ where
                 }
                 for vertex in face.vertices() {
                     // TODO: Can some sort of dereference be used here?
-                    vertices.push(f(face, vertex.into_interior_deref()));
+                    vertices.push(f(face, vertex));
                 }
             }
             vertices
@@ -595,105 +559,6 @@ where
             (0..vertices.len()).map(|index| N::from(index).unwrap()),
             vertices,
         )
-    }
-
-    pub(in graph) fn region<'a>(&self, vertices: &'a [VertexKey]) -> Result<Region<'a>, Error> {
-        // A face requires at least three vertices (edges). This invariant
-        // should be maintained by any code that is able to mutate the mesh,
-        // such that code manipulating faces (via `FaceView`) may assume this
-        // is true. Panics resulting from faces with fewer than three vertices
-        // are bugs.
-        if vertices.len() < 3 {
-            return Err(GraphError::TopologyMalformed
-                .context("non-polygonal arity")
-                .into());
-        }
-        if vertices.len() != vertices.iter().unique().count() {
-            return Err(GraphError::TopologyMalformed
-                .context("non-manifold bounds")
-                .into());
-        }
-        // Fail if any vertex is not present.
-        if vertices.iter().any(|vertex| self.vertex(*vertex).is_none()) {
-            return Err(GraphError::TopologyNotFound.into());
-        }
-        // Fail if the interior is already occupied by a face.
-        if vertices
-            .perimeter()
-            .flat_map(|ab| self.edge(ab.into()))
-            .any(|edge| edge.face().is_some())
-        {
-            return Err(GraphError::TopologyConflict
-                .context("interior edge has face")
-                .into());
-        }
-        Ok(Region(vertices))
-    }
-
-    pub(in graph) fn region_connectivity(
-        &self,
-        region: Region,
-    ) -> ((Connectivity, Connectivity), Option<Singularity>) {
-        // Get the outgoing and incoming edges of the vertices forming the
-        // perimeter.
-        let outgoing = region
-            .as_vertices()
-            .iter()
-            .cloned()
-            .map(|vertex| {
-                (
-                    vertex,
-                    self.vertex(vertex)
-                        .unwrap()
-                        .incoming_edges()
-                        .map(|edge| edge.opposite_edge().key())
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        let incoming = region
-            .as_vertices()
-            .iter()
-            .cloned()
-            .map(|vertex| {
-                (
-                    vertex,
-                    self.vertex(vertex)
-                        .unwrap()
-                        .incoming_edges()
-                        .map(|edge| edge.key())
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        // If only one vertex has any outgoing edges, then this face shares
-        // exactly one vertex with other faces and is therefore non-manifold.
-        //
-        // This kind of non-manifold is not supported, but sometimes occurs
-        // during a batch mutation. Details of the singularity vertex are
-        // emitted and handled by calling code, either raising an error or
-        // waiting to validate after a batch mutation is complete.
-        let singularity = {
-            let mut outgoing = outgoing.iter().filter(|&(_, edges)| !edges.is_empty());
-            if let Some((vertex, _)) = outgoing.next() {
-                outgoing.next().map_or_else(
-                    || {
-                        let faces = self
-                            .vertex(*vertex)
-                            .unwrap()
-                            .neighboring_faces()
-                            .map(|face| face.key())
-                            .collect::<Vec<_>>();
-                        Some((*vertex, faces))
-                    },
-                    |_| None,
-                )
-            }
-            else {
-                None
-            }
-        };
-        ((incoming, outgoing), singularity)
     }
 }
 
@@ -823,7 +688,7 @@ where
         I: IntoIterator<Item = P>,
         N: Indexer<P, P::Vertex>,
     {
-        let mut mutation = Mutation::batch(Mesh::new());
+        let mut mutation = Mutation::mutate(Mesh::new());
         let (indeces, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
@@ -902,7 +767,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.input
             .next()
-            .map(|key| ((*key).into(), self.storage).into_view())
+            .map(|key| ((*key).into(), self.storage).into_view().unwrap())
     }
 }
 
@@ -945,6 +810,7 @@ where
 
                 mem::transmute::<&'_ mut T, &'a mut T>(entry.1)
             }).into_view()
+                .unwrap()
         })
     }
 }
@@ -957,7 +823,8 @@ mod tests {
 
     use generate::*;
     use geometry::*;
-    use graph::mutation::{ModalMutation, Mutation};
+    use graph::mutation::face::FaceRemoveCache;
+    use graph::mutation::{Mutate, Mutation};
     use graph::*;
 
     #[test]
@@ -1065,9 +932,9 @@ mod tests {
         // TODO: Create a shared testing geometry that allows topology to be
         //       marked and more easily located. Finding very specific geometry
         //       like this is cumbersome.
-        // Find the "center" triangle and use an immediate mutation to remove
-        // it. This creates a singularity, with the two remaining triangles
-        // sharing no edges but having a single common vertex.
+        // Find the "center" triangle and use a mutation to remove it. This
+        // creates a singularity, with the two remaining triangles sharing no
+        // edges but having a single common vertex.
         let geometry = &[(0, 0), (1, 1), (-1, 1)]
             .iter()
             .cloned()
@@ -1082,9 +949,10 @@ mod tests {
             })
             .unwrap()
             .key();
-        let mut mutation = Mutation::immediate(&mut mesh);
+        let cache = FaceRemoveCache::snapshot(&mesh, key).unwrap();
+        let mut mutation = Mutation::mutate(mesh);
         assert!(match *mutation
-            .remove_face(key)
+            .remove_face_with_cache(cache)
             .err()
             .unwrap()
             .root_cause()

@@ -8,14 +8,14 @@ use geometry::Geometry;
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
-use graph::mutation::{ModalMutation, Mutation};
+use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
+use graph::mutation::{Commit, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, Topological, VertexKey};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     Consistency, Consistent, FaceView, Inconsistent, OrphanFaceView, OrphanVertexView, VertexView,
 };
-use graph::{GraphError, Perimeter};
 use BoolExt;
 
 /// Do **not** use this type directly. Use `EdgeRef` and `EdgeMut` instead.
@@ -48,57 +48,8 @@ where
         M::Output: AsStorage<Edge<G>>,
         N: AsStorage<T>,
     {
-        let EdgeView {
-            key,
-            storage: origin,
-            ..
-        } = self;
-        EdgeView {
-            key,
-            storage: origin.bind(storage),
-            phantom: PhantomData,
-        }
-    }
-
-    pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
-    where
-        T: Topological,
-        M: AsStorage<T>,
-    {
-        AsStorage::<T>::as_storage(&self.storage)
-    }
-
-    pub(in graph) fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
-    where
-        T: Topological,
-        M: AsStorageMut<T>,
-    {
-        AsStorageMut::<T>::as_storage_mut(&mut self.storage)
-    }
-}
-
-impl<'a, 'b, M, G, C> EdgeView<&'a &'b M, G, C>
-where
-    M: AsStorage<Edge<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub fn into_interior_deref(self) -> EdgeView<&'b M, G, C>
-    where
-        (EdgeKey, &'b M): IntoView<EdgeView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
-    }
-
-    pub fn interior_deref(&self) -> EdgeView<&'b M, G, C>
-    where
-        (EdgeKey, &'b M): IntoView<EdgeView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
+        let (key, origin) = self.into_keyed_storage();
+        EdgeView::from_keyed_storage_unchecked(key, origin.bind(storage))
     }
 }
 
@@ -109,20 +60,15 @@ where
     C: Consistency,
 {
     pub fn into_orphan(self) -> OrphanEdgeView<'a, G> {
-        let EdgeView { key, storage, .. } = self;
-        (key, storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+        let (key, storage) = self.into_keyed_storage();
+        (key, storage.as_storage_mut().get_mut(&key).unwrap())
+            .into_view()
+            .unwrap()
     }
-}
 
-impl<M, G, C> EdgeView<M, G, C>
-where
-    M: AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub fn to_orphan<'a>(&'a mut self) -> OrphanEdgeView<'a, G> {
-        let key = self.key;
-        (key, self.storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+    pub fn into_ref(self) -> EdgeView<&'a M, G, Consistent> {
+        let (key, storage) = self.into_keyed_storage();
+        EdgeView::from_keyed_storage_unchecked(key, &*storage)
     }
 }
 
@@ -144,7 +90,14 @@ where
         self.face.is_none()
     }
 
-    pub(in graph) fn from_keyed_storage(key: EdgeKey, storage: M) -> Self {
+    pub(in graph) fn from_keyed_storage(key: EdgeKey, storage: M) -> Option<Self> {
+        storage
+            .as_storage()
+            .contains_key(&key)
+            .into_some(EdgeView::from_keyed_storage_unchecked(key, storage))
+    }
+
+    fn from_keyed_storage_unchecked(key: EdgeKey, storage: M) -> Self {
         EdgeView {
             key,
             storage,
@@ -152,29 +105,20 @@ where
         }
     }
 
-    fn to_ref(&self) -> EdgeView<&M, G, C> {
-        let key = self.key;
-        let storage = &self.storage;
-        EdgeView::from_keyed_storage(key, storage)
-    }
-
-    fn to_mut(&mut self) -> EdgeView<&mut M, G, C> {
-        let key = self.key;
-        let storage = &mut self.storage;
-        EdgeView::from_keyed_storage(key, storage)
+    pub(in graph) fn into_keyed_storage(self) -> (EdgeKey, M) {
+        let EdgeView { key, storage, .. } = self;
+        (key, storage)
     }
 }
 
+/// Reachable API.
 impl<M, G, C> EdgeView<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn into_reachable_boundary_edge(self) -> Option<Self>
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub(in graph) fn into_reachable_boundary_edge(self) -> Option<Self> {
         if self.is_boundary_edge() {
             Some(self)
         }
@@ -184,45 +128,45 @@ where
         }
     }
 
-    pub(in graph) fn into_reachable_opposite_edge(self) -> Option<Self>
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub(in graph) fn into_reachable_opposite_edge(self) -> Option<Self> {
         let key = self.opposite;
-        key.map(move |key| {
-            let EdgeView { storage, .. } = self;
-            (key, storage).into_view()
+        key.and_then(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub(in graph) fn into_reachable_next_edge(self) -> Option<Self>
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub(in graph) fn into_reachable_next_edge(self) -> Option<Self> {
         let key = self.next;
-        key.map(move |key| {
-            let EdgeView { storage, .. } = self;
-            (key, storage).into_view()
+        key.and_then(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub(in graph) fn into_reachable_previous_edge(self) -> Option<Self>
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub(in graph) fn into_reachable_previous_edge(self) -> Option<Self> {
         let key = self.previous;
-        key.map(move |key| {
-            let EdgeView { storage, .. } = self;
-            (key, storage).into_view()
+        key.and_then(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub(in graph) fn reachable_boundary_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
+    pub(in graph) fn reachable_boundary_edge(&self) -> Option<EdgeView<&M, G, C>> {
         if self.is_boundary_edge() {
-            Some((self.key, &self.storage).into_view())
+            Some(EdgeView::from_keyed_storage_unchecked(
+                self.key,
+                &self.storage,
+            ))
         }
         else {
             self.reachable_opposite_edge()
@@ -230,46 +174,43 @@ where
         }
     }
 
-    pub(in graph) fn reachable_opposite_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
-        self.opposite.map(|key| {
+    pub(in graph) fn reachable_opposite_edge(&self) -> Option<EdgeView<&M, G, C>> {
+        self.opposite.and_then(|key| {
             let storage = &self.storage;
-            (key, storage).into_view()
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub(in graph) fn reachable_next_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
-        self.next.map(|key| {
+    pub(in graph) fn reachable_next_edge(&self) -> Option<EdgeView<&M, G, C>> {
+        self.next.and_then(|key| {
             let storage = &self.storage;
-            (key, storage).into_view()
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub(in graph) fn reachable_previous_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
-        self.previous.map(|key| {
+    pub(in graph) fn reachable_previous_edge(&self) -> Option<EdgeView<&M, G, C>> {
+        self.previous.and_then(|key| {
             let storage = &self.storage;
-            (key, storage).into_view()
+            storage
+                .as_storage()
+                .contains_key(&key)
+                .into_some(EdgeView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 }
 
 impl<M, G> EdgeView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>>,
     G: Geometry,
 {
-    pub fn into_boundary_edge(self) -> Option<Self>
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub fn into_boundary_edge(self) -> Option<Self> {
         if self.is_boundary_edge() {
             Some(self)
         }
@@ -279,33 +220,24 @@ where
         }
     }
 
-    pub fn into_opposite_edge(self) -> Self
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub fn into_opposite_edge(self) -> Self {
         self.into_reachable_opposite_edge().unwrap()
     }
 
-    pub fn into_next_edge(self) -> Self
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub fn into_next_edge(self) -> Self {
         self.into_reachable_next_edge().unwrap()
     }
 
-    pub fn into_previous_edge(self) -> Self
-    where
-        (EdgeKey, M): IntoView<Self>,
-    {
+    pub fn into_previous_edge(self) -> Self {
         self.into_reachable_previous_edge().unwrap()
     }
 
-    pub fn boundary_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, Consistent>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
+    pub fn boundary_edge(&self) -> Option<EdgeView<&Mesh<G>, G, Consistent>> {
         if self.is_boundary_edge() {
-            Some((self.key, &self.storage).into_view())
+            Some(EdgeView::from_keyed_storage_unchecked(
+                self.key,
+                self.storage.as_ref(),
+            ))
         }
         else {
             let opposite = self.opposite_edge();
@@ -313,25 +245,16 @@ where
         }
     }
 
-    pub fn opposite_edge<'a>(&'a self) -> EdgeView<&'a M, G, Consistent>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
-        self.reachable_opposite_edge().unwrap()
+    pub fn opposite_edge(&self) -> EdgeView<&Mesh<G>, G, Consistent> {
+        interior_deref!(edge => self.reachable_opposite_edge().unwrap())
     }
 
-    pub fn next_edge<'a>(&'a self) -> EdgeView<&'a M, G, Consistent>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
-        self.reachable_next_edge().unwrap()
+    pub fn next_edge(&self) -> EdgeView<&Mesh<G>, G, Consistent> {
+        interior_deref!(edge => self.reachable_next_edge().unwrap())
     }
 
-    pub fn previous_edge<'a>(&'a self) -> EdgeView<&'a M, G, Consistent>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
-        self.reachable_previous_edge().unwrap()
+    pub fn previous_edge(&self) -> EdgeView<&Mesh<G>, G, Consistent> {
+        interior_deref!(edge => self.reachable_previous_edge().unwrap())
     }
 }
 
@@ -341,73 +264,76 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_opposite_orphan_edge<'a>(
-        &'a mut self,
-    ) -> Option<OrphanEdgeView<'a, G>> {
-        let key = self.opposite;
+    pub(in graph) fn reachable_opposite_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
+        let key = self
+            .opposite
+            .and_then(|key| self.storage.as_storage().contains_key(&key).into_some(key));
         let edge = self.deref_mut();
-        key.map(|key| (key, edge).into_view())
+        key.map(|key| (key, edge).into_view().unwrap())
     }
 
-    pub(in graph) fn reachable_next_orphan_edge<'a>(&'a mut self) -> Option<OrphanEdgeView<'a, G>> {
-        let key = self.next;
+    pub(in graph) fn reachable_next_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
+        let key = self
+            .next
+            .and_then(|key| self.storage.as_storage().contains_key(&key).into_some(key));
         let edge = self.deref_mut();
-        key.map(|key| (key, edge).into_view())
+        key.map(|key| (key, edge).into_view().unwrap())
     }
 
-    pub(in graph) fn reachable_previous_orphan_edge<'a>(
-        &'a mut self,
-    ) -> Option<OrphanEdgeView<'a, G>> {
-        let key = self.previous;
+    pub(in graph) fn reachable_previous_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
+        let key = self
+            .previous
+            .and_then(|key| self.storage.as_storage().contains_key(&key).into_some(key));
         let edge = self.deref_mut();
-        key.map(|key| (key, edge).into_view())
+        key.map(|key| (key, edge).into_view().unwrap())
     }
 
-    pub(in graph) fn reachable_boundary_orphan_edge<'a>(
-        &'a mut self,
-    ) -> Option<OrphanEdgeView<'a, G>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
+    pub(in graph) fn reachable_boundary_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
         if self.is_boundary_edge() {
             let key = self.key;
             let edge = self.deref_mut();
-            Some((key, edge).into_view())
+            Some((key, edge).into_view().unwrap())
         }
         else {
-            unimplemented!() // TODO:
-                             //let opposite = self.reachable_opposite_edge();
-                             //opposite.and_then(|opposite| {
-                             //    opposite
-                             //        .is_boundary_edge()
-                             //        .into_some(opposite.into_orphan())
-                             //})
+            let key = self
+                .reachable_opposite_edge()
+                .and_then(|opposite| opposite.is_boundary_edge().into_some(opposite.key()));
+            if let Some(key) = key {
+                Some(
+                    (key, self.storage.as_storage_mut().get_mut(&key).unwrap())
+                        .into_view()
+                        .unwrap(),
+                )
+            }
+            else {
+                None
+            }
         }
     }
 }
 
 impl<M, G> EdgeView<M, G, Consistent>
 where
-    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
+    M: AsRef<Mesh<G>> + AsMut<Mesh<G>> + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
     G: Geometry,
 {
-    pub fn opposite_orphan_edge<'a>(&'a mut self) -> OrphanEdgeView<'a, G> {
+    pub fn opposite_orphan_edge(&mut self) -> OrphanEdgeView<G> {
         self.reachable_opposite_orphan_edge().unwrap()
     }
 
-    pub fn next_orphan_edge<'a>(&'a mut self) -> OrphanEdgeView<'a, G> {
+    pub fn next_orphan_edge(&mut self) -> OrphanEdgeView<G> {
         self.reachable_next_orphan_edge().unwrap()
     }
 
-    pub fn previous_orphan_edge<'a>(&'a mut self) -> OrphanEdgeView<'a, G> {
+    pub fn previous_orphan_edge(&mut self) -> OrphanEdgeView<G> {
         self.reachable_previous_orphan_edge().unwrap()
     }
 
-    pub fn boundary_orphan_edge<'a>(&'a mut self) -> Option<OrphanEdgeView<'a, G>> {
+    pub fn boundary_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
         if self.is_boundary_edge() {
             let key = self.key;
             let edge = self.deref_mut();
-            Some((key, edge).into_view())
+            Some((key, edge).into_view().unwrap())
         }
         else {
             self.opposite_edge()
@@ -424,40 +350,28 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub fn into_source_vertex(self) -> VertexView<M, G, C>
-    where
-        (VertexKey, M): IntoView<VertexView<M, G, C>>,
-    {
+    pub fn into_source_vertex(self) -> VertexView<M, G, C> {
         let (key, _) = self.key.to_vertex_keys();
-        let EdgeView { storage, .. } = self;
-        (key, storage).into_view()
+        let (_, storage) = self.into_keyed_storage();
+        VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap()
     }
 
-    pub fn into_destination_vertex(self) -> VertexView<M, G, C>
-    where
-        (VertexKey, M): IntoView<VertexView<M, G, C>>,
-    {
+    pub fn into_destination_vertex(self) -> VertexView<M, G, C> {
         let key = self.vertex;
-        let EdgeView { storage, .. } = self;
-        (key, storage).into_view()
+        let (_, storage) = self.into_keyed_storage();
+        VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap()
     }
 
-    pub fn source_vertex<'a>(&'a self) -> VertexView<&'a M, G, C>
-    where
-        (VertexKey, &'a M): IntoView<VertexView<&'a M, G, C>>,
-    {
+    pub fn source_vertex<'a>(&'a self) -> VertexView<&'a M, G, C> {
         let (key, _) = self.key.to_vertex_keys();
         let storage = &self.storage;
-        (key, storage).into_view()
+        VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap()
     }
 
-    pub fn destination_vertex<'a>(&'a self) -> VertexView<&'a M, G, C>
-    where
-        (VertexKey, &'a M): IntoView<VertexView<&'a M, G, C>>,
-    {
+    pub fn destination_vertex<'a>(&'a self) -> VertexView<&'a M, G, C> {
         let key = self.vertex;
         let storage = &self.storage;
-        (key, storage).into_view()
+        VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap()
     }
 }
 
@@ -468,44 +382,62 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub fn source_orphan_vertex<'a>(&'a mut self) -> OrphanVertexView<'a, G> {
+    pub fn source_orphan_vertex(&mut self) -> OrphanVertexView<G> {
         let (key, _) = self.key.to_vertex_keys();
         let vertex = self.storage.as_storage_mut().get_mut(&key).unwrap();
-        (key, vertex).into_view()
+        (key, vertex).into_view().unwrap()
     }
 
-    pub fn destination_orphan_vertex<'a>(&'a mut self) -> OrphanVertexView<'a, G> {
+    pub fn destination_orphan_vertex(&mut self) -> OrphanVertexView<G> {
         let key = self.vertex;
         let vertex = self.storage.as_storage_mut().get_mut(&key).unwrap();
-        (key, vertex).into_view()
+        (key, vertex).into_view().unwrap()
     }
 }
 
+/// Reachable API.
 impl<M, G, C> EdgeView<M, G, C>
 where
     M: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
     C: Consistency,
 {
-    pub fn into_face(self) -> Option<FaceView<M, G, C>>
-    where
-        (FaceKey, M): IntoView<FaceView<M, G, C>>,
-    {
+    pub fn into_reachable_face(self) -> Option<FaceView<M, G, C>> {
         let key = self.face;
-        key.map(move |key| {
-            let EdgeView { storage, .. } = self;
-            (key, storage).into_view()
+        key.and_then(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            AsStorage::<Face<G>>::as_storage(&storage)
+                .contains_key(&key)
+                .into_some(FaceView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
     }
 
-    pub fn face<'a>(&'a self) -> Option<FaceView<&'a M, G, C>>
-    where
-        (FaceKey, &'a M): IntoView<FaceView<&'a M, G, C>>,
-    {
-        self.face.map(|key| {
+    pub fn reachable_face(&self) -> Option<FaceView<&M, G, C>> {
+        self.face.and_then(|key| {
             let storage = &self.storage;
-            (key, storage).into_view()
+            AsStorage::<Face<G>>::as_storage(storage)
+                .contains_key(&key)
+                .into_some(FaceView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
         })
+    }
+}
+
+impl<M, G> EdgeView<M, G, Consistent>
+where
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    G: Geometry,
+{
+    pub fn into_face(self) -> Option<FaceView<M, G, Consistent>> {
+        let key = self.face;
+        key.map(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            FaceView::<_, _, Consistent>::from_keyed_storage(key, storage).unwrap()
+        })
+    }
+
+    pub fn face(&self) -> Option<FaceView<&Mesh<G>, G, Consistent>> {
+        self.reachable_face()
+            .map(|face| interior_deref!(face => face))
     }
 }
 
@@ -515,10 +447,10 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub fn orphan_face<'a>(&'a mut self) -> Option<OrphanFaceView<'a, G>> {
+    pub fn orphan_face(&mut self) -> Option<OrphanFaceView<G>> {
         if let Some(key) = self.face {
             if let Some(face) = self.storage.as_storage_mut().get_mut(&key) {
-                return Some((key, face).into_view());
+                return Some((key, face).into_view().unwrap());
             }
         }
         return None;
@@ -531,30 +463,23 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_vertices<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = VertexView<&'a M, G, C>>
-    where
-        (VertexKey, &'a M): IntoView<VertexView<&'a M, G, C>>,
-    {
+    pub(in graph) fn reachable_vertices(&self) -> impl Iterator<Item = VertexView<&M, G, C>> {
         let (a, b) = self.key.to_vertex_keys();
         let storage = &self.storage;
         ArrayVec::from([b, a])
             .into_iter()
-            .map(move |key| (key, storage).into_view())
+            .map(move |key| VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
     }
 }
 
 impl<M, G> EdgeView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn vertices<'a>(&'a self) -> impl Iterator<Item = VertexView<&'a M, G, Consistent>>
-    where
-        (VertexKey, &'a M): IntoView<VertexView<&'a M, G, Consistent>>,
-    {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Mesh<G>, G, Consistent>> {
         self.reachable_vertices()
+            .map(|vertex| interior_deref!(vertex => vertex))
     }
 }
 
@@ -564,11 +489,7 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_faces<'a>(&'a self) -> impl Iterator<Item = FaceView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-        (FaceKey, &'a M): IntoView<FaceView<&'a M, G, C>>,
-    {
+    pub(in graph) fn reachable_faces(&self) -> impl Iterator<Item = FaceView<&M, G, C>> {
         let storage = &self.storage;
         self.face
             .into_iter()
@@ -576,7 +497,7 @@ where
                 self.reachable_opposite_edge()
                     .and_then(|opposite| opposite.face),
             )
-            .map(move |key| (key, storage).into_view())
+            .map(move |key| FaceView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
     }
 }
 
@@ -585,11 +506,9 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn faces<'a>(&'a self) -> impl Iterator<Item = FaceView<&'a M, G, Consistent>>
-    where
-        (FaceKey, &'a M): IntoView<FaceView<&'a M, G, Consistent>>,
-    {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Mesh<G>, G, Consistent>> {
         self.reachable_faces()
+            .map(|face| interior_deref!(face => face))
     }
 }
 
@@ -604,14 +523,12 @@ where
         self,
         destination: EdgeKey,
     ) -> Result<EdgeView<&'a mut Mesh<G>, G, Consistent>, Error> {
-        let EdgeView {
-            storage,
-            key: source,
-            ..
-        } = self;
-        let mut mutation = Mutation::immediate(storage);
-        let edge = join(&mut mutation, source, destination)?;
-        Ok((edge, mutation.commit()).into_view())
+        let (source, storage) = self.into_keyed_storage();
+        let cache = EdgeJoinCache::snapshot(&storage, source, destination)?;
+        let (storage, edge) = Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| edge::join_with_cache(&mut *mutation, cache))
+            .unwrap();
+        Ok(EdgeView::<_, _, Consistent>::from_keyed_storage(edge, storage).unwrap())
     }
 }
 
@@ -634,10 +551,12 @@ where
     where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
     {
-        let EdgeView { storage, key, .. } = self;
-        let mut mutation = Mutation::immediate(storage);
-        let vertex = split(&mut mutation, key)?;
-        Ok((vertex, mutation.commit()).into_view())
+        let (ab, storage) = self.into_keyed_storage();
+        let cache = EdgeSplitCache::snapshot(&storage, ab)?;
+        let (storage, vertex) = Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| edge::split_with_cache(&mut *mutation, cache))
+            .unwrap();
+        Ok(VertexView::<_, _, Consistent>::from_keyed_storage(vertex, storage).unwrap())
     }
 }
 
@@ -662,10 +581,12 @@ where
         ScaledEdgeLateral<G, T>: Clone,
         VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        let EdgeView { storage, key, .. } = self;
-        let mut mutation = Mutation::immediate(storage);
-        let edge = extrude(&mut mutation, key, distance)?;
-        Ok((edge, mutation.commit()).into_view())
+        let (ab, storage) = self.into_keyed_storage();
+        let cache = EdgeExtrudeCache::snapshot(storage, ab, distance)?;
+        let (storage, edge) = Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| edge::extrude_with_cache(&mut *mutation, cache))
+            .unwrap();
+        Ok(EdgeView::<_, _, Consistent>::from_keyed_storage(edge, storage).unwrap())
     }
 }
 
@@ -689,8 +610,7 @@ where
     M: AsStorage<Edge<G>> + Copy,
     G: Geometry,
     C: Consistency,
-{
-}
+{}
 
 impl<M, G, C> Deref for EdgeView<M, G, C>
 where
@@ -721,13 +641,9 @@ where
     M: AsStorage<Edge<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (EdgeKey, M)) -> Self {
+    fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        EdgeView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        EdgeView::<_, _, Inconsistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -736,13 +652,9 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (EdgeKey, M)) -> Self {
+    fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        EdgeView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        EdgeView::<_, _, Consistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -763,6 +675,10 @@ impl<'a, G> OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
 {
+    fn from_keyed_storage(key: EdgeKey, edge: &'a mut Edge<G>) -> Self {
+        OrphanEdgeView { key, edge }
+    }
+
     pub fn key(&self) -> EdgeKey {
         self.key
     }
@@ -792,9 +708,9 @@ impl<'a, G> FromKeyedSource<(EdgeKey, &'a mut Edge<G>)> for OrphanEdgeView<'a, G
 where
     G: 'a + Geometry,
 {
-    fn from_keyed_source(source: (EdgeKey, &'a mut Edge<G>)) -> Self {
+    fn from_keyed_source(source: (EdgeKey, &'a mut Edge<G>)) -> Option<Self> {
         let (key, edge) = source;
-        OrphanEdgeView { key, edge }
+        Some(OrphanEdgeView::from_keyed_storage(key, edge))
     }
 }
 
@@ -819,163 +735,6 @@ impl EdgeKeyTopology {
     pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
     }
-}
-
-pub(in graph) fn split<'a, M, G>(mutation: &mut M, ab: EdgeKey) -> Result<VertexKey, Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
-    G::Vertex: AsPosition,
-{
-    fn split_at_vertex<'a, M, G>(
-        mutation: &mut M,
-        ab: EdgeKey,
-        m: VertexKey,
-    ) -> Result<(EdgeKey, EdgeKey), Error>
-    where
-        M: ModalMutation<'a, G>,
-        G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
-        G::Vertex: AsPosition,
-    {
-        // Remove the edge and insert two truncated edges in its place.
-        let (a, b) = ab.to_vertex_keys();
-        let span = mutation.remove_edge(ab).unwrap();
-        let am = mutation.insert_edge((a, m), span.geometry.clone())?;
-        let mb = mutation.insert_edge((m, b), span.geometry.clone())?;
-        // Connect the new edges to each other and their leading edges.
-        {
-            let mut edge = mutation.as_mesh_mut().edge_mut(am).unwrap();
-            edge.next = Some(mb);
-            edge.previous = span.previous;
-            edge.face = span.face
-        }
-        {
-            let mut edge = mutation.as_mesh_mut().edge_mut(mb).unwrap();
-            edge.next = span.next;
-            edge.previous = Some(am);
-            edge.face = span.face;
-        }
-        if let Some(pa) = span.previous {
-            mutation.as_mesh_mut().edge_mut(pa).unwrap().next = Some(am);
-        }
-        if let Some(bn) = span.next {
-            mutation.as_mesh_mut().edge_mut(bn).unwrap().previous = Some(mb);
-        }
-        // Update the associated face, if any, because it may refer to the
-        // removed edge.
-        if let Some(face) = span.face {
-            mutation.as_mesh_mut().face_mut(face).unwrap().edge = am;
-        }
-        Ok((am, mb))
-    }
-
-    let (ba, m) = {
-        // Insert a new vertex at the midpoint.
-        let (ba, midpoint) = {
-            let edge = match mutation.as_mesh().edge(ab) {
-                Some(edge) => edge,
-                _ => return Err(GraphError::TopologyNotFound.into()),
-            };
-            let mut midpoint = edge.source_vertex().geometry.clone();
-            *midpoint.as_position_mut() = edge.midpoint()?;
-            (
-                edge.reachable_opposite_edge()
-                    .map(|opposite| opposite.key()),
-                midpoint,
-            )
-        };
-        (ba, mutation.insert_vertex(midpoint))
-    };
-    // Split the half-edges. This should not fail; unwrap the results.
-    split_at_vertex(mutation, ab, m).unwrap();
-    if let Some(ba) = ba {
-        split_at_vertex(mutation, ba, m).unwrap();
-    }
-    Ok(m)
-}
-
-pub(in graph) fn join<'a, M, G>(
-    mutation: &mut M,
-    source: EdgeKey,
-    destination: EdgeKey,
-) -> Result<EdgeKey, Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + Geometry,
-{
-    match (
-        mutation.as_mesh().edge(source),
-        mutation.as_mesh().edge(destination),
-    ) {
-        (Some(_), Some(_)) => {}
-        _ => return Err(GraphError::TopologyNotFound.into()),
-    }
-    let (a, b) = source.to_vertex_keys();
-    let (c, d) = destination.to_vertex_keys();
-    // At this point, we can assume the points a, b, c, and d exist in the
-    // mesh. Before mutating the mesh, ensure that existing interior edges
-    // are boundaries.
-    for edge in [a, b, c, d]
-        .perimeter()
-        .flat_map(|ab| mutation.as_mesh().edge(ab.into()))
-    {
-        if !edge.is_boundary_edge() {
-            return Err(GraphError::TopologyConflict.into());
-        }
-    }
-    // Insert a quad joining the edges. These operations should not fail;
-    // unwrap their results.
-    let (edge, face) = {
-        let source = mutation.as_mesh().edge(source).unwrap();
-        (
-            source.geometry.clone(),
-            source
-                .opposite_edge()
-                .face()
-                .map(|face| face.geometry.clone())
-                .unwrap_or_else(Default::default),
-        )
-    };
-    // TODO: Split the face to form triangles.
-    mutation.insert_face(&[a, b, c, d], (edge, face)).unwrap();
-    Ok(source)
-}
-
-pub(in graph) fn extrude<'a, M, G, T>(
-    mutation: &mut M,
-    ab: EdgeKey,
-    distance: T,
-) -> Result<EdgeKey, Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + Geometry + EdgeLateral,
-    G::Lateral: Mul<T>,
-    G::Vertex: AsPosition,
-    ScaledEdgeLateral<G, T>: Clone,
-    VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
-{
-    // Get the extruded geometry.
-    let (vertices, edge) = {
-        let edge = match mutation.as_mesh().edge(ab) {
-            Some(edge) => edge,
-            _ => return Err(GraphError::TopologyNotFound.into()),
-        };
-        if !edge.is_boundary_edge() {
-            return Err(GraphError::TopologyConflict.into());
-        }
-        let mut vertices = (
-            edge.destination_vertex().geometry.clone(),
-            edge.source_vertex().geometry.clone(),
-        );
-        let translation = edge.lateral()? * distance;
-        *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
-        *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
-        (vertices, edge.geometry.clone())
-    };
-    let c = mutation.insert_vertex(vertices.0);
-    let d = mutation.insert_vertex(vertices.1);
-    let cd = mutation.insert_edge((c, d), edge).unwrap();
-    Ok(join(mutation, ab, cd).unwrap())
 }
 
 #[cfg(test)]
@@ -1062,18 +821,17 @@ mod tests {
             .flat_index_vertices(HashIndexer::default());
         let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
         let key = mesh.edges().nth(0).unwrap().key();
-        let vertex = mesh.edge_mut(key).unwrap().split().unwrap();
+        let vertex = mesh.edge_mut(key).unwrap().split().unwrap().into_ref();
 
-        assert_eq!(5, vertex.outgoing_edge().face().unwrap().edges().count());
+        assert_eq!(5, vertex.into_outgoing_edge().into_face().unwrap().arity());
         assert_eq!(
             5,
             vertex
-                .outgoing_edge()
-                .opposite_edge()
-                .face()
+                .into_outgoing_edge()
+                .into_opposite_edge()
+                .into_face()
                 .unwrap()
-                .edges()
-                .count()
+                .arity()
         );
     }
 }

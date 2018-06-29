@@ -11,15 +11,18 @@ use self::alias::*;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use geometry::Geometry;
-use graph::mesh::Mesh;
-use graph::view::{Consistent, EdgeView, FaceView, ReadStorage};
+use graph::mesh::{Edge, Face, Vertex};
+use graph::storage::convert::AsStorage;
+use graph::view::{Consistency, EdgeView, FaceView};
+use graph::GraphError;
 
 pub trait FaceNormal: Geometry {
     type Normal;
 
-    fn normal<M>(face: &FaceView<M, Self, Consistent>) -> Result<Self::Normal, Error>
+    fn normal<M, C>(face: &FaceView<M, Self, C>) -> Result<Self::Normal, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>;
+        M: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency;
 }
 
 impl<G> FaceNormal for G
@@ -32,12 +35,13 @@ where
 {
     type Normal = <<VertexPosition<G> as Sub>::Output as Cross>::Output;
 
-    fn normal<M>(face: &FaceView<M, Self, Consistent>) -> Result<Self::Normal, Error>
+    fn normal<M, C>(face: &FaceView<M, Self, C>) -> Result<Self::Normal, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>,
+        M: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency,
     {
         let positions = face
-            .vertices()
+            .reachable_vertices()
             .take(3)
             .map(|vertex| vertex.geometry.as_position().clone())
             .collect::<Vec<_>>();
@@ -51,9 +55,10 @@ where
 pub trait FaceCentroid: Geometry {
     type Centroid;
 
-    fn centroid<M>(face: &FaceView<M, Self, Consistent>) -> Result<Self::Centroid, Error>
+    fn centroid<M, C>(face: &FaceView<M, Self, C>) -> Result<Self::Centroid, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>;
+        M: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency;
 }
 
 impl<G> FaceCentroid for G
@@ -63,12 +68,14 @@ where
 {
     type Centroid = G::Vertex;
 
-    fn centroid<M>(face: &FaceView<M, Self, Consistent>) -> Result<Self::Centroid, Error>
+    fn centroid<M, C>(face: &FaceView<M, Self, C>) -> Result<Self::Centroid, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>,
+        M: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency,
     {
         Ok(G::Vertex::average(
-            face.vertices().map(|vertex| vertex.geometry.clone()),
+            face.reachable_vertices()
+                .map(|vertex| vertex.geometry.clone()),
         ))
     }
 }
@@ -76,9 +83,10 @@ where
 pub trait EdgeMidpoint: Geometry {
     type Midpoint;
 
-    fn midpoint<M>(edge: &EdgeView<M, Self, Consistent>) -> Result<Self::Midpoint, Error>
+    fn midpoint<M, C>(edge: &EdgeView<M, Self, C>) -> Result<Self::Midpoint, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>;
+        M: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency;
 }
 
 impl<G> EdgeMidpoint for G
@@ -89,9 +97,10 @@ where
 {
     type Midpoint = <VertexPosition<G> as Interpolate>::Output;
 
-    fn midpoint<M>(edge: &EdgeView<M, Self, Consistent>) -> Result<Self::Midpoint, Error>
+    fn midpoint<M, C>(edge: &EdgeView<M, Self, C>) -> Result<Self::Midpoint, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>,
+        M: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency,
     {
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
@@ -102,9 +111,10 @@ where
 pub trait EdgeLateral: Geometry {
     type Lateral;
 
-    fn lateral<M>(edge: &EdgeView<M, Self, Consistent>) -> Result<Self::Lateral, Error>
+    fn lateral<M, C>(edge: &EdgeView<M, Self, C>) -> Result<Self::Lateral, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>;
+        M: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency;
 }
 
 impl<G> EdgeLateral for G
@@ -121,15 +131,18 @@ where
 {
     type Lateral = <VertexPosition<G> as Sub>::Output;
 
-    fn lateral<M>(edge: &EdgeView<M, Self, Consistent>) -> Result<Self::Lateral, Error>
+    fn lateral<M, C>(edge: &EdgeView<M, Self, C>) -> Result<Self::Lateral, Error>
     where
-        M: AsRef<Mesh<Self>> + ReadStorage<Self>,
+        M: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        C: Consistency,
     {
         let a = edge.source_vertex().geometry.as_position().clone();
         let b = edge.destination_vertex().geometry.as_position().clone();
         let c = edge
-            .opposite_edge()
-            .previous_edge()
+            .reachable_opposite_edge()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .reachable_previous_edge()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .destination_vertex()
             .geometry
             .as_position()

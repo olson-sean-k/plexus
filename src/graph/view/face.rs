@@ -1,4 +1,5 @@
 use failure::Error;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -8,15 +9,16 @@ use geometry::Geometry;
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::{Edge, Face, Mesh, Vertex};
-use graph::mutation::{ModalMutation, Mutation};
+use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
+use graph::mutation::{Commit, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, FaceKey, Topological, VertexKey};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
-    edge, Consistency, Consistent, EdgeKeyTopology, EdgeView, Inconsistent, IteratorExt,
-    OrphanEdgeView, OrphanVertexView, VertexView,
+    Consistency, Consistent, EdgeKeyTopology, EdgeView, Inconsistent, IteratorExt, OrphanEdgeView,
+    OrphanVertexView, VertexView,
 };
-use graph::{GraphError, Perimeter};
+use BoolExt;
 
 /// Do **not** use this type directly. Use `FaceRef` and `FaceMut` instead.
 ///
@@ -48,57 +50,8 @@ where
         M::Output: AsStorage<Face<G>>,
         N: AsStorage<T>,
     {
-        let FaceView {
-            key,
-            storage: origin,
-            ..
-        } = self;
-        FaceView {
-            key,
-            storage: origin.bind(storage),
-            phantom: PhantomData,
-        }
-    }
-
-    pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
-    where
-        T: Topological,
-        M: AsStorage<T>,
-    {
-        AsStorage::<T>::as_storage(&self.storage)
-    }
-
-    pub(in graph) fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
-    where
-        T: Topological,
-        M: AsStorageMut<T>,
-    {
-        AsStorageMut::<T>::as_storage_mut(&mut self.storage)
-    }
-}
-
-impl<'a, 'b, M, G, C> FaceView<&'a &'b M, G, C>
-where
-    M: AsStorage<Face<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub fn into_interior_deref(self) -> FaceView<&'b M, G, C>
-    where
-        (FaceKey, &'b M): IntoView<FaceView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
-    }
-
-    pub fn interior_deref(&self) -> FaceView<&'b M, G, C>
-    where
-        (FaceKey, &'b M): IntoView<FaceView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
+        let (key, origin) = self.into_keyed_storage();
+        FaceView::from_keyed_storage_unchecked(key, origin.bind(storage))
     }
 }
 
@@ -109,20 +62,15 @@ where
     C: Consistency,
 {
     pub fn into_orphan(self) -> OrphanFaceView<'a, G> {
-        let FaceView { key, storage, .. } = self;
-        (key, storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+        let (key, storage) = self.into_keyed_storage();
+        (key, storage.as_storage_mut().get_mut(&key).unwrap())
+            .into_view()
+            .unwrap()
     }
-}
 
-impl<M, G, C> FaceView<M, G, C>
-where
-    M: AsStorage<Face<G>> + AsStorageMut<Face<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub fn to_orphan(&mut self) -> OrphanFaceView<G> {
-        let key = self.key;
-        (key, self.storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+    pub fn into_ref(self) -> FaceView<&'a M, G, Consistent> {
+        let (key, storage) = self.into_keyed_storage();
+        FaceView::from_keyed_storage_unchecked(key, &*storage)
     }
 }
 
@@ -136,7 +84,14 @@ where
         self.key
     }
 
-    pub(in graph) fn from_keyed_storage(key: FaceKey, storage: M) -> Self {
+    pub(in graph) fn from_keyed_storage(key: FaceKey, storage: M) -> Option<Self> {
+        storage
+            .as_storage()
+            .contains_key(&key)
+            .into_some(FaceView::from_keyed_storage_unchecked(key, storage))
+    }
+
+    fn from_keyed_storage_unchecked(key: FaceKey, storage: M) -> Self {
         FaceView {
             key,
             storage,
@@ -144,16 +99,21 @@ where
         }
     }
 
+    pub(in graph) fn into_keyed_storage(self) -> (FaceKey, M) {
+        let FaceView { key, storage, .. } = self;
+        (key, storage)
+    }
+
     fn to_ref(&self) -> FaceView<&M, G, C> {
         let key = self.key;
         let storage = &self.storage;
-        FaceView::from_keyed_storage(key, storage)
+        FaceView::from_keyed_storage_unchecked(key, storage)
     }
 
     fn to_mut(&mut self) -> FaceView<&mut M, G, C> {
         let key = self.key;
         let storage = &mut self.storage;
-        FaceView::from_keyed_storage(key, storage)
+        FaceView::from_keyed_storage_unchecked(key, storage)
     }
 }
 
@@ -163,45 +123,68 @@ where
     G: Geometry,
     C: Consistency,
 {
-    // TODO: Does this require consistency? Is it needed in mutations?
-    pub fn to_key_topology<'a>(&'a self) -> FaceKeyTopology
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
+    pub fn to_key_topology(&self) -> FaceKeyTopology {
         FaceKeyTopology::new(
             self.key,
-            self.reachable_edges().map(|edge| edge.to_key_topology()),
+            self.reachable_interior_edges()
+                .map(|edge| edge.to_key_topology()),
         )
     }
 
-    // TODO: Does this require consistency? Is it needed in mutations?
     pub fn arity(&self) -> usize {
-        self.reachable_edges().count()
+        self.reachable_interior_edges().count()
     }
 
-    pub(in graph) fn reachable_edges(&self) -> impl Iterator<Item = EdgeView<&M, G, C>> {
-        EdgeCirculator::from(self.to_ref())
-            .map_with_ref(|circulator, key| EdgeView::from_keyed_storage(key, circulator.storage))
-    }
-
-    pub(in graph) fn reachable_faces(&self) -> impl Iterator<Item = FaceView<&M, G, C>> {
-        FaceCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(|circulator, key| {
-            FaceView::from_keyed_storage(key, circulator.input.storage)
+    pub(in graph) fn reachable_interior_edges(&self) -> impl Iterator<Item = EdgeView<&M, G, C>> {
+        EdgeCirculator::from(self.to_ref()).map_with_ref(|circulator, key| {
+            EdgeView::<_, _, C>::from_keyed_storage(key, circulator.storage).unwrap()
         })
+    }
+
+    pub(in graph) fn reachable_neighboring_faces(
+        &self,
+    ) -> impl Iterator<Item = FaceView<&M, G, C>> {
+        FaceCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(|circulator, key| {
+            FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
+        })
+    }
+}
+
+impl<M, G, C> FaceView<M, G, C>
+where
+    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    pub(in graph) fn mutuals(&self) -> HashSet<VertexKey> {
+        self.reachable_neighboring_faces()
+            .map(|face| {
+                face.reachable_vertices()
+                    .map(|vertex| vertex.key())
+                    .collect::<HashSet<_>>()
+            })
+            .fold(
+                self.reachable_vertices()
+                    .map(|vertex| vertex.key())
+                    .collect::<HashSet<_>>(),
+                |intersection, vertices| intersection.intersection(&vertices).cloned().collect(),
+            )
     }
 }
 
 impl<M, G> FaceView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&M, G, Consistent>> {
-        self.reachable_edges()
+    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&Mesh<G>, G, Consistent>> {
+        self.reachable_interior_edges()
+            .map(|edge| interior_deref!(edge => edge))
     }
 
-    pub fn faces(&self) -> impl Iterator<Item = FaceView<&M, G, Consistent>> {
-        self.reachable_faces()
+    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&Mesh<G>, G, Consistent>> {
+        self.reachable_neighboring_faces()
+            .map(|face| interior_deref!(face => face))
     }
 }
 
@@ -213,18 +196,21 @@ where
 {
     pub(in graph) fn reachable_vertices(&self) -> impl Iterator<Item = VertexView<&M, G, C>> {
         VertexCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(
-            |circulator, key| VertexView::from_keyed_storage(key, circulator.input.storage),
+            |circulator, key| {
+                VertexView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
+            },
         )
     }
 }
 
 impl<M, G> FaceView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M, G, Consistent>> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Mesh<G>, G, Consistent>> {
         self.reachable_vertices()
+            .map(|vertex| interior_deref!(vertex => vertex))
     }
 }
 
@@ -234,7 +220,7 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_orphan_edges<'a>(
+    pub(in graph) fn reachable_interior_orphan_edges<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
         EdgeCirculator::from(self.to_mut()).map_with_mut(|circulator, key| {
@@ -245,6 +231,7 @@ where
                     circulator.storage.as_storage_mut().get_mut(&key).unwrap(),
                 )
             }).into_view()
+                .unwrap()
         })
     }
 }
@@ -255,7 +242,7 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_orphan_faces<'a>(
+    pub(in graph) fn reachable_neighboring_orphan_faces<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {
         FaceCirculator::from(EdgeCirculator::from(self.to_mut())).map_with_mut(|circulator, key| {
@@ -271,28 +258,36 @@ where
                         .unwrap(),
                 )
             }).into_view()
+                .unwrap()
         })
     }
 }
 
 impl<M, G> FaceView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Face<G>>,
+    M: AsRef<Mesh<G>>
+        + AsMut<Mesh<G>>
+        + AsStorage<Edge<G>>
+        + AsStorageMut<Edge<G>>
+        + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
-        self.reachable_orphan_edges()
+    pub fn interior_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
+        self.reachable_interior_orphan_edges()
     }
 }
 
-impl<M, G, C> FaceView<M, G, C>
+impl<M, G> FaceView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M: AsRef<Mesh<G>>
+        + AsMut<Mesh<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorageMut<Face<G>>,
     G: Geometry,
-    C: Consistency,
 {
-    pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        self.reachable_orphan_faces()
+    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
+        self.reachable_neighboring_orphan_faces()
     }
 }
 
@@ -319,6 +314,7 @@ where
                             .unwrap(),
                     )
                 }).into_view()
+                    .unwrap()
             },
         )
     }
@@ -326,7 +322,12 @@ where
 
 impl<M, G> FaceView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    M: AsRef<Mesh<G>>
+        + AsMut<Mesh<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + AsStorageMut<Vertex<G>>,
     G: Geometry,
 {
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
@@ -334,20 +335,16 @@ where
     }
 }
 
-impl<M, G> FaceView<M, G, Consistent>
+impl<'a, G> FaceView<&'a mut Mesh<G>, G, Consistent>
 where
-    M: AsRef<Mesh<G>> + AsMut<Mesh<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
     pub fn join(self, destination: FaceKey) -> Result<(), Error> {
-        let FaceView {
-            mut storage,
-            key: source,
-            ..
-        } = self;
-        let mut mutation = Mutation::replace(storage.as_mut(), Mesh::empty());
-        join(&mut *mutation, source, destination)?;
-        mutation.commit()?;
+        let (source, storage) = self.into_keyed_storage();
+        let cache = FaceJoinCache::snapshot(storage, source, destination)?;
+        Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| face::join_with_cache(&mut *mutation, cache))
+            .unwrap();
         Ok(())
     }
 }
@@ -366,15 +363,15 @@ impl<'a, G> FaceView<&'a mut Mesh<G>, G, Consistent>
 where
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut Mesh<G>, G>>, Error> {
-        let FaceView {
-            storage, key: abc, ..
-        } = self;
-        let mut mutation = Mutation::immediate(storage);
-        Ok(match triangulate(&mut mutation, abc)? {
-            Some(vertex) => Some((vertex, mutation.commit()).into_view()),
-            _ => None,
-        })
+    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut Mesh<G>, G, Consistent>>, Error> {
+        let (abc, storage) = self.into_keyed_storage();
+        let cache = FaceTriangulateCache::snapshot(storage, abc)?;
+        let (storage, vertex) = Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| face::triangulate_with_cache(&mut *mutation, cache))
+            .unwrap();
+        Ok(vertex.map(|vertex| {
+            VertexView::<_, _, Consistent>::from_keyed_storage(vertex, storage).unwrap()
+        }))
     }
 }
 
@@ -399,12 +396,12 @@ where
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        let FaceView {
-            storage, key: abc, ..
-        } = self;
-        let mut mutation = Mutation::replace(storage, Mesh::empty());
-        let face = extrude(&mut *mutation, abc, distance)?;
-        Ok((face, mutation.commit().unwrap()).into_view())
+        let (abc, storage) = self.into_keyed_storage();
+        let cache = FaceExtrudeCache::snapshot(storage, abc, distance)?;
+        let (storage, face) = Mutation::replace(storage, Mesh::empty())
+            .commit_with(move |mutation| face::extrude_with_cache(&mut *mutation, cache))
+            .unwrap();
+        Ok(FaceView::<_, _, Consistent>::from_keyed_storage(face, storage).unwrap())
     }
 }
 
@@ -428,8 +425,7 @@ where
     M: AsStorage<Face<G>> + Copy,
     G: Geometry,
     C: Consistency,
-{
-}
+{}
 
 impl<M, G, C> Deref for FaceView<M, G, C>
 where
@@ -460,13 +456,9 @@ where
     M: AsStorage<Face<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (FaceKey, M)) -> Self {
+    fn from_keyed_source(source: (FaceKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        FaceView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        FaceView::<_, _, Inconsistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -475,13 +467,9 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (FaceKey, M)) -> Self {
+    fn from_keyed_source(source: (FaceKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        FaceView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        FaceView::<_, _, Consistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -502,6 +490,10 @@ impl<'a, G> OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
+    fn from_keyed_storage(key: FaceKey, face: &'a mut Face<G>) -> Self {
+        OrphanFaceView { key, face }
+    }
+
     pub fn key(&self) -> FaceKey {
         self.key
     }
@@ -531,9 +523,9 @@ impl<'a, G> FromKeyedSource<(FaceKey, &'a mut Face<G>)> for OrphanFaceView<'a, G
 where
     G: 'a + Geometry,
 {
-    fn from_keyed_source(source: (FaceKey, &'a mut Face<G>)) -> Self {
+    fn from_keyed_source(source: (FaceKey, &'a mut Face<G>)) -> Option<Self> {
         let (key, face) = source;
-        OrphanFaceView { key, face }
+        Some(OrphanFaceView::from_keyed_storage(key, face))
     }
 }
 
@@ -558,7 +550,7 @@ impl FaceKeyTopology {
         self.key
     }
 
-    pub fn edges(&self) -> &[EdgeKeyTopology] {
+    pub fn interior_edges(&self) -> &[EdgeKeyTopology] {
         self.edges.as_slice()
     }
 }
@@ -606,6 +598,21 @@ where
     phantom: PhantomData<G>,
 }
 
+impl<M, G> EdgeCirculator<M, G>
+where
+    M: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn from_keyed_storage(key: EdgeKey, storage: M) -> Self {
+        EdgeCirculator {
+            storage,
+            edge: Some(key),
+            breadcrumb: Some(key),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<M, G, C> From<FaceView<M, G, C>> for EdgeCirculator<M, G>
 where
     M: AsStorage<Edge<G>> + AsStorage<Face<G>>,
@@ -614,27 +621,11 @@ where
 {
     fn from(face: FaceView<M, G, C>) -> Self {
         let edge = face.edge;
-        let FaceView { storage, .. } = face;
+        let (_, storage) = face.into_keyed_storage();
         EdgeCirculator {
             storage,
             edge: Some(edge),
             breadcrumb: Some(edge),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<M, G> FromKeyedSource<(EdgeKey, M)> for EdgeCirculator<M, G>
-where
-    M: AsStorage<Edge<G>>,
-    G: Geometry,
-{
-    fn from_keyed_source(source: (EdgeKey, M)) -> Self {
-        let (key, storage) = source;
-        EdgeCirculator {
-            storage,
-            edge: Some(key),
-            breadcrumb: Some(key),
             phantom: PhantomData,
         }
     }
@@ -715,168 +706,6 @@ where
     }
 }
 
-pub(in graph) fn triangulate<'a, M, G>(
-    mutation: &mut M,
-    abc: FaceKey,
-) -> Result<Option<VertexKey>, Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
-{
-    let (perimeter, centroid, face) = {
-        let face = match mutation.as_mesh().face(abc) {
-            Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound.into()),
-        };
-        let perimeter = face
-            .edges()
-            .map(|edge| (edge.vertex, edge.next_edge().vertex))
-            .collect::<Vec<_>>();
-        if perimeter.len() <= 3 {
-            return Ok(None);
-        }
-        (perimeter, face.centroid()?, face.geometry.clone())
-    };
-    // This is the point of no return; the mesh has mutated. Unwrap
-    // results.
-    mutation.remove_face(abc).unwrap();
-    let c = mutation.insert_vertex(centroid);
-    for (a, b) in perimeter {
-        mutation
-            .insert_face(&[a, b, c], (Default::default(), face.clone()))
-            .unwrap();
-    }
-    Ok(Some(c))
-}
-
-pub(in graph) fn join<'a, M, G>(
-    mutation: &mut M,
-    source: FaceKey,
-    destination: FaceKey,
-) -> Result<(), Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + Geometry,
-{
-    let (sources, destination) = {
-        let source = match mutation.as_mesh().face(source) {
-            Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound.into()),
-        };
-        // Ensure that the opposite face exists and has the same arity.
-        let arity = source.arity();
-        let destination = match mutation.as_mesh().face(destination) {
-            Some(destination) => {
-                if destination.arity() != arity {
-                    return Err(GraphError::ArityNonConstant.into());
-                }
-                destination
-            }
-            _ => {
-                return Err(GraphError::TopologyNotFound.into());
-            }
-        };
-        // Decompose the faces into their key topologies.
-        (
-            source
-                .to_key_topology()
-                .edges()
-                .iter()
-                .map(|topology| {
-                    (
-                        topology.clone(),
-                        mutation
-                            .as_mesh()
-                            .edge(topology.key())
-                            .unwrap()
-                            .geometry
-                            .clone(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-            destination.to_key_topology(),
-        )
-    };
-    // Remove the source and destination faces. Pair the topology with edge
-    // geometry for the source face. At this point, we can assume that the
-    // faces exist and no failures should occur; unwrap results.
-    mutation.remove_face(source)?;
-    mutation.remove_face(destination.key())?;
-    // TODO: Is it always correct to reverse the order of the opposite
-    //       face's edges?
-    // Re-insert the edges of the faces and join the mutual edges.
-    for (source, destination) in sources.into_iter().zip(destination.edges().iter().rev()) {
-        let (a, b) = source.0.vertices();
-        let (c, d) = destination.vertices();
-        let ab = mutation.insert_edge((a, b), source.1.clone()).unwrap();
-        let cd = mutation.insert_edge((c, d), source.1).unwrap();
-        edge::join(mutation, ab, cd).unwrap();
-    }
-    // TODO: Is there any reasonable topology this can return?
-    Ok(())
-}
-
-pub(in graph) fn extrude<'a, M, G, T>(
-    mutation: &mut M,
-    abc: FaceKey,
-    distance: T,
-) -> Result<FaceKey, Error>
-where
-    M: ModalMutation<'a, G>,
-    G: 'a + FaceNormal + Geometry,
-    G::Normal: Mul<T>,
-    G::Vertex: AsPosition,
-    ScaledFaceNormal<G, T>: Clone,
-    VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
-{
-    // Collect all the vertex keys of the face along with their translated
-    // geometries.
-    let (sources, destinations, face) = {
-        let face = match mutation.as_mesh().face(abc) {
-            Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound.into()),
-        };
-        let translation = face.normal()? * distance;
-        let sources = face
-            .vertices()
-            .map(|vertex| vertex.key())
-            .collect::<Vec<_>>();
-        let destinations = face
-            .vertices()
-            .map(|vertex| {
-                let mut geometry = vertex.geometry.clone();
-                *geometry.as_position_mut() = geometry.as_position().clone() + translation.clone();
-                geometry
-            })
-            .collect::<Vec<_>>();
-        (sources, destinations, face.geometry.clone())
-    };
-    // This is the point of no return; the mesh has been mutated. Unwrap
-    // results.
-    mutation.remove_face(abc).unwrap();
-    let destinations = destinations
-        .into_iter()
-        .map(|vertex| mutation.insert_vertex(vertex))
-        .collect::<Vec<_>>();
-    // Use the keys for the existing vertices and the translated geometries
-    // to construct the extruded face and its connective faces.
-    let extrusion = mutation
-        .insert_face(&destinations, (Default::default(), face))
-        .unwrap();
-    for ((a, c), (b, d)) in sources
-        .into_iter()
-        .zip(destinations.into_iter())
-        .collect::<Vec<_>>()
-        .perimeter()
-    {
-        // TODO: Split these faces to form triangles.
-        mutation
-            .insert_face(&[a, b, d, c], Default::default())
-            .unwrap();
-    }
-    Ok(extrusion)
-}
-
 #[cfg(test)]
 mod tests {
     use nalgebra::Point3;
@@ -892,7 +721,7 @@ mod tests {
         let face = mesh.faces().nth(0).unwrap();
 
         // All faces should be triangles and should have three edges.
-        assert_eq!(3, face.edges().count());
+        assert_eq!(3, face.interior_edges().count());
     }
 
     #[test]
@@ -903,7 +732,7 @@ mod tests {
         let face = mesh.faces().nth(0).unwrap();
 
         // No matter which face is selected, it should have three neighbors.
-        assert_eq!(3, face.faces().count());
+        assert_eq!(3, face.neighboring_faces().count());
     }
 
     #[test]
@@ -917,7 +746,7 @@ mod tests {
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.
-            assert_eq!(3, face.faces().count());
+            assert_eq!(3, face.neighboring_faces().count());
         }
 
         assert_eq!(8, mesh.vertex_count());

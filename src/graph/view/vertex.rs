@@ -5,12 +5,13 @@ use std::ops::{Deref, DerefMut};
 use geometry::Geometry;
 use graph::mesh::{Edge, Face, Mesh, Vertex};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, FaceKey, Topological, VertexKey};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     Consistency, Consistent, EdgeView, FaceView, Inconsistent, IteratorExt, OrphanEdgeView,
     OrphanFaceView,
 };
+use BoolExt;
 
 /// Do **not** use this type directly. Use `VertexRef` and `VertexMut` instead.
 ///
@@ -42,57 +43,8 @@ where
         M::Output: AsStorage<Vertex<G>>,
         N: AsStorage<T>,
     {
-        let VertexView {
-            key,
-            storage: origin,
-            ..
-        } = self;
-        VertexView {
-            key,
-            storage: origin.bind(storage),
-            phantom: PhantomData,
-        }
-    }
-
-    pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
-    where
-        T: Topological,
-        M: AsStorage<T>,
-    {
-        AsStorage::<T>::as_storage(&self.storage)
-    }
-
-    pub(in graph) fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
-    where
-        T: Topological,
-        M: AsStorageMut<T>,
-    {
-        AsStorageMut::<T>::as_storage_mut(&mut self.storage)
-    }
-}
-
-impl<'a, 'b, M, G, C> VertexView<&'a &'b M, G, C>
-where
-    M: AsStorage<Vertex<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub fn into_interior_deref(self) -> VertexView<&'b M, G, C>
-    where
-        (VertexKey, &'b M): IntoView<VertexView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
-    }
-
-    pub fn interior_deref(&self) -> VertexView<&'b M, G, C>
-    where
-        (VertexKey, &'b M): IntoView<VertexView<&'b M, G, C>>,
-    {
-        let key = self.key;
-        let storage = *self.storage;
-        (key, storage).into_view()
+        let (key, origin) = self.into_keyed_storage();
+        VertexView::from_keyed_storage_unchecked(key, origin.bind(storage))
     }
 }
 
@@ -103,20 +55,21 @@ where
     C: Consistency,
 {
     pub fn into_orphan(self) -> OrphanVertexView<'a, G> {
-        let VertexView { key, storage, .. } = self;
-        (key, storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+        let (key, storage) = self.into_keyed_storage();
+        (key, storage.as_storage_mut().get_mut(&key).unwrap())
+            .into_view()
+            .unwrap()
     }
 }
 
-impl<M, G, C> VertexView<M, G, C>
+impl<'a, M, G> VertexView<&'a mut M, G, Consistent>
 where
-    M: AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
-    G: Geometry,
-    C: Consistency,
+    M: 'a + AsRef<Mesh<G>> + AsMut<Mesh<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    G: 'a + Geometry,
 {
-    pub fn to_orphan<'a>(&'a mut self) -> OrphanVertexView<'a, G> {
-        let key = self.key;
-        (key, self.storage.as_storage_mut().get_mut(&key).unwrap()).into_view()
+    pub fn into_ref(self) -> VertexView<&'a M, G, Consistent> {
+        let (key, storage) = self.into_keyed_storage();
+        VertexView::<_, _, Consistent>::from_keyed_storage(key, &*storage).unwrap()
     }
 }
 
@@ -130,7 +83,14 @@ where
         self.key
     }
 
-    pub(in graph) fn from_keyed_storage(key: VertexKey, storage: M) -> Self {
+    pub(in graph) fn from_keyed_storage(key: VertexKey, storage: M) -> Option<Self> {
+        storage
+            .as_storage()
+            .contains_key(&key)
+            .into_some(VertexView::from_keyed_storage_unchecked(key, storage))
+    }
+
+    fn from_keyed_storage_unchecked(key: VertexKey, storage: M) -> Self {
         VertexView {
             key,
             storage,
@@ -138,16 +98,15 @@ where
         }
     }
 
+    pub(in graph) fn into_keyed_storage(self) -> (VertexKey, M) {
+        let VertexView { key, storage, .. } = self;
+        (key, storage)
+    }
+
     fn to_ref(&self) -> VertexView<&M, G, C> {
         let key = self.key;
         let storage = &self.storage;
-        VertexView::from_keyed_storage(key, storage)
-    }
-
-    fn to_mut(&mut self) -> VertexView<&mut M, G, C> {
-        let key = self.key;
-        let storage = &mut self.storage;
-        VertexView::from_keyed_storage(key, storage)
+        VertexView::from_keyed_storage_unchecked(key, storage)
     }
 }
 
@@ -158,78 +117,52 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn into_reachable_outgoing_edge(self) -> Option<EdgeView<M, G, C>>
-    where
-        (EdgeKey, M): IntoView<EdgeView<M, G, C>>,
-    {
+    pub(in graph) fn into_reachable_outgoing_edge(self) -> Option<EdgeView<M, G, C>> {
         let key = self.edge;
-        key.map(move |key| {
-            let VertexView { storage, .. } = self;
-            (key, storage).into_view()
+        key.and_then(move |key| {
+            let (_, storage) = self.into_keyed_storage();
+            EdgeView::<_, _, C>::from_keyed_storage(key, storage)
         })
     }
-}
 
-/// Reachable API.
-impl<M, G, C> VertexView<M, G, C>
-where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    pub(in graph) fn reachable_outgoing_edge<'a>(&'a self) -> Option<EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
-        self.edge.map(|key| {
+    pub(in graph) fn reachable_outgoing_edge(&self) -> Option<EdgeView<&M, G, C>> {
+        self.edge.and_then(|key| {
             let storage = &self.storage;
-            (key, storage).into_view()
+            EdgeView::<_, _, C>::from_keyed_storage(key, storage)
         })
     }
 
-    pub(in graph) fn reachable_incoming_edges<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = EdgeView<&'a M, G, C>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, C>>,
-    {
+    pub(in graph) fn reachable_incoming_edges(&self) -> impl Iterator<Item = EdgeView<&M, G, C>> {
         let key = self.edge;
         let storage = &self.storage;
-        EdgeCirculator::from_keyed_source((key, storage))
-            .map_with_ref(|circulator, key| (key, circulator.storage).into_view())
+        EdgeCirculator::from_keyed_storage(key, storage).map_with_ref(|circulator, key| {
+            EdgeView::<_, _, C>::from_keyed_storage(key, circulator.storage).unwrap()
+        })
     }
 }
 
 impl<M, G> VertexView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn into_outgoing_edge(self) -> EdgeView<M, G, Consistent>
-    where
-        (EdgeKey, M): IntoView<EdgeView<M, G, Consistent>>,
-    {
+    pub fn into_outgoing_edge(self) -> EdgeView<M, G, Consistent> {
         self.into_reachable_outgoing_edge().unwrap()
     }
 
-    pub fn outgoing_edge<'a>(&'a self) -> EdgeView<&'a M, G, Consistent>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
-        self.reachable_outgoing_edge().unwrap()
+    pub fn outgoing_edge(&self) -> EdgeView<&Mesh<G>, G, Consistent> {
+        interior_deref!(edge => self.reachable_outgoing_edge().unwrap())
     }
 }
 
 impl<M, G> VertexView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn incoming_edges<'a>(&'a self) -> impl Iterator<Item = EdgeView<&'a M, G, Consistent>>
-    where
-        (EdgeKey, &'a M): IntoView<EdgeView<&'a M, G, Consistent>>,
-    {
+    pub fn incoming_edges(&self) -> impl Iterator<Item = EdgeView<&Mesh<G>, G, Consistent>> {
         self.reachable_incoming_edges()
+            .map(|edge| interior_deref!(edge => edge))
     }
 }
 
@@ -244,18 +177,19 @@ where
         &self,
     ) -> impl Iterator<Item = FaceView<&M, G, C>> {
         FaceCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(|circulator, key| {
-            FaceView::from_keyed_storage(key, circulator.input.storage)
+            FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
         })
     }
 }
 
 impl<M, G> VertexView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M, G, Consistent>> {
+    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&Mesh<G>, G, Consistent>> {
         self.reachable_neighboring_faces()
+            .map(|face| interior_deref!(face => face))
     }
 }
 
@@ -266,11 +200,13 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_outgoing_orphan_edge<'a>(
-        &'a mut self,
-    ) -> Option<OrphanEdgeView<'a, G>> {
+    pub(in graph) fn reachable_outgoing_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
         if let Some(key) = self.edge {
-            Some((key, self.storage.as_storage_mut().get_mut(&key).unwrap()).into_view())
+            Some(
+                (key, self.storage.as_storage_mut().get_mut(&key).unwrap())
+                    .into_view()
+                    .unwrap(),
+            )
         }
         else {
             None
@@ -282,7 +218,7 @@ where
     ) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
         let key = self.edge;
         let storage = &mut self.storage;
-        EdgeCirculator::from_keyed_source((key, storage)).map_with_mut(|circulator, key| {
+        EdgeCirculator::from_keyed_storage(key, storage).map_with_mut(|circulator, key| {
             (key, unsafe {
                 // Apply `'a` to the autoref from `as_storage_mut` and
                 // `get_mut`.
@@ -290,20 +226,25 @@ where
                     circulator.storage.as_storage_mut().get_mut(&key).unwrap(),
                 )
             }).into_view()
+                .unwrap()
         })
     }
 }
 
 impl<M, G> VertexView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>>
+        + AsMut<Mesh<G>>
+        + AsStorage<Edge<G>>
+        + AsStorageMut<Edge<G>>
+        + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn outgoing_orphan_edge<'a>(&'a mut self) -> OrphanEdgeView<'a, G> {
+    pub fn outgoing_orphan_edge(&mut self) -> OrphanEdgeView<G> {
         self.reachable_outgoing_orphan_edge().unwrap()
     }
 
-    pub fn incoming_orphan_edges<'a>(&'a mut self) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
+    pub fn incoming_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
         self.reachable_incoming_orphan_edges()
     }
 }
@@ -320,7 +261,7 @@ where
     ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {
         let key = self.edge;
         let storage = &mut self.storage;
-        FaceCirculator::from(EdgeCirculator::from_keyed_source((key, storage))).map_with_mut(
+        FaceCirculator::from(EdgeCirculator::from_keyed_storage(key, storage)).map_with_mut(
             |circulator, key| {
                 (key, unsafe {
                     // Apply `'a` to the autoref from `as_storage_mut` and
@@ -334,6 +275,7 @@ where
                             .unwrap(),
                     )
                 }).into_view()
+                    .unwrap()
             },
         )
     }
@@ -341,13 +283,15 @@ where
 
 impl<M, G> VertexView<M, G, Consistent>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + AsStorage<Vertex<G>>,
+    M: AsRef<Mesh<G>>
+        + AsMut<Mesh<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorageMut<Face<G>>
+        + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    // TODO: This will require a constraint for the conversion.
-    pub fn neighboring_orphan_faces<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {
+    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.reachable_neighboring_orphan_faces()
     }
 }
@@ -372,8 +316,7 @@ where
     M: AsStorage<Vertex<G>> + Copy,
     G: Geometry,
     C: Consistency,
-{
-}
+{}
 
 impl<M, G, C> Deref for VertexView<M, G, C>
 where
@@ -404,13 +347,9 @@ where
     M: AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (VertexKey, M)) -> Self {
+    fn from_keyed_source(source: (VertexKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        VertexView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        VertexView::<_, _, Inconsistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -419,13 +358,9 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (VertexKey, M)) -> Self {
+    fn from_keyed_source(source: (VertexKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        VertexView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
+        VertexView::<_, _, Consistent>::from_keyed_storage(key, storage)
     }
 }
 
@@ -446,6 +381,10 @@ impl<'a, G> OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
 {
+    fn from_keyed_storage(key: VertexKey, vertex: &'a mut Vertex<G>) -> Self {
+        OrphanVertexView { key, vertex }
+    }
+
     pub fn key(&self) -> VertexKey {
         self.key
     }
@@ -475,9 +414,9 @@ impl<'a, G> FromKeyedSource<(VertexKey, &'a mut Vertex<G>)> for OrphanVertexView
 where
     G: 'a + Geometry,
 {
-    fn from_keyed_source(source: (VertexKey, &'a mut Vertex<G>)) -> Self {
+    fn from_keyed_source(source: (VertexKey, &'a mut Vertex<G>)) -> Option<Self> {
         let (key, vertex) = source;
-        OrphanVertexView { key, vertex }
+        Some(OrphanVertexView::from_keyed_storage(key, vertex))
     }
 }
 
@@ -492,15 +431,12 @@ where
     phantom: PhantomData<G>,
 }
 
-impl<M, G, C> From<VertexView<M, G, C>> for EdgeCirculator<M, G>
+impl<M, G> EdgeCirculator<M, G>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: AsStorage<Edge<G>>,
     G: Geometry,
-    C: Consistency,
 {
-    fn from(vertex: VertexView<M, G, C>) -> Self {
-        let key = vertex.edge;
-        let VertexView { storage, .. } = vertex;
+    pub fn from_keyed_storage(key: Option<EdgeKey>, storage: M) -> Self {
         EdgeCirculator {
             storage,
             outgoing: key,
@@ -510,13 +446,15 @@ where
     }
 }
 
-impl<M, G> FromKeyedSource<(Option<EdgeKey>, M)> for EdgeCirculator<M, G>
+impl<M, G, C> From<VertexView<M, G, C>> for EdgeCirculator<M, G>
 where
-    M: AsStorage<Edge<G>>,
+    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
+    C: Consistency,
 {
-    fn from_keyed_source(source: (Option<EdgeKey>, M)) -> Self {
-        let (key, storage) = source;
+    fn from(vertex: VertexView<M, G, C>) -> Self {
+        let key = vertex.edge;
+        let (_, storage) = vertex.into_keyed_storage();
         EdgeCirculator {
             storage,
             outgoing: key,
@@ -533,6 +471,7 @@ where
 {
     type Item = EdgeKey;
 
+    // TODO: It seems that `edge` is never set on `vertex`s...
     fn next(&mut self) -> Option<Self::Item> {
         self.outgoing
             .and_then(|outgoing| self.storage.as_storage().get(&outgoing))
