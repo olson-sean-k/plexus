@@ -146,15 +146,15 @@ where
 
     fn connect_face_interior(&mut self, edges: &[EdgeKey], face: FaceKey) -> Result<(), Error> {
         for (ab, bc) in edges.perimeter() {
-            self.connect_neighboring_edges(ab, bc).ignore_conflict()?;
-            self.connect_edge_to_face(ab, face).ignore_conflict()?;
+            self.connect_neighboring_edges(ab, bc)?;
+            self.connect_edge_to_face(ab, face)?;
         }
         Ok(())
     }
 
     fn disconnect_face_interior(&mut self, edges: &[EdgeKey]) -> Result<(), Error> {
         for ab in edges {
-            self.disconnect_edge_from_face(*ab).ignore_conflict()?;
+            self.disconnect_edge_from_face(*ab)?;
         }
         Ok(())
     }

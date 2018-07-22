@@ -36,17 +36,14 @@ where
         }
     }
 
-    pub fn disconnect_outgoing_edge(&mut self, a: VertexKey) -> Result<EdgeKey, Error> {
-        let vertex = self
+    pub fn disconnect_outgoing_edge(&mut self, a: VertexKey) -> Result<Option<EdgeKey>, Error> {
+        let edge = self
             .storage
             .get_mut(&a)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
-        if let Some(ax) = vertex.edge.take() {
-            Ok(ax)
-        }
-        else {
-            Err(Error::from(GraphError::TopologyConflict))
-        }
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .edge
+            .take();
+        Ok(edge)
     }
 }
 

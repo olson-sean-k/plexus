@@ -176,28 +176,29 @@ pub enum GraphError {
 //       `mutation` module.
 
 pub trait ResultExt<T>: Sized {
-    fn ignore_conflict(self) -> Result<Option<T>, Error>;
-
     fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
     where
         F: FnOnce() -> Result<T, Error>;
 }
 
 impl<T> ResultExt<T> for Result<T, Error> {
-    fn ignore_conflict(self) -> Result<Option<T>, Error> {
-        self.map(|value| Some(value)).or_else(|error| {
-            match error.downcast::<GraphError>().unwrap() {
-                GraphError::TopologyConflict => Ok(None),
-                error => Err(error.into()),
-            }
-        })
-    }
-
     fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
     where
         F: FnOnce() -> Result<T, Error>,
     {
         self.or_else(|error| match error.downcast::<GraphError>().unwrap() {
+            GraphError::TopologyConflict => f(),
+            error => Err(error.into()),
+        })
+    }
+}
+
+impl<T> ResultExt<T> for Result<T, GraphError> {
+    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    where
+        F: FnOnce() -> Result<T, Error>,
+    {
+        self.or_else(|error| match error {
             GraphError::TopologyConflict => f(),
             error => Err(error.into()),
         })

@@ -77,9 +77,9 @@ where
 
     pub fn remove_edge(&mut self, ab: EdgeKey) -> Result<Edge<G>, Error> {
         let (a, _) = ab.to_vertex_keys();
-        self.disconnect_next_edge(ab).ignore_conflict()?;
-        self.disconnect_previous_edge(ab).ignore_conflict()?;
-        self.disconnect_outgoing_edge(a).ignore_conflict()?;
+        self.disconnect_next_edge(ab)?;
+        self.disconnect_previous_edge(ab)?;
+        self.disconnect_outgoing_edge(a)?;
         Ok(self.storage.remove(&ab).unwrap())
     }
 
@@ -113,7 +113,7 @@ where
         }
     }
 
-    pub fn disconnect_next_edge(&mut self, ab: EdgeKey) -> Result<EdgeKey, Error> {
+    pub fn disconnect_next_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, Error> {
         let bx = {
             self.storage
                 .get_mut(&ab)
@@ -121,16 +121,13 @@ where
                 .next
                 .take()
         };
-        if let Some(bx) = bx {
-            self.storage.get_mut(&bx).unwrap().previous = None;
-            Ok(bx)
+        if let Some(bx) = bx.as_ref() {
+            self.storage.get_mut(bx).unwrap().previous = None;
         }
-        else {
-            Err(Error::from(GraphError::TopologyConflict))
-        }
+        Ok(bx)
     }
 
-    pub fn disconnect_previous_edge(&mut self, ab: EdgeKey) -> Result<EdgeKey, Error> {
+    pub fn disconnect_previous_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, Error> {
         let xa = {
             self.storage
                 .get_mut(&ab)
@@ -138,13 +135,10 @@ where
                 .previous
                 .take()
         };
-        if let Some(xa) = xa {
-            self.storage.get_mut(&xa).unwrap().previous = None;
-            Ok(xa)
+        if let Some(xa) = xa.as_ref() {
+            self.storage.get_mut(xa).unwrap().previous = None;
         }
-        else {
-            Err(Error::from(GraphError::TopologyConflict))
-        }
+        Ok(xa)
     }
 
     pub fn connect_edge_to_face(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), Error> {
@@ -156,19 +150,14 @@ where
         Ok(())
     }
 
-    pub fn disconnect_edge_from_face(&mut self, ab: EdgeKey) -> Result<FaceKey, Error> {
-        if let Some(abc) = self
+    pub fn disconnect_edge_from_face(&mut self, ab: EdgeKey) -> Result<Option<FaceKey>, Error> {
+        let face = self
             .storage
             .get_mut(&ab)
             .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .face
-            .take()
-        {
-            Ok(abc)
-        }
-        else {
-            Err(Error::from(GraphError::TopologyConflict))
-        }
+            .take();
+        Ok(face)
     }
 }
 
@@ -391,21 +380,17 @@ where
         // Connect the new edges to each other and their leading edges.
         mutation.connect_neighboring_edges(am, mb)?;
         if let Some(xa) = span.previous {
-            mutation
-                .connect_neighboring_edges(xa, am)
-                .ignore_conflict()?;
+            mutation.connect_neighboring_edges(xa, am)?;
         }
         if let Some(bx) = span.next {
-            mutation
-                .connect_neighboring_edges(mb, bx)
-                .ignore_conflict()?;
+            mutation.connect_neighboring_edges(mb, bx)?;
         }
         // Update the associated face, if any, because it may refer to the
         // removed edge.
         if let Some(abc) = span.face {
             mutation.connect_face_to_edge(am, abc)?;
-            mutation.connect_edge_to_face(am, abc).ignore_conflict()?;
-            mutation.connect_edge_to_face(mb, abc).ignore_conflict()?;
+            mutation.connect_edge_to_face(am, abc)?;
+            mutation.connect_edge_to_face(mb, abc)?;
         }
         Ok((am, mb))
     }

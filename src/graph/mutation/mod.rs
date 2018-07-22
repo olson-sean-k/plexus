@@ -16,13 +16,6 @@ use graph::storage::Storage;
 
 pub use self::face::{FaceInsertCache, FaceRemoveCache};
 
-// TODO: The use of `TopologyConflict` and `ResultExt` is flawed. If a conflict
-//       error is returned, then work was likely interrupted and calling code
-//       has no way to determine this. A call to `ignore_conflict` appears to
-//       perform the operation without detecting conflicts, but it actually
-//       detects conflicts, throws out work, and ignores this error. If it is
-//       desirable to detect conflicts, a different mechanism should be used to
-//       disable this detection.
 // TODO: It may be a good idea to raise `GraphError::TopologyNotFound` errors
 //       as soon as possible. Presence could be checked immediately, allowing
 //       for these errors to be recoverable (instead of, for example, raising
