@@ -3,9 +3,10 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
-use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::mesh::Mesh;
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, FaceKey, VertexKey};
+use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     Consistency, Consistent, EdgeView, FaceView, Inconsistent, IteratorExt, OrphanEdgeView,

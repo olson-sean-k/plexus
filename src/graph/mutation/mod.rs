@@ -9,10 +9,11 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
-use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::mesh::Mesh;
 use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
+use graph::topology::{Edge, Face, Vertex};
 
 pub use self::face::{FaceInsertCache, FaceRemoveCache};
 

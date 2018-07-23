@@ -7,14 +7,15 @@ use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
 use graph::mutation::region::{Connectivity, Region, Singularity};
 use graph::mutation::{Commit, Mode, Mutate, Mutation};
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::topology::{Edge, Face, Vertex};
 use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, Inconsistent, VertexView};
-use graph::{GraphError, Perimeter, ResultExt};
+use graph::{GraphError, Perimeter};
 use BoolExt;
 
 pub struct FaceMutation<G>

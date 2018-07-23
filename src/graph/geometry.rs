@@ -11,8 +11,8 @@ use self::alias::*;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use geometry::Geometry;
-use graph::mesh::{Edge, Face, Vertex};
 use graph::storage::convert::AsStorage;
+use graph::topology::{Edge, Face, Vertex};
 use graph::view::{Consistency, EdgeView, FaceView};
 use graph::GraphError;
 

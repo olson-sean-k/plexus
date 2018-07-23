@@ -1,10 +1,10 @@
 use failure::Error;
 
 use geometry::Geometry;
-use graph::mesh::Vertex;
 use graph::mutation::{Commit, Mode, Mutate};
 use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, Storage, VertexKey};
+use graph::topology::Vertex;
 use graph::GraphError;
 
 pub struct VertexMutation<G>

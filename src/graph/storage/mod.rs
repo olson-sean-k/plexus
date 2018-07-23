@@ -4,18 +4,13 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use self::alias::*;
-use geometry::Attribute;
 use graph::storage::convert::{AsStorage, AsStorageMut};
+use graph::topology::Topological;
 
 pub mod convert;
 mod core;
 
 pub use self::core::{Bind, Core};
-
-pub trait Topological {
-    type Key: OpaqueKey;
-    type Attribute: Attribute;
-}
 
 pub trait KeySequence: Copy + Default + Sized {
     fn into_next_key(self) -> Self;

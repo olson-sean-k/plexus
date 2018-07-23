@@ -7,11 +7,12 @@ use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
-use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
 use graph::mutation::{Commit, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, VertexKey};
+use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     Consistency, Consistent, FaceView, Inconsistent, OrphanFaceView, OrphanVertexView, VertexView,

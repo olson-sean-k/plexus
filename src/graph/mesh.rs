@@ -18,162 +18,13 @@ use graph::geometry::FaceCentroid;
 use graph::mutation::{Commit, Mutate, Mutation};
 use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Core, EdgeKey, FaceKey, Storage, Topological, VertexKey};
+use graph::storage::{Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
 };
 use graph::GraphError;
-
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
-pub struct Vertex<G>
-where
-    G: Geometry,
-{
-    #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Vertex,
-    pub(super) edge: Option<EdgeKey>,
-}
-
-impl<G> Vertex<G>
-where
-    G: Geometry,
-{
-    pub(in graph) fn new(geometry: G::Vertex) -> Self {
-        Vertex {
-            geometry: geometry,
-            edge: None,
-        }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<Vertex<H>> for Vertex<G>
-where
-    G: Geometry,
-    G::Vertex: FromGeometry<H::Vertex>,
-    H: Geometry,
-{
-    fn from_interior_geometry(vertex: Vertex<H>) -> Self {
-        Vertex {
-            geometry: vertex.geometry.into_geometry(),
-            edge: vertex.edge,
-        }
-    }
-}
-
-impl<G> Topological for Vertex<G>
-where
-    G: Geometry,
-{
-    type Key = VertexKey;
-    type Attribute = G::Vertex;
-}
-
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
-pub struct Edge<G>
-where
-    G: Geometry,
-{
-    #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Edge,
-    pub(super) vertex: VertexKey,
-    pub(super) opposite: Option<EdgeKey>,
-    pub(super) next: Option<EdgeKey>,
-    pub(super) previous: Option<EdgeKey>,
-    pub(super) face: Option<FaceKey>,
-}
-
-impl<G> Edge<G>
-where
-    G: Geometry,
-{
-    pub(in graph) fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
-        Edge {
-            geometry: geometry,
-            vertex: vertex,
-            opposite: None,
-            next: None,
-            previous: None,
-            face: None,
-        }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<Edge<H>> for Edge<G>
-where
-    G: Geometry,
-    G::Edge: FromGeometry<H::Edge>,
-    H: Geometry,
-{
-    fn from_interior_geometry(edge: Edge<H>) -> Self {
-        Edge {
-            geometry: edge.geometry.into_geometry(),
-            vertex: edge.vertex,
-            opposite: edge.opposite,
-            next: edge.next,
-            previous: edge.previous,
-            face: edge.face,
-        }
-    }
-}
-
-impl<G> Topological for Edge<G>
-where
-    G: Geometry,
-{
-    type Key = EdgeKey;
-    type Attribute = G::Edge;
-}
-
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
-pub struct Face<G>
-where
-    G: Geometry,
-{
-    #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Face,
-    pub(super) edge: EdgeKey,
-}
-
-impl<G> Face<G>
-where
-    G: Geometry,
-{
-    pub(in graph) fn new(edge: EdgeKey, geometry: G::Face) -> Self {
-        Face {
-            geometry: geometry,
-            edge: edge,
-        }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<Face<H>> for Face<G>
-where
-    G: Geometry,
-    G::Face: FromGeometry<H::Face>,
-    H: Geometry,
-{
-    fn from_interior_geometry(face: Face<H>) -> Self {
-        Face {
-            geometry: face.geometry.into_geometry(),
-            edge: face.edge,
-        }
-    }
-}
-
-impl<G> Topological for Face<G>
-where
-    G: Geometry,
-{
-    type Key = FaceKey;
-    type Attribute = G::Face;
-}
 
 /// Half-edge graph representation of a mesh.
 ///
@@ -339,12 +190,6 @@ where
         (key, self).into_view()
     }
 
-    pub(in graph) fn orphan_vertex(&mut self, key: VertexKey) -> Option<OrphanVertex<G>> {
-        self.as_storage_mut::<Vertex<G>>()
-            .get_mut(&key)
-            .map(|topology| (key, topology).into_view().unwrap())
-    }
-
     /// Gets an iterator of immutable views over the vertices in the mesh.
     pub fn vertices(&self) -> impl Iterator<Item = VertexRef<G>> {
         Iter::<_, Vertex<G>, _, _>::from((self.as_storage::<Vertex<G>>().keys(), self))
@@ -374,12 +219,6 @@ where
         (key, self).into_view()
     }
 
-    pub(in graph) fn orphan_edge(&mut self, key: EdgeKey) -> Option<OrphanEdge<G>> {
-        self.as_storage_mut::<Edge<G>>()
-            .get_mut(&key)
-            .map(|topology| (key, topology).into_view().unwrap())
-    }
-
     /// Gets an iterator of immutable views over the edges in the mesh.
     pub fn edges(&self) -> impl Iterator<Item = EdgeRef<G>> {
         Iter::<_, Edge<G>, _, _>::from((self.as_storage::<Edge<G>>().keys(), self))
@@ -407,12 +246,6 @@ where
     /// Gets a mutable view of the face with the given key.
     pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceMut<G>> {
         (key, self).into_view()
-    }
-
-    pub(in graph) fn orphan_face(&mut self, key: FaceKey) -> Option<OrphanFace<G>> {
-        self.as_storage_mut::<Face<G>>()
-            .get_mut(&key)
-            .map(|topology| (key, topology).into_view().unwrap())
     }
 
     /// Gets an iterator of immutable views over the faces in the mesh.

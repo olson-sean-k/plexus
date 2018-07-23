@@ -1,4 +1,5 @@
-use graph::storage::{Storage, Topological};
+use graph::storage::Storage;
+use graph::topology::Topological;
 
 pub trait AsStorage<T>
 where

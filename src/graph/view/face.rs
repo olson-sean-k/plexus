@@ -8,11 +8,12 @@ use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mesh::{Edge, Face, Mesh, Vertex};
+use graph::mesh::Mesh;
 use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
 use graph::mutation::{Commit, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Topological, VertexKey};
+use graph::storage::{Bind, EdgeKey, FaceKey, VertexKey};
+use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
     Consistency, Consistent, EdgeKeyTopology, EdgeView, Inconsistent, IteratorExt, OrphanEdgeView,

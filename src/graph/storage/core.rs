@@ -1,7 +1,7 @@
 use geometry::Geometry;
-use graph::mesh::{Edge, Face, Vertex};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Storage, Topological};
+use graph::storage::Storage;
+use graph::topology::{Edge, Face, Topological, Vertex};
 
 pub trait Bind<T, M>
 where

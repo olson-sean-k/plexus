@@ -4,9 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
 use geometry::Geometry;
-use graph::mesh::{Edge, Face, Vertex};
 use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
+use graph::topology::{Edge, Face, Vertex};
 use graph::view::{Inconsistent, VertexView};
 use graph::{GraphError, Perimeter};
 
