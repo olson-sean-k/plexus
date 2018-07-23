@@ -105,13 +105,13 @@ where
         (key, storage)
     }
 
-    fn to_ref(&self) -> FaceView<&M, G, C> {
+    fn interior_ref(&self) -> FaceView<&M, G, C> {
         let key = self.key;
         let storage = &self.storage;
         FaceView::from_keyed_storage_unchecked(key, storage)
     }
 
-    fn to_mut(&mut self) -> FaceView<&mut M, G, C> {
+    fn interior_mut(&mut self) -> FaceView<&mut M, G, C> {
         let key = self.key;
         let storage = &mut self.storage;
         FaceView::from_keyed_storage_unchecked(key, storage)
@@ -137,7 +137,7 @@ where
     }
 
     pub(in graph) fn reachable_interior_edges(&self) -> impl Iterator<Item = EdgeView<&M, G, C>> {
-        EdgeCirculator::from(self.to_ref()).map_with_ref(|circulator, key| {
+        EdgeCirculator::from(self.interior_ref()).map_with_ref(|circulator, key| {
             EdgeView::<_, _, C>::from_keyed_storage(key, circulator.storage).unwrap()
         })
     }
@@ -145,9 +145,11 @@ where
     pub(in graph) fn reachable_neighboring_faces(
         &self,
     ) -> impl Iterator<Item = FaceView<&M, G, C>> {
-        FaceCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(|circulator, key| {
-            FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
-        })
+        FaceCirculator::from(EdgeCirculator::from(self.interior_ref())).map_with_ref(
+            |circulator, key| {
+                FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
+            },
+        )
     }
 }
 
@@ -196,7 +198,7 @@ where
     C: Consistency,
 {
     pub(in graph) fn reachable_vertices(&self) -> impl Iterator<Item = VertexView<&M, G, C>> {
-        VertexCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(
+        VertexCirculator::from(EdgeCirculator::from(self.interior_ref())).map_with_ref(
             |circulator, key| {
                 VertexView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
             },
@@ -221,10 +223,11 @@ where
     G: Geometry,
     C: Consistency,
 {
+    #[allow(needless_lifetimes)]
     pub(in graph) fn reachable_interior_orphan_edges<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
-        EdgeCirculator::from(self.to_mut()).map_with_mut(|circulator, key| {
+        EdgeCirculator::from(self.interior_mut()).map_with_mut(|circulator, key| {
             (key, unsafe {
                 // Apply `'a` to the autoref from `as_storage_mut` and
                 // `get_mut`.
@@ -243,24 +246,27 @@ where
     G: Geometry,
     C: Consistency,
 {
+    #[allow(needless_lifetimes)]
     pub(in graph) fn reachable_neighboring_orphan_faces<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {
-        FaceCirculator::from(EdgeCirculator::from(self.to_mut())).map_with_mut(|circulator, key| {
-            (key, unsafe {
-                // Apply `'a` to the autoref from `as_storage_mut` and
-                // `get_mut`.
-                mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(
-                    circulator
-                        .input
-                        .storage
-                        .as_storage_mut()
-                        .get_mut(&key)
-                        .unwrap(),
-                )
-            }).into_view()
-                .unwrap()
-        })
+        FaceCirculator::from(EdgeCirculator::from(self.interior_mut())).map_with_mut(
+            |circulator, key| {
+                (key, unsafe {
+                    // Apply `'a` to the autoref from `as_storage_mut` and
+                    // `get_mut`.
+                    mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(
+                        circulator
+                            .input
+                            .storage
+                            .as_storage_mut()
+                            .get_mut(&key)
+                            .unwrap(),
+                    )
+                }).into_view()
+                    .unwrap()
+            },
+        )
     }
 }
 
@@ -298,10 +304,11 @@ where
     G: Geometry,
     C: Consistency,
 {
+    #[allow(needless_lifetimes)]
     pub(in graph) fn reachable_orphan_vertices<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanVertexView<'a, G>> {
-        VertexCirculator::from(EdgeCirculator::from(self.to_mut())).map_with_mut(
+        VertexCirculator::from(EdgeCirculator::from(self.interior_mut())).map_with_mut(
             |circulator, key| {
                 (key, unsafe {
                     // Apply `'a` to the autoref from `as_storage_mut` and

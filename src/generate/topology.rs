@@ -87,8 +87,8 @@ pub struct Map<I, T, U, F> {
 impl<I, T, U, F> Map<I, T, U, F> {
     fn new(input: I, f: F) -> Self {
         Map {
-            input: input,
-            f: f,
+            input,
+            f,
             phantom: PhantomData,
         }
     }

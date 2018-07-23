@@ -250,7 +250,10 @@ where
             singularities,
             ..
         } = self;
-        mutation.commit().and_then(move |(vertices, edges)| {
+        mutation.commit().and_then(move |core| {
+            let Core {
+                vertices, edges, ..
+            } = core;
             {
                 let core = Core::empty().bind(&vertices).bind(&edges).bind(&faces);
                 for (vertex, faces) in singularities {
@@ -278,7 +281,7 @@ where
                     }
                 }
             }
-            Ok((vertices, edges, faces))
+            Ok(Core::empty().bind(vertices).bind(edges).bind(faces))
         })
     }
 }
@@ -307,7 +310,7 @@ impl<G> Mode<G> for FaceMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = (Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>);
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 }
 
 impl<G> Mutate<G> for FaceMutation<G>
@@ -315,11 +318,15 @@ where
     G: Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges, faces) = mutant;
+        let Core {
+            vertices,
+            edges,
+            faces,
+        } = mutant;
         FaceMutation {
             singularities: Default::default(),
             storage: faces,
-            mutation: EdgeMutation::mutate((vertices, edges)),
+            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(edges)),
         }
     }
 }

@@ -193,9 +193,10 @@ where
             storage: edges,
             ..
         } = self;
-        mutation
-            .commit()
-            .and_then(move |vertices| Ok((vertices, edges)))
+        mutation.commit().and_then(move |core| {
+            let Core { vertices, .. } = core;
+            Ok(Core::empty().bind(vertices).bind(edges))
+        })
     }
 }
 
@@ -223,7 +224,7 @@ impl<G> Mode<G> for EdgeMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = (Storage<Vertex<G>>, Storage<Edge<G>>);
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
 }
 
 impl<G> Mutate<G> for EdgeMutation<G>
@@ -231,9 +232,11 @@ where
     G: Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges) = mutant;
+        let Core {
+            vertices, edges, ..
+        } = mutant;
         EdgeMutation {
-            mutation: VertexMutation::mutate(vertices),
+            mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
             storage: edges,
         }
     }

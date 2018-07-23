@@ -239,10 +239,7 @@ where
     T: 'a + Copy,
 {
     fn new(input: &'a [T]) -> Self {
-        PerimeterIter {
-            input: input,
-            index: 0,
-        }
+        PerimeterIter { input, index: 0 }
     }
 }
 

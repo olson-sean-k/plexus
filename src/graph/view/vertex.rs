@@ -104,7 +104,7 @@ where
         (key, storage)
     }
 
-    fn to_ref(&self) -> VertexView<&M, G, C> {
+    fn interior_ref(&self) -> VertexView<&M, G, C> {
         let key = self.key;
         let storage = &self.storage;
         VertexView::from_keyed_storage_unchecked(key, storage)
@@ -177,9 +177,11 @@ where
     pub(in graph) fn reachable_neighboring_faces(
         &self,
     ) -> impl Iterator<Item = FaceView<&M, G, C>> {
-        FaceCirculator::from(EdgeCirculator::from(self.to_ref())).map_with_ref(|circulator, key| {
-            FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
-        })
+        FaceCirculator::from(EdgeCirculator::from(self.interior_ref())).map_with_ref(
+            |circulator, key| {
+                FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
+            },
+        )
     }
 }
 
@@ -214,6 +216,7 @@ where
         }
     }
 
+    #[allow(needless_lifetimes)]
     pub(in graph) fn reachable_incoming_orphan_edges<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
@@ -257,6 +260,7 @@ where
     G: Geometry,
     C: Consistency,
 {
+    #[allow(needless_lifetimes)]
     pub(in graph) fn reachable_neighboring_orphan_faces<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {

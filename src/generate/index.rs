@@ -95,7 +95,7 @@ where
         let capacity = cmp::max(1, capacity);
         LruIndexer {
             lru: Vec::with_capacity(capacity),
-            capacity: capacity,
+            capacity,
             n: 0,
             phantom: PhantomData,
         }

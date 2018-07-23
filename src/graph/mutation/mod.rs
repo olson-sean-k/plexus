@@ -223,9 +223,7 @@ where
     type Error = Error;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
-        self.mutation.commit().map(|(vertices, edges, faces)| {
-            Self::Mutant::from_disjoint_storage(vertices, edges, faces)
-        })
+        self.mutation.commit().map(|core| core.into())
     }
 }
 
@@ -262,7 +260,7 @@ where
 {
     fn mutate(mutant: Self::Mutant) -> Self {
         Mutation {
-            mutation: FaceMutation::mutate(mutant.into_disjoint_storage()),
+            mutation: FaceMutation::mutate(mutant.into()),
         }
     }
 }

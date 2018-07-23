@@ -454,7 +454,7 @@ where
                 return Some((key, face).into_view().unwrap());
             }
         }
-        return None;
+        None
     }
 }
 
@@ -725,7 +725,7 @@ impl EdgeKeyTopology {
     fn new(edge: EdgeKey, vertices: (VertexKey, VertexKey)) -> Self {
         EdgeKeyTopology {
             key: edge,
-            vertices: vertices,
+            vertices,
         }
     }
 

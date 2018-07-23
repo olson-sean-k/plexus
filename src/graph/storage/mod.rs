@@ -171,7 +171,7 @@ where
         }
         Storage {
             sequence: self.sequence,
-            hash: hash,
+            hash,
         }
     }
 

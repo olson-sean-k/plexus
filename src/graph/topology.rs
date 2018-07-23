@@ -25,7 +25,7 @@ where
 {
     pub(in graph) fn new(geometry: G::Vertex) -> Self {
         Vertex {
-            geometry: geometry,
+            geometry,
             edge: None,
         }
     }
@@ -75,8 +75,8 @@ where
 {
     pub(in graph) fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
         Edge {
-            geometry: geometry,
-            vertex: vertex,
+            geometry,
+            vertex,
             opposite: None,
             next: None,
             previous: None,
@@ -128,10 +128,7 @@ where
     G: Geometry,
 {
     pub(in graph) fn new(edge: EdgeKey, geometry: G::Face) -> Self {
-        Face {
-            geometry: geometry,
-            edge: edge,
-        }
+        Face { geometry, edge }
     }
 }
 

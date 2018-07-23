@@ -18,7 +18,7 @@ use graph::geometry::FaceCentroid;
 use graph::mutation::{Commit, Mutate, Mutation};
 use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
@@ -48,30 +48,6 @@ impl<G> Mesh<G>
 where
     G: Geometry,
 {
-    pub(in graph) fn from_disjoint_storage(
-        vertices: Storage<Vertex<G>>,
-        edges: Storage<Edge<G>>,
-        faces: Storage<Face<G>>,
-    ) -> Self {
-        Mesh::from(Core {
-            vertices,
-            edges,
-            faces,
-        })
-    }
-
-    pub(in graph) fn into_disjoint_storage(
-        self,
-    ) -> (Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>) {
-        let Mesh { core, .. } = self;
-        let Core {
-            vertices,
-            edges,
-            faces,
-        } = core;
-        (vertices, edges, faces)
-    }
-
     pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
     where
         Self: AsStorage<T>,
@@ -103,15 +79,25 @@ where
     /// let mut mesh = Mesh::<()>::new();
     /// ```
     pub fn new() -> Self {
-        Mesh::from_disjoint_storage(Storage::new(), Storage::new(), Storage::new())
+        Mesh::from(
+            Core::empty()
+                .bind(Storage::<Vertex<G>>::new())
+                .bind(Storage::<Edge<G>>::new())
+                .bind(Storage::<Face<G>>::new()),
+        )
     }
 
     /// Creates an empty `Mesh`.
     ///
     /// Underlying storage has zero capacity and does not allocate until the
     /// first insertion.
-    pub(in graph) fn empty() -> Self {
-        Mesh::from_disjoint_storage(Storage::empty(), Storage::empty(), Storage::empty())
+    pub fn empty() -> Self {
+        Mesh::from(
+            Core::empty()
+                .bind(Storage::<Vertex<G>>::empty())
+                .bind(Storage::<Edge<G>>::empty())
+                .bind(Storage::<Face<G>>::empty()),
+        )
     }
 
     /// Creates a `Mesh` from raw index and vertex buffers. The arity of the
@@ -485,6 +471,16 @@ where
     }
 }
 
+impl<G> Into<Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>> for Mesh<G>
+where
+    G: Geometry,
+{
+    fn into(self) -> Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>> {
+        let Mesh { core, .. } = self;
+        core
+    }
+}
+
 impl<G, H> FromInteriorGeometry<Mesh<H>> for Mesh<G>
 where
     G: Geometry,
@@ -622,7 +618,7 @@ where
 {
     fn from(input: I) -> Self {
         IterMut {
-            input: input,
+            input,
             phantom: PhantomData,
         }
     }

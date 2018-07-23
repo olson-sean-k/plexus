@@ -24,9 +24,9 @@ where
 {
     pub(super) fn new(input: I, f: fn(P) -> R) -> Self {
         Decompose {
-            input: input,
+            input,
             output: VecDeque::new(),
-            f: f,
+            f,
         }
     }
 }

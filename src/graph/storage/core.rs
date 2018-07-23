@@ -31,7 +31,7 @@ impl Core {
 }
 
 impl<V, E, F> Core<V, E, F> {
-    pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
+    pub fn as_storage<T>(&self) -> &Storage<T>
     where
         Self: AsStorage<T>,
         T: Topological,
@@ -39,7 +39,7 @@ impl<V, E, F> Core<V, E, F> {
         AsStorage::<T>::as_storage(self)
     }
 
-    pub(in graph) fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
+    pub fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
     where
         Self: AsStorageMut<T>,
         T: Topological,
