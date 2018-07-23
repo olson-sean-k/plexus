@@ -78,8 +78,18 @@ where
 
     pub fn remove_edge(&mut self, ab: EdgeKey) -> Result<Edge<G>, Error> {
         let (a, _) = ab.to_vertex_keys();
-        self.disconnect_next_edge(ab)?;
-        self.disconnect_previous_edge(ab)?;
+        let (xa, bx) = {
+            self.storage
+                .get(&ab)
+                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))
+                .map(|edge| (edge.previous, edge.next))
+        }?;
+        if let Some(xa) = xa {
+            self.disconnect_next_edge(xa)?;
+        }
+        if let Some(bx) = bx {
+            self.disconnect_previous_edge(bx)?;
+        }
         self.disconnect_outgoing_edge(a)?;
         Ok(self.storage.remove(&ab).unwrap())
     }
