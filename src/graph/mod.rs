@@ -187,10 +187,8 @@ impl<T> ResultExt<T> for Result<T, Error> {
     where
         F: FnOnce() -> Result<T, Error>,
     {
-        self.or_else(|error| match error.downcast::<GraphError>().unwrap() {
-            GraphError::TopologyConflict => f(),
-            error => Err(error.into()),
-        })
+        self.map_err(|error| error.downcast::<GraphError>().unwrap())
+            .or_if_conflict(f)
     }
 }
 
