@@ -16,7 +16,7 @@ use graph::storage::{Bind, EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
-    Consistency, Consistent, EdgeKeyTopology, EdgeView, Inconsistent, IteratorExt, OrphanEdgeView,
+    Consistency, Consistent, EdgeKeyTopology, EdgeView, Inconsistent, OrphanEdgeView,
     OrphanVertexView, VertexView,
 };
 use BoolExt;
@@ -136,20 +136,12 @@ where
         self.reachable_interior_edges().count()
     }
 
-    pub(in graph) fn reachable_interior_edges(&self) -> impl Iterator<Item = EdgeView<&M, G, C>> {
-        EdgeCirculator::from(self.interior_ref()).map_with_ref(|circulator, key| {
-            EdgeView::<_, _, C>::from_keyed_storage(key, circulator.storage).unwrap()
-        })
+    pub(in graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M, G, C> {
+        EdgeCirculator::from(self.interior_ref())
     }
 
-    pub(in graph) fn reachable_neighboring_faces(
-        &self,
-    ) -> impl Iterator<Item = FaceView<&M, G, C>> {
-        FaceCirculator::from(EdgeCirculator::from(self.interior_ref())).map_with_ref(
-            |circulator, key| {
-                FaceView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
-            },
-        )
+    pub(in graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M, G, C> {
+        FaceCirculator::from(EdgeCirculator::from(self.interior_ref()))
     }
 }
 
@@ -180,14 +172,16 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&Mesh<G>, G, Consistent>> {
-        self.reachable_interior_edges()
-            .map(|edge| interior_deref!(edge => edge))
+    pub fn interior_edges(&self) -> EdgeCirculator<&Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_ref();
+        EdgeCirculator::from_keyed_storage(key, storage)
     }
 
-    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&Mesh<G>, G, Consistent>> {
-        self.reachable_neighboring_faces()
-            .map(|face| interior_deref!(face => face))
+    pub fn neighboring_faces(&self) -> FaceCirculator<&Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_ref();
+        FaceCirculator::from(EdgeCirculator::from_keyed_storage(key, storage))
     }
 }
 
@@ -197,12 +191,8 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_vertices(&self) -> impl Iterator<Item = VertexView<&M, G, C>> {
-        VertexCirculator::from(EdgeCirculator::from(self.interior_ref())).map_with_ref(
-            |circulator, key| {
-                VertexView::<_, _, C>::from_keyed_storage(key, circulator.input.storage).unwrap()
-            },
-        )
+    pub(in graph) fn reachable_vertices(&self) -> VertexCirculator<&M, G, C> {
+        VertexCirculator::from(EdgeCirculator::from(self.interior_ref()))
     }
 }
 
@@ -211,9 +201,10 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Mesh<G>, G, Consistent>> {
-        self.reachable_vertices()
-            .map(|vertex| interior_deref!(vertex => vertex))
+    pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_ref();
+        VertexCirculator::from(EdgeCirculator::from_keyed_storage(key, storage))
     }
 }
 
@@ -223,20 +214,8 @@ where
     G: Geometry,
     C: Consistency,
 {
-    #[allow(needless_lifetimes)]
-    pub(in graph) fn reachable_interior_orphan_edges<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = OrphanEdgeView<'a, G>> {
-        EdgeCirculator::from(self.interior_mut()).map_with_mut(|circulator, key| {
-            (key, unsafe {
-                // Apply `'a` to the autoref from `as_storage_mut` and
-                // `get_mut`.
-                mem::transmute::<&'_ mut Edge<G>, &'a mut Edge<G>>(
-                    circulator.storage.as_storage_mut().get_mut(&key).unwrap(),
-                )
-            }).into_view()
-                .unwrap()
-        })
+    pub(in graph) fn reachable_interior_orphan_edges(&mut self) -> EdgeCirculator<&mut M, G, C> {
+        EdgeCirculator::from(self.interior_mut())
     }
 }
 
@@ -246,27 +225,8 @@ where
     G: Geometry,
     C: Consistency,
 {
-    #[allow(needless_lifetimes)]
-    pub(in graph) fn reachable_neighboring_orphan_faces<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = OrphanFaceView<'a, G>> {
-        FaceCirculator::from(EdgeCirculator::from(self.interior_mut())).map_with_mut(
-            |circulator, key| {
-                (key, unsafe {
-                    // Apply `'a` to the autoref from `as_storage_mut` and
-                    // `get_mut`.
-                    mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(
-                        circulator
-                            .input
-                            .storage
-                            .as_storage_mut()
-                            .get_mut(&key)
-                            .unwrap(),
-                    )
-                }).into_view()
-                    .unwrap()
-            },
-        )
+    pub(in graph) fn reachable_neighboring_orphan_faces(&mut self) -> FaceCirculator<&mut M, G, C> {
+        FaceCirculator::from(EdgeCirculator::from(self.interior_mut()))
     }
 }
 
@@ -279,8 +239,10 @@ where
         + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn interior_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
-        self.reachable_interior_orphan_edges()
+    pub fn interior_orphan_edges(&mut self) -> EdgeCirculator<&mut Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_mut();
+        EdgeCirculator::from_keyed_storage(key, storage)
     }
 }
 
@@ -293,8 +255,10 @@ where
         + AsStorageMut<Face<G>>,
     G: Geometry,
 {
-    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        self.reachable_neighboring_orphan_faces()
+    pub fn neighboring_orphan_faces(&mut self) -> FaceCirculator<&mut Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_mut();
+        FaceCirculator::from(EdgeCirculator::from_keyed_storage(key, storage))
     }
 }
 
@@ -304,27 +268,8 @@ where
     G: Geometry,
     C: Consistency,
 {
-    #[allow(needless_lifetimes)]
-    pub(in graph) fn reachable_orphan_vertices<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = OrphanVertexView<'a, G>> {
-        VertexCirculator::from(EdgeCirculator::from(self.interior_mut())).map_with_mut(
-            |circulator, key| {
-                (key, unsafe {
-                    // Apply `'a` to the autoref from `as_storage_mut` and
-                    // `get_mut`.
-                    mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(
-                        circulator
-                            .input
-                            .storage
-                            .as_storage_mut()
-                            .get_mut(&key)
-                            .unwrap(),
-                    )
-                }).into_view()
-                    .unwrap()
-            },
-        )
+    pub(in graph) fn reachable_orphan_vertices(&mut self) -> VertexCirculator<&mut M, G, C> {
+        VertexCirculator::from(EdgeCirculator::from(self.interior_mut()))
     }
 }
 
@@ -338,8 +283,10 @@ where
         + AsStorageMut<Vertex<G>>,
     G: Geometry,
 {
-    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
-        self.reachable_orphan_vertices()
+    pub fn orphan_vertices(&mut self) -> VertexCirculator<&mut Mesh<G>, G, Consistent> {
+        let key = self.edge;
+        let storage = self.storage.as_mut();
+        VertexCirculator::from(EdgeCirculator::from_keyed_storage(key, storage))
     }
 }
 
@@ -563,53 +510,91 @@ impl FaceKeyTopology {
     }
 }
 
-pub struct VertexCirculator<M, G>
+pub struct VertexCirculator<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
+    C: Consistency,
 {
-    input: EdgeCirculator<M, G>,
+    input: EdgeCirculator<M, G, C>,
 }
 
-impl<M, G> From<EdgeCirculator<M, G>> for VertexCirculator<M, G>
+impl<M, G, C> VertexCirculator<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
+    C: Consistency,
 {
-    fn from(input: EdgeCirculator<M, G>) -> Self {
-        VertexCirculator { input }
-    }
-}
-
-impl<M, G> Iterator for VertexCirculator<M, G>
-where
-    M: AsStorage<Edge<G>>,
-    G: Geometry,
-{
-    type Item = VertexKey;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<VertexKey> {
         let edge = self.input.next();
         edge.and_then(|edge| self.input.storage.as_storage().get(&edge))
             .map(|edge| edge.vertex)
     }
 }
 
-pub struct EdgeCirculator<M, G>
+impl<M, G, C> From<EdgeCirculator<M, G, C>> for VertexCirculator<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
+    C: Consistency,
+{
+    fn from(input: EdgeCirculator<M, G, C>) -> Self {
+        VertexCirculator { input }
+    }
+}
+
+impl<'a, M, G, C> Iterator for VertexCirculator<&'a M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = VertexView<&'a M, G, C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self)
+            .and_then(|key| VertexView::from_keyed_storage(key, self.input.storage))
+    }
+}
+
+impl<'a, M, G, C> Iterator for VertexCirculator<&'a mut M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = OrphanVertexView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                // Apply `'a` to the autoref from `as_storage_mut` and
+                // `get_mut`.
+                mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(
+                    self.input.storage.as_storage_mut().get_mut(&key).unwrap(),
+                )
+            }).into_view()
+        })
+    }
+}
+
+pub struct EdgeCirculator<M, G, C>
+where
+    M: AsStorage<Edge<G>>,
+    G: Geometry,
+    C: Consistency,
 {
     storage: M,
     edge: Option<EdgeKey>,
     breadcrumb: Option<EdgeKey>,
-    phantom: PhantomData<G>,
+    phantom: PhantomData<(G, C)>,
 }
 
-impl<M, G> EdgeCirculator<M, G>
+impl<M, G, C> EdgeCirculator<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
+    C: Consistency,
 {
     fn from_keyed_storage(key: EdgeKey, storage: M) -> Self {
         EdgeCirculator {
@@ -619,34 +604,8 @@ where
             phantom: PhantomData,
         }
     }
-}
 
-impl<M, G, C> From<FaceView<M, G, C>> for EdgeCirculator<M, G>
-where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>>,
-    G: Geometry,
-    C: Consistency,
-{
-    fn from(face: FaceView<M, G, C>) -> Self {
-        let edge = face.edge;
-        let (_, storage) = face.into_keyed_storage();
-        EdgeCirculator {
-            storage,
-            edge: Some(edge),
-            breadcrumb: Some(edge),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<M, G> Iterator for EdgeCirculator<M, G>
-where
-    M: AsStorage<Edge<G>>,
-    G: Geometry,
-{
-    type Item = EdgeKey;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<EdgeKey> {
         self.edge.and_then(|edge| {
             let next = self
                 .storage
@@ -666,32 +625,74 @@ where
     }
 }
 
-pub struct FaceCirculator<M, G>
+impl<M, G, C> From<FaceView<M, G, C>> for EdgeCirculator<M, G, C>
 where
-    M: AsStorage<Edge<G>>,
+    M: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
+    C: Consistency,
 {
-    input: EdgeCirculator<M, G>,
-}
-
-impl<M, G> From<EdgeCirculator<M, G>> for FaceCirculator<M, G>
-where
-    M: AsStorage<Edge<G>>,
-    G: Geometry,
-{
-    fn from(input: EdgeCirculator<M, G>) -> Self {
-        FaceCirculator { input }
+    fn from(face: FaceView<M, G, C>) -> Self {
+        let edge = face.edge;
+        let (_, storage) = face.into_keyed_storage();
+        EdgeCirculator {
+            storage,
+            edge: Some(edge),
+            breadcrumb: Some(edge),
+            phantom: PhantomData,
+        }
     }
 }
 
-impl<M, G> Iterator for FaceCirculator<M, G>
+impl<'a, M, G, C> Iterator for EdgeCirculator<&'a M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = EdgeView<&'a M, G, C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        EdgeCirculator::next(self).and_then(|key| EdgeView::from_keyed_storage(key, self.storage))
+    }
+}
+
+impl<'a, M, G, C> Iterator for EdgeCirculator<&'a mut M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = OrphanEdgeView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        EdgeCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                // Apply `'a` to the autoref from `as_storage_mut` and
+                // `get_mut`.
+                mem::transmute::<&'_ mut Edge<G>, &'a mut Edge<G>>(
+                    self.storage.as_storage_mut().get_mut(&key).unwrap(),
+                )
+            }).into_view()
+        })
+    }
+}
+
+pub struct FaceCirculator<M, G, C>
 where
     M: AsStorage<Edge<G>>,
     G: Geometry,
+    C: Consistency,
 {
-    type Item = FaceKey;
+    input: EdgeCirculator<M, G, C>,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
+impl<M, G, C> FaceCirculator<M, G, C>
+where
+    M: AsStorage<Edge<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn next(&mut self) -> Option<FaceKey> {
         while let Some(edge) = self
             .input
             .next()
@@ -711,6 +712,52 @@ where
             }
         }
         None
+    }
+}
+
+impl<M, G, C> From<EdgeCirculator<M, G, C>> for FaceCirculator<M, G, C>
+where
+    M: AsStorage<Edge<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn from(input: EdgeCirculator<M, G, C>) -> Self {
+        FaceCirculator { input }
+    }
+}
+
+impl<'a, M, G, C> Iterator for FaceCirculator<&'a M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = FaceView<&'a M, G, C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        FaceCirculator::next(self)
+            .and_then(|key| FaceView::from_keyed_storage(key, self.input.storage))
+    }
+}
+
+impl<'a, M, G, C> Iterator for FaceCirculator<&'a mut M, G, C>
+where
+    M: 'a + AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = OrphanFaceView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        FaceCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                // Apply `'a` to the autoref from `as_storage_mut` and
+                // `get_mut`.
+                mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(
+                    self.input.storage.as_storage_mut().get_mut(&key).unwrap(),
+                )
+            }).into_view()
+        })
     }
 }
 

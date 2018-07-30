@@ -12,6 +12,13 @@
 // for example. While `into` and immutable accessor functions are okay, mutable
 // accessor functions MUST yield orphans (or not exist at all).
 
+// TODO: Because circulators are not intended to be re-exported and using
+//       dedicated types leads to more code and some duplication, it would be
+//       preferable to use `impl Iterator<Item = ...>`.  However, due to an
+//       unresolved issue, this severely limits the lifetime of iterators. This
+//       has a drastic effect on the ergonomics of call chains that traverse a
+//       graph, so dedicated types are used for now. See this issue:
+//       https://github.com/rust-lang/rust/issues/50823
 // TODO: The use of `from_keyed_storage` is dangerous! It cannot encode
 //       consistency, and relies entirely on the caller to specify. Either it
 //       should always yield inconsistent views (requiring the use of traits
@@ -37,8 +44,6 @@ macro_rules! interior_deref {
             .unwrap()
     }};
 }
-
-use std::marker::PhantomData;
 
 use graph::mesh::Mesh;
 
@@ -72,75 +77,3 @@ impl Consistency for Consistent {}
 pub struct Inconsistent;
 
 impl Consistency for Inconsistent {}
-
-trait IteratorExt: Iterator + Sized {
-    fn map_with_ref<F, R>(self, f: F) -> MapWithRef<Self, F, R>
-    where
-        F: FnMut(&Self, Self::Item) -> R,
-    {
-        MapWithRef {
-            input: self,
-            f,
-            phantom: PhantomData,
-        }
-    }
-
-    fn map_with_mut<F, R>(self, f: F) -> MapWithMut<Self, F, R>
-    where
-        F: FnMut(&mut Self, Self::Item) -> R,
-    {
-        MapWithMut {
-            input: self,
-            f,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<I> IteratorExt for I where I: Iterator + Sized {}
-
-struct MapWithRef<I, F, R>
-where
-    I: Iterator,
-    F: FnMut(&I, I::Item) -> R,
-{
-    input: I,
-    f: F,
-    phantom: PhantomData<R>,
-}
-
-impl<I, F, R> Iterator for MapWithRef<I, F, R>
-where
-    I: Iterator,
-    F: FnMut(&I, I::Item) -> R,
-{
-    type Item = R;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = self.input.next();
-        item.map(|item| (self.f)(&self.input, item))
-    }
-}
-
-struct MapWithMut<I, F, R>
-where
-    I: Iterator,
-    F: FnMut(&mut I, I::Item) -> R,
-{
-    input: I,
-    f: F,
-    phantom: PhantomData<R>,
-}
-
-impl<I, F, R> Iterator for MapWithMut<I, F, R>
-where
-    I: Iterator,
-    F: FnMut(&mut I, I::Item) -> R,
-{
-    type Item = R;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = self.input.next();
-        item.map(|item| (self.f)(&mut self.input, item))
-    }
-}

@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use failure::Error;
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
@@ -11,7 +12,7 @@ use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
 use graph::mutation::{Commit, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, VertexKey};
+use graph::storage::{Bind, EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
@@ -464,12 +465,10 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_vertices(&self) -> impl Iterator<Item = VertexView<&M, G, C>> {
+    pub(in graph) fn reachable_vertices(&self) -> VertexCirculator<&M, G, C> {
         let (a, b) = self.key.to_vertex_keys();
         let storage = &self.storage;
-        ArrayVec::from([b, a])
-            .into_iter()
-            .map(move |key| VertexView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
+        (ArrayVec::from([b, a]), storage).into_view().unwrap()
     }
 }
 
@@ -478,9 +477,10 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Mesh<G>, G, Consistent>> {
-        self.reachable_vertices()
-            .map(|vertex| interior_deref!(vertex => vertex))
+    pub fn vertices(&self) -> VertexCirculator<&Mesh<G>, G, Consistent> {
+        let (a, b) = self.key.to_vertex_keys();
+        let storage = self.storage.as_ref();
+        (ArrayVec::from([b, a]), storage).into_view().unwrap()
     }
 }
 
@@ -490,15 +490,17 @@ where
     G: Geometry,
     C: Consistency,
 {
-    pub(in graph) fn reachable_faces(&self) -> impl Iterator<Item = FaceView<&M, G, C>> {
-        let storage = &self.storage;
-        self.face
+    pub(in graph) fn reachable_faces(&self) -> FaceCirculator<&M, G, C> {
+        let keys = self
+            .face
             .into_iter()
             .chain(
                 self.reachable_opposite_edge()
                     .and_then(|opposite| opposite.face),
             )
-            .map(move |key| FaceView::<_, _, C>::from_keyed_storage(key, storage).unwrap())
+            .collect();
+        let storage = &self.storage;
+        (keys, storage).into_view().unwrap()
     }
 }
 
@@ -507,9 +509,14 @@ where
     M: AsRef<Mesh<G>> + AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Mesh<G>, G, Consistent>> {
-        self.reachable_faces()
-            .map(|face| interior_deref!(face => face))
+    pub fn faces(&self) -> FaceCirculator<&Mesh<G>, G, Consistent> {
+        let keys = self
+            .face
+            .into_iter()
+            .chain(self.opposite_edge().face)
+            .collect();
+        let storage = self.storage.as_ref();
+        (keys, storage).into_view().unwrap()
     }
 }
 
@@ -735,6 +742,151 @@ impl EdgeKeyTopology {
 
     pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
+    }
+}
+
+pub struct VertexCirculator<M, G, C>
+where
+    M: AsStorage<Vertex<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    storage: M,
+    input: <ArrayVec<[VertexKey; 2]> as IntoIterator>::IntoIter,
+    phantom: PhantomData<(G, C)>,
+}
+
+impl<M, G, C> VertexCirculator<M, G, C>
+where
+    M: AsStorage<Vertex<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn next(&mut self) -> Option<VertexKey> {
+        self.input.next()
+    }
+}
+
+impl<M, G, C> FromKeyedSource<(ArrayVec<[VertexKey; 2]>, M)> for VertexCirculator<M, G, C>
+where
+    M: AsStorage<Vertex<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn from_keyed_source(source: (ArrayVec<[VertexKey; 2]>, M)) -> Option<Self> {
+        let (input, storage) = source;
+        Some(VertexCirculator {
+            storage,
+            input: input.into_iter(),
+            phantom: PhantomData,
+        })
+    }
+}
+
+impl<'a, M, G, C> Iterator for VertexCirculator<&'a M, G, C>
+where
+    M: 'a + AsStorage<Vertex<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = VertexView<&'a M, G, C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self)
+            .and_then(|key| VertexView::from_keyed_storage(key, self.storage))
+    }
+}
+
+impl<'a, M, G, C> Iterator for VertexCirculator<&'a mut M, G, C>
+where
+    M: 'a + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = OrphanVertexView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                // Apply `'a` to the autoref from `as_storage_mut` and
+                // `get_mut`.
+                mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(
+                    self.storage.as_storage_mut().get_mut(&key).unwrap(),
+                )
+            }).into_view()
+        })
+    }
+}
+
+pub struct FaceCirculator<M, G, C>
+where
+    M: AsStorage<Face<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    storage: M,
+    input: <ArrayVec<[FaceKey; 2]> as IntoIterator>::IntoIter,
+    phantom: PhantomData<(G, C)>,
+}
+
+impl<M, G, C> FaceCirculator<M, G, C>
+where
+    M: AsStorage<Face<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn next(&mut self) -> Option<FaceKey> {
+        self.input.next()
+    }
+}
+
+impl<M, G, C> FromKeyedSource<(ArrayVec<[FaceKey; 2]>, M)> for FaceCirculator<M, G, C>
+where
+    M: AsStorage<Face<G>>,
+    G: Geometry,
+    C: Consistency,
+{
+    fn from_keyed_source(source: (ArrayVec<[FaceKey; 2]>, M)) -> Option<Self> {
+        let (input, storage) = source;
+        Some(FaceCirculator {
+            storage,
+            input: input.into_iter(),
+            phantom: PhantomData,
+        })
+    }
+}
+
+impl<'a, M, G, C> Iterator for FaceCirculator<&'a M, G, C>
+where
+    M: 'a + AsStorage<Face<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = FaceView<&'a M, G, C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        FaceCirculator::next(self).and_then(|key| FaceView::from_keyed_storage(key, self.storage))
+    }
+}
+
+impl<'a, M, G, C> Iterator for FaceCirculator<&'a mut M, G, C>
+where
+    M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    G: 'a + Geometry,
+    C: Consistency,
+{
+    type Item = OrphanFaceView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        FaceCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                // Apply `'a` to the autoref from `as_storage_mut` and
+                // `get_mut`.
+                mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(
+                    self.storage.as_storage_mut().get_mut(&key).unwrap(),
+                )
+            }).into_view()
+        })
     }
 }
 

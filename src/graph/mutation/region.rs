@@ -107,14 +107,11 @@ where
                 (
                     key,
                     VertexView::<_, _, Inconsistent>::from_keyed_storage(key, &self.storage)
-                        .map(|vertex| {
-                            vertex
-                                .reachable_incoming_edges()
-                                .flat_map(|edge| edge.into_reachable_opposite_edge())
-                                .map(|edge| edge.key())
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap(),
+                        .unwrap()
+                        .reachable_incoming_edges()
+                        .flat_map(|edge| edge.into_reachable_opposite_edge())
+                        .map(|edge| edge.key())
+                        .collect::<Vec<_>>(),
                 )
             })
             .collect::<HashMap<_, _>>();
@@ -126,13 +123,10 @@ where
                 (
                     key,
                     VertexView::<_, _, Inconsistent>::from_keyed_storage(key, &self.storage)
-                        .map(|vertex| {
-                            vertex
-                                .reachable_incoming_edges()
-                                .map(|edge| edge.key())
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap(),
+                        .unwrap()
+                        .reachable_incoming_edges()
+                        .map(|edge| edge.key())
+                        .collect::<Vec<_>>(),
                 )
             })
             .collect::<HashMap<_, _>>();
@@ -151,13 +145,10 @@ where
                         let faces = VertexView::<_, _, Inconsistent>::from_keyed_storage(
                             vertex,
                             &self.storage,
-                        ).map(|vertex| {
-                            vertex
-                                .reachable_neighboring_faces()
-                                .map(|face| face.key())
-                                .collect::<Vec<_>>()
-                        })
-                            .unwrap();
+                        ).unwrap()
+                            .reachable_neighboring_faces()
+                            .map(|face| face.key())
+                            .collect::<Vec<_>>();
                         Some((vertex, faces))
                     },
                     |_| None,
