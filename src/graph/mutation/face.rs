@@ -237,7 +237,7 @@ where
     }
 }
 
-impl<G> Commit<G> for FaceMutation<G>
+impl<G> Commit for FaceMutation<G>
 where
     G: Geometry,
 {
@@ -306,14 +306,14 @@ where
     }
 }
 
-impl<G> Mode<G> for FaceMutation<G>
+impl<G> Mode for FaceMutation<G>
 where
     G: Geometry,
 {
     type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 }
 
-impl<G> Mutate<G> for FaceMutation<G>
+impl<G> Mutate for FaceMutation<G>
 where
     G: Geometry,
 {

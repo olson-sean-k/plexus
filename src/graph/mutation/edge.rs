@@ -181,7 +181,7 @@ where
     }
 }
 
-impl<G> Commit<G> for EdgeMutation<G>
+impl<G> Commit for EdgeMutation<G>
 where
     G: Geometry,
 {
@@ -220,14 +220,14 @@ where
     }
 }
 
-impl<G> Mode<G> for EdgeMutation<G>
+impl<G> Mode for EdgeMutation<G>
 where
     G: Geometry,
 {
     type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
 }
 
-impl<G> Mutate<G> for EdgeMutation<G>
+impl<G> Mutate for EdgeMutation<G>
 where
     G: Geometry,
 {

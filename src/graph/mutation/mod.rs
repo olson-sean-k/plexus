@@ -22,24 +22,15 @@ pub use self::face::{FaceInsertCache, FaceRemoveCache};
 //       for these errors to be recoverable (instead of, for example, raising
 //       such an error well after mutations have been performed).
 
-pub trait Mode<G>
-where
-    G: Geometry,
-{
+pub trait Mode {
     type Mutant;
 }
 
-pub trait Mutate<G>: Commit<G> + Mode<G>
-where
-    G: Geometry,
-{
+pub trait Mutate: Commit + Mode {
     fn mutate(mutant: Self::Mutant) -> Self;
 }
 
-pub trait Commit<G>: Mode<G> + Sized
-where
-    G: Geometry,
-{
+pub trait Commit: Mode + Sized {
     type Error: Debug;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error>;
@@ -64,7 +55,7 @@ where
 
 pub struct Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     mutation: Option<(&'a mut Mesh<G>, M)>,
@@ -72,10 +63,10 @@ where
 
 impl<'a, M, G> Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
-    pub fn replace(mesh: <Self as Mode<G>>::Mutant, replacement: Mesh<G>) -> Self {
+    pub fn replace(mesh: <Self as Mode>::Mutant, replacement: Mesh<G>) -> Self {
         let mutant = mem::replace(mesh, replacement);
         Replace {
             mutation: Some((mesh, M::mutate(mutant))),
@@ -86,9 +77,7 @@ where
         self.mutation.take().unwrap()
     }
 
-    fn drain_and_commit(
-        &mut self,
-    ) -> Result<<Self as Mode<G>>::Mutant, <Self as Commit<G>>::Error> {
+    fn drain_and_commit(&mut self) -> Result<<Self as Mode>::Mutant, <Self as Commit>::Error> {
         let (mesh, mutation) = self.drain();
         let mutant = mutation.commit()?;
         mem::replace(mesh, mutant);
@@ -101,14 +90,14 @@ where
     }
 }
 
-impl<'a, M, G> Commit<G> for Replace<'a, M, G>
+impl<'a, M, G> Commit for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
-    type Error = <M as Commit<G>>::Error;
+    type Error = <M as Commit>::Error;
 
-    fn commit(mut self) -> Result<<Self as Mode<G>>::Mutant, Self::Error> {
+    fn commit(mut self) -> Result<<Self as Mode>::Mutant, Self::Error> {
         let mutant = self.drain_and_commit();
         mem::forget(self);
         mutant
@@ -122,7 +111,7 @@ where
 
 impl<'a, M, G> Deref for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     type Target = M;
@@ -134,7 +123,7 @@ where
 
 impl<'a, M, G> DerefMut for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -144,7 +133,7 @@ where
 
 impl<'a, M, G> Drop for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     fn drop(&mut self) {
@@ -152,17 +141,17 @@ where
     }
 }
 
-impl<'a, M, G> Mode<G> for Replace<'a, M, G>
+impl<'a, M, G> Mode for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     type Mutant = &'a mut Mesh<G>;
 }
 
-impl<'a, M, G> Mutate<G> for Replace<'a, M, G>
+impl<'a, M, G> Mutate for Replace<'a, M, G>
 where
-    M: Commit<G> + Mode<G, Mutant = Mesh<G>> + Mutate<G>,
+    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
     G: 'a + Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
@@ -216,7 +205,7 @@ where
     }
 }
 
-impl<G> Commit<G> for Mutation<G>
+impl<G> Commit for Mutation<G>
 where
     G: Geometry,
 {
@@ -247,14 +236,14 @@ where
     }
 }
 
-impl<G> Mode<G> for Mutation<G>
+impl<G> Mode for Mutation<G>
 where
     G: Geometry,
 {
     type Mutant = Mesh<G>;
 }
 
-impl<G> Mutate<G> for Mutation<G>
+impl<G> Mutate for Mutation<G>
 where
     G: Geometry,
 {

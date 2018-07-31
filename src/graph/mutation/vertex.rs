@@ -56,7 +56,7 @@ where
     }
 }
 
-impl<G> Commit<G> for VertexMutation<G>
+impl<G> Commit for VertexMutation<G>
 where
     G: Geometry,
 {
@@ -70,14 +70,14 @@ where
     }
 }
 
-impl<G> Mode<G> for VertexMutation<G>
+impl<G> Mode for VertexMutation<G>
 where
     G: Geometry,
 {
     type Mutant = Core<Storage<Vertex<G>>, (), ()>;
 }
 
-impl<G> Mutate<G> for VertexMutation<G>
+impl<G> Mutate for VertexMutation<G>
 where
     G: Geometry,
 {
