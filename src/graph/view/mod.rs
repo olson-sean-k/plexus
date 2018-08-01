@@ -19,31 +19,6 @@
 //       has a drastic effect on the ergonomics of call chains that traverse a
 //       graph, so dedicated types are used for now. See this issue:
 //       https://github.com/rust-lang/rust/issues/50823
-// TODO: The use of `from_keyed_storage` is dangerous! It cannot encode
-//       consistency, and relies entirely on the caller to specify. Either it
-//       should always yield inconsistent views (requiring the use of traits
-//       whenever a consistent view is needed) or only the conversion traits
-//       (and their required constraints) should be used.
-
-#![macro_use]
-
-macro_rules! interior_deref {
-    (vertex => $v:expr) => {{
-        let (key, storage) = $v.into_keyed_storage();
-        VertexView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
-            .unwrap()
-    }};
-    (edge => $v:expr) => {{
-        let (key, storage) = $v.into_keyed_storage();
-        EdgeView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
-            .unwrap()
-    }};
-    (face => $v:expr) => {{
-        let (key, storage) = $v.into_keyed_storage();
-        FaceView::<_, _, Consistent>::from_keyed_storage(key, AsRef::<Mesh<G>>::as_ref(storage))
-            .unwrap()
-    }};
-}
 
 use graph::mesh::Mesh;
 
@@ -56,16 +31,16 @@ pub use self::edge::{EdgeKeyTopology, EdgeView, OrphanEdgeView};
 pub use self::face::{FaceKeyTopology, FaceView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
 
-pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G, Consistent>;
-pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G, Consistent>;
+pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
+pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
 pub type OrphanEdge<'a, G> = OrphanEdgeView<'a, G>;
 
-pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G, Consistent>;
-pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G, Consistent>;
+pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
+pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
 pub type OrphanFace<'a, G> = OrphanFaceView<'a, G>;
 
-pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G, Consistent>;
-pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G, Consistent>;
+pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
+pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
 pub type OrphanVertex<'a, G> = OrphanVertexView<'a, G>;
 
 pub trait Consistency {}
@@ -77,3 +52,53 @@ impl Consistency for Consistent {}
 pub struct Inconsistent;
 
 impl Consistency for Inconsistent {}
+
+pub trait Container {
+    type Consistency: Consistency;
+}
+
+impl<'a, T> Container for &'a T
+where
+    T: Container,
+{
+    type Consistency = <T as Container>::Consistency;
+}
+
+impl<'a, T> Container for &'a mut T
+where
+    T: Container,
+{
+    type Consistency = <T as Container>::Consistency;
+}
+
+pub trait Reborrow {
+    type Target;
+
+    fn reborrow(&self) -> &Self::Target;
+}
+
+pub trait ReborrowMut: Reborrow {
+    fn reborrow_mut(&mut self) -> &mut Self::Target;
+}
+
+impl<'a, T> Reborrow for &'a T {
+    type Target = T;
+
+    fn reborrow(&self) -> &Self::Target {
+        *self
+    }
+}
+
+impl<'a, T> Reborrow for &'a mut T {
+    type Target = T;
+
+    fn reborrow(&self) -> &Self::Target {
+        &**self
+    }
+}
+
+impl<'a, T> ReborrowMut for &'a mut T {
+    fn reborrow_mut(&mut self) -> &mut Self::Target {
+        *self
+    }
+}

@@ -22,7 +22,8 @@ use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
-    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
+    Consistent, Container, EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace,
+    OrphanVertex, VertexMut, VertexRef,
 };
 use graph::GraphError;
 
@@ -553,6 +554,13 @@ where
     {
         Self::from_indexer(input, HashIndexer::default())
     }
+}
+
+impl<G> Container for Mesh<G>
+where
+    G: Geometry,
+{
+    type Consistency = Consistent;
 }
 
 pub struct Iter<'a, I, T, G, Output>

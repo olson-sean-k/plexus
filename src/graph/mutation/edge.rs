@@ -11,8 +11,8 @@ use graph::mutation::{Commit, Mode, Mutate, Mutation};
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::convert::IntoView;
-use graph::view::{EdgeView, Inconsistent};
+use graph::view::convert::{FromKeyedSource, IntoView};
+use graph::view::{Container, EdgeView, Reborrow};
 use graph::{GraphError, Perimeter, ResultExt};
 
 pub struct EdgeMutation<G>
@@ -258,10 +258,11 @@ where
 {
     pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, Error>
     where
-        M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
     {
         let (a, b) = ab.to_vertex_keys();
-        let edge: EdgeView<M, G, _> = match (ab, storage).into_view() {
+        let edge: EdgeView<M, G> = match (ab, storage).into_view() {
             Some(edge) => edge,
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
@@ -291,13 +292,13 @@ where
 {
     pub fn snapshot<M>(storage: M, source: EdgeKey, destination: EdgeKey) -> Result<Self, Error>
     where
-        M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
     {
         let (a, b) = source.to_vertex_keys();
         let (c, d) = destination.to_vertex_keys();
         let source = match (
-            EdgeView::<_, _, Inconsistent>::from_keyed_storage(source, &storage),
-            EdgeView::<_, _, Inconsistent>::from_keyed_storage(destination, &storage),
+            EdgeView::from_keyed_source((source, &storage)),
+            EdgeView::from_keyed_source((destination, &storage)),
         ) {
             (Some(source), Some(_)) => source,
             _ => return Err(GraphError::TopologyNotFound.into()),
@@ -307,7 +308,7 @@ where
         // are boundaries.
         for edge in [a, b, c, d]
             .perimeter()
-            .flat_map(|ab| EdgeView::<_, _, Inconsistent>::from_keyed_storage(ab.into(), &storage))
+            .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), &storage)))
         {
             if !edge.is_boundary_edge() {
                 return Err(GraphError::TopologyConflict.into());

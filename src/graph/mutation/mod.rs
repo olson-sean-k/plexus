@@ -14,6 +14,7 @@ use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Vertex};
+use graph::view::{Container, Inconsistent};
 
 pub use self::face::{FaceInsertCache, FaceRemoveCache};
 
@@ -214,6 +215,13 @@ where
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         self.mutation.commit().map(|core| core.into())
     }
+}
+
+impl<G> Container for Mutation<G>
+where
+    G: Geometry,
+{
+    type Consistency = Inconsistent;
 }
 
 impl<G> Deref for Mutation<G>

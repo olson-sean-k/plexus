@@ -7,7 +7,8 @@ use geometry::Geometry;
 use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::{Inconsistent, VertexView};
+use graph::view::convert::FromKeyedSource;
+use graph::view::{Container, Reborrow, VertexView};
 use graph::{GraphError, Perimeter};
 
 /// Vertex-bounded region connectivity.
@@ -26,7 +27,8 @@ pub type Singularity = (VertexKey, Vec<FaceKey>);
 #[derive(Clone, Copy, Debug)]
 pub struct Region<'a, M, G>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
     G: Geometry,
 {
     storage: M,
@@ -37,7 +39,8 @@ where
 
 impl<'a, M, G> Region<'a, M, G>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
     G: Geometry,
 {
     pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, Error> {
@@ -57,15 +60,14 @@ where
                 .into());
         }
         // Fail if any vertex is not present.
-        if vertices
-            .iter()
-            .any(|vertex| !AsStorage::<Vertex<G>>::as_storage(&storage).contains_key(vertex))
-        {
+        if vertices.iter().any(|vertex| {
+            !AsStorage::<Vertex<G>>::as_storage(storage.reborrow()).contains_key(vertex)
+        }) {
             return Err(GraphError::TopologyNotFound.into());
         }
         let faces = vertices
             .perimeter()
-            .flat_map(|ab| AsStorage::<Edge<G>>::as_storage(&storage).get(&ab.into()))
+            .flat_map(|ab| AsStorage::<Edge<G>>::as_storage(storage.reborrow()).get(&ab.into()))
             .flat_map(|edge| edge.face)
             .collect::<HashSet<_>>();
         // Fail if the edges refer to more than one face.
@@ -93,7 +95,8 @@ where
 
 impl<'a, M, G> Region<'a, M, G>
 where
-    M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
     G: Geometry,
 {
     pub fn reachable_connectivity(&self) -> ((Connectivity, Connectivity), Option<Singularity>) {
@@ -106,7 +109,7 @@ where
             .map(|key| {
                 (
                     key,
-                    VertexView::<_, _, Inconsistent>::from_keyed_storage(key, &self.storage)
+                    VertexView::from_keyed_source((key, self.storage.reborrow()))
                         .unwrap()
                         .reachable_incoming_edges()
                         .flat_map(|edge| edge.into_reachable_opposite_edge())
@@ -122,7 +125,7 @@ where
             .map(|key| {
                 (
                     key,
-                    VertexView::<_, _, Inconsistent>::from_keyed_storage(key, &self.storage)
+                    VertexView::from_keyed_source((key, self.storage.reborrow()))
                         .unwrap()
                         .reachable_incoming_edges()
                         .map(|edge| edge.key())
@@ -142,13 +145,12 @@ where
             if let Some((&vertex, _)) = outgoing.next() {
                 outgoing.next().map_or_else(
                     || {
-                        let faces = VertexView::<_, _, Inconsistent>::from_keyed_storage(
-                            vertex,
-                            &self.storage,
-                        ).unwrap()
-                            .reachable_neighboring_faces()
-                            .map(|face| face.key())
-                            .collect::<Vec<_>>();
+                        let faces =
+                            VertexView::from_keyed_source((vertex, self.storage.reborrow()))
+                                .unwrap()
+                                .reachable_neighboring_faces()
+                                .map(|face| face.key())
+                                .collect::<Vec<_>>();
                         Some((vertex, faces))
                     },
                     |_| None,

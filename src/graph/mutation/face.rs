@@ -14,7 +14,8 @@ use graph::mutation::{Commit, Mode, Mutate, Mutation};
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, Inconsistent, VertexView};
+use graph::view::convert::FromKeyedSource;
+use graph::view::{Container, EdgeKeyTopology, EdgeView, FaceKeyTopology, Reborrow, VertexView};
 use graph::{GraphError, Perimeter};
 use BoolExt;
 
@@ -97,10 +98,10 @@ where
             // of gaps, where neighboring faces do not share any edges. Because
             // a face is being ignored, exactly one gap is expected. If any
             // additional gaps exist, then removal will create a singularity.
-            let vertex = VertexView::<_, _, Inconsistent>::from_keyed_storage(
+            let vertex = VertexView::from_keyed_source((
                 vertex,
                 Core::empty().bind(&*self).bind(&**self).bind(&***self),
-            ).ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+            )).ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
             let n = vertex
                 .reachable_neighboring_faces()
                 .filter(|face| face.key() != abc)
@@ -170,54 +171,42 @@ where
             let neighbors = {
                 let core = Core::empty().bind(&**self).bind(&***self);
                 // Only boundary edges must be connected.
-                EdgeView::<_, _, Inconsistent>::from_keyed_storage((b, a).into(), &core).and_then(
-                    |edge| {
-                        edge.is_boundary_edge().into_some({
-                            // The next edge of B-A is the outgoing edge of the
-                            // destination vertex A that is also a boundary
-                            // edge or, if there is no such outgoing edge, the
-                            // next exterior edge of the face. The previous
-                            // edge is similar.
-                            let ax = outgoing[&a]
-                                .iter()
-                                .map(|ax| {
-                                    EdgeView::<_, _, Inconsistent>::from_keyed_storage(*ax, &core)
-                                        .unwrap()
-                                })
-                                .find(|edge| edge.is_boundary_edge())
-                                .or_else(|| {
-                                    EdgeView::<_, _, Inconsistent>::from_keyed_storage(
-                                        (a, b).into(),
-                                        &core,
-                                    ).unwrap()
-                                        .into_reachable_previous_edge()
-                                        .unwrap()
-                                        .into_reachable_opposite_edge()
-                                })
-                                .unwrap()
-                                .key();
-                            let xb = incoming[&b]
-                                .iter()
-                                .map(|xb| {
-                                    EdgeView::<_, _, Inconsistent>::from_keyed_storage(*xb, &core)
-                                        .unwrap()
-                                })
-                                .find(|edge| edge.is_boundary_edge())
-                                .or_else(|| {
-                                    EdgeView::<_, _, Inconsistent>::from_keyed_storage(
-                                        (a, b).into(),
-                                        &core,
-                                    ).unwrap()
-                                        .into_reachable_next_edge()
-                                        .unwrap()
-                                        .into_reachable_opposite_edge()
-                                })
-                                .unwrap()
-                                .key();
-                            (ax, xb)
-                        })
-                    },
-                )
+                EdgeView::from_keyed_source(((b, a).into(), &core)).and_then(|edge| {
+                    edge.is_boundary_edge().into_some({
+                        // The next edge of B-A is the outgoing edge of the
+                        // destination vertex A that is also a boundary
+                        // edge or, if there is no such outgoing edge, the
+                        // next exterior edge of the face. The previous
+                        // edge is similar.
+                        let ax = outgoing[&a]
+                            .iter()
+                            .map(|ax| EdgeView::from_keyed_source((*ax, &core)).unwrap())
+                            .find(|edge| edge.is_boundary_edge())
+                            .or_else(|| {
+                                EdgeView::from_keyed_source(((a, b).into(), &core))
+                                    .unwrap()
+                                    .into_reachable_previous_edge()
+                                    .unwrap()
+                                    .into_reachable_opposite_edge()
+                            })
+                            .unwrap()
+                            .key();
+                        let xb = incoming[&b]
+                            .iter()
+                            .map(|xb| EdgeView::from_keyed_source((*xb, &core)).unwrap())
+                            .find(|edge| edge.is_boundary_edge())
+                            .or_else(|| {
+                                EdgeView::from_keyed_source(((a, b).into(), &core))
+                                    .unwrap()
+                                    .into_reachable_next_edge()
+                                    .unwrap()
+                                    .into_reachable_opposite_edge()
+                            })
+                            .unwrap()
+                            .key();
+                        (ax, xb)
+                    })
+                })
             };
             if let Some((ax, xb)) = neighbors {
                 self.connect_neighboring_edges((b, a).into(), ax)?;
@@ -263,9 +252,7 @@ where
                     // Determine if any unreachable faces exist in the mesh. This
                     // cannot happen if the mesh is ultimately a manifold and edge
                     // connectivity heals.
-                    if let Some(vertex) =
-                        VertexView::<_, _, Inconsistent>::from_keyed_storage(vertex, &core)
-                    {
+                    if let Some(vertex) = VertexView::from_keyed_source((vertex, &core)) {
                         for unreachable in faces.difference(
                             &vertex
                                 .reachable_neighboring_faces()
@@ -350,7 +337,8 @@ where
         geometry: (G::Edge, G::Face),
     ) -> Result<Self, Error>
     where
-        M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
     {
         // Verify that the region is not already occupied by a face and collect
         // the incoming and outgoing edges for each vertex in the region.
