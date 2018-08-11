@@ -54,7 +54,7 @@ failure = "0.1.*"
 itertools = "0.6.*"
 num = "0.1.*"
 
-cgmath = { version = "0.15.*", optional = true }
+cgmath = { version = "0.16.*", optional = true }
 nalgebra = { version = "0.16.*", optional = true }
 
 [dev-dependencies]
