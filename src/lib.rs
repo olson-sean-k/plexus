@@ -38,12 +38,28 @@ pub mod prelude {
 
 trait BoolExt: Sized {
     fn into_some<T>(self, some: T) -> Option<T>;
+
+    fn into_some_with<T, F>(self, f: F) -> Option<T>
+    where
+        F: Fn() -> T;
 }
 
 impl BoolExt for bool {
     fn into_some<T>(self, some: T) -> Option<T> {
         if self {
             Some(some)
+        }
+        else {
+            None
+        }
+    }
+
+    fn into_some_with<T, F>(self, f: F) -> Option<T>
+    where
+        F: Fn() -> T,
+    {
+        if self {
+            Some(f())
         }
         else {
             None
