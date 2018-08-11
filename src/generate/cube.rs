@@ -61,11 +61,11 @@ impl Cube {
             self,
             (),
             0..self.polygon_count(),
-            Cube::polygon_with_plane_with,
+            Cube::polygon_with_plane_from,
         )
     }
 
-    fn polygon_with_plane_with(&self, _: &(), index: usize) -> Quad<Plane> {
+    fn polygon_with_plane_from(&self, _: &(), index: usize) -> Quad<Plane> {
         match index {
             0 => Quad::converged(Plane::XY),  // front
             1 => Quad::converged(Plane::NZY), // right
@@ -104,7 +104,7 @@ impl PositionVertexGenerator for Cube {
     type Output = Triplet<R32>;
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn vertex_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         let x = if index & 0b100 == 0b100 { state.upper } else { state.lower };
         let y = if index & 0b010 == 0b010 { state.upper } else { state.lower };
         let z = if index & 0b001 == 0b001 { state.upper } else { state.lower };
@@ -115,9 +115,9 @@ impl PositionVertexGenerator for Cube {
 impl PositionPolygonGenerator for Cube {
     type Output = Quad<Triplet<R32>>;
 
-    fn polygon_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
-        self.polygon_with_index_with(&Default::default(), index)
-            .map_vertices_into(|index| self.vertex_with_position_with(state, index))
+    fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        self.polygon_with_index_from(&Default::default(), index)
+            .map_vertices_into(|index| self.vertex_with_position_from(state, index))
     }
 }
 
@@ -128,7 +128,7 @@ impl IndexGenerator for Cube {
 impl IndexPolygonGenerator for Cube {
     type Output = Quad<usize>;
 
-    fn polygon_with_index_with(
+    fn polygon_with_index_from(
         &self,
         _: &Self::State,
         index: usize,
@@ -152,7 +152,7 @@ impl TextureGenerator for Cube {
 impl TexturePolygonGenerator for Cube {
     type Output = Quad<Duplet<R32>>;
 
-    fn polygon_with_texture_with(
+    fn polygon_with_texture_from(
         &self,
         _: &Self::State,
         index: usize,

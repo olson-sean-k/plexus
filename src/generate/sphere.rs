@@ -48,7 +48,7 @@ impl UvSphere {
         }
     }
 
-    fn vertex_with_position_with(
+    fn vertex_with_position_from(
         &self,
         state: &<Self as PositionGenerator>::State,
         u: usize,
@@ -66,7 +66,7 @@ impl UvSphere {
         )
     }
 
-    fn vertex_with_index_with(
+    fn vertex_with_index_from(
         &self,
         _: &<Self as IndexGenerator>::State,
         u: usize,
@@ -113,16 +113,16 @@ impl PositionGenerator for UvSphere {
 impl PositionVertexGenerator for UvSphere {
     type Output = Triplet<R32>;
 
-    fn vertex_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         if index == 0 {
-            self.vertex_with_position_with(state, 0, 0)
+            self.vertex_with_position_from(state, 0, 0)
         }
         else if index == self.vertex_count() - 1 {
-            self.vertex_with_position_with(state, 0, self.nv)
+            self.vertex_with_position_from(state, 0, self.nv)
         }
         else {
             let index = index - 1;
-            self.vertex_with_position_with(state, index % self.nu, (index / self.nu) + 1)
+            self.vertex_with_position_from(state, index % self.nu, (index / self.nu) + 1)
         }
     }
 }
@@ -130,7 +130,7 @@ impl PositionVertexGenerator for UvSphere {
 impl PositionPolygonGenerator for UvSphere {
     type Output = Polygon<Triplet<R32>>;
 
-    fn polygon_with_position_with(&self, state: &Self::State, index: usize) -> Self::Output {
+    fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
         // values for `(u, v)` into `(p, q)`. This is important for indexing
         // geometry, because small differences in the computation of spatial
@@ -151,29 +151,29 @@ impl PositionPolygonGenerator for UvSphere {
         // Generate the vertices at the requested meridian and parallel. The
         // lower bound of `(u, v)` is always used, so compute that in advance
         // (`lower`). Emit triangles at the poles, otherwise quads.
-        let lower = self.vertex_with_position_with(state, u, v);
+        let lower = self.vertex_with_position_from(state, u, v);
         if v == 0 {
             Polygon::Triangle(Triangle::new(
                 lower,
-                self.vertex_with_position_with(state, u, q),
-                self.vertex_with_position_with(state, p, q),
+                self.vertex_with_position_from(state, u, q),
+                self.vertex_with_position_from(state, p, q),
             ))
         }
         else if v == self.nv - 1 {
             Polygon::Triangle(Triangle::new(
                 // Normalize `u` at the pole, using `(0, nv)` in place of
                 // `(p, q)`.
-                self.vertex_with_position_with(state, 0, self.nv),
-                self.vertex_with_position_with(state, p, v),
+                self.vertex_with_position_from(state, 0, self.nv),
+                self.vertex_with_position_from(state, p, v),
                 lower,
             ))
         }
         else {
             Polygon::Quad(Quad::new(
                 lower,
-                self.vertex_with_position_with(state, u, q),
-                self.vertex_with_position_with(state, p, q),
-                self.vertex_with_position_with(state, p, v),
+                self.vertex_with_position_from(state, u, q),
+                self.vertex_with_position_from(state, p, q),
+                self.vertex_with_position_from(state, p, v),
             ))
         }
     }
@@ -186,7 +186,7 @@ impl IndexGenerator for UvSphere {
 impl IndexPolygonGenerator for UvSphere {
     type Output = Polygon<usize>;
 
-    fn polygon_with_index_with(
+    fn polygon_with_index_from(
         &self,
         state: &Self::State,
         index: usize,
@@ -194,28 +194,28 @@ impl IndexPolygonGenerator for UvSphere {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
-        let low = self.vertex_with_index_with(state, u, v);
-        let high = self.vertex_with_index_with(state, p, q);
+        let low = self.vertex_with_index_from(state, u, v);
+        let high = self.vertex_with_index_from(state, p, q);
         if v == 0 {
             Polygon::Triangle(Triangle::new(
                 low,
-                self.vertex_with_index_with(state, u, q),
+                self.vertex_with_index_from(state, u, q),
                 high,
             ))
         }
         else if v == self.nv - 1 {
             Polygon::Triangle(Triangle::new(
                 high,
-                self.vertex_with_index_with(state, p, v),
+                self.vertex_with_index_from(state, p, v),
                 low,
             ))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.vertex_with_index_with(state, u, q),
+                self.vertex_with_index_from(state, u, q),
                 high,
-                self.vertex_with_index_with(state, p, v),
+                self.vertex_with_index_from(state, p, v),
             ))
         }
     }
