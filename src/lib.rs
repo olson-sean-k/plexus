@@ -23,11 +23,13 @@ pub mod generate;
 pub mod geometry;
 pub mod graph;
 
+// Re-exported to avoid requiring a direct dependency on decorum.
 pub use decorum::{R32, R64};
 
 pub mod prelude {
     pub use generate::{
-        CollectWithIndexer, FlatIndexVertices, IndexVertices, MapVertices, PolygonGenerator,
+        CollectWithIndexer, FlatIndexVertices, IndexVertices, IntoEdges, IntoSubdivisions,
+        IntoTetrahedrons, IntoTriangles, IntoVertices, MapVertices, PolygonGenerator,
         PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Triangulate, VertexGenerator,
         Vertices, VerticesWithPosition,
     };
