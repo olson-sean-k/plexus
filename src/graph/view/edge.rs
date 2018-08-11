@@ -373,7 +373,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container,
     G: Geometry,
 {
-    pub fn into_reachable_face(self) -> Option<FaceView<M, G>> {
+    pub(in graph) fn into_reachable_face(self) -> Option<FaceView<M, G>> {
         let key = self.face;
         key.and_then(move |key| {
             let (_, storage) = self.into_keyed_storage();
@@ -381,7 +381,7 @@ where
         })
     }
 
-    pub fn reachable_face(&self) -> Option<FaceView<&M::Target, G>> {
+    pub(in graph) fn reachable_face(&self) -> Option<FaceView<&M::Target, G>> {
         self.face.and_then(|key| {
             let storage = self.storage.reborrow();
             (key, storage).into_view()
