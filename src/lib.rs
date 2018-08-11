@@ -4,8 +4,6 @@
 //! extremely unstable!
 #![allow(unknown_lints)] // Allow clippy lints.
 
-#[cfg(feature = "geometry-nalgebra")]
-extern crate alga;
 extern crate arrayvec;
 #[cfg(feature = "geometry-cgmath")]
 extern crate cgmath;
