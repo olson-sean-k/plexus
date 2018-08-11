@@ -49,7 +49,7 @@ impl<G> Mesh<G>
 where
     G: Geometry,
 {
-    pub(in graph) fn as_storage<T>(&self) -> &Storage<T>
+    fn as_storage<T>(&self) -> &Storage<T>
     where
         Self: AsStorage<T>,
         T: Topological,
@@ -57,7 +57,7 @@ where
         AsStorage::<T>::as_storage(self)
     }
 
-    pub(in graph) fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
+    fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
     where
         Self: AsStorageMut<T>,
         T: Topological,
@@ -379,24 +379,6 @@ where
             (0..vertices.len()).map(|index| N::from(index).unwrap()),
             vertices,
         )
-    }
-}
-
-impl<G> AsRef<Mesh<G>> for Mesh<G>
-where
-    G: Geometry,
-{
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl<G> AsMut<Mesh<G>> for Mesh<G>
-where
-    G: Geometry,
-{
-    fn as_mut(&mut self) -> &mut Self {
-        self
     }
 }
 
@@ -761,7 +743,7 @@ mod tests {
 
         // Construct a mesh with three triangles forming a rectangle, where one
         // vertex (at the origin) is shared by all three triangles.
-        let mut mesh = Mesh::<Point2<i32>>::from_raw_buffers(
+        let mesh = Mesh::<Point2<i32>>::from_raw_buffers(
             vec![0, 1, 3, 1, 4, 3, 1, 2, 4],
             vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
             3,
