@@ -146,7 +146,7 @@ where
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn into_outgoing_edge(self) -> EdgeView<M, G> {
@@ -180,7 +180,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
@@ -217,7 +217,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorageMut<Edge<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn outgoing_orphan_edge(&mut self) -> OrphanEdgeView<G> {
@@ -254,7 +254,7 @@ where
         + AsStorage<Face<G>>
         + AsStorageMut<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn neighboring_orphan_faces(&mut self) -> FaceCirculator<&mut M::Target, G> {

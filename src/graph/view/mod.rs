@@ -43,32 +43,32 @@ pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
 pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
 pub type OrphanVertex<'a, G> = OrphanVertexView<'a, G>;
 
-pub trait Consistency {}
+pub trait ConsistencyContract {}
 
 pub struct Consistent;
 
-impl Consistency for Consistent {}
+impl ConsistencyContract for Consistent {}
 
-pub struct Inconsistent;
+pub struct Indeterminate;
 
-impl Consistency for Inconsistent {}
+impl ConsistencyContract for Indeterminate {}
 
 pub trait Container {
-    type Consistency: Consistency;
+    type Contract: ConsistencyContract;
 }
 
 impl<'a, T> Container for &'a T
 where
     T: Container,
 {
-    type Consistency = <T as Container>::Consistency;
+    type Contract = <T as Container>::Contract;
 }
 
 impl<'a, T> Container for &'a mut T
 where
     T: Container,
 {
-    type Consistency = <T as Container>::Consistency;
+    type Contract = <T as Container>::Contract;
 }
 
 pub trait Reborrow {

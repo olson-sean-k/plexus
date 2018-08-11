@@ -14,7 +14,7 @@ use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::{Container, Inconsistent};
+use graph::view::{Container, Indeterminate};
 
 pub use self::face::{FaceInsertCache, FaceRemoveCache};
 
@@ -221,7 +221,7 @@ impl<G> Container for Mutation<G>
 where
     G: Geometry,
 {
-    type Consistency = Inconsistent;
+    type Contract = Indeterminate;
 }
 
 impl<G> Deref for Mutation<G>

@@ -176,7 +176,7 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
@@ -205,7 +205,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn vertices(&self) -> VertexCirculator<&M::Target, G> {
@@ -245,7 +245,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorageMut<Edge<G>>
         + AsStorage<Face<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn interior_orphan_edges(&mut self) -> EdgeCirculator<&mut M::Target, G> {
@@ -259,7 +259,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorageMut<Face<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn neighboring_orphan_faces(&mut self) -> FaceCirculator<&mut M::Target, G> {
@@ -289,7 +289,7 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + AsStorageMut<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn orphan_vertices(&mut self) -> VertexCirculator<&mut M::Target, G> {
@@ -317,7 +317,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: FaceCentroid + Geometry,
 {
     pub fn centroid(&self) -> Result<G::Centroid, Error> {
@@ -345,7 +345,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: FaceNormal + Geometry,
 {
     pub fn normal(&self) -> Result<G::Normal, Error> {

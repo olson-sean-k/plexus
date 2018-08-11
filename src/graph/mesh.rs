@@ -542,7 +542,7 @@ impl<G> Container for Mesh<G>
 where
     G: Geometry,
 {
-    type Consistency = Consistent;
+    type Contract = Consistent;
 }
 
 pub struct Iter<'a, I, T, G, Output>

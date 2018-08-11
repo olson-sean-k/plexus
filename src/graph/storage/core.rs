@@ -2,7 +2,7 @@ use geometry::Geometry;
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::{Container, Inconsistent, Reborrow, ReborrowMut};
+use graph::view::{Container, Indeterminate, Reborrow, ReborrowMut};
 
 pub trait Bind<T, M>
 where
@@ -165,7 +165,7 @@ where
 }
 
 impl<V, E, F> Container for Core<V, E, F> {
-    type Consistency = Inconsistent;
+    type Contract = Indeterminate;
 }
 
 // By implementing `Reborrow` for a non-reference type, it is possible for

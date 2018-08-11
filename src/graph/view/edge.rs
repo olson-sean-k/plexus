@@ -208,7 +208,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn into_boundary_edge(self) -> Option<Self> {
@@ -294,7 +294,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn opposite_orphan_edge(&mut self) -> OrphanEdgeView<G> {
@@ -392,7 +392,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn into_face(self) -> Option<FaceView<M, G>> {
@@ -438,7 +438,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn vertices(&self) -> VertexCirculator<&M::Target, G> {
@@ -469,7 +469,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Consistency = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
     pub fn faces(&self) -> FaceCirculator<&M::Target, G> {
@@ -500,7 +500,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: EdgeMidpoint + Geometry,
 {
     pub fn midpoint(&self) -> Result<G::Midpoint, Error> {
@@ -532,7 +532,7 @@ where
     M::Target: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Consistency = Consistent>,
+        + Container<Contract = Consistent>,
     G: Geometry + EdgeLateral,
 {
     pub fn lateral(&self) -> Result<G::Lateral, Error> {
