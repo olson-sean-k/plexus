@@ -171,8 +171,9 @@ where
             let neighbors = {
                 let core = Core::empty().bind(&**self).bind(&***self);
                 // Only boundary edges must be connected.
-                EdgeView::from_keyed_source(((b, a).into(), &core)).and_then(|edge| {
-                    edge.is_boundary_edge().into_some_with(|| {
+                EdgeView::from_keyed_source(((b, a).into(), &core))
+                    .and_then(|edge| edge.is_boundary_edge().into_option())
+                    .and_then(|_| {
                         // The next edge of B-A is the outgoing edge of the
                         // destination vertex A that is also a boundary
                         // edge or, if there is no such outgoing edge, the
@@ -180,33 +181,26 @@ where
                         // edge is similar.
                         let ax = outgoing[&a]
                             .iter()
-                            .map(|ax| EdgeView::from_keyed_source((*ax, &core)).unwrap())
+                            .flat_map(|ax| EdgeView::from_keyed_source((*ax, &core)))
                             .find(|edge| edge.is_boundary_edge())
                             .or_else(|| {
                                 EdgeView::from_keyed_source(((a, b).into(), &core))
-                                    .unwrap()
-                                    .into_reachable_previous_edge()
-                                    .unwrap()
-                                    .into_reachable_opposite_edge()
+                                    .and_then(|edge| edge.into_reachable_previous_edge())
+                                    .and_then(|edge| edge.into_reachable_opposite_edge())
                             })
-                            .unwrap()
-                            .key();
+                            .map(|edge| edge.key());
                         let xb = incoming[&b]
                             .iter()
-                            .map(|xb| EdgeView::from_keyed_source((*xb, &core)).unwrap())
+                            .flat_map(|xb| EdgeView::from_keyed_source((*xb, &core)))
                             .find(|edge| edge.is_boundary_edge())
                             .or_else(|| {
                                 EdgeView::from_keyed_source(((a, b).into(), &core))
-                                    .unwrap()
-                                    .into_reachable_next_edge()
-                                    .unwrap()
-                                    .into_reachable_opposite_edge()
+                                    .and_then(|edge| edge.into_reachable_next_edge())
+                                    .and_then(|edge| edge.into_reachable_opposite_edge())
                             })
-                            .unwrap()
-                            .key();
-                        (ax, xb)
+                            .map(|edge| edge.key());
+                        ax.into_iter().zip(xb.into_iter()).next()
                     })
-                })
             };
             if let Some((ax, xb)) = neighbors {
                 self.connect_neighboring_edges((b, a).into(), ax)?;
