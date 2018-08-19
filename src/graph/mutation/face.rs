@@ -17,7 +17,6 @@ use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
 use graph::view::{Container, EdgeKeyTopology, EdgeView, FaceKeyTopology, Reborrow, VertexView};
 use graph::{GraphError, IteratorExt};
-use BoolExt;
 
 pub struct FaceMutation<G>
 where
@@ -172,7 +171,7 @@ where
                 let core = Core::empty().bind(&**self).bind(&***self);
                 // Only boundary edges must be connected.
                 EdgeView::from_keyed_source(((b, a).into(), &core))
-                    .and_then(|edge| edge.is_boundary_edge().option())
+                    .filter(|edge| edge.is_boundary_edge())
                     .and_then(|_| {
                         // The next edge of B-A is the outgoing edge of the
                         // destination vertex A that is also a boundary
