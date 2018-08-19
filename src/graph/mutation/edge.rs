@@ -13,7 +13,7 @@ use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{Container, EdgeView, Reborrow};
-use graph::{GraphError, Perimeter, ResultExt};
+use graph::{GraphError, IteratorExt, ResultExt};
 
 pub struct EdgeMutation<G>
 where
@@ -307,6 +307,8 @@ where
         // mesh. Before mutating the mesh, ensure that existing interior edges
         // are boundaries.
         for edge in [a, b, c, d]
+            .into_iter()
+            .cloned()
             .perimeter()
             .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), &storage)))
         {

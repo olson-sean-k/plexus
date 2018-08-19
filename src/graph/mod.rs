@@ -204,58 +204,67 @@ impl<T> ResultExt<T> for Result<T, GraphError> {
     }
 }
 
-/// Provides an iterator over a window of duplets that includes the first value
-/// in the sequence at the beginning and end of the iteration.
-trait Perimeter<'a, T, U>
-where
-    T: 'a + AsRef<[U]>,
-    U: Copy,
-{
-    fn perimeter(&self) -> PerimeterIter<U>;
+trait IteratorExt: Iterator + Sized {
+    /// Provides an iterator over a window of duplets that includes the first
+    /// value in the sequence at the beginning and end of the iteration.
+    fn perimeter(self) -> Perimeter<Self>
+    where
+        Self::Item: Copy;
 }
 
-impl<'a, T, U> Perimeter<'a, T, U> for T
+impl<I> IteratorExt for I
 where
-    T: 'a + AsRef<[U]>,
-    U: Copy,
+    I: Iterator,
 {
-    fn perimeter(&self) -> PerimeterIter<U> {
-        PerimeterIter::new(self.as_ref())
+    fn perimeter(self) -> Perimeter<I>
+    where
+        I::Item: Copy,
+    {
+        Perimeter::new(self)
     }
 }
 
-struct PerimeterIter<'a, T>
+struct Perimeter<I>
 where
-    T: 'a + Copy,
+    I: Iterator,
+    I::Item: Copy,
 {
-    input: &'a [T],
-    index: usize,
+    input: I,
+    first: Option<I::Item>,
+    previous: Option<I::Item>,
 }
 
-impl<'a, T> PerimeterIter<'a, T>
+impl<I> Perimeter<I>
 where
-    T: 'a + Copy,
+    I: Iterator,
+    I::Item: Copy,
 {
-    fn new(input: &'a [T]) -> Self {
-        PerimeterIter { input, index: 0 }
+    fn new(mut input: I) -> Self {
+        let first = input.next();
+        let previous = first;
+        Perimeter {
+            input,
+            first,
+            previous,
+        }
     }
 }
 
-impl<'a, T> Iterator for PerimeterIter<'a, T>
+impl<I> Iterator for Perimeter<I>
 where
-    T: 'a + Copy,
+    I: Iterator,
+    I::Item: Copy,
 {
-    type Item = (T, T);
+    type Item = (I::Item, I::Item);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index;
-        let n = self.input.len();
-        if index >= n {
-            None
-        }
-        else {
-            self.index += 1;
-            Some((self.input[index], self.input[(index + 1) % n]))
+        let next = self.input.next();
+        match (self.previous, next.or_else(|| self.first.take())) {
+            (Some(a), Some(b)) => {
+                self.previous = Some(b);
+                Some((a, b))
+            }
+            _ => None,
         }
     }
 }

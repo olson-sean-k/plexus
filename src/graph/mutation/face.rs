@@ -16,7 +16,7 @@ use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
 use graph::view::{Container, EdgeKeyTopology, EdgeView, FaceKeyTopology, Reborrow, VertexView};
-use graph::{GraphError, Perimeter};
+use graph::{GraphError, IteratorExt};
 use BoolExt;
 
 pub struct FaceMutation<G>
@@ -55,6 +55,8 @@ where
         } = cache;
         // Insert composite edges and collect the interior edges.
         let edges = vertices
+            .iter()
+            .cloned()
             .perimeter()
             .map(|ab| {
                 self.get_or_insert_composite_edge(ab, geometry.0.clone())
@@ -105,8 +107,6 @@ where
             let n = vertex
                 .reachable_neighboring_faces()
                 .filter(|face| face.key() != abc)
-                .collect::<Vec<_>>()
-                .iter()
                 .perimeter()
                 .filter(|&(previous, next)| {
                     let exterior = previous
@@ -147,7 +147,7 @@ where
     }
 
     fn connect_face_interior(&mut self, edges: &[EdgeKey], face: FaceKey) -> Result<(), Error> {
-        for (ab, bc) in edges.perimeter() {
+        for (ab, bc) in edges.iter().cloned().perimeter() {
             self.connect_neighboring_edges(ab, bc)?;
             self.connect_edge_to_face(ab, face)?;
         }
@@ -528,7 +528,7 @@ where
     }
     mutation.remove_face_with_cache(cache)?;
     let c = mutation.insert_vertex(centroid);
-    for (a, b) in vertices.perimeter() {
+    for (a, b) in vertices.into_iter().perimeter() {
         mutation.insert_face(&[a, b, c], (Default::default(), geometry.clone()))?;
     }
     Ok(Some(c))
@@ -590,7 +590,6 @@ where
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
-        .collect::<Vec<_>>()
         .perimeter()
     {
         // TODO: Split these faces to form triangles.

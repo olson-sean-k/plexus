@@ -9,7 +9,7 @@ use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
 use graph::view::{Container, Reborrow, VertexView};
-use graph::{GraphError, Perimeter};
+use graph::{GraphError, IteratorExt};
 
 /// Vertex-bounded region connectivity.
 ///
@@ -66,6 +66,8 @@ where
             return Err(GraphError::TopologyNotFound.into());
         }
         let faces = vertices
+            .iter()
+            .cloned()
             .perimeter()
             .flat_map(|ab| AsStorage::<Edge<G>>::as_storage(storage.reborrow()).get(&ab.into()))
             .flat_map(|edge| edge.face)
