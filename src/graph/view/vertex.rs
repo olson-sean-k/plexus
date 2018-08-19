@@ -80,7 +80,7 @@ where
             .reborrow()
             .as_storage()
             .contains_key(&key)
-            .into_some(VertexView::from_keyed_storage_unchecked(key, storage))
+            .some(VertexView::from_keyed_storage_unchecked(key, storage))
     }
 
     fn from_keyed_storage_unchecked(key: VertexKey, storage: M) -> Self {

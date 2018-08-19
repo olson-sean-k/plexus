@@ -172,7 +172,7 @@ where
                 let core = Core::empty().bind(&**self).bind(&***self);
                 // Only boundary edges must be connected.
                 EdgeView::from_keyed_source(((b, a).into(), &core))
-                    .and_then(|edge| edge.is_boundary_edge().into_option())
+                    .and_then(|edge| edge.is_boundary_edge().option())
                     .and_then(|_| {
                         // The next edge of B-A is the outgoing edge of the
                         // destination vertex A that is also a boundary

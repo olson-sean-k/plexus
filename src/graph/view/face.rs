@@ -88,7 +88,7 @@ where
             .reborrow()
             .as_storage()
             .contains_key(&key)
-            .into_some(FaceView::from_keyed_storage_unchecked(key, storage))
+            .some(FaceView::from_keyed_storage_unchecked(key, storage))
     }
 
     fn from_keyed_storage_unchecked(key: FaceKey, storage: M) -> Self {

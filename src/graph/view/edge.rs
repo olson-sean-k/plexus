@@ -96,7 +96,7 @@ where
             .reborrow()
             .as_storage()
             .contains_key(&key)
-            .into_some(EdgeView::from_keyed_storage_unchecked(key, storage))
+            .some(EdgeView::from_keyed_storage_unchecked(key, storage))
     }
 
     fn from_keyed_storage_unchecked(key: EdgeKey, storage: M) -> Self {
@@ -145,7 +145,7 @@ where
         }
         else {
             self.into_reachable_opposite_edge()
-                .and_then(|opposite| opposite.is_boundary_edge().into_some(opposite))
+                .and_then(|opposite| opposite.is_boundary_edge().some(opposite))
         }
     }
 
@@ -179,7 +179,7 @@ where
         }
         else {
             self.reachable_opposite_edge()
-                .and_then(|opposite| opposite.is_boundary_edge().into_some_with(|| opposite))
+                .and_then(|opposite| opposite.is_boundary_edge().some_with(|| opposite))
         }
     }
 
@@ -275,11 +275,9 @@ where
             (key, storage).into_view()
         }
         else {
-            let key = self.reachable_opposite_edge().and_then(|opposite| {
-                opposite
-                    .is_boundary_edge()
-                    .into_some_with(|| opposite.key())
-            });
+            let key = self
+                .reachable_opposite_edge()
+                .and_then(|opposite| opposite.is_boundary_edge().some_with(|| opposite.key()));
             if let Some(key) = key {
                 let storage = self.storage.reborrow_mut();
                 (key, storage).into_view()
