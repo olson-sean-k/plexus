@@ -27,6 +27,10 @@ impl<G> EdgeMutation<G>
 where
     G: Geometry,
 {
+    pub fn as_edge_storage(&self) -> &Storage<Edge<G>> {
+        self.as_storage()
+    }
+
     pub fn insert_edge(
         &mut self,
         vertices: (VertexKey, VertexKey),
@@ -457,9 +461,9 @@ where
     let cd = mutation.insert_edge((c, d), edge)?;
     let cache = EdgeJoinCache::snapshot(
         Core::empty()
-            .bind(AsStorage::<Vertex<G>>::as_storage(mutation))
-            .bind(AsStorage::<Edge<G>>::as_storage(mutation))
-            .bind(AsStorage::<Face<G>>::as_storage(mutation)),
+            .bind(mutation.as_vertex_storage())
+            .bind(mutation.as_edge_storage())
+            .bind(mutation.as_face_storage()),
         ab,
         cd,
     )?;

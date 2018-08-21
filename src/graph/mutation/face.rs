@@ -31,13 +31,20 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
+    pub fn as_face_storage(&self) -> &Storage<Face<G>> {
+        self.as_storage()
+    }
+
     pub fn insert_face(
         &mut self,
         vertices: &[VertexKey],
         geometry: (G::Edge, G::Face),
     ) -> Result<FaceKey, Error> {
         let cache = FaceInsertCache::snapshot(
-            Core::empty().bind(&*self).bind(&**self).bind(&***self),
+            Core::empty()
+                .bind(self.as_vertex_storage())
+                .bind(self.as_edge_storage())
+                .bind(self.as_face_storage()),
             vertices,
             geometry,
         )?;
@@ -101,7 +108,10 @@ where
             // additional gaps exist, then removal will create a singularity.
             let vertex = VertexView::from_keyed_source((
                 vertex,
-                Core::empty().bind(&*self).bind(&**self).bind(&***self),
+                Core::empty()
+                    .bind(self.as_vertex_storage())
+                    .bind(self.as_edge_storage())
+                    .bind(self.as_face_storage()),
             )).ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
             let n = vertex
                 .reachable_neighboring_faces()
@@ -168,7 +178,9 @@ where
         let (incoming, outgoing) = connectivity;
         for (a, b) in edges.iter().map(|edge| edge.to_vertex_keys()) {
             let neighbors = {
-                let core = Core::empty().bind(&**self).bind(&***self);
+                let core = Core::empty()
+                    .bind(self.as_vertex_storage())
+                    .bind(self.as_edge_storage());
                 // Only boundary edges must be connected.
                 EdgeView::from_keyed_source(((b, a).into(), &core))
                     .filter(|edge| edge.is_boundary_edge())
@@ -438,11 +450,11 @@ where
             FaceRemoveCache::snapshot(storage, source)?,
             FaceRemoveCache::snapshot(storage, destination)?,
         );
-        // Ensure that the opposite face exists and has the same arity. At this
-        // point, `FaceRemoveCache::snapshot` has already tested for the existence
-        // of the faces, so unwrap the views.
-        let source = storage.face(source).unwrap();
-        let destination = storage.face(destination).unwrap();
+        // Ensure that the opposite face exists and has the same arity.
+        let source = storage.face(source).ok_or(GraphError::TopologyNotFound)?;
+        let destination = storage
+            .face(destination)
+            .ok_or(GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonConstant.into());
         }
