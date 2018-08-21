@@ -245,9 +245,7 @@ where
             ..
         } = self;
         mutation.commit().and_then(move |core| {
-            let Core {
-                vertices, edges, ..
-            } = core;
+            let (vertices, edges, ..) = core.into_storage();
             {
                 let core = Core::empty().bind(&vertices).bind(&edges).bind(&faces);
                 for (vertex, faces) in singularities {
@@ -310,11 +308,7 @@ where
     G: Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
-        let Core {
-            vertices,
-            edges,
-            faces,
-        } = mutant;
+        let (vertices, edges, faces) = mutant.into_storage();
         FaceMutation {
             singularities: Default::default(),
             storage: faces,

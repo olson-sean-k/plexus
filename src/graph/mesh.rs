@@ -12,7 +12,7 @@ use generate::{
     self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
     Quad,
 };
-use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry, IntoInteriorGeometry};
+use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
 use graph::geometry::FaceCentroid;
 use graph::mutation::{Commit, Mutate, Mutation};
@@ -387,7 +387,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
-        &self.core.vertices
+        self.core.as_storage::<Vertex<G>>()
     }
 }
 
@@ -396,7 +396,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
-        &self.core.edges
+        self.core.as_storage::<Edge<G>>()
     }
 }
 
@@ -405,7 +405,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
-        &self.core.faces
+        self.core.as_storage::<Face<G>>()
     }
 }
 
@@ -414,7 +414,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
-        &mut self.core.vertices
+        self.core.as_storage_mut::<Vertex<G>>()
     }
 }
 
@@ -423,7 +423,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
-        &mut self.core.edges
+        self.core.as_storage_mut::<Edge<G>>()
     }
 }
 
@@ -432,7 +432,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
-        &mut self.core.faces
+        self.core.as_storage_mut::<Face<G>>()
     }
 }
 
@@ -474,16 +474,12 @@ where
 {
     fn from_interior_geometry(mesh: Mesh<H>) -> Self {
         let Mesh { core, .. } = mesh;
-        let Core {
-            vertices,
-            edges,
-            faces,
-        } = core;
-        Mesh::from(Core {
-            vertices: vertices.map_values_into(|vertex| vertex.into_interior_geometry()),
-            edges: edges.map_values_into(|edge| edge.into_interior_geometry()),
-            faces: faces.map_values_into(|face| face.into_interior_geometry()),
-        })
+        let (vertices, edges, faces) = core.into_storage();
+        let core = Core::empty()
+            .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
+            .bind(edges.map_values_into(|edge| Edge::<G>::from_interior_geometry(edge)))
+            .bind(faces.map_values_into(|face| Face::<G>::from_interior_geometry(face)));
+        Mesh::from(core)
     }
 }
 

@@ -16,9 +16,9 @@ where
 
 /// Abstract and ephemeral core mesh storage.
 pub struct Core<V = (), E = (), F = ()> {
-    pub(in graph) vertices: V,
-    pub(in graph) edges: E,
-    pub(in graph) faces: F,
+    vertices: V,
+    edges: E,
+    faces: F,
 }
 
 impl Core {
@@ -32,6 +32,16 @@ impl Core {
 }
 
 impl<V, E, F> Core<V, E, F> {
+    pub fn into_storage(self) -> (V, E, F) {
+        let Core {
+            vertices,
+            edges,
+            faces,
+            ..
+        } = self;
+        (vertices, edges, faces)
+    }
+
     pub fn as_storage<T>(&self) -> &Storage<T>
     where
         Self: AsStorage<T>,

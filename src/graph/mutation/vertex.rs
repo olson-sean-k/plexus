@@ -86,7 +86,7 @@ where
     G: Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
-        let Core { vertices, .. } = mutant;
+        let (vertices, ..) = mutant.into_storage();
         VertexMutation { storage: vertices }
     }
 }

@@ -198,7 +198,7 @@ where
             ..
         } = self;
         mutation.commit().and_then(move |core| {
-            let Core { vertices, .. } = core;
+            let (vertices, ..) = core.into_storage();
             Ok(Core::empty().bind(vertices).bind(edges))
         })
     }
@@ -236,9 +236,7 @@ where
     G: Geometry,
 {
     fn mutate(mutant: Self::Mutant) -> Self {
-        let Core {
-            vertices, edges, ..
-        } = mutant;
+        let (vertices, edges, ..) = mutant.into_storage();
         EdgeMutation {
             mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
             storage: edges,
