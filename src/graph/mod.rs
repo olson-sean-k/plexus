@@ -119,7 +119,8 @@
 //!
 //! // Traverse an edge and use a circulator to get the faces of a nearby vertex.
 //! let key = mesh.edges().nth(0).unwrap().key();
-//! let mut vertex = mesh.edge_mut(key)
+//! let mut vertex = mesh
+//!     .edge_mut(key)
 //!     .unwrap()
 //!     .into_opposite_edge()
 //!     .into_next_edge()

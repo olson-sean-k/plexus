@@ -46,8 +46,8 @@
 //! Generating position and index buffers using an indexer:
 //!
 //! ```rust
-//! use plexus::generate::LruIndexer;
 //! use plexus::generate::cube;
+//! use plexus::generate::LruIndexer;
 //! use plexus::prelude::*;
 //!
 //! let (indeces, positions) = cube::Cube::new()

@@ -116,8 +116,8 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::generate::LruIndexer;
     /// use plexus::generate::sphere::UvSphere;
+    /// use plexus::generate::LruIndexer;
     /// use plexus::graph::Mesh;
     /// use plexus::prelude::*;
     ///

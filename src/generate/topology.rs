@@ -469,14 +469,11 @@ pub type ZipVertices<T> = iter::Map<
 /// # }
 /// # fn main() {
 /// let cube = Cube::new();
-/// let polygons = generate::zip_vertices((
-///     cube.polygons_with_position(),
-///     cube.polygons_with_texture(),
-/// )).map_vertices(|(position, texture)| {
-///     (position, texture, map_to_color(&texture))
-/// })
-///     .triangulate()
-///     .collect::<Vec<_>>();
+/// let polygons =
+///     generate::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
+///         .map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
+///         .triangulate()
+///         .collect::<Vec<_>>();
 /// # }
 /// ```
 pub fn zip_vertices<T, U>(tuple: U) -> ZipVertices<T>
