@@ -16,8 +16,6 @@ use graph::storage::Storage;
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::{Container, Indeterminate};
 
-pub use self::face::{FaceInsertCache, FaceRemoveCache};
-
 pub trait Mutate: Sized {
     type Mutant;
     type Error: Debug;
