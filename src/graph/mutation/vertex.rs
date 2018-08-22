@@ -1,7 +1,7 @@
 use failure::Error;
 
 use geometry::Geometry;
-use graph::mutation::{Commit, Mode, Mutate};
+use graph::mutation::Mutate;
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, Storage, VertexKey};
 use graph::topology::Vertex;
@@ -60,10 +60,11 @@ where
     }
 }
 
-impl<G> Commit for VertexMutation<G>
+impl<G> Mutate for VertexMutation<G>
 where
     G: Geometry,
 {
+    type Mutant = Core<Storage<Vertex<G>>, (), ()>;
     type Error = Error;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
@@ -72,19 +73,7 @@ where
         } = self;
         Ok(Core::empty().bind(vertices))
     }
-}
 
-impl<G> Mode for VertexMutation<G>
-where
-    G: Geometry,
-{
-    type Mutant = Core<Storage<Vertex<G>>, (), ()>;
-}
-
-impl<G> Mutate for VertexMutation<G>
-where
-    G: Geometry,
-{
     fn mutate(mutant: Self::Mutant) -> Self {
         let (vertices, ..) = mutant.into_storage();
         VertexMutation { storage: vertices }

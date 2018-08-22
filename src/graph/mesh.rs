@@ -15,7 +15,7 @@ use generate::{
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
 use graph::geometry::FaceCentroid;
-use graph::mutation::{Commit, Mutate, Mutation};
+use graph::mutation::{Mutate, Mutation};
 use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
@@ -441,7 +441,9 @@ where
     G: Geometry,
 {
     fn default() -> Self {
-        Mesh::new()
+        // Because `default` is likely to be used in more generic contexts,
+        // `empty` is used to avoid any unnecessary allocations.
+        Mesh::empty()
     }
 }
 

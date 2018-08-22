@@ -18,21 +18,11 @@ use graph::view::{Container, Indeterminate};
 
 pub use self::face::{FaceInsertCache, FaceRemoveCache};
 
-// TODO: It may be a good idea to raise `GraphError::TopologyNotFound` errors
-//       as soon as possible. Presence could be checked immediately, allowing
-//       for these errors to be recoverable (instead of, for example, raising
-//       such an error well after mutations have been performed).
-
-pub trait Mode {
+pub trait Mutate: Sized {
     type Mutant;
-}
-
-pub trait Mutate: Commit + Mode {
-    fn mutate(mutant: Self::Mutant) -> Self;
-}
-
-pub trait Commit: Mode + Sized {
     type Error: Debug;
+
+    fn mutate(mutant: Self::Mutant) -> Self;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error>;
 
@@ -56,7 +46,7 @@ pub trait Commit: Mode + Sized {
 
 pub struct Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
     mutation: Option<(&'a mut Mesh<G>, M)>,
@@ -64,10 +54,10 @@ where
 
 impl<'a, M, G> Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
-    pub fn replace(mesh: <Self as Mode>::Mutant, replacement: Mesh<G>) -> Self {
+    pub fn replace(mesh: <Self as Mutate>::Mutant, replacement: Mesh<G>) -> Self {
         let mutant = mem::replace(mesh, replacement);
         Replace {
             mutation: Some((mesh, M::mutate(mutant))),
@@ -78,7 +68,7 @@ where
         self.mutation.take().unwrap()
     }
 
-    fn drain_and_commit(&mut self) -> Result<<Self as Mode>::Mutant, <Self as Commit>::Error> {
+    fn drain_and_commit(&mut self) -> Result<<Self as Mutate>::Mutant, <Self as Mutate>::Error> {
         let (mesh, mutation) = self.drain();
         let mutant = mutation.commit()?;
         mem::replace(mesh, mutant);
@@ -91,14 +81,19 @@ where
     }
 }
 
-impl<'a, M, G> Commit for Replace<'a, M, G>
+impl<'a, M, G> Mutate for Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
-    type Error = <M as Commit>::Error;
+    type Mutant = &'a mut Mesh<G>;
+    type Error = <M as Mutate>::Error;
 
-    fn commit(mut self) -> Result<<Self as Mode>::Mutant, Self::Error> {
+    fn mutate(mutant: Self::Mutant) -> Self {
+        Self::replace(mutant, Mesh::empty())
+    }
+
+    fn commit(mut self) -> Result<<Self as Mutate>::Mutant, Self::Error> {
         let mutant = self.drain_and_commit();
         mem::forget(self);
         mutant
@@ -112,7 +107,7 @@ where
 
 impl<'a, M, G> Deref for Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
     type Target = M;
@@ -124,7 +119,7 @@ where
 
 impl<'a, M, G> DerefMut for Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -134,29 +129,11 @@ where
 
 impl<'a, M, G> Drop for Replace<'a, M, G>
 where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
+    M: Mutate<Mutant = Mesh<G>>,
     G: 'a + Geometry,
 {
     fn drop(&mut self) {
         self.drain_and_abort();
-    }
-}
-
-impl<'a, M, G> Mode for Replace<'a, M, G>
-where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
-    G: 'a + Geometry,
-{
-    type Mutant = &'a mut Mesh<G>;
-}
-
-impl<'a, M, G> Mutate for Replace<'a, M, G>
-where
-    M: Commit + Mode<Mutant = Mesh<G>> + Mutate,
-    G: 'a + Geometry,
-{
-    fn mutate(mutant: Self::Mutant) -> Self {
-        Self::replace(mutant, Mesh::empty())
     }
 }
 
@@ -206,11 +183,18 @@ where
     }
 }
 
-impl<G> Commit for Mutation<G>
+impl<G> Mutate for Mutation<G>
 where
     G: Geometry,
 {
+    type Mutant = Mesh<G>;
     type Error = Error;
+
+    fn mutate(mutant: Self::Mutant) -> Self {
+        Mutation {
+            mutation: FaceMutation::mutate(mutant.into()),
+        }
+    }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         self.mutation.commit().map(|core| core.into())
@@ -241,23 +225,5 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
-    }
-}
-
-impl<G> Mode for Mutation<G>
-where
-    G: Geometry,
-{
-    type Mutant = Mesh<G>;
-}
-
-impl<G> Mutate for Mutation<G>
-where
-    G: Geometry,
-{
-    fn mutate(mutant: Self::Mutant) -> Self {
-        Mutation {
-            mutation: FaceMutation::mutate(mutant.into()),
-        }
     }
 }

@@ -7,7 +7,7 @@ use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::Mesh;
 use graph::mutation::vertex::VertexMutation;
-use graph::mutation::{Commit, Mode, Mutate, Mutation};
+use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
@@ -185,11 +185,20 @@ where
     }
 }
 
-impl<G> Commit for EdgeMutation<G>
+impl<G> Mutate for EdgeMutation<G>
 where
     G: Geometry,
 {
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
     type Error = Error;
+
+    fn mutate(mutant: Self::Mutant) -> Self {
+        let (vertices, edges, ..) = mutant.into_storage();
+        EdgeMutation {
+            mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
+            storage: edges,
+        }
+    }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let EdgeMutation {
@@ -221,26 +230,6 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
-    }
-}
-
-impl<G> Mode for EdgeMutation<G>
-where
-    G: Geometry,
-{
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
-}
-
-impl<G> Mutate for EdgeMutation<G>
-where
-    G: Geometry,
-{
-    fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges, ..) = mutant.into_storage();
-        EdgeMutation {
-            mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
-            storage: edges,
-        }
     }
 }
 

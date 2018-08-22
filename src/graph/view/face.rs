@@ -10,7 +10,7 @@ use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::Mesh;
 use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
-use graph::mutation::{Commit, Mutation};
+use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::{Bind, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};

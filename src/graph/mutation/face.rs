@@ -10,7 +10,7 @@ use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
 use graph::mutation::region::{Connectivity, Region, Singularity};
-use graph::mutation::{Commit, Mode, Mutate, Mutation};
+use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::AsStorage;
 use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
@@ -231,11 +231,21 @@ where
     }
 }
 
-impl<G> Commit for FaceMutation<G>
+impl<G> Mutate for FaceMutation<G>
 where
     G: Geometry,
 {
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
     type Error = Error;
+
+    fn mutate(mutant: Self::Mutant) -> Self {
+        let (vertices, edges, faces) = mutant.into_storage();
+        FaceMutation {
+            singularities: Default::default(),
+            storage: faces,
+            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(edges)),
+        }
+    }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let FaceMutation {
@@ -296,26 +306,6 @@ where
     }
 }
 
-impl<G> Mode for FaceMutation<G>
-where
-    G: Geometry,
-{
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
-}
-
-impl<G> Mutate for FaceMutation<G>
-where
-    G: Geometry,
-{
-    fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges, faces) = mutant.into_storage();
-        FaceMutation {
-            singularities: Default::default(),
-            storage: faces,
-            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(edges)),
-        }
-    }
-}
 pub struct FaceInsertCache<'a, G>
 where
     G: Geometry,
