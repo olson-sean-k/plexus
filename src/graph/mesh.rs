@@ -14,6 +14,7 @@ use generate::{
 };
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
+use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Container, Core};
 use graph::geometry::FaceCentroid;
 use graph::mutation::{Mutate, Mutation};
@@ -41,7 +42,7 @@ pub struct Mesh<G = ()>
 where
     G: Geometry,
 {
-    core: Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>,
+    core: OwnedCore<G>,
 }
 
 /// Storage.
@@ -447,20 +448,20 @@ where
     }
 }
 
-impl<G> From<Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>> for Mesh<G>
+impl<G> From<OwnedCore<G>> for Mesh<G>
 where
     G: Geometry,
 {
-    fn from(core: Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>) -> Self {
+    fn from(core: OwnedCore<G>) -> Self {
         Mesh { core }
     }
 }
 
-impl<G> Into<Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>> for Mesh<G>
+impl<G> Into<OwnedCore<G>> for Mesh<G>
 where
     G: Geometry,
 {
-    fn into(self) -> Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>> {
+    fn into(self) -> OwnedCore<G> {
         let Mesh { core, .. } = self;
         core
     }

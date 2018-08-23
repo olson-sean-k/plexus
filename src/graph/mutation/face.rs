@@ -5,7 +5,8 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
-use graph::container::{Bind, Container, Core, Reborrow};
+use graph::container::alias::OwnedCore;
+use graph::container::{Bind, Consistent, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::Mesh;
@@ -236,11 +237,11 @@ impl<G> Mutate for FaceMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
+    type Mutant = OwnedCore<G>;
     type Error = Error;
 
-    fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges, faces) = mutant.into_storage();
+    fn mutate(core: Self::Mutant) -> Self {
+        let (vertices, edges, faces) = core.into_storage();
         FaceMutation {
             singularities: Default::default(),
             storage: faces,
@@ -506,11 +507,12 @@ where
     }
 }
 
-pub fn triangulate_with_cache<G>(
-    mutation: &mut Mutation<G>,
+pub fn triangulate_with_cache<M, G>(
+    mutation: &mut Mutation<M, G>,
     cache: FaceTriangulateCache<G>,
 ) -> Result<Option<VertexKey>, Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
     let FaceTriangulateCache {
@@ -530,8 +532,12 @@ where
     Ok(Some(c))
 }
 
-pub fn join_with_cache<G>(mutation: &mut Mutation<G>, cache: FaceJoinCache<G>) -> Result<(), Error>
+pub fn join_with_cache<M, G>(
+    mutation: &mut Mutation<M, G>,
+    cache: FaceJoinCache<G>,
+) -> Result<(), Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     let FaceJoinCache {
@@ -561,11 +567,12 @@ where
     Ok(())
 }
 
-pub fn extrude_with_cache<G>(
-    mutation: &mut Mutation<G>,
+pub fn extrude_with_cache<M, G>(
+    mutation: &mut Mutation<M, G>,
     cache: FaceExtrudeCache<G>,
 ) -> Result<FaceKey, Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {

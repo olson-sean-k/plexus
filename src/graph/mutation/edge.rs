@@ -3,7 +3,8 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
-use graph::container::{Bind, Container, Core, Reborrow};
+use graph::container::alias::OwnedCore;
+use graph::container::{Bind, Consistent, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::Mesh;
@@ -364,20 +365,22 @@ where
     }
 }
 
-pub fn split_with_cache<G>(
-    mutation: &mut Mutation<G>,
+pub fn split_with_cache<M, G>(
+    mutation: &mut Mutation<M, G>,
     cache: EdgeSplitCache<G>,
 ) -> Result<VertexKey, Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    fn split_at_vertex<G>(
-        mutation: &mut Mutation<G>,
+    fn split_at_vertex<M, G>(
+        mutation: &mut Mutation<M, G>,
         ab: EdgeKey,
         m: VertexKey,
     ) -> Result<(EdgeKey, EdgeKey), Error>
     where
+        M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
         G::Vertex: AsPosition,
     {
@@ -412,11 +415,12 @@ where
     Ok(m)
 }
 
-pub fn join_with_cache<G>(
-    mutation: &mut Mutation<G>,
+pub fn join_with_cache<M, G>(
+    mutation: &mut Mutation<M, G>,
     cache: EdgeJoinCache<G>,
 ) -> Result<EdgeKey, Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     let EdgeJoinCache {
@@ -432,11 +436,12 @@ where
     Ok(source)
 }
 
-pub fn extrude_with_cache<G, T>(
-    mutation: &mut Mutation<G>,
+pub fn extrude_with_cache<M, G, T>(
+    mutation: &mut Mutation<M, G>,
     cache: EdgeExtrudeCache<G>,
 ) -> Result<EdgeKey, Error>
 where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry + EdgeLateral,
     G::Lateral: Mul<T>,
     G::Vertex: AsPosition,

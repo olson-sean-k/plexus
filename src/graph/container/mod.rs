@@ -61,3 +61,12 @@ impl<'a, T> ReborrowMut for &'a mut T {
         *self
     }
 }
+
+pub mod alias {
+    use super::*;
+
+    use graph::storage::Storage;
+    use graph::topology::{Edge, Face, Vertex};
+
+    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
+}
