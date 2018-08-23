@@ -6,19 +6,17 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::Mesh;
 use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{
-    Consistent, Container, EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, Reborrow,
-    ReborrowMut, VertexView,
-};
+use graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
 use BoolExt;
 
 /// Do **not** use this type directly. Use `FaceRef` and `FaceMut` instead.

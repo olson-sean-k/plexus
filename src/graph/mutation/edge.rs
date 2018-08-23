@@ -3,16 +3,17 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::{Bind, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::Mesh;
 use graph::mutation::vertex::VertexMutation;
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::AsStorage;
-use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{Container, EdgeView, Reborrow};
+use graph::view::EdgeView;
 use graph::{GraphError, IteratorExt, ResultExt};
 
 pub struct EdgeMutation<G>

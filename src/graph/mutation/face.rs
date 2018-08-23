@@ -5,6 +5,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::{Bind, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mesh::Mesh;
@@ -12,10 +13,10 @@ use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
 use graph::mutation::region::{Connectivity, Region, Singularity};
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::AsStorage;
-use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
-use graph::view::{Container, EdgeKeyTopology, EdgeView, FaceKeyTopology, Reborrow, VertexView};
+use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, VertexView};
 use graph::{GraphError, IteratorExt};
 
 pub struct FaceMutation<G>

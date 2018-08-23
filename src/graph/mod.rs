@@ -131,6 +131,7 @@
 //! # }
 //! ```
 
+mod container;
 mod geometry;
 mod mesh;
 mod mutation;

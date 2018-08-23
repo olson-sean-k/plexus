@@ -1,8 +1,8 @@
 use geometry::Geometry;
+use graph::container::{Container, Indeterminate, Reborrow, ReborrowMut};
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::{Container, Indeterminate, Reborrow, ReborrowMut};
 
 pub trait Bind<T, M>
 where

@@ -3,14 +3,12 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
+use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{
-    Consistent, Container, EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, Reborrow,
-    ReborrowMut,
-};
+use graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
 use BoolExt;
 
 /// Do **not** use this type directly. Use `VertexRef` and `VertexMut` instead.

@@ -4,11 +4,12 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
 use geometry::Geometry;
+use graph::container::{Container, Reborrow};
 use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
-use graph::view::{Container, Reborrow, VertexView};
+use graph::view::VertexView;
 use graph::{GraphError, IteratorExt};
 
 /// Vertex-bounded region connectivity.

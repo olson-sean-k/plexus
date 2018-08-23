@@ -14,16 +14,16 @@ use generate::{
 };
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
+use graph::container::{Bind, Consistent, Container, Core};
 use graph::geometry::FaceCentroid;
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, Core, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
-    Consistent, Container, EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace,
-    OrphanVertex, VertexMut, VertexRef,
+    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
 };
 use graph::GraphError;
 

@@ -6,19 +6,17 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{Bind, EdgeKey, FaceKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{
-    Consistent, Container, FaceView, OrphanFaceView, OrphanVertexView, Reborrow, ReborrowMut,
-    VertexView,
-};
+use graph::view::{FaceView, OrphanFaceView, OrphanVertexView, VertexView};
 use BoolExt;
 
 /// Do **not** use this type directly. Use `EdgeRef` and `EdgeMut` instead.

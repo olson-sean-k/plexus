@@ -1,9 +1,10 @@
 use failure::Error;
 
 use geometry::Geometry;
+use graph::container::{Bind, Core};
 use graph::mutation::Mutate;
 use graph::storage::convert::AsStorage;
-use graph::storage::{Bind, Core, EdgeKey, Storage, VertexKey};
+use graph::storage::{EdgeKey, Storage, VertexKey};
 use graph::topology::Vertex;
 use graph::GraphError;
 

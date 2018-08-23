@@ -9,12 +9,12 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
+use graph::container::{Container, Indeterminate};
 use graph::mesh::Mesh;
 use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::{Container, Indeterminate};
 
 pub trait Mutate: Sized {
     type Mutant;
@@ -136,8 +136,6 @@ where
 }
 
 /// Mesh mutation.
-///
-/// Mutates a `Mesh`.
 pub struct Mutation<G>
 where
     G: Geometry,

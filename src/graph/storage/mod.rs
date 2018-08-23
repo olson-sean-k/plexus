@@ -8,9 +8,6 @@ use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::topology::Topological;
 
 pub mod convert;
-mod core;
-
-pub use self::core::{Bind, Core};
 
 pub trait KeySequence: Copy + Default + Sized {
     fn into_next_key(self) -> Self;

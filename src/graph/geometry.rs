@@ -11,9 +11,10 @@ use self::alias::*;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use geometry::Geometry;
+use graph::container::{Container, Reborrow};
 use graph::storage::convert::AsStorage;
 use graph::topology::{Edge, Face, Vertex};
-use graph::view::{Container, EdgeView, FaceView, Reborrow};
+use graph::view::{EdgeView, FaceView};
 use graph::GraphError;
 
 pub trait FaceNormal: Geometry {
