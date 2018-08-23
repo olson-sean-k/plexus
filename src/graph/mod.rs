@@ -143,14 +143,20 @@ use failure::Error;
 
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
-pub use self::view::{
-    EdgeKeyTopology, EdgeMut, EdgeRef, FaceKeyTopology, FaceMut, FaceRef, OrphanEdge, OrphanFace,
-    OrphanVertex, VertexMut, VertexRef,
-};
 
-// TODO: Do not re-export these types. This is only done so that they show up
-//       in documentation. Client code should not interact with these types.
+// TODO: It's unclear how view types should be exposed to users. The `Ref` and
+//       `Mut` aliases are simpler and help insulate users from the complexity
+//       of views, but it is currently not possible to document these aliases.
 //       See: https://github.com/rust-lang/rust/issues/39437
+//
+//       Moreover, in the future it may be tenable to expose the internal
+//       mutation APIs, and exposing the underlying view types would then be
+//       necessary. For now, use them directly while also re-exporting the
+//       simpler aliases.
+pub use self::view::{EdgeKeyTopology, FaceKeyTopology};
+pub use self::view::{
+    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
+};
 pub use self::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };

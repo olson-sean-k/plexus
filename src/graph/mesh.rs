@@ -23,7 +23,7 @@ use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{
-    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
+    EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
 use graph::GraphError;
 
@@ -168,17 +168,17 @@ where
     }
 
     /// Gets an immutable view of the vertex with the given key.
-    pub fn vertex(&self, key: VertexKey) -> Option<VertexRef<G>> {
+    pub fn vertex(&self, key: VertexKey) -> Option<VertexView<&Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets a mutable view of the vertex with the given key.
-    pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexMut<G>> {
+    pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexView<&mut Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
-    pub fn vertices(&self) -> impl Iterator<Item = VertexRef<G>> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
         Iter::<_, Vertex<G>, _, _>::from((self.as_storage::<Vertex<G>>().keys(), self))
     }
 
@@ -187,7 +187,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
-    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertex<G>> {
+    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         IterMut::from(self.as_storage_mut::<Vertex<G>>().iter_mut())
     }
 
@@ -197,17 +197,17 @@ where
     }
 
     /// Gets an immutable view of the edge with the given key.
-    pub fn edge(&self, key: EdgeKey) -> Option<EdgeRef<G>> {
+    pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets a mutable view of the edge with the given key.
-    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeMut<G>> {
+    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets an iterator of immutable views over the edges in the mesh.
-    pub fn edges(&self) -> impl Iterator<Item = EdgeRef<G>> {
+    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self, G>> {
         Iter::<_, Edge<G>, _, _>::from((self.as_storage::<Edge<G>>().keys(), self))
     }
 
@@ -216,7 +216,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
-    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdge<G>> {
+    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
         IterMut::from(self.as_storage_mut::<Edge<G>>().iter_mut())
     }
 
@@ -226,17 +226,17 @@ where
     }
 
     /// Gets an immutable view of the face with the given key.
-    pub fn face(&self, key: FaceKey) -> Option<FaceRef<G>> {
+    pub fn face(&self, key: FaceKey) -> Option<FaceView<&Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets a mutable view of the face with the given key.
-    pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceMut<G>> {
+    pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceView<&mut Self, G>> {
         (key, self).into_view()
     }
 
     /// Gets an iterator of immutable views over the faces in the mesh.
-    pub fn faces(&self) -> impl Iterator<Item = FaceRef<G>> {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self, G>> {
         Iter::<_, Face<G>, _, _>::from((self.as_storage::<Face<G>>().keys(), self))
     }
 
@@ -245,7 +245,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
-    pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFace<G>> {
+    pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         IterMut::from(self.as_storage_mut::<Face<G>>().iter_mut())
     }
 
@@ -259,7 +259,7 @@ where
             .map(|key| FaceKey::from(*key))
             .collect::<Vec<_>>();
         for face in faces {
-            let face = FaceMut::from_keyed_source((face, self)).unwrap();
+            let face = FaceView::<&mut Self, G>::from_keyed_source((face, self)).unwrap();
             face.triangulate()?;
         }
         Ok(())
@@ -296,7 +296,7 @@ where
     ) -> Result<MeshBuffer<N, V>, Error>
     where
         N: Copy + Integer + NumCast + Unsigned,
-        F: FnMut(VertexRef<G>) -> V,
+        F: FnMut(VertexView<&Self, G>) -> V,
     {
         let (keys, vertices) = {
             let mut keys = HashMap::with_capacity(self.vertex_count());
@@ -355,7 +355,7 @@ where
     pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, Error>
     where
         N: Copy + Integer + NumCast + Unsigned,
-        F: FnMut(FaceRef<G>, VertexRef<G>) -> V,
+        F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> V,
     {
         let vertices = {
             let arity = match self.faces().nth(0) {

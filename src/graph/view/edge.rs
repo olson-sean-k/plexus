@@ -19,11 +19,12 @@ use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{FaceView, OrphanFaceView, OrphanVertexView, VertexView};
 use BoolExt;
 
-/// Do **not** use this type directly. Use `EdgeRef` and `EdgeMut` instead.
+/// Reference to an edge.
 ///
-/// This type is only re-exported so that its members are shown in
-/// documentation. See this issue:
-/// <https://github.com/rust-lang/rust/issues/39437>
+/// Provides traversals, queries, and mutations related to edges in a mesh.
+///
+/// Consider using `EdgeRef` and `EdgeMut` instead of this type. See this
+/// issue: <https://github.com/rust-lang/rust/issues/39437>
 pub struct EdgeView<M, G>
 where
     M: Reborrow,
@@ -618,10 +619,9 @@ where
     }
 }
 
-/// Do **not** use this type directly. Use `OrphanEdge` instead.
+/// Orphan reference to an edge.
 ///
-/// This type is only re-exported so that its members are shown in
-/// documentation. See this issue:
+/// Consider using `OrphanEdge` instead. See this issue:
 /// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanEdgeView<'a, G>
 where

@@ -11,11 +11,12 @@ use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
 use BoolExt;
 
-/// Do **not** use this type directly. Use `VertexRef` and `VertexMut` instead.
+/// Reference to a vertex.
 ///
-/// This type is only re-exported so that its members are shown in
-/// documentation. See this issue:
-/// <https://github.com/rust-lang/rust/issues/39437>
+/// Provides traversals, queries, and mutations related to vertices in a mesh.
+///
+/// Consider using `VertexRef` and `VertexMut` instead of this type. See this
+/// issue: <https://github.com/rust-lang/rust/issues/39437>
 pub struct VertexView<M, G>
 where
     M: Reborrow,
@@ -322,10 +323,9 @@ where
     }
 }
 
-/// Do **not** use this type directly. Use `OrphanVertex` instead.
+/// Orphan reference to a vertex.
 ///
-/// This type is only re-exported so that its members are shown in
-/// documentation. See this issue:
+/// Consider using `OrphanVertex` instead. See this issue:
 /// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanVertexView<'a, G>
 where
