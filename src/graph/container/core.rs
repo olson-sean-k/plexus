@@ -1,5 +1,5 @@
 use geometry::Geometry;
-use graph::container::{Container, Indeterminate, Reborrow, ReborrowMut};
+use graph::container::{Container, Indeterminate};
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Topological, Vertex};
@@ -176,20 +176,4 @@ where
 
 impl<V, E, F> Container for Core<V, E, F> {
     type Contract = Indeterminate;
-}
-
-// By implementing `Reborrow` for a non-reference type, it is possible for
-// views to consume `Core` by value.
-impl<V, E, F> Reborrow for Core<V, E, F> {
-    type Target = Self;
-
-    fn reborrow(&self) -> &Self::Target {
-        self
-    }
-}
-
-impl<V, E, F> ReborrowMut for Core<V, E, F> {
-    fn reborrow_mut(&mut self) -> &mut Self::Target {
-        self
-    }
 }

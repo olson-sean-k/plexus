@@ -6,10 +6,10 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mesh::Mesh;
 use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
@@ -296,14 +296,21 @@ where
     }
 }
 
-impl<'a, G> FaceView<&'a mut Mesh<G>, G>
+impl<'a, M, G> FaceView<&'a mut M, G>
 where
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
     G: Geometry,
 {
     pub fn join(self, destination: FaceKey) -> Result<(), Error> {
         let (source, storage) = self.into_keyed_storage();
-        let cache = FaceJoinCache::snapshot(storage, source, destination)?;
-        Mutation::replace(storage, Mesh::empty())
+        let cache = FaceJoinCache::snapshot(&storage, source, destination)?;
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::join_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok(())
@@ -324,14 +331,21 @@ where
     }
 }
 
-impl<'a, G> FaceView<&'a mut Mesh<G>, G>
+impl<'a, M, G> FaceView<&'a mut M, G>
 where
-    G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut Mesh<G>, G>>, Error> {
+    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, Error> {
         let (abc, storage) = self.into_keyed_storage();
-        let cache = FaceTriangulateCache::snapshot(storage, abc)?;
-        let (storage, vertex) = Mutation::replace(storage, Mesh::empty())
+        let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
+        let (storage, vertex) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::triangulate_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok(vertex.map(|vertex| (vertex, storage).into_view().unwrap()))
@@ -352,20 +366,27 @@ where
     }
 }
 
-impl<'a, G> FaceView<&'a mut Mesh<G>, G>
+impl<'a, M, G> FaceView<&'a mut M, G>
 where
-    G: FaceNormal + Geometry,
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut Mesh<G>, G>, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, Error>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
         let (abc, storage) = self.into_keyed_storage();
-        let cache = FaceExtrudeCache::snapshot(storage, abc, distance)?;
-        let (storage, face) = Mutation::replace(storage, Mesh::empty())
+        let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
+        let (storage, face) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok((face, storage).into_view().unwrap())

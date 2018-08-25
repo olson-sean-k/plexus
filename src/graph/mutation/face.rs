@@ -9,7 +9,6 @@ use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
 use graph::mutation::region::{Connectivity, Region, Singularity};
 use graph::mutation::{Mutate, Mutation};
@@ -17,7 +16,7 @@ use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::convert::FromKeyedSource;
-use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, VertexView};
+use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, VertexView};
 use graph::{GraphError, IteratorExt};
 
 pub struct FaceMutation<G>
@@ -43,7 +42,7 @@ where
         geometry: (G::Edge, G::Face),
     ) -> Result<FaceKey, Error> {
         let cache = FaceInsertCache::snapshot(
-            Core::empty()
+            &Core::empty()
                 .bind(self.as_vertex_storage())
                 .bind(self.as_edge_storage())
                 .bind(self.as_face_storage()),
@@ -103,18 +102,17 @@ where
         // Iterate over the set of vertices shared between the face and all of
         // its neighbors. These are potential singularities.
         for vertex in mutuals {
+            let core = Core::empty()
+                .bind(self.as_vertex_storage())
+                .bind(self.as_edge_storage())
+                .bind(self.as_face_storage());
             // Circulate (in order) over the neighboring faces of the potential
             // singularity, ignoring the face to be removed.  Count the number
             // of gaps, where neighboring faces do not share any edges. Because
             // a face is being ignored, exactly one gap is expected. If any
             // additional gaps exist, then removal will create a singularity.
-            let vertex = VertexView::from_keyed_source((
-                vertex,
-                Core::empty()
-                    .bind(self.as_vertex_storage())
-                    .bind(self.as_edge_storage())
-                    .bind(self.as_face_storage()),
-            )).ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+            let vertex = VertexView::from_keyed_source((vertex, &core))
+                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
             let n = vertex
                 .reachable_neighboring_faces()
                 .filter(|face| face.key() != abc)
@@ -362,8 +360,15 @@ impl<G> FaceRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot(storage: &Mesh<G>, abc: FaceKey) -> Result<Self, Error> {
-        let face = match storage.face(abc) {
+    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Container<Contract = Consistent>,
+    {
+        let face = match FaceView::from_keyed_source((abc, storage)) {
             Some(face) => face,
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
@@ -399,8 +404,16 @@ impl<G> FaceTriangulateCache<G>
 where
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn snapshot(storage: &Mesh<G>, abc: FaceKey) -> Result<Self, Error> {
-        let face = match storage.face(abc) {
+    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Container<Contract = Consistent>,
+    {
+        let storage = storage.reborrow();
+        let face = match FaceView::from_keyed_source((abc, storage)) {
             Some(face) => face,
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
@@ -427,19 +440,23 @@ impl<G> FaceJoinCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot(
-        storage: &Mesh<G>,
-        source: FaceKey,
-        destination: FaceKey,
-    ) -> Result<Self, Error> {
+    pub fn snapshot<M>(storage: M, source: FaceKey, destination: FaceKey) -> Result<Self, Error>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Container<Contract = Consistent>,
+    {
+        let storage = storage.reborrow();
         let cache = (
             FaceRemoveCache::snapshot(storage, source)?,
             FaceRemoveCache::snapshot(storage, destination)?,
         );
         // Ensure that the opposite face exists and has the same arity.
-        let source = storage.face(source).ok_or(GraphError::TopologyNotFound)?;
-        let destination = storage
-            .face(destination)
+        let source =
+            FaceView::from_keyed_source((source, storage)).ok_or(GraphError::TopologyNotFound)?;
+        let destination = FaceView::from_keyed_source((destination, storage))
             .ok_or(GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonConstant.into());
@@ -452,7 +469,10 @@ where
                 .map(|topology| {
                     (
                         topology.clone(),
-                        storage.edge(topology.key()).unwrap().geometry.clone(),
+                        EdgeView::from_keyed_source((topology.key(), storage))
+                            .unwrap()
+                            .geometry
+                            .clone(),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -478,14 +498,20 @@ where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn snapshot<T>(storage: &Mesh<G>, abc: FaceKey, distance: T) -> Result<Self, Error>
+    pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, Error>
     where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Container<Contract = Consistent>,
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
+        let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
-        let face = storage.face(abc).unwrap();
+        let face = FaceView::from_keyed_source((abc, storage)).unwrap();
         let translation = face.normal()? * distance;
 
         let sources = face.vertices().map(|vertex| vertex.key()).collect();

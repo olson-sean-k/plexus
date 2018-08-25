@@ -7,7 +7,6 @@ use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Container, Core, Reborrow};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
-use graph::mesh::Mesh;
 use graph::mutation::vertex::VertexMutation;
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::AsStorage;
@@ -285,13 +284,15 @@ where
 {
     pub fn snapshot<M>(storage: M, source: EdgeKey, destination: EdgeKey) -> Result<Self, Error>
     where
-        M: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
     {
+        let storage = storage.reborrow();
         let (a, b) = source.to_vertex_keys();
         let (c, d) = destination.to_vertex_keys();
         let source = match (
-            EdgeView::from_keyed_source((source, &storage)),
-            EdgeView::from_keyed_source((destination, &storage)),
+            EdgeView::from_keyed_source((source, storage)),
+            EdgeView::from_keyed_source((destination, storage)),
         ) {
             (Some(source), Some(_)) => source,
             _ => return Err(GraphError::TopologyNotFound.into()),
@@ -303,7 +304,7 @@ where
             .into_iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), &storage)))
+            .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), storage)))
         {
             if !edge.is_boundary_edge() {
                 return Err(GraphError::TopologyConflict.into());
@@ -335,8 +336,13 @@ impl<G> EdgeExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<T>(storage: &Mesh<G>, ab: EdgeKey, distance: T) -> Result<Self, Error>
+    pub fn snapshot<M, T>(storage: M, ab: EdgeKey, distance: T) -> Result<Self, Error>
     where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Container<Contract = Consistent>,
         G: Geometry + EdgeLateral,
         G::Lateral: Mul<T>,
         G::Vertex: AsPosition,
@@ -345,7 +351,7 @@ where
     {
         // Get the extruded geometry.
         let (vertices, edge) = {
-            let edge = match storage.edge(ab) {
+            let edge = match EdgeView::from_keyed_source((ab, storage)) {
                 Some(edge) => edge,
                 _ => return Err(GraphError::TopologyNotFound.into()),
             };
@@ -453,7 +459,7 @@ where
     let d = mutation.insert_vertex(vertices.1);
     let cd = mutation.insert_edge((c, d), edge)?;
     let cache = EdgeJoinCache::snapshot(
-        Core::empty()
+        &Core::empty()
             .bind(mutation.as_vertex_storage())
             .bind(mutation.as_edge_storage())
             .bind(mutation.as_face_storage()),

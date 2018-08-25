@@ -6,10 +6,10 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
 use geometry::Geometry;
+use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
-use graph::mesh::Mesh;
 use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
@@ -474,17 +474,24 @@ where
     }
 }
 
-impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
+impl<'a, M, G> EdgeView<&'a mut M, G>
 where
-    G: Geometry,
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry,
 {
     // TODO: Rename this to something like "extend". It is very similar to
     //       `extrude`. Terms like "join" or "merge" are better suited for
     //       directly joining two adjacent faces over a shared edge.
-    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut Mesh<G>, G>, Error> {
+    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, Error> {
         let (source, storage) = self.into_keyed_storage();
         let cache = EdgeJoinCache::snapshot(&storage, source, destination)?;
-        let (storage, edge) = Mutation::replace(storage, Mesh::empty())
+        let (storage, edge) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::join_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok((edge, storage).into_view().unwrap())
@@ -505,18 +512,22 @@ where
     }
 }
 
-impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
+impl<'a, M, G> EdgeView<&'a mut M, G>
 where
-    G: EdgeMidpoint + Geometry,
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn split(self) -> Result<VertexView<&'a mut Mesh<G>, G>, Error>
-    where
-        G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
-    {
+    pub fn split(self) -> Result<VertexView<&'a mut M, G>, Error> {
         let (ab, storage) = self.into_keyed_storage();
         let cache = EdgeSplitCache::snapshot(&storage, ab)?;
-        let (storage, vertex) = Mutation::replace(storage, Mesh::empty())
+        let (storage, vertex) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::split_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok((vertex, storage).into_view().unwrap())
@@ -537,20 +548,27 @@ where
     }
 }
 
-impl<'a, G> EdgeView<&'a mut Mesh<G>, G>
+impl<'a, M, G> EdgeView<&'a mut M, G>
 where
-    G: Geometry + EdgeLateral,
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Container<Contract = Consistent>
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry + EdgeLateral,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<EdgeView<&'a mut Mesh<G>, G>, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<EdgeView<&'a mut M, G>, Error>
     where
         G::Lateral: Mul<T>,
         ScaledEdgeLateral<G, T>: Clone,
         VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
         let (ab, storage) = self.into_keyed_storage();
-        let cache = EdgeExtrudeCache::snapshot(storage, ab, distance)?;
-        let (storage, edge) = Mutation::replace(storage, Mesh::empty())
+        let cache = EdgeExtrudeCache::snapshot(&storage, ab, distance)?;
+        let (storage, edge) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(&mut *mutation, cache))
             .unwrap();
         Ok((edge, storage).into_view().unwrap())
