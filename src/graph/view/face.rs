@@ -123,6 +123,22 @@ where
     }
 }
 
+/// Reachable API.
+impl<M, G> FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container,
+    G: Geometry,
+{
+    pub(in graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
+        EdgeCirculator::from(self.interior_reborrow())
+    }
+
+    pub(in graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
+        FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
+    }
+}
+
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
@@ -139,14 +155,6 @@ where
 
     pub fn arity(&self) -> usize {
         self.reachable_interior_edges().count()
-    }
-
-    pub(in graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
-        EdgeCirculator::from(self.interior_reborrow())
-    }
-
-    pub(in graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
-        FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
 
@@ -187,6 +195,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
@@ -212,6 +221,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
@@ -225,6 +235,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
@@ -266,6 +277,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,

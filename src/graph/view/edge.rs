@@ -243,6 +243,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
@@ -419,6 +420,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
@@ -443,6 +445,7 @@ where
     }
 }
 
+/// Reachable API.
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
