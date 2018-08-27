@@ -371,25 +371,28 @@ where
     }
 }
 
-pub fn split_with_cache<M, G>(
-    mutation: &mut Mutation<M, G>,
+pub fn split_with_cache<M, N, G>(
+    mut mutation: N,
     cache: EdgeSplitCache<G>,
 ) -> Result<VertexKey, Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    fn split_at_vertex<M, G>(
-        mutation: &mut Mutation<M, G>,
+    fn split_at_vertex<M, N, G>(
+        mut mutation: N,
         ab: EdgeKey,
         m: VertexKey,
     ) -> Result<(EdgeKey, EdgeKey), Error>
     where
+        N: AsMut<Mutation<M, G>>,
         M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
         G::Vertex: AsPosition,
     {
+        let mutation = mutation.as_mut();
         // Remove the edge and insert two truncated edges in its place.
         let (a, b) = ab.to_vertex_keys();
         let span = mutation.remove_edge(ab)?;
@@ -414,18 +417,16 @@ where
     }
 
     let EdgeSplitCache { ab, ba, midpoint } = cache;
-    let m = mutation.insert_vertex(midpoint);
+    let m = mutation.as_mut().insert_vertex(midpoint);
     // Split the half-edges.
-    split_at_vertex(mutation, ab, m)?;
-    split_at_vertex(mutation, ba, m)?;
+    split_at_vertex(mutation.as_mut(), ab, m)?;
+    split_at_vertex(mutation.as_mut(), ba, m)?;
     Ok(m)
 }
 
-pub fn join_with_cache<M, G>(
-    mutation: &mut Mutation<M, G>,
-    cache: EdgeJoinCache<G>,
-) -> Result<EdgeKey, Error>
+pub fn join_with_cache<M, N, G>(mut mutation: N, cache: EdgeJoinCache<G>) -> Result<EdgeKey, Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
@@ -438,15 +439,16 @@ where
     let (a, b) = source.to_vertex_keys();
     let (c, d) = destination.to_vertex_keys();
     // TODO: Split the face to form triangles.
-    mutation.insert_face(&[a, b, c, d], (edge, face))?;
+    mutation.as_mut().insert_face(&[a, b, c, d], (edge, face))?;
     Ok(source)
 }
 
-pub fn extrude_with_cache<M, G, T>(
-    mutation: &mut Mutation<M, G>,
+pub fn extrude_with_cache<M, N, G, T>(
+    mut mutation: N,
     cache: EdgeExtrudeCache<G>,
 ) -> Result<EdgeKey, Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry + EdgeLateral,
     G::Lateral: Mul<T>,
@@ -454,6 +456,7 @@ where
     ScaledEdgeLateral<G, T>: Clone,
     VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
 {
+    let mutation = mutation.as_mut();
     let EdgeExtrudeCache { ab, vertices, edge } = cache;
     let c = mutation.insert_vertex(vertices.0);
     let d = mutation.insert_vertex(vertices.1);

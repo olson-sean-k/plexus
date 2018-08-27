@@ -84,28 +84,23 @@ where
     }
 }
 
-impl<'a, M, N, G> Mutate for Replace<'a, M, N, G>
+impl<'a, M, G> AsRef<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    M: Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
 {
-    type Mutant = &'a mut M;
-    type Error = <N as Mutate>::Error;
-
-    fn mutate(mutant: Self::Mutant) -> Self {
-        Self::replace(mutant, M::default())
+    fn as_ref(&self) -> &Mutation<M, G> {
+        &self.mutation.as_ref().unwrap().1
     }
+}
 
-    fn commit(mut self) -> Result<<Self as Mutate>::Mutant, Self::Error> {
-        let mutant = self.drain_and_commit();
-        mem::forget(self);
-        mutant
-    }
-
-    fn abort(mut self) {
-        self.drain_and_abort();
-        mem::forget(self);
+impl<'a, M, G> AsMut<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
+where
+    M: Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    fn as_mut(&mut self) -> &mut Mutation<M, G> {
+        &mut self.mutation.as_mut().unwrap().1
     }
 }
 
@@ -144,6 +139,31 @@ where
     }
 }
 
+impl<'a, M, N, G> Mutate for Replace<'a, M, N, G>
+where
+    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    N: Mutate<Mutant = M>,
+    G: 'a + Geometry,
+{
+    type Mutant = &'a mut M;
+    type Error = <N as Mutate>::Error;
+
+    fn mutate(mutant: Self::Mutant) -> Self {
+        Self::replace(mutant, M::default())
+    }
+
+    fn commit(mut self) -> Result<<Self as Mutate>::Mutant, Self::Error> {
+        let mutant = self.drain_and_commit();
+        mem::forget(self);
+        mutant
+    }
+
+    fn abort(mut self) {
+        self.drain_and_abort();
+        mem::forget(self);
+    }
+}
+
 /// Mesh mutation.
 pub struct Mutation<M, G>
 where
@@ -161,6 +181,26 @@ where
 {
     pub fn replace(container: &mut M, replacement: M) -> Replace<M, Self, G> {
         Replace::replace(container, replacement)
+    }
+}
+
+impl<M, G> AsRef<Self> for Mutation<M, G>
+where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<M, G> AsMut<Self> for Mutation<M, G>
+where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    fn as_mut(&mut self) -> &mut Self {
+        self
     }
 }
 
@@ -194,26 +234,6 @@ where
     }
 }
 
-impl<M, G> Mutate for Mutation<M, G>
-where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
-{
-    type Mutant = M;
-    type Error = Error;
-
-    fn mutate(container: Self::Mutant) -> Self {
-        Mutation {
-            mutation: FaceMutation::mutate(container.into()),
-            phantom: PhantomData,
-        }
-    }
-
-    fn commit(self) -> Result<Self::Mutant, Self::Error> {
-        self.mutation.commit().map(|core| core.into())
-    }
-}
-
 impl<M, G> Container for Mutation<M, G>
 where
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -241,5 +261,25 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
+    }
+}
+
+impl<M, G> Mutate for Mutation<M, G>
+where
+    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    type Mutant = M;
+    type Error = Error;
+
+    fn mutate(container: Self::Mutant) -> Self {
+        Mutation {
+            mutation: FaceMutation::mutate(container.into()),
+            phantom: PhantomData,
+        }
+    }
+
+    fn commit(self) -> Result<Self::Mutant, Self::Error> {
+        self.mutation.commit().map(|core| core.into())
     }
 }

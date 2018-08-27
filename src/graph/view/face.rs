@@ -311,7 +311,7 @@ where
         let (source, storage) = self.into_keyed_storage();
         let cache = FaceJoinCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::join_with_cache(&mut *mutation, cache))
+            .commit_with(move |mutation| face::join_with_cache(mutation, cache))
             .unwrap();
         Ok(())
     }
@@ -346,7 +346,7 @@ where
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
         let (storage, vertex) = Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::triangulate_with_cache(&mut *mutation, cache))
+            .commit_with(move |mutation| face::triangulate_with_cache(mutation, cache))
             .unwrap();
         Ok(vertex.map(|vertex| (vertex, storage).into_view().unwrap()))
     }
@@ -387,7 +387,7 @@ where
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
         let (storage, face) = Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::extrude_with_cache(&mut *mutation, cache))
+            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .unwrap();
         Ok((face, storage).into_view().unwrap())
     }

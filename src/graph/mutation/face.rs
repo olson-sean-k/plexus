@@ -533,11 +533,12 @@ where
     }
 }
 
-pub fn triangulate_with_cache<M, G>(
-    mutation: &mut Mutation<M, G>,
+pub fn triangulate_with_cache<M, N, G>(
+    mut mutation: N,
     cache: FaceTriangulateCache<G>,
 ) -> Result<Option<VertexKey>, Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
@@ -550,19 +551,19 @@ where
     if vertices.len() <= 3 {
         return Ok(None);
     }
-    mutation.remove_face_with_cache(cache)?;
-    let c = mutation.insert_vertex(centroid);
+    mutation.as_mut().remove_face_with_cache(cache)?;
+    let c = mutation.as_mut().insert_vertex(centroid);
     for (a, b) in vertices.into_iter().perimeter() {
-        mutation.insert_face(&[a, b, c], (Default::default(), geometry.clone()))?;
+        mutation
+            .as_mut()
+            .insert_face(&[a, b, c], (Default::default(), geometry.clone()))?;
     }
     Ok(Some(c))
 }
 
-pub fn join_with_cache<M, G>(
-    mutation: &mut Mutation<M, G>,
-    cache: FaceJoinCache<G>,
-) -> Result<(), Error>
+pub fn join_with_cache<M, N, G>(mut mutation: N, cache: FaceJoinCache<G>) -> Result<(), Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
@@ -573,8 +574,8 @@ where
     } = cache;
     // Remove the source and destination faces. Pair the topology with edge
     // geometry for the source face.
-    mutation.remove_face_with_cache(cache.0)?;
-    mutation.remove_face_with_cache(cache.1)?;
+    mutation.as_mut().remove_face_with_cache(cache.0)?;
+    mutation.as_mut().remove_face_with_cache(cache.1)?;
     // TODO: Is it always correct to reverse the order of the opposite
     //       face's edges?
     // Re-insert the edges of the faces and join the mutual edges.
@@ -584,20 +585,21 @@ where
     {
         let (a, b) = source.0.vertices();
         let (c, d) = destination.vertices();
-        let ab = mutation.insert_edge((a, b), source.1.clone())?;
-        let cd = mutation.insert_edge((c, d), source.1)?;
-        let cache = EdgeJoinCache::snapshot(&*mutation, ab, cd)?;
-        edge::join_with_cache(mutation, cache)?;
+        let ab = mutation.as_mut().insert_edge((a, b), source.1.clone())?;
+        let cd = mutation.as_mut().insert_edge((c, d), source.1)?;
+        let cache = EdgeJoinCache::snapshot(mutation.as_mut(), ab, cd)?;
+        edge::join_with_cache(mutation.as_mut(), cache)?;
     }
     // TODO: Is there any reasonable topology this can return?
     Ok(())
 }
 
-pub fn extrude_with_cache<M, G>(
-    mutation: &mut Mutation<M, G>,
+pub fn extrude_with_cache<M, N, G>(
+    mut mutation: N,
     cache: FaceExtrudeCache<G>,
 ) -> Result<FaceKey, Error>
 where
+    N: AsMut<Mutation<M, G>>,
     M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
@@ -608,21 +610,25 @@ where
         geometry,
         cache,
     } = cache;
-    mutation.remove_face_with_cache(cache)?;
+    mutation.as_mut().remove_face_with_cache(cache)?;
     let destinations = destinations
         .into_iter()
-        .map(|vertex| mutation.insert_vertex(vertex))
+        .map(|vertex| mutation.as_mut().insert_vertex(vertex))
         .collect::<Vec<_>>();
     // Use the keys for the existing vertices and the translated geometries
     // to construct the extruded face and its connective faces.
-    let extrusion = mutation.insert_face(&destinations, (Default::default(), geometry))?;
+    let extrusion = mutation
+        .as_mut()
+        .insert_face(&destinations, (Default::default(), geometry))?;
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
         .perimeter()
     {
         // TODO: Split these faces to form triangles.
-        mutation.insert_face(&[a, b, d, c], Default::default())?;
+        mutation
+            .as_mut()
+            .insert_face(&[a, b, d, c], Default::default())?;
     }
     Ok(extrusion)
 }
