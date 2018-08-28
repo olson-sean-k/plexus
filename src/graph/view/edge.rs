@@ -21,10 +21,8 @@ use BoolExt;
 
 /// Reference to an edge.
 ///
-/// Provides traversals, queries, and mutations related to edges in a mesh.
-///
-/// Consider using `EdgeRef` and `EdgeMut` instead of this type. See this
-/// issue: <https://github.com/rust-lang/rust/issues/39437>
+/// Provides traversals, queries, and mutations related to edges in a mesh. See
+/// the module documentation for more information about topological views.
 pub struct EdgeView<M, G>
 where
     M: Reborrow,
@@ -61,11 +59,40 @@ where
     M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container,
     G: 'a + Geometry,
 {
+    /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanEdgeView<'a, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, storage).into_view().unwrap()
     }
 
+    /// Converts a mutable view into an immutable view.
+    ///
+    /// This is useful when mutations are not (or no longer) needed and mutual
+    /// access is desired.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point2;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let mut mesh = Mesh::<Point2<f32>>::from_raw_buffers(
+    ///     vec![0, 1, 2, 3],
+    ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    ///     4,
+    /// ).unwrap();
+    /// let key = mesh.edges().find(|edge| edge.is_boundary_edge()).unwrap().key();
+    /// let edge = mesh.edge_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    ///
+    /// // This would not be possible without conversion into an immutable view.
+    /// let _ = edge.into_next_edge().into_next_edge().into_face();
+    /// let _ = edge.into_opposite_edge().into_face();
+    /// # }
+    /// ```
     pub fn into_ref(self) -> EdgeView<&'a M, G> {
         let (key, storage) = self.into_keyed_storage();
         EdgeView::from_keyed_storage_unchecked(key, &*storage)
@@ -78,6 +105,7 @@ where
     M::Target: AsStorage<Edge<G>> + Container,
     G: Geometry,
 {
+    /// Gets the key for this edge.
     pub fn key(&self) -> EdgeKey {
         self.key
     }
@@ -246,121 +274,55 @@ where
 /// Reachable API.
 impl<M, G> EdgeView<M, G>
 where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container,
-    G: Geometry,
-{
-    pub(in graph) fn reachable_opposite_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
-        let key = self.opposite;
-        let storage = self.storage.reborrow_mut();
-        key.and_then(|key| (key, storage).into_view())
-    }
-
-    pub(in graph) fn reachable_next_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
-        let key = self.next;
-        let storage = self.storage.reborrow_mut();
-        key.and_then(|key| (key, storage).into_view())
-    }
-
-    pub(in graph) fn reachable_previous_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
-        let key = self.previous;
-        let storage = self.storage.reborrow_mut();
-        key.and_then(|key| (key, storage).into_view())
-    }
-
-    pub(in graph) fn reachable_boundary_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
-        if self.is_boundary_edge() {
-            let key = self.key;
-            let storage = self.storage.reborrow_mut();
-            (key, storage).into_view()
-        }
-        else {
-            let key = self
-                .reachable_opposite_edge()
-                .and_then(|opposite| opposite.is_boundary_edge().some_with(|| opposite.key()));
-            if let Some(key) = key {
-                let storage = self.storage.reborrow_mut();
-                (key, storage).into_view()
-            }
-            else {
-                None
-            }
-        }
-    }
-}
-
-impl<M, G> EdgeView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container<Contract = Consistent>,
-    G: Geometry,
-{
-    pub fn opposite_orphan_edge(&mut self) -> OrphanEdgeView<G> {
-        self.reachable_opposite_orphan_edge().unwrap()
-    }
-
-    pub fn next_orphan_edge(&mut self) -> OrphanEdgeView<G> {
-        self.reachable_next_orphan_edge().unwrap()
-    }
-
-    pub fn previous_orphan_edge(&mut self) -> OrphanEdgeView<G> {
-        self.reachable_previous_orphan_edge().unwrap()
-    }
-
-    pub fn boundary_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
-        self.reachable_boundary_orphan_edge()
-    }
-}
-
-// Note that there is no reachable API for source and destination vertices.
-impl<M, G> EdgeView<M, G>
-where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
     G: Geometry,
 {
-    pub fn into_source_vertex(self) -> VertexView<M, G> {
+    pub(in graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
         let (key, _) = self.key.to_vertex_keys();
         let (_, storage) = self.into_keyed_storage();
-        (key, storage).into_view().unwrap()
+        (key, storage).into_view()
     }
 
-    pub fn into_destination_vertex(self) -> VertexView<M, G> {
+    pub(in graph) fn into_reachable_destination_vertex(self) -> Option<VertexView<M, G>> {
         let key = self.vertex;
         let (_, storage) = self.into_keyed_storage();
-        (key, storage).into_view().unwrap()
+        (key, storage).into_view()
     }
 
-    pub fn source_vertex(&self) -> VertexView<&M::Target, G> {
+    pub(in graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M::Target, G>> {
         let (key, _) = self.key.to_vertex_keys();
         let storage = self.storage.reborrow();
-        (key, storage).into_view().unwrap()
+        (key, storage).into_view()
     }
 
-    pub fn destination_vertex(&self) -> VertexView<&M::Target, G> {
+    pub(in graph) fn reachable_destination_vertex(&self) -> Option<VertexView<&M::Target, G>> {
         let key = self.vertex;
         let storage = self.storage.reborrow();
-        (key, storage).into_view().unwrap()
+        (key, storage).into_view()
     }
 }
 
-// Note that there is no reachable API for source and destination vertices.
 impl<M, G> EdgeView<M, G>
 where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Container,
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
-    pub fn source_orphan_vertex(&mut self) -> OrphanVertexView<G> {
-        let (key, _) = self.key.to_vertex_keys();
-        let storage = self.storage.reborrow_mut();
-        (key, storage).into_view().unwrap()
+    pub fn into_source_vertex(self) -> VertexView<M, G> {
+        self.into_reachable_source_vertex().unwrap()
     }
 
-    pub fn destination_orphan_vertex(&mut self) -> OrphanVertexView<G> {
-        let key = self.vertex;
-        let storage = self.storage.reborrow_mut();
-        (key, storage).into_view().unwrap()
+    pub fn into_destination_vertex(self) -> VertexView<M, G> {
+        self.into_reachable_destination_vertex().unwrap()
+    }
+
+    pub fn source_vertex(&self) -> VertexView<&M::Target, G> {
+        self.reachable_source_vertex().unwrap()
+    }
+
+    pub fn destination_vertex(&self) -> VertexView<&M::Target, G> {
+        self.reachable_destination_vertex().unwrap()
     }
 }
 
@@ -399,24 +361,6 @@ where
 
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
         self.reachable_face()
-    }
-}
-
-impl<M, G> EdgeView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Container,
-    G: Geometry,
-{
-    pub fn orphan_face(&mut self) -> Option<OrphanFaceView<G>> {
-        let key = self.face;
-        if let Some(key) = key {
-            let storage = self.storage.reborrow_mut();
-            (key, storage).into_view()
-        }
-        else {
-            None
-        }
     }
 }
 

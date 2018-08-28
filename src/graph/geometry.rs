@@ -107,8 +107,18 @@ where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container,
     {
-        let a = edge.source_vertex().geometry.as_position().clone();
-        let b = edge.destination_vertex().geometry.as_position().clone();
+        let a = edge
+            .reachable_source_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .as_position()
+            .clone();
+        let b = edge
+            .reachable_destination_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .as_position()
+            .clone();
         Ok(a.midpoint(b))
     }
 }
@@ -141,14 +151,25 @@ where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container,
     {
-        let a = edge.source_vertex().geometry.as_position().clone();
-        let b = edge.destination_vertex().geometry.as_position().clone();
+        let a = edge
+            .reachable_source_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .as_position()
+            .clone();
+        let b = edge
+            .reachable_destination_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .as_position()
+            .clone();
         let c = edge
             .reachable_opposite_edge()
             .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .reachable_previous_edge()
             .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
-            .destination_vertex()
+            .reachable_destination_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .geometry
             .as_position()
             .clone();

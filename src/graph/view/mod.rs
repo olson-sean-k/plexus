@@ -31,6 +31,14 @@ pub use self::edge::{EdgeKeyTopology, EdgeView, OrphanEdgeView};
 pub use self::face::{FaceKeyTopology, FaceView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
 
+// TODO: Only exposing these type aliases keeps user code more simple, but
+//       omits important documentation. See this issue:
+//       <https://github.com/rust-lang/rust/issues/39437>
+//
+//       Moreover, to enable more advanced use cases, it may be worth
+//       considering exposing the mutation API. If this happens, then exposing
+//       the view types will be necessary.
+
 pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
 pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
 pub type OrphanEdge<'a, G> = OrphanEdgeView<'a, G>;

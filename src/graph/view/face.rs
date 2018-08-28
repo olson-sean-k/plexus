@@ -21,10 +21,8 @@ use BoolExt;
 
 /// Reference to a face.
 ///
-/// Provides traversals, queries, and mutations related to faces in a mesh.
-///
-/// Consider using `FaceRef` and `FaceMut` instead of this type. See this
-/// issue: <https://github.com/rust-lang/rust/issues/39437>
+/// Provides traversals, queries, and mutations related to faces in a mesh. See
+/// the module documentation for more information about topological views.
 pub struct FaceView<M, G>
 where
     M: Reborrow,
@@ -61,11 +59,39 @@ where
     M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Container,
     G: 'a + Geometry,
 {
+    /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanFaceView<'a, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, storage).into_view().unwrap()
     }
 
+    /// Converts a mutable view into an immutable view.
+    ///
+    /// This is useful when mutations are not (or no longer) needed and mutual
+    /// access is desired.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::generate::cube::Cube;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let mut mesh = Cube::new()
+    ///     .polygons_with_position()
+    ///     .collect::<Mesh<Point3<f32>>>();
+    /// let key = mesh.faces().nth(0).unwrap().key();
+    /// let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    ///
+    /// // This would not be possible without conversion into an immutable view.
+    /// let _ = face.into_edge();
+    /// let _ = face.into_edge().into_next_edge();
+    /// # }
+    /// ```
     pub fn into_ref(self) -> FaceView<&'a M, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, &*storage).into_view().unwrap()
@@ -78,6 +104,7 @@ where
     M::Target: AsStorage<Face<G>> + Container,
     G: Geometry,
 {
+    /// Gets the key for this face.
     pub fn key(&self) -> FaceKey {
         self.key
     }
@@ -130,6 +157,18 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container,
     G: Geometry,
 {
+    pub(in graph) fn reachable_edge(&self) -> Option<EdgeView<&M::Target, G>> {
+        let key = self.edge;
+        let storage = self.storage.reborrow();
+        (key, storage).into_view()
+    }
+
+    pub(in graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
+        let key = self.edge;
+        let (_, storage) = self.into_keyed_storage();
+        (key, storage).into_view()
+    }
+
     pub(in graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
         EdgeCirculator::from(self.interior_reborrow())
     }
@@ -186,6 +225,14 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
     G: Geometry,
 {
+    pub fn edge(&self) -> EdgeView<&M::Target, G> {
+        self.reachable_edge().unwrap()
+    }
+
+    pub fn into_edge(self) -> EdgeView<M, G> {
+        self.into_reachable_edge().unwrap()
+    }
+
     pub fn interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
         self.reachable_interior_edges()
     }

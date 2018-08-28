@@ -258,7 +258,11 @@ where
             Some(edge) => edge,
             _ => return Err(GraphError::TopologyNotFound.into()),
         };
-        let mut midpoint = edge.source_vertex().geometry.clone();
+        let mut midpoint = edge
+            .reachable_source_vertex()
+            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .geometry
+            .clone();
         *midpoint.as_position_mut() = EdgeMidpoint::midpoint(&edge)?;
         Ok(EdgeSplitCache {
             ab,
@@ -359,8 +363,14 @@ where
                 return Err(GraphError::TopologyConflict.into());
             }
             let mut vertices = (
-                edge.destination_vertex().geometry.clone(),
-                edge.source_vertex().geometry.clone(),
+                edge.reachable_destination_vertex()
+                    .ok_or_else(|| Error::from(GraphError::TopologyConflict))?
+                    .geometry
+                    .clone(),
+                edge.reachable_source_vertex()
+                    .ok_or_else(|| Error::from(GraphError::TopologyConflict))?
+                    .geometry
+                    .clone(),
             );
             let translation = edge.lateral()? * distance;
             *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();

@@ -14,9 +14,7 @@ use BoolExt;
 /// Reference to a vertex.
 ///
 /// Provides traversals, queries, and mutations related to vertices in a mesh.
-///
-/// Consider using `VertexRef` and `VertexMut` instead of this type. See this
-/// issue: <https://github.com/rust-lang/rust/issues/39437>
+/// See the module documentation for more information about topological views.
 pub struct VertexView<M, G>
 where
     M: Reborrow,
@@ -53,11 +51,39 @@ where
     M: 'a + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Container,
     G: 'a + Geometry,
 {
+    /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanVertexView<'a, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, storage).into_view().unwrap()
     }
 
+    /// Converts a mutable view into an immutable view.
+    ///
+    /// This is useful when mutations are not (or no longer) needed and mutual
+    /// access is desired.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::generate::cube::Cube;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let mut mesh = Cube::new()
+    ///     .polygons_with_position()
+    ///     .collect::<Mesh<Point3<f32>>>();
+    /// let key = mesh.edges().nth(0).unwrap().key();
+    /// let vertex = mesh.edge_mut(key).unwrap().split().unwrap().into_ref();
+    ///
+    /// // This would not be possible without conversion into an immutable view.
+    /// let _ = vertex.into_outgoing_edge().into_face().unwrap();
+    /// let _ = vertex.into_outgoing_edge().into_opposite_edge().into_face().unwrap();
+    /// # }
+    /// ```
     pub fn into_ref(self) -> VertexView<&'a M, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, &*storage).into_view().unwrap()
@@ -70,6 +96,7 @@ where
     M::Target: AsStorage<Vertex<G>> + Container,
     G: Geometry,
 {
+    /// Gets the key for this vertex.
     pub fn key(&self) -> VertexKey {
         self.key
     }
