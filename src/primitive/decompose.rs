@@ -6,8 +6,8 @@ use std::collections::{vec_deque, VecDeque};
 use std::iter::{Chain, IntoIterator, Rev};
 use std::vec;
 
-use generate::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 use geometry::ops::Interpolate;
+use primitive::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub struct Decompose<I, P, Q, R>
 where

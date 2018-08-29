@@ -13,7 +13,7 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
-//! use plexus::generate::sphere::UvSphere;
+//! use plexus::primitive::sphere::UvSphere;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
@@ -33,7 +33,7 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
-//! use plexus::generate::cube::Cube;
+//! use plexus::primitive::cube::Cube;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
 //!
@@ -50,10 +50,10 @@ use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use generate::{
+use geometry::convert::IntoGeometry;
+use primitive::{
     Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
 };
-use geometry::convert::IntoGeometry;
 
 #[derive(Debug, Fail)]
 pub enum BufferError {
@@ -109,7 +109,7 @@ where
     /// # extern crate plexus;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
-    /// use plexus::generate::cube::Cube;
+    /// use plexus::primitive::cube::Cube;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
@@ -226,8 +226,8 @@ mod tests {
     use nalgebra::Point3;
 
     use buffer::*;
-    use generate::*;
     use graph::*;
+    use primitive::*;
 
     #[test]
     fn collect_topology_into_buffer() {

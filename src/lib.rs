@@ -19,21 +19,21 @@ extern crate nalgebra;
 extern crate num;
 
 pub mod buffer;
-pub mod generate;
 pub mod geometry;
 pub mod graph;
+pub mod primitive;
 
 // Re-exported to avoid requiring a direct dependency on decorum.
 pub use decorum::{R32, R64};
 
 pub mod prelude {
-    pub use generate::{
+    pub use geometry::{Duplet, Triplet};
+    pub use primitive::{
         CollectWithIndexer, FlatIndexVertices, IndexVertices, IntoEdges, IntoSubdivisions,
         IntoTetrahedrons, IntoTriangles, IntoVertices, MapVertices, PolygonGenerator,
         PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Triangulate, VertexGenerator,
         Vertices, VerticesWithPosition,
     };
-    pub use geometry::{Duplet, Triplet};
 }
 
 trait BoolExt: Sized {

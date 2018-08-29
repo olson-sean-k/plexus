@@ -8,10 +8,6 @@ use std::iter::FromIterator;
 use std::marker::PhantomData;
 
 use buffer::MeshBuffer;
-use generate::{
-    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
-    Quad,
-};
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
@@ -27,6 +23,10 @@ use graph::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
 use graph::GraphError;
+use primitive::{
+    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
+    Quad,
+};
 
 /// Half-edge graph representation of a mesh.
 ///
@@ -117,10 +117,10 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::generate::sphere::UvSphere;
-    /// use plexus::generate::LruIndexer;
     /// use plexus::graph::Mesh;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::primitive::LruIndexer;
     ///
     /// # fn main() {
     /// let (indeces, positions) = UvSphere::new(16, 16)
@@ -489,7 +489,7 @@ where
 impl<G, P> FromIndexer<P, P> for Mesh<G>
 where
     G: Geometry,
-    P: MapVerticesInto<usize> + generate::Topological,
+    P: MapVerticesInto<usize> + primitive::Topological,
     P::Output: IntoVertices,
     <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: IntoGeometry<G::Vertex>,
@@ -524,7 +524,7 @@ where
 impl<G, P> FromIterator<P> for Mesh<G>
 where
     G: Geometry,
-    P: MapVerticesInto<usize> + generate::Topological,
+    P: MapVerticesInto<usize> + primitive::Topological,
     P::Output: IntoVertices,
     <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
@@ -639,11 +639,11 @@ mod tests {
     use num::Zero;
     use std::collections::HashSet;
 
-    use generate::*;
     use geometry::*;
     use graph::mutation::face::FaceRemoveCache;
     use graph::mutation::{Mutate, Mutation};
     use graph::*;
+    use primitive::*;
 
     #[test]
     fn collect_topology_into_mesh() {

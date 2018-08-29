@@ -816,10 +816,10 @@ where
 mod tests {
     use nalgebra::{Point2, Point3};
 
-    use generate::*;
     use geometry::convert::IntoGeometry;
     use geometry::*;
     use graph::*;
+    use primitive::*;
 
     fn find_vertex_with_geometry<G, T>(mesh: &Mesh<G>, geometry: T) -> Option<VertexKey>
     where

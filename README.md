@@ -19,14 +19,14 @@ operations.
 ```rust
 use nalgebra::Point3;
 use plexus::buffer::MeshBuffer;
-use plexus::generate::sphere;
 use plexus::prelude::*;
+use plexus::primitive::sphere::UvSphere;
 
 // Example module in the local crate that provides basic rendering.
 use render::{self, Color, Vertex};
 
 // Construct a buffer of index and vertex data from a sphere primitive.
-let buffer = sphere::UvSphere::new(16, 16)
+let buffer = UvSphere::new(16, 16)
     .polygons_with_position()
     .map_vertices(|position| -> Point3<f32> { position.into() })
     .map_vertices(|position| position * 10.0)
@@ -49,18 +49,20 @@ cannot, such as circulation, extrusion, merging, and joining.
 
 ```rust
 use nalgebra::Point3;
-use plexus::generate::sphere;
 use plexus::graph::Mesh;
 use plexus::prelude::*;
+use plexus::primitive::sphere::{Bounds, UvSphere};
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
 // to `Point3` via the `FromGeometry` trait in this example.
 let mut mesh = sphere::UvSphere::new(8, 8)
-    .polygons_with_position()
+    .polygons_with_position_from(Bounds::unit_width())
     .collect::<Mesh<Point3<f32>>>();
 // Extrude a face in the mesh.
 let key = mesh.faces().nth(0).unwrap().key();
-let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
+if let Ok(face) = mesh.face_mut(key).unwrap().extrude(1.0) {
+    // ...
+}
 ```
 
 Plexus avoids exposing very basic topological operations like inserting

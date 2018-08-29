@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use generate::decompose::IntoVertices;
-use generate::topology::{Arity, MapVerticesInto, Topological};
+use primitive::decompose::IntoVertices;
+use primitive::topology::{Arity, MapVerticesInto, Topological};
 
 pub trait Indexer<T, K>
 where

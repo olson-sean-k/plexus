@@ -68,9 +68,9 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::generate::cube::Cube;
     /// use plexus::graph::Mesh;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
     /// let mut mesh = Cube::new()
@@ -589,8 +589,8 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use generate::*;
     use graph::*;
+    use primitive::*;
 
     #[test]
     fn circulate_over_edges() {

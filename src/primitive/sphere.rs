@@ -3,13 +3,13 @@ use num::traits::FloatConst;
 use num::{NumCast, One};
 use std::cmp;
 
-use generate::generate::{
+use geometry::Triplet;
+use primitive::generate::{
     IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
 };
-use generate::topology::{Polygon, Quad, Triangle};
-use generate::Half;
-use geometry::Triplet;
+use primitive::topology::{Polygon, Quad, Triangle};
+use primitive::Half;
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
@@ -226,13 +226,14 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
-    use generate::*;
+    use primitive::sphere::*;
+    use primitive::*;
 
     #[test]
     fn vertex_count() {
         assert_eq!(
             5,
-            sphere::UvSphere::new(3, 2)
+            UvSphere::new(3, 2)
                 .vertices_with_position() // 5 conjoint vertices.
                 .count()
         );
@@ -242,7 +243,7 @@ mod tests {
     fn polygon_vertex_count() {
         assert_eq!(
             18,
-            sphere::UvSphere::new(3, 2)
+            UvSphere::new(3, 2)
                 .polygons_with_position() // 6 triangles, 18 vertices.
                 .vertices()
                 .count()
@@ -253,7 +254,7 @@ mod tests {
     fn index_to_vertex_mapping() {
         assert_eq!(
             5,
-            BTreeSet::from_iter(sphere::UvSphere::new(3, 2)
+            BTreeSet::from_iter(UvSphere::new(3, 2)
                     .polygons_with_index() // 18 vertices, 5 indeces.
                     .vertices())
                 .len()

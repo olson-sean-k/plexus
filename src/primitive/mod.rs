@@ -26,11 +26,11 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere;
 //! use plexus::prelude::*;
+//! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let sphere = sphere::UvSphere::new(16, 16);
+//! let sphere = UvSphere::new(16, 16);
 //! let positions = sphere
 //!     .vertices_with_position() // Generate the unique set of positional vertices.
 //!     .map(|position| -> Point3<f32> { position.into() }) // Convert into a nalgebra type.
@@ -46,19 +46,18 @@
 //! Generating position and index buffers using an indexer:
 //!
 //! ```rust
-//! use plexus::generate::cube;
-//! use plexus::generate::LruIndexer;
 //! use plexus::prelude::*;
+//! use plexus::primitive::cube::{Bounds, Cube};
+//! use plexus::primitive::LruIndexer;
 //!
-//! let (indeces, positions) = cube::Cube::new()
-//!     .polygons_with_position_from(cube::Bounds::unit_radius())
+//! let (indeces, positions) = Cube::new()
+//!     .polygons_with_position_from(Bounds::unit_radius())
 //!     .triangulate()
 //!     .index_vertices(LruIndexer::default());
 //! ```
 
 pub mod cube;
 mod decompose;
-#[allow(module_inception)]
 mod generate;
 mod index;
 pub mod sphere;

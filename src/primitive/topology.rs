@@ -5,7 +5,7 @@ use std::iter::{self, FromIterator};
 use std::marker::PhantomData;
 use std::mem;
 
-use generate::decompose::IntoVertices;
+use primitive::decompose::IntoVertices;
 
 pub trait Topological: Sized {
     type Vertex: Clone;
@@ -459,9 +459,9 @@ pub type ZipVertices<T> = iter::Map<
 /// # extern crate num;
 /// # extern crate plexus;
 /// # use plexus::R32;
-/// use plexus::generate;
-/// use plexus::generate::cube::Cube;
 /// use plexus::prelude::*;
+/// use plexus::primitive::cube::Cube;
+/// use plexus::primitive;
 ///
 /// # use num::One;
 /// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
@@ -470,7 +470,7 @@ pub type ZipVertices<T> = iter::Map<
 /// # fn main() {
 /// let cube = Cube::new();
 /// let polygons =
-///     generate::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
+///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
 ///         .map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
 ///         .triangulate()
 ///         .collect::<Vec<_>>();

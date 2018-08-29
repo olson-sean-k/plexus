@@ -81,9 +81,9 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere::UvSphere;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
+//! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let mut mesh = UvSphere::new(16, 16)
@@ -98,9 +98,9 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::generate::sphere::UvSphere;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
+//! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let mut mesh = UvSphere::new(16, 16)

@@ -4,9 +4,9 @@ extern crate plexus;
 
 use decorum::R32;
 use nalgebra::{Point2, Point3};
-use plexus::generate::cube::{Cube, Plane};
-use plexus::generate::{self, HashIndexer};
 use plexus::prelude::*;
+use plexus::primitive::cube::{Cube, Plane};
+use plexus::primitive::{self, HashIndexer};
 
 fn map_unit_uv(position: Point3<R32>, plane: Plane, unit: R32) -> Point2<R32> {
     let map = |position: R32| -> R32 { position / unit };
@@ -23,7 +23,7 @@ fn map_unit_uv(position: Point3<R32>, plane: Plane, unit: R32) -> Point2<R32> {
 fn main() {
     let cube = Cube::default();
     // Zip positions and planes into the vertices of a stream of polygons.
-    let polygons = generate::zip_vertices((
+    let polygons = primitive::zip_vertices((
         cube.polygons_with_position()
             .map_vertices(|position| -> Point3<R32> { position.into() })
             .map_vertices(|position| position * 8.0.into()),

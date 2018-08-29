@@ -1,14 +1,14 @@
 use decorum::R32;
 use num::{One, Zero};
 
-use generate::generate::{
+use geometry::{Duplet, Triplet};
+use primitive::generate::{
     Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
     VertexGenerator,
 };
-use generate::topology::{MapVerticesInto, Quad};
-use generate::Half;
-use geometry::{Duplet, Triplet};
+use primitive::topology::{MapVerticesInto, Quad};
+use primitive::Half;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Plane {

@@ -20,10 +20,10 @@ use glutin::{
 };
 use nalgebra::{Matrix4, Point3, Scalar};
 use plexus::buffer::MeshBuffer;
-use plexus::generate::sphere;
 use plexus::geometry::{Attribute, Geometry};
 use plexus::graph::Mesh;
 use plexus::prelude::*;
+use plexus::primitive::sphere::UvSphere;
 
 use camera::Camera;
 use pipeline::{Color4, Transform, Vertex};
@@ -40,7 +40,7 @@ impl Geometry for FaceColorGeometry {
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
-    let mut mesh = sphere::UvSphere::new(32, 32)
+    let mut mesh = UvSphere::new(32, 32)
         .polygons_with_position()
         .triangulate()
         .collect::<Mesh<FaceColorGeometry>>();
