@@ -1,6 +1,6 @@
 [package]
 name = "plexus"
-version = "0.0.9"
+version = "0.0.10"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "README.md"
