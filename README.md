@@ -79,8 +79,8 @@ operations and features, but only two basic traits are required: `Geometry` and
 
 ```rust
 use nalgebra::{Point3, Vector3};
-use plexus::geometry::{Attribute, Geometry};
 use plexus::geometry::convert::AsPosition;
+use plexus::geometry::{Attribute, Geometry};
 
 #[derive(Clone, Copy)]
 pub struct VertexGeometry {

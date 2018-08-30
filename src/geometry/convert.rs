@@ -72,6 +72,11 @@ where
     }
 }
 
+/// Exposes a reference to positional vertex data.
+///
+/// To enable geometric features, this trait must be implemented for the type
+/// representing vertex data. Additionally, geometric operations should be
+/// implemented for the `Target` type.
 pub trait AsPosition {
     type Target;
 
