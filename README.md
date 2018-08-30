@@ -1,6 +1,6 @@
 ![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.png)
 
-**Plexus** is a Rust library for generating and manipulating 3D meshes.
+**Plexus** is a Rust library for generating and manipulating 2D and 3D meshes.
 
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
 [![Build Status](https://ci.appveyor.com/api/projects/status/0uy6rcg3tvbu6cms?svg=true)](https://ci.appveyor.com/project/olson-sean-k/plexus)
@@ -11,10 +11,9 @@
 
 Streams of topological and geometric data can be generated from primitives like
 cubes and spheres using iterator expressions. Primitives emit topological
-structures like `Triangle`s or `Quad`s, which contain arbitrary geometric data
-in their vertices. These can be transformed and decomposed into other
-topologies and geometric data via triangulation, tesselation, and other
-operations.
+structures like `Triangle`s or `Quad`s, which contain arbitrary data in their
+vertices. These can be transformed and decomposed into other topologies and
+geometric data via triangulation, tesselation, and other operations.
 
 ```rust
 use nalgebra::Point3;
@@ -109,24 +108,13 @@ impl AsPosition for VertexGeometry {
 }
 ```
 
+Geometric operations are vertex-based. By implementing `AsPosition` to expose
+positional data from vertices and implementing geometric traits for that
+positional data, operations like extrusion, splitting, etc. are exposed.
+
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
 [cgmath](https://crates.io/crates/cgmath) crates so that common types can be
 used right away for vertex geometry. See the `geometry-cgmath` and
 `geometry-nalgebra` (enabled by default) crate features. Both 2D and 3D
 geometry are supported by mesh operations.
-
-## Hashing Floating-Point Values
-
-When collecting an iterator expression into a graph or buffer, an indexer is
-used to transform the geometry into raw buffers. `HashIndexer` is fast and
-reliable, and is used by `collect` (which can be overridden via
-`collect_with_indexer`). However, geometry often contains floating point
-values, which do not implement `Hash`. An `LruIndexer` can also be used, but
-may be slower and requires a sufficient capacity to work correctly.
-
-The [decorum](https://crates.io/crates/decorum) crate is used to ease this
-problem. Hashable types like `NotNan`, `Finite`, `R32`, etc. can be used as
-geometric data and are emitted by primitive generators like `UvSphere` and
-`Cube`. Decorum can also be used to more easily make custom geometric data
-hashable.
