@@ -1,7 +1,9 @@
-//! **Plexus** is a library for generating and manipulating 3D mesh data.
+//! **Plexus** is a library for generating and manipulating 2D and 3D mesh
+//! data.
 //!
 //! Please note that versions in the `0.0.*` series are experimental and
-//! extremely unstable!
+//! unstable! Use exact version constraints when specifying a dependency to
+//! avoid spurious breakage.
 #![allow(unknown_lints)] // Allow clippy lints.
 
 extern crate arrayvec;
