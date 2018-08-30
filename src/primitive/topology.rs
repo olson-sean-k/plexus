@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use itertools::structs::Zip;
 use num::Integer;
-use std::iter::{self, FromIterator};
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::mem;
 
@@ -438,11 +438,6 @@ where
     ((n % m) + m) % m
 }
 
-pub type ZipVertices<T> = iter::Map<
-    Zip<T>,
-    fn(<Zip<T> as Iterator>::Item) -> <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output,
->;
-
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.
 ///
@@ -464,32 +459,25 @@ pub type ZipVertices<T> = iter::Map<
 /// use plexus::primitive;
 ///
 /// # use num::One;
-/// # fn map_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
+/// # fn map_uv_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
 /// #     Triplet(One::one(), One::one(), One::one())
 /// # }
 /// # fn main() {
 /// let cube = Cube::new();
 /// let polygons =
+///     // Zip positions and texture coordinates into each vertex.
 ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
-///         .map_vertices(|(position, texture)| (position, texture, map_to_color(&texture)))
+///         .map_vertices(|(position, texture)| (position, texture, map_uv_to_color(&texture)))
 ///         .triangulate()
 ///         .collect::<Vec<_>>();
 /// # }
 /// ```
-pub fn zip_vertices<T, U>(tuple: U) -> ZipVertices<T>
+pub fn zip_vertices<T, U>(
+    tuple: U,
+) -> impl Iterator<Item = <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output>
 where
     Zip<T>: From<U> + Iterator,
     <Zip<T> as Iterator>::Item: ZipVerticesInto,
 {
-    Zip::from(tuple).map(zip_vertices_into)
-}
-
-fn zip_vertices_into<T>(
-    item: <Zip<T> as Iterator>::Item,
-) -> <<Zip<T> as Iterator>::Item as ZipVerticesInto>::Output
-where
-    Zip<T>: Iterator,
-    <Zip<T> as Iterator>::Item: ZipVerticesInto,
-{
-    item.zip_vertices_into()
+    Zip::from(tuple).map(|item| item.zip_vertices_into())
 }
