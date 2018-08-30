@@ -33,9 +33,9 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
-//! use plexus::primitive::cube::Cube;
 //! use plexus::graph::Mesh;
 //! use plexus::prelude::*;
+//! use plexus::primitive::cube::Cube;
 //!
 //! # fn main() {
 //! let mesh = Cube::new()

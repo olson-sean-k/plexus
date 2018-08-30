@@ -6,15 +6,48 @@ use std::marker::PhantomData;
 use primitive::decompose::IntoVertices;
 use primitive::topology::{Arity, MapVerticesInto, Topological};
 
+/// Vertex indexer.
+///
+/// Disambiguates arbitrary vertex data and emits a one-to-one mapping of
+/// indeces to vertices. This is essential for forming basic rendering buffers
+/// for graphics pipelines.
 pub trait Indexer<T, K>
 where
     T: Topological,
 {
+    /// Indexes a vertex using a keying function.
+    ///
+    /// Returns a tuple containing the index and optionally vertex data. Vertex
+    /// data is only returned if the data has not yet been indexed, otherwise
+    /// `None` is returned.
     fn index<F>(&mut self, vertex: T::Vertex, f: F) -> (usize, Option<T::Vertex>)
     where
         F: Fn(&T::Vertex) -> &K;
 }
 
+/// Hash-based vertex indexer.
+///
+/// This indexer hashes key data for vertices to form an index. This is fast,
+/// reliable, and requires no configuration. Prefer this indexer when possible.
+///
+/// The vertex key data must be hashable (implement `Hash`). Most vertex data
+/// includes floating point values (i.e., `f32` or `f64`), which do not
+/// implement `Hash`. To avoid problems with hashing, primitive generators emit
+/// wrapper types (see `R32` and `R64`) that provide hashable floating point
+/// values, so this indexer can typically be used without any additional work.
+///
+/// # Examples
+///
+/// ```rust
+/// use plexus::prelude::*;
+/// use plexus::primitive::cube::Cube;
+/// use plexus::primitive::HashIndexer;
+///
+/// let (indeces, positions) = Cube::new()
+///     .polygons_with_position()
+///     .triangulate()
+///     .index_vertices(HashIndexer::default());
+/// ```
 pub struct HashIndexer<T, K>
 where
     T: Topological,
@@ -30,6 +63,7 @@ where
     T: Topological,
     K: Clone + Eq + Hash,
 {
+    /// Creates a new `HashIndexer`.
     pub fn new() -> Self {
         HashIndexer {
             hash: HashMap::new(),
@@ -71,6 +105,29 @@ where
     }
 }
 
+/// LRU caching vertex indexer.
+///
+/// This indexer uses an LRU (least recently used) cache to form an index. To
+/// function correctly, an adequate cache capacity is necessary. If the
+/// capacity is insufficient, then redundant vertex data may be emitted. See
+/// `with_capacity`.
+///
+/// This indexer is useful if the vertex key data cannot be hashed (does not
+/// implement `Hash`). If the key data can be hashed, prefer `HashIndexer`
+/// instead.
+///
+/// # Examples
+///
+/// ```rust
+/// use plexus::prelude::*;
+/// use plexus::primitive::sphere::UvSphere;
+/// use plexus::primitive::LruIndexer;
+///
+/// let (indeces, positions) = UvSphere::new(8, 8)
+///     .polygons_with_position()
+///     .triangulate()
+///     .index_vertices(LruIndexer::with_capacity(64));
+/// ```
 pub struct LruIndexer<T, K>
 where
     T: Topological,
@@ -87,10 +144,15 @@ where
     T: Topological,
     K: Clone + PartialEq,
 {
+    /// Creates a new `LruIndexer` with a default capacity.
     pub fn new() -> Self {
         LruIndexer::with_capacity(16)
     }
 
+    /// Creates a new `LruIndexer` with the specified capacity.
+    ///
+    /// The capacity of the cache must be sufficient in order to generate a
+    /// unique set of vertex data and indeces.
     pub fn with_capacity(capacity: usize) -> Self {
         let capacity = cmp::max(1, capacity);
         LruIndexer {
@@ -150,10 +212,20 @@ where
     }
 }
 
+/// Functions for collecting a topology stream into raw index and vertex
+/// buffers.
+///
+/// Produces structured index buffers with arbitrary arity. The buffers may
+/// contain `Triangle`s, `Quad`s, `Polygon`s, etc. For flat buffers with
+/// constant arity, see `FlatIndexVertices`.
+///
+/// See `HashIndexer` and `LruIndexer`.
 pub trait IndexVertices<P>: Sized
 where
     P: MapVerticesInto<usize> + Topological,
 {
+    /// Indexes a topology stream into a structured index buffer and vertex
+    /// buffer using the given indexer and keying function.
     fn index_vertices_with<N, K, F>(
         self,
         indexer: N,
@@ -163,6 +235,23 @@ where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K;
 
+    /// Indexes a topology stream into a structured index buffer and vertex
+    /// buffer using the given indexer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::HashIndexer;
+    ///
+    /// // `indeces` contains `Triangle`s with index data.
+    /// let (indeces, positions) = Cube::new()
+    ///     .polygons_with_position()
+    ///     .subdivide()
+    ///     .triangulate()
+    ///     .index_vertices(HashIndexer::default());
+    /// ```
     fn index_vertices<N>(
         self,
         indexer: N,
@@ -206,15 +295,49 @@ where
     }
 }
 
+/// Functions for collecting a topology stream into raw index and vertex
+/// buffers.
+///
+/// Produces flat index buffers, where the polygon arity is constant. This
+/// typically requires some kind of tessellation, such as triangulation, to
+/// ensure that all polygons have the same arity. For structured buffers with
+/// variable arity, see `IndexVertices`.
+///
+/// See `HashIndexer` and `LruIndexer`.
 pub trait FlatIndexVertices<P>: Sized
 where
     P: Arity + IntoVertices + Topological,
 {
+    /// Indexes a topology stream into a flat index buffer and vertex buffer
+    /// using the given indexer and keying function.
     fn flat_index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K;
 
+    /// Indexes a topology stream into a flat index buffer and vertex buffer
+    /// using the given indexer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::primitive::HashIndexer;
+    ///
+    /// # fn main() {
+    /// let (indeces, positions) = UvSphere::new(16, 16)
+    ///     .polygons_with_position()
+    ///     .triangulate()
+    ///     .flat_index_vertices(HashIndexer::default());
+    /// // `indeces` is a flat buffer with arity 3.
+    /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
+    /// # }
+    /// ```
     fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
     where
         N: Indexer<P, P::Vertex>,
@@ -261,11 +384,35 @@ where
         N: Indexer<Q, P::Vertex>;
 }
 
+/// Functions for collecting a topology stream into a mesh or buffer.
+///
+/// See `HashIndexer` and `LruIndexer`.
 pub trait CollectWithIndexer<P, Q>
 where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
+    /// Collects a topology stream into a mesh or buffer using an indexer.
+    ///
+    /// This allows the default indexer (used by `collect`) to be overridden or
+    /// otherwise made explicit in calling code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::graph::Mesh;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::HashIndexer;
+    ///
+    /// # fn main() {
+    /// let mesh = Cube::new()
+    ///     .polygons_with_position()
+    ///     .collect_with_indexer::<Mesh<Point3<f32>>, _>(HashIndexer::default());
+    /// # }
     fn collect_with_indexer<T, N>(self, indexer: N) -> T
     where
         T: FromIndexer<P, Q>,

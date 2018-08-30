@@ -9,14 +9,15 @@
 //! components like vertices, lines, and polygons. Generation and decomposition
 //! operations are exposed via traits.
 //!
+//! Most functionality and operations in this module are exposed via traits.
+//! Many of these traits are included in the `prelude` module, and it is highly
+//! recommended to import the `prelude`'s contents as seen in the examples.
+//!
 //! Generator traits implemented by primitives expose verbose function names
 //! like `polygons_with_index` or `vertices_with_position` to avoid ambiguity.
-//! For example, a shorter name like `index_polygons` is confusing: is "index"
-//! a noun or verb? Adjectives are also not too usesful: `indexed_polygons` is
-//! very similar to `index_polygons`, which is an operation exposed by
-//! unrelated traits. For normal vectors, obvious adjectives would be synthetic
-//! or confusing, such as "normaled". Instead, longer but clearer names are
-//! used.
+//! This is a somewhat unorthodox use of the term "with" in Rust function
+//! names, but the alternatives are much less clear, especially when
+//! neighboring other similar function names.
 //!
 //! # Examples
 //!
