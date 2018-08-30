@@ -37,11 +37,11 @@
 //! to references. They provide the primary API for interacting with a mesh's
 //! topology and geometry. There are three types summarized below:
 //!
-//! | Type      | Alias       | Traversal | Exclusive | Geometry  | Topology  |
-//! |-----------|-------------|-----------|-----------|-----------|-----------|
-//! | Immutable | `...Ref`    | Yes       | No        | Immutable | Immutable |
-//! | Mutable   | `...Mut`    | Yes       | Yes       | Mutable   | Mutable   |
-//! | Orphan    | `Orphan...` | No        | No        | Mutable   | N/A       |
+//! | Type      | Traversal | Exclusive | Geometry  | Topology  |
+//! |-----------|-----------|-----------|-----------|-----------|
+//! | Immutable | Yes       | No        | Immutable | Immutable |
+//! | Mutable   | Yes       | Yes       | Mutable   | Mutable   |
+//! | Orphan    | No        | No        | Mutable   | N/A       |
 //!
 //! Immutable and mutable views are much like references. Immutable views
 //! cannot mutate a mesh in any way and it is possible to obtain multiple such
@@ -154,22 +154,18 @@ use failure::Error;
 
 pub use self::mesh::Mesh;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
-
-// TODO: It's unclear how view types should be exposed to users. The `Ref` and
-//       `Mut` aliases are simpler and help insulate users from the complexity
-//       of views, but it is currently not possible to document these aliases.
-//       See: https://github.com/rust-lang/rust/issues/39437
+// TODO: It's unclear how view types should be exposed to users. Type aliases
+//       for mutable, immutable, and orphan views over a `Mesh` would be
+//       simpler and help insulate users from the complexity of views, but it
+//       is currently not possible to document such aliases. See:
+//       https://github.com/rust-lang/rust/issues/39437
 //
 //       Moreover, in the future it may be tenable to expose the internal
 //       mutation APIs, and exposing the underlying view types would then be
-//       necessary. For now, use them directly while also re-exporting the
-//       simpler aliases.
-pub use self::view::{EdgeKeyTopology, FaceKeyTopology};
+//       necessary. For now, use them directly.
 pub use self::view::{
-    EdgeMut, EdgeRef, FaceMut, FaceRef, OrphanEdge, OrphanFace, OrphanVertex, VertexMut, VertexRef,
-};
-pub use self::view::{
-    EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
+    EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView, OrphanFaceView,
+    OrphanVertexView, VertexView,
 };
 
 #[derive(Debug, Fail)]

@@ -20,8 +20,6 @@
 //       graph, so dedicated types are used for now. See this issue:
 //       https://github.com/rust-lang/rust/issues/50823
 
-use graph::mesh::Mesh;
-
 pub mod convert;
 mod edge;
 mod face;
@@ -30,23 +28,3 @@ mod vertex;
 pub use self::edge::{EdgeKeyTopology, EdgeView, OrphanEdgeView};
 pub use self::face::{FaceKeyTopology, FaceView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
-
-// TODO: Only exposing these type aliases keeps user code more simple, but
-//       omits important documentation. See this issue:
-//       <https://github.com/rust-lang/rust/issues/39437>
-//
-//       Moreover, to enable more advanced use cases, it may be worth
-//       considering exposing the mutation API. If this happens, then exposing
-//       the view types will be necessary.
-
-pub type EdgeRef<'a, G> = EdgeView<&'a Mesh<G>, G>;
-pub type EdgeMut<'a, G> = EdgeView<&'a mut Mesh<G>, G>;
-pub type OrphanEdge<'a, G> = OrphanEdgeView<'a, G>;
-
-pub type FaceRef<'a, G> = FaceView<&'a Mesh<G>, G>;
-pub type FaceMut<'a, G> = FaceView<&'a mut Mesh<G>, G>;
-pub type OrphanFace<'a, G> = OrphanFaceView<'a, G>;
-
-pub type VertexRef<'a, G> = VertexView<&'a Mesh<G>, G>;
-pub type VertexMut<'a, G> = VertexView<&'a mut Mesh<G>, G>;
-pub type OrphanVertex<'a, G> = OrphanVertexView<'a, G>;
