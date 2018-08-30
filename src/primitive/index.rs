@@ -25,7 +25,7 @@ where
         F: Fn(&T::Vertex) -> &K;
 }
 
-/// Hash-based vertex indexer.
+/// Hashing vertex indexer.
 ///
 /// This indexer hashes key data for vertices to form an index. This is fast,
 /// reliable, and requires no configuration. Prefer this indexer when possible.
@@ -302,6 +302,11 @@ where
 /// typically requires some kind of tessellation, such as triangulation, to
 /// ensure that all polygons have the same arity. For structured buffers with
 /// variable arity, see `IndexVertices`.
+///
+/// Note that using an indexer is not always the most effecient method to
+/// create buffers or meshes from a topology stream. Depending on the iterator
+/// expression, it may be possible to use `PolygonsWithIndex` to produce an
+/// index buffer separately and more effeciently.
 ///
 /// See `HashIndexer` and `LruIndexer`.
 pub trait FlatIndexVertices<P>: Sized
