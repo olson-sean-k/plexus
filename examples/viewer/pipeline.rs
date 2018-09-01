@@ -4,7 +4,8 @@ use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
 use num::One;
-use rand::{self, Rand};
+use rand;
+use rand::distributions::{Distribution, Standard};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
@@ -35,9 +36,12 @@ where
 
 impl<T> Color4<T>
 where
-    T: One + Rand + Scalar,
+    T: One + Scalar,
 {
-    pub fn random() -> Self {
+    pub fn random() -> Self
+    where
+        Standard: Distribution<T>,
+    {
         Color4::new(
             rand::random::<T>(),
             rand::random::<T>(),

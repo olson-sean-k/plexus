@@ -1,6 +1,6 @@
 use gfx::format::{DepthStencil, Rgba8};
 use gfx::handle::{DepthStencilView, RenderTargetView};
-use gfx::state::Rasterizer;
+use gfx::state::{CullFace, FrontFace, RasterMethod, Rasterizer};
 use gfx::traits::FactoryExt;
 use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
 use gfx_device_gl;
@@ -106,13 +106,18 @@ where
             .create_pipeline_state(
                 &shaders,
                 Primitive::TriangleList,
-                Rasterizer::new_fill().with_cull_back(),
+                Rasterizer {
+                    method: RasterMethod::Line(2),
+                    front_face: FrontFace::CounterClockwise,
+                    cull_face: CullFace::Back,
+                    offset: None,
+                    samples: None,
+                },
                 pipeline::new(),
             )
             .unwrap();
         let data = Data {
-            // Using an empty slice here causes an error.
-            buffer: factory.create_vertex_buffer(&[Vertex::default()]),
+            buffer: factory.create_vertex_buffer(&[]),
             transform: factory.create_constant_buffer(1),
             camera: [[0.0; 4]; 4],
             model: [[0.0; 4]; 4],

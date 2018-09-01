@@ -23,7 +23,7 @@ use plexus::buffer::MeshBuffer;
 use plexus::geometry::{Attribute, Geometry};
 use plexus::graph::Mesh;
 use plexus::prelude::*;
-use plexus::primitive::sphere::UvSphere;
+use plexus::primitive::sphere::{Bounds, UvSphere};
 
 use camera::Camera;
 use pipeline::{Color4, Transform, Vertex};
@@ -41,7 +41,7 @@ impl Geometry for FaceColorGeometry {
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
     let mut mesh = UvSphere::new(32, 32)
-        .polygons_with_position()
+        .polygons_with_position_from(Bounds::unit_radius())
         .triangulate()
         .collect::<Mesh<FaceColorGeometry>>();
     for mut face in mesh.orphan_faces() {
@@ -62,7 +62,7 @@ fn new_renderer(width: u32, height: u32) -> (EventsLoop, Renderer<GlutinRenderer
     let window = GlWindow::new(
         WindowBuilder::new()
             .with_title("Plexus Viewer")
-            .with_dimensions(width, height),
+            .with_dimensions((width, height).into()),
         ContextBuilder::new(),
         &seat,
     ).unwrap();
@@ -76,16 +76,16 @@ fn main() {
     seat.run_forever(|event| {
         match event {
             Event::WindowEvent {
-                event: WindowEvent::Closed,
+                event: WindowEvent::CloseRequested,
                 ..
             } => {
                 return ControlFlow::Break;
             }
             Event::WindowEvent {
-                event: WindowEvent::Resized(width, height),
+                event: WindowEvent::Resized(size),
                 ..
             } => {
-                camera = new_camera(width as f32 / height as f32);
+                camera = new_camera(size.width as f32 / size.height as f32);
                 renderer.update_frame_buffer_view();
             }
             _ => {}
