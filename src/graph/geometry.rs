@@ -11,7 +11,7 @@ use self::alias::*;
 use geometry::convert::AsPosition;
 use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use geometry::Geometry;
-use graph::container::{Container, Reborrow};
+use graph::container::Reborrow;
 use graph::storage::convert::AsStorage;
 use graph::topology::{Edge, Face, Vertex};
 use graph::view::{EdgeView, FaceView};
@@ -23,8 +23,7 @@ pub trait FaceNormal: Geometry {
     fn normal<M>(face: &FaceView<M, Self>) -> Result<Self::Normal, Error>
     where
         M: Reborrow,
-        M::Target:
-            AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Container;
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> FaceNormal for G
@@ -40,8 +39,7 @@ where
     fn normal<M>(face: &FaceView<M, Self>) -> Result<Self::Normal, Error>
     where
         M: Reborrow,
-        M::Target:
-            AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Container,
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
     {
         let positions = face
             .reachable_vertices()
@@ -61,8 +59,7 @@ pub trait FaceCentroid: Geometry {
     fn centroid<M>(face: &FaceView<M, Self>) -> Result<Self::Centroid, Error>
     where
         M: Reborrow,
-        M::Target:
-            AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Container;
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> FaceCentroid for G
@@ -75,8 +72,7 @@ where
     fn centroid<M>(face: &FaceView<M, Self>) -> Result<Self::Centroid, Error>
     where
         M: Reborrow,
-        M::Target:
-            AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Container,
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
     {
         Ok(G::Vertex::average(
             face.reachable_vertices()
@@ -91,7 +87,7 @@ pub trait EdgeMidpoint: Geometry {
     fn midpoint<M>(edge: &EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container;
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -105,7 +101,7 @@ where
     fn midpoint<M>(edge: &EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container,
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
     {
         let a = edge
             .reachable_source_vertex()
@@ -129,7 +125,7 @@ pub trait EdgeLateral: Geometry {
     fn lateral<M>(edge: &EdgeView<M, Self>) -> Result<Self::Lateral, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container;
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> EdgeLateral for G
@@ -149,7 +145,7 @@ where
     fn lateral<M>(edge: &EdgeView<M, Self>) -> Result<Self::Lateral, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Container,
+        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
     {
         let a = edge
             .reachable_source_vertex()

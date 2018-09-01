@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
 use geometry::Geometry;
-use graph::container::{Container, Reborrow};
+use graph::container::Reborrow;
 use graph::storage::convert::AsStorage;
 use graph::storage::{EdgeKey, FaceKey, VertexKey};
 use graph::topology::{Edge, Face, Vertex};
@@ -29,7 +29,7 @@ pub type Singularity = (VertexKey, Vec<FaceKey>);
 pub struct Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     storage: M,
@@ -41,7 +41,7 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, Error> {
@@ -99,7 +99,7 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub fn reachable_connectivity(&self) -> ((Connectivity, Connectivity), Option<Singularity>) {

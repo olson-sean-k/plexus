@@ -6,7 +6,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Container, Core, Reborrow};
+use graph::container::{Bind, Consistent, Core, Reborrow};
 use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use graph::geometry::{FaceCentroid, FaceNormal};
 use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
@@ -327,7 +327,7 @@ where
     ) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
         // Verify that the region is not already occupied by a face and collect
         // the incoming and outgoing edges for each vertex in the region.
@@ -363,10 +363,7 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
-            + Container<Contract = Consistent>,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let face = match FaceView::from_keyed_source((abc, storage)) {
             Some(face) => face,
@@ -407,10 +404,7 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
-            + Container<Contract = Consistent>,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
         let face = match FaceView::from_keyed_source((abc, storage)) {
@@ -443,10 +437,7 @@ where
     pub fn snapshot<M>(storage: M, source: FaceKey, destination: FaceKey) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
-            + Container<Contract = Consistent>,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
         let cache = (
@@ -501,10 +492,7 @@ where
     pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
-            + Container<Contract = Consistent>,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
@@ -539,7 +527,7 @@ pub fn triangulate_with_cache<M, N, G>(
 ) -> Result<Option<VertexKey>, Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
     let FaceTriangulateCache {
@@ -564,7 +552,7 @@ where
 pub fn join_with_cache<M, N, G>(mut mutation: N, cache: FaceJoinCache<G>) -> Result<(), Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     let FaceJoinCache {
@@ -600,7 +588,7 @@ pub fn extrude_with_cache<M, N, G>(
 ) -> Result<FaceKey, Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {

@@ -7,7 +7,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Container, Reborrow, ReborrowMut};
+use graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
@@ -26,7 +26,7 @@ use BoolExt;
 pub struct EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     key: EdgeKey,
@@ -38,7 +38,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     pub(in graph) fn bind<T, N>(self, storage: N) -> EdgeView<<M as Bind<T, N>>::Output, G>
@@ -46,7 +46,7 @@ where
         T: Topological,
         M: Bind<T, N>,
         M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<Edge<G>> + Container,
+        <M::Output as Reborrow>::Target: AsStorage<Edge<G>>,
         N: AsStorage<T>,
     {
         let (key, origin) = self.into_keyed_storage();
@@ -56,7 +56,7 @@ where
 
 impl<'a, M, G> EdgeView<&'a mut M, G>
 where
-    M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container,
+    M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
     G: 'a + Geometry,
 {
     /// Converts a mutable view into an orphan view.
@@ -102,7 +102,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     /// Gets the key for this edge.
@@ -149,7 +149,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     fn interior_reborrow_mut(&mut self) -> EdgeView<&mut M::Target, G> {
@@ -163,7 +163,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     pub(in graph) fn into_reachable_boundary_edge(self) -> Option<Self> {
@@ -235,7 +235,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + Consistent,
     G: Geometry,
 {
     pub fn into_boundary_edge(self) -> Option<Self> {
@@ -275,7 +275,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub(in graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
@@ -306,7 +306,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     pub fn into_source_vertex(self) -> VertexView<M, G> {
@@ -330,7 +330,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
     pub(in graph) fn into_reachable_face(self) -> Option<FaceView<M, G>> {
@@ -352,7 +352,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
     pub fn into_face(self) -> Option<FaceView<M, G>> {
@@ -368,7 +368,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub(in graph) fn reachable_vertices(&self) -> VertexCirculator<&M::Target, G> {
@@ -381,7 +381,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     pub fn vertices(&self) -> VertexCirculator<&M::Target, G> {
@@ -393,7 +393,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
     pub(in graph) fn reachable_faces(&self) -> FaceCirculator<&M::Target, G> {
@@ -413,7 +413,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
     pub fn faces(&self) -> FaceCirculator<&M::Target, G> {
@@ -426,7 +426,7 @@ where
     M: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Contract = Consistent>
+        + Consistent
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
@@ -448,10 +448,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: EdgeMidpoint + Geometry,
 {
     pub fn midpoint(&self) -> Result<G::Midpoint, Error> {
@@ -464,7 +461,7 @@ where
     M: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Contract = Consistent>
+        + Consistent
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
@@ -484,10 +481,7 @@ where
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Container<Contract = Consistent>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry + EdgeLateral,
 {
     pub fn lateral(&self) -> Result<G::Lateral, Error> {
@@ -500,7 +494,7 @@ where
     M: AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
-        + Container<Contract = Consistent>
+        + Consistent
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
@@ -525,7 +519,7 @@ where
 impl<M, G> Clone for EdgeView<M, G>
 where
     M: Clone + Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     fn clone(&self) -> Self {
@@ -540,14 +534,14 @@ where
 impl<M, G> Copy for EdgeView<M, G>
 where
     M: Copy + Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {}
 
 impl<M, G> Deref for EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     type Target = Edge<G>;
@@ -560,7 +554,7 @@ where
 impl<M, G> DerefMut for EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -575,7 +569,7 @@ where
 impl<M, G> FromKeyedSource<(EdgeKey, M)> for EdgeView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + Container,
+    M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
     fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
@@ -675,7 +669,7 @@ impl EdgeKeyTopology {
 pub struct VertexCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Vertex<G>>,
     G: Geometry,
 {
     storage: M,
@@ -686,7 +680,7 @@ where
 impl<M, G> VertexCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Vertex<G>>,
     G: Geometry,
 {
     fn next(&mut self) -> Option<VertexKey> {
@@ -697,7 +691,7 @@ where
 impl<M, G> FromKeyedSource<(ArrayVec<[VertexKey; 2]>, M)> for VertexCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Vertex<G>> + Container,
+    M::Target: AsStorage<Vertex<G>>,
     G: Geometry,
 {
     fn from_keyed_source(source: (ArrayVec<[VertexKey; 2]>, M)) -> Option<Self> {
@@ -712,7 +706,7 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
 where
-    M: 'a + AsStorage<Vertex<G>> + Container,
+    M: 'a + AsStorage<Vertex<G>>,
     G: 'a + Geometry,
 {
     type Item = VertexView<&'a M, G>;
@@ -724,7 +718,7 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Container,
+    M: 'a + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
     G: 'a + Geometry,
 {
     type Item = OrphanVertexView<'a, G>;
@@ -745,7 +739,7 @@ where
 pub struct FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Face<G>> + Container,
+    M::Target: AsStorage<Face<G>>,
     G: Geometry,
 {
     storage: M,
@@ -756,7 +750,7 @@ where
 impl<M, G> FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Face<G>> + Container,
+    M::Target: AsStorage<Face<G>>,
     G: Geometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
@@ -767,7 +761,7 @@ where
 impl<M, G> FromKeyedSource<(ArrayVec<[FaceKey; 2]>, M)> for FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Face<G>> + Container,
+    M::Target: AsStorage<Face<G>>,
     G: Geometry,
 {
     fn from_keyed_source(source: (ArrayVec<[FaceKey; 2]>, M)) -> Option<Self> {
@@ -782,7 +776,7 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a M, G>
 where
-    M: 'a + AsStorage<Face<G>> + Container,
+    M: 'a + AsStorage<Face<G>>,
     G: 'a + Geometry,
 {
     type Item = FaceView<&'a M, G>;
@@ -794,7 +788,7 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Container,
+    M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
     G: 'a + Geometry,
 {
     type Item = OrphanFaceView<'a, G>;

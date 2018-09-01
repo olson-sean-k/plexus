@@ -4,7 +4,7 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use geometry::convert::AsPosition;
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Container, Core, Reborrow};
+use graph::container::{Bind, Consistent, Core, Reborrow};
 use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use graph::geometry::{EdgeLateral, EdgeMidpoint};
 use graph::mutation::vertex::VertexMutation;
@@ -251,7 +251,7 @@ where
     pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Container,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     {
         let (a, b) = ab.to_vertex_keys();
         let edge: EdgeView<M, G> = match (ab, storage).into_view() {
@@ -289,7 +289,7 @@ where
     pub fn snapshot<M>(storage: M, source: EdgeKey, destination: EdgeKey) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Container,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
         let (a, b) = source.to_vertex_keys();
@@ -343,10 +343,7 @@ where
     pub fn snapshot<M, T>(storage: M, ab: EdgeKey, distance: T) -> Result<Self, Error>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
-            + Container<Contract = Consistent>,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
         G: Geometry + EdgeLateral,
         G::Lateral: Mul<T>,
         G::Vertex: AsPosition,
@@ -387,7 +384,7 @@ pub fn split_with_cache<M, N, G>(
 ) -> Result<VertexKey, Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
@@ -398,7 +395,7 @@ where
     ) -> Result<(EdgeKey, EdgeKey), Error>
     where
         N: AsMut<Mutation<M, G>>,
-        M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+        M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
         G::Vertex: AsPosition,
     {
@@ -437,7 +434,7 @@ where
 pub fn join_with_cache<M, N, G>(mut mutation: N, cache: EdgeJoinCache<G>) -> Result<EdgeKey, Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     let EdgeJoinCache {
@@ -459,7 +456,7 @@ pub fn extrude_with_cache<M, N, G, T>(
 ) -> Result<EdgeKey, Error>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry + EdgeLateral,
     G::Lateral: Mul<T>,
     G::Vertex: AsPosition,

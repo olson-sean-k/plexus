@@ -11,7 +11,7 @@ use buffer::MeshBuffer;
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Container, Core};
+use graph::container::{Bind, Consistent, Core};
 use graph::geometry::FaceCentroid;
 use graph::mutation::{Mutate, Mutation};
 use graph::storage::alias::InnerKey;
@@ -537,12 +537,7 @@ where
     }
 }
 
-impl<G> Container for Mesh<G>
-where
-    G: Geometry,
-{
-    type Contract = Consistent;
-}
+impl<G> Consistent for Mesh<G> where G: Geometry {}
 
 pub struct Iter<'a, I, T, G, Output>
 where

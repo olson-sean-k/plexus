@@ -1,8 +1,55 @@
 use geometry::Geometry;
-use graph::container::{Container, Indeterminate};
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Topological, Vertex};
+
+/// Marker trait for containers that promise to be in a consistent state.
+///
+/// This trait is only implemented by containers that expose storage and ensure
+/// that that storage is consistent via the mutation API.  Note that `Core`
+/// does not implement this trait, and instead acts as a raw container for
+/// topological storage that can be freely manipulated.
+///
+/// This trait allows code to make assumptions about the data it operates
+/// against. For example, views expose an API to user code that assumes that
+/// topologies are present and implicitly unwraps values.
+pub trait Consistent {}
+
+impl<'a, T> Consistent for &'a T where T: Consistent {}
+
+impl<'a, T> Consistent for &'a mut T where T: Consistent {}
+
+pub trait Reborrow {
+    type Target;
+
+    fn reborrow(&self) -> &Self::Target;
+}
+
+pub trait ReborrowMut: Reborrow {
+    fn reborrow_mut(&mut self) -> &mut Self::Target;
+}
+
+impl<'a, T> Reborrow for &'a T {
+    type Target = T;
+
+    fn reborrow(&self) -> &Self::Target {
+        *self
+    }
+}
+
+impl<'a, T> Reborrow for &'a mut T {
+    type Target = T;
+
+    fn reborrow(&self) -> &Self::Target {
+        &**self
+    }
+}
+
+impl<'a, T> ReborrowMut for &'a mut T {
+    fn reborrow_mut(&mut self) -> &mut Self::Target {
+        *self
+    }
+}
 
 pub trait Bind<T, M>
 where
@@ -14,7 +61,16 @@ where
     fn bind(self, source: M) -> Self::Output;
 }
 
-/// Abstract and ephemeral core mesh storage.
+/// Topological storage container.
+///
+/// A core may or may not own its storage and may or may not provide storage
+/// for all topologies (vertices, edges, and faces). When a core does not own
+/// its storage, it is ephemeral. A core that owns storage for all topologies
+/// is known as an owned core. See the `OwnedCore` type alias.
+///
+/// Unlike `Mesh`, `Core` does not implement the `Consistent` trait. `Mesh`
+/// contains an owned core, but does not mutate it outside of the mutation API,
+/// which maintains consistency.
 pub struct Core<V = (), E = (), F = ()> {
     vertices: V,
     edges: E,
@@ -174,6 +230,11 @@ where
     }
 }
 
-impl<V, E, F> Container for Core<V, E, F> {
-    type Contract = Indeterminate;
+pub mod alias {
+    use super::*;
+
+    use graph::storage::Storage;
+    use graph::topology::{Edge, Face, Vertex};
+
+    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 }

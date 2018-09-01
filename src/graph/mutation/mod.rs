@@ -11,7 +11,7 @@ use std::ops::{Deref, DerefMut};
 
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
-use graph::container::{Consistent, Container, Indeterminate};
+use graph::container::Consistent;
 use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
@@ -45,7 +45,7 @@ pub trait Mutate: Sized {
 
 pub struct Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -55,7 +55,7 @@ where
 
 impl<'a, M, N, G> Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -86,7 +86,7 @@ where
 
 impl<'a, M, G> AsRef<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
 where
-    M: Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_ref(&self) -> &Mutation<M, G> {
@@ -96,7 +96,7 @@ where
 
 impl<'a, M, G> AsMut<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
 where
-    M: Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_mut(&mut self) -> &mut Mutation<M, G> {
@@ -106,7 +106,7 @@ where
 
 impl<'a, M, N, G> Deref for Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -119,7 +119,7 @@ where
 
 impl<'a, M, N, G> DerefMut for Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -130,7 +130,7 @@ where
 
 impl<'a, M, N, G> Drop for Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -141,7 +141,7 @@ where
 
 impl<'a, M, N, G> Mutate for Replace<'a, M, N, G>
 where
-    M: 'a + Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
     G: 'a + Geometry,
 {
@@ -167,7 +167,7 @@ where
 /// Mesh mutation.
 pub struct Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     mutation: FaceMutation<G>,
@@ -176,7 +176,7 @@ where
 
 impl<M, G> Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     pub fn replace(container: &mut M, replacement: M) -> Replace<M, Self, G> {
@@ -186,7 +186,7 @@ where
 
 impl<M, G> AsRef<Self> for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_ref(&self) -> &Self {
@@ -196,7 +196,7 @@ where
 
 impl<M, G> AsMut<Self> for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_mut(&mut self) -> &mut Self {
@@ -206,7 +206,7 @@ where
 
 impl<M, G> AsStorage<Edge<G>> for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
@@ -216,7 +216,7 @@ where
 
 impl<M, G> AsStorage<Face<G>> for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
@@ -226,7 +226,7 @@ where
 
 impl<M, G> AsStorage<Vertex<G>> for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
@@ -234,17 +234,9 @@ where
     }
 }
 
-impl<M, G> Container for Mutation<M, G>
-where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
-{
-    type Contract = Indeterminate;
-}
-
 impl<M, G> Deref for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     type Target = FaceMutation<G>;
@@ -256,7 +248,7 @@ where
 
 impl<M, G> DerefMut for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -266,7 +258,7 @@ where
 
 impl<M, G> Mutate for Mutation<M, G>
 where
-    M: Container<Contract = Consistent> + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
     type Mutant = M;
