@@ -392,6 +392,31 @@ where
 /// Reachable API.
 impl<M, G> EdgeView<M, G>
 where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    G: Geometry,
+{
+    pub(in graph) fn reachable_orphan_vertices(&mut self) -> VertexCirculator<&mut M::Target, G> {
+        let (a, b) = self.key.to_vertex_keys();
+        let storage = self.storage.reborrow_mut();
+        (ArrayVec::from([b, a]), storage).into_view().unwrap()
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn orphan_vertices(&mut self) -> VertexCirculator<&mut M::Target, G> {
+        self.reachable_orphan_vertices()
+    }
+}
+
+/// Reachable API.
+impl<M, G> EdgeView<M, G>
+where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
