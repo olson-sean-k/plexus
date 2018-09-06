@@ -52,7 +52,7 @@ use std::iter::FromIterator;
 
 use geometry::convert::IntoGeometry;
 use primitive::{
-    Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
+    Arity, FlatIndexVertices, FromIndexer, HashIndexer, Indexer, IntoVertices, Topological,
 };
 
 #[derive(Debug, Fail)]
@@ -185,8 +185,7 @@ where
 
 impl<N, V, P> FromIndexer<P, P> for MeshBuffer<N, V>
 where
-    P: Arity + MapVerticesInto<usize>,
-    P::Output: IntoVertices,
+    P: Arity + IntoVertices + Topological,
     P::Vertex: IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
@@ -195,12 +194,9 @@ where
         I: IntoIterator<Item = P>,
         M: Indexer<P, P::Vertex>,
     {
-        let (indeces, vertices) = input.into_iter().index_vertices(indexer);
+        let (indeces, vertices) = input.into_iter().flat_index_vertices(indexer);
         MeshBuffer::from_raw_buffers(
-            indeces
-                .into_iter()
-                .flat_map(|topology| topology.into_vertices())
-                .map(|index| N::from(index).unwrap()),
+            indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
         ).unwrap()
     }
@@ -208,8 +204,7 @@ where
 
 impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
-    P: Arity + MapVerticesInto<usize>,
-    P::Output: IntoVertices,
+    P: Arity + IntoVertices + Topological,
     P::Vertex: Eq + Hash + IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
