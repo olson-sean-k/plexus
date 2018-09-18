@@ -428,8 +428,7 @@ where
             .chain(
                 self.reachable_opposite_edge()
                     .and_then(|opposite| opposite.face),
-            )
-            .collect();
+            ).collect();
         let storage = self.storage.reborrow();
         (keys, storage).into_view().unwrap()
     }
@@ -756,7 +755,8 @@ where
                 mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }
@@ -826,7 +826,8 @@ where
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }

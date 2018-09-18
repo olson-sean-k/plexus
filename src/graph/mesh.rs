@@ -148,7 +148,7 @@ where
                     expected: arity,
                     actual: face.len(),
                 }.context("index buffer lenght is not a multiple of arity")
-                    .into());
+                .into());
             }
             let mut perimeter = Vec::with_capacity(arity);
             for index in face {
@@ -622,7 +622,8 @@ where
                 use std::mem;
 
                 mem::transmute::<&'_ mut T, &'a mut T>(entry.1)
-            }).into_view()
+            })
+                .into_view()
                 .unwrap()
         })
     }
@@ -758,9 +759,9 @@ mod tests {
                 face.vertices()
                     .map(|vertex| vertex.geometry.clone())
                     .map(|position| (position.x, position.y))
-                    .collect::<HashSet<_>>() == *geometry
-            })
-            .unwrap()
+                    .collect::<HashSet<_>>()
+                    == *geometry
+            }).unwrap()
             .key();
         let cache = FaceRemoveCache::snapshot(&mesh, key).unwrap();
         let mut mutation = Mutation::mutate(mesh);

@@ -136,8 +136,7 @@ where
         + Add<
             <<VertexPosition<G> as Sub>::Output as Project>::Output,
             Output = VertexPosition<G>,
-        >
-        + Sub,
+        > + Sub,
     <VertexPosition<G> as Sub>::Output: Normalize + Project,
 {
     type Lateral = <VertexPosition<G> as Sub>::Output;

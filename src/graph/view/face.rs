@@ -209,8 +209,7 @@ where
                 face.reachable_vertices()
                     .map(|vertex| vertex.key())
                     .collect::<HashSet<_>>()
-            })
-            .fold(
+            }).fold(
                 self.reachable_vertices()
                     .map(|vertex| vertex.key())
                     .collect::<HashSet<_>>(),
@@ -647,7 +646,8 @@ where
                 mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.input.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }
@@ -736,7 +736,8 @@ where
                 mem::transmute::<&'_ mut Storage<Edge<G>>, &'a mut Storage<Edge<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }
@@ -817,7 +818,8 @@ where
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.input.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }

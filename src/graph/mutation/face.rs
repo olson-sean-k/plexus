@@ -71,8 +71,7 @@ where
                     //       iterator expression.
                     .unwrap()
                     .0
-            })
-            .collect::<Vec<_>>();
+            }).collect::<Vec<_>>();
         // Insert the face.
         let face = self.storage.insert(Face::new(edges[0], geometry.1));
         // If a singularity was detected, record it and its neighboring faces.
@@ -128,8 +127,7 @@ where
                         .map(|edge| edge.key())
                         .collect::<HashSet<_>>();
                     exterior.intersection(&interior).count() == 0
-                })
-                .count();
+                }).count();
             if n > 1 {
                 return Err(GraphError::TopologyConflict.into());
             }
@@ -198,8 +196,7 @@ where
                                 EdgeView::from_keyed_source(((a, b).into(), &core))
                                     .and_then(|edge| edge.into_reachable_previous_edge())
                                     .and_then(|edge| edge.into_reachable_opposite_edge())
-                            })
-                            .map(|edge| edge.key());
+                            }).map(|edge| edge.key());
                         let xb = incoming[&b]
                             .iter()
                             .flat_map(|xb| EdgeView::from_keyed_source((*xb, &core)))
@@ -208,8 +205,7 @@ where
                                 EdgeView::from_keyed_source(((a, b).into(), &core))
                                     .and_then(|edge| edge.into_reachable_next_edge())
                                     .and_then(|edge| edge.into_reachable_opposite_edge())
-                            })
-                            .map(|edge| edge.key());
+                            }).map(|edge| edge.key());
                         ax.into_iter().zip(xb.into_iter()).next()
                     })
             };
@@ -465,8 +461,7 @@ where
                             .geometry
                             .clone(),
                     )
-                })
-                .collect::<Vec<_>>(),
+                }).collect::<Vec<_>>(),
             destination: destination.to_key_topology(),
             cache,
         })
@@ -510,8 +505,7 @@ where
                 let position = geometry.as_position().clone() + translation.clone();
                 *geometry.as_position_mut() = position;
                 geometry
-            })
-            .collect();
+            }).collect();
         Ok(FaceExtrudeCache {
             sources,
             destinations,

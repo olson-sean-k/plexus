@@ -1,4 +1,4 @@
-use decorum::{R32, Real};
+use decorum::{Real, R32};
 use num::traits::FloatConst;
 use num::{NumCast, One};
 use std::cmp;
@@ -254,10 +254,11 @@ mod tests {
     fn index_to_vertex_mapping() {
         assert_eq!(
             5,
-            BTreeSet::from_iter(UvSphere::new(3, 2)
+            BTreeSet::from_iter(
+                UvSphere::new(3, 2)
                     .polygons_with_index() // 18 vertices, 5 indeces.
-                    .vertices())
-                .len()
+                    .vertices()
+            ).len()
         )
     }
 }

@@ -435,8 +435,7 @@ where
                     .get(&incoming)
                     .map(|incoming| incoming.next)
                     .map(|outgoing| (incoming, outgoing))
-            })
-            .and_then(|(incoming, outgoing)| {
+            }).and_then(|(incoming, outgoing)| {
                 self.breadcrumb.map(|_| {
                     if self.breadcrumb == outgoing {
                         self.breadcrumb = None;
@@ -495,7 +494,8 @@ where
                 mem::transmute::<&'_ mut Storage<Edge<G>>, &'a mut Storage<Edge<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }
@@ -571,7 +571,8 @@ where
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.input.storage.as_storage_mut(),
                 )
-            }).into_view()
+            })
+                .into_view()
         })
     }
 }

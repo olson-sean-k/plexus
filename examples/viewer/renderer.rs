@@ -100,8 +100,7 @@ where
             .create_shader_set(
                 include_bytes!("shader.v.glsl"),
                 include_bytes!("shader.f.glsl"),
-            )
-            .unwrap();
+            ).unwrap();
         let state = factory
             .create_pipeline_state(
                 &shaders,
@@ -114,8 +113,7 @@ where
                     samples: None,
                 },
                 pipeline::new(),
-            )
-            .unwrap();
+            ).unwrap();
         let data = Data {
             buffer: factory.create_vertex_buffer(&[]),
             transform: factory.create_constant_buffer(1),
