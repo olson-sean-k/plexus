@@ -491,7 +491,6 @@ where
     G: Geometry,
     P: MapVerticesInto<usize> + primitive::Topological,
     P::Output: IntoVertices,
-    <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: IntoGeometry<G::Vertex>,
 {
     fn from_indexer<I, N>(input: I, indexer: N) -> Self
@@ -506,18 +505,18 @@ where
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indeces {
-            let face = face.into_vertices();
             // The topology with the greatest arity emitted by indexing is a
             // quad. Avoid allocations by using an `ArrayVec`.
-            let mut perimeter = ArrayVec::<[_; Quad::<usize>::ARITY]>::new();
-            for index in face {
-                perimeter.push(vertices[index]);
+            let perimeter = face
+                .into_vertices()
+                .into_iter()
+                .map(|index| vertices[index])
+                .collect::<ArrayVec<[_; Quad::<usize>::ARITY]>>();
+            if let Err(_) = mutation.insert_face(&perimeter, Default::default()) {
+                return Mesh::default();
             }
-            mutation
-                .insert_face(&perimeter, Default::default())
-                .unwrap();
         }
-        mutation.commit().unwrap()
+        mutation.commit().unwrap_or_else(|_| Mesh::default())
     }
 }
 
@@ -526,7 +525,6 @@ where
     G: Geometry,
     P: MapVerticesInto<usize> + primitive::Topological,
     P::Output: IntoVertices,
-    <P::Output as IntoVertices>::Output: AsRef<[usize]>,
     P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
 {
     fn from_iter<I>(input: I) -> Self
