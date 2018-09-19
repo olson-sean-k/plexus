@@ -493,7 +493,9 @@ where
     P::Output: IntoVertices,
     P::Vertex: IntoGeometry<G::Vertex>,
 {
-    fn from_indexer<I, N>(input: I, indexer: N) -> Self
+    type Error = Error;
+
+    fn from_indexer<I, N>(input: I, indexer: N) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = P>,
         N: Indexer<P, P::Vertex>,
@@ -512,11 +514,9 @@ where
                 .into_iter()
                 .map(|index| vertices[index])
                 .collect::<ArrayVec<[_; Quad::<usize>::ARITY]>>();
-            if let Err(_) = mutation.insert_face(&perimeter, Default::default()) {
-                return Mesh::default();
-            }
+            mutation.insert_face(&perimeter, Default::default())?;
         }
-        mutation.commit().unwrap_or_else(|_| Mesh::default())
+        mutation.commit()
     }
 }
 
@@ -531,7 +531,7 @@ where
     where
         I: IntoIterator<Item = P>,
     {
-        Self::from_indexer(input, HashIndexer::default())
+        Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
     }
 }
 

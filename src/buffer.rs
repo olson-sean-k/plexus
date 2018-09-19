@@ -189,7 +189,9 @@ where
     P::Vertex: IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
-    fn from_indexer<I, M>(input: I, indexer: M) -> Self
+    type Error = Error;
+
+    fn from_indexer<I, M>(input: I, indexer: M) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = P>,
         M: Indexer<P, P::Vertex>,
@@ -198,7 +200,7 @@ where
         MeshBuffer::from_raw_buffers(
             indeces.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
-        ).unwrap()
+        )
     }
 }
 
@@ -212,7 +214,7 @@ where
     where
         I: IntoIterator<Item = P>,
     {
-        Self::from_indexer(input, HashIndexer::default())
+        Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
     }
 }
 

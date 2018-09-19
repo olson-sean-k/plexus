@@ -1,5 +1,6 @@
 use std::cmp;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
@@ -378,12 +379,14 @@ where
     }
 }
 
-pub trait FromIndexer<P, Q>
+pub trait FromIndexer<P, Q>: Sized
 where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
-    fn from_indexer<I, N>(input: I, indexer: N) -> Self
+    type Error: Debug;
+
+    fn from_indexer<I, N>(input: I, indexer: N) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = P>,
         N: Indexer<Q, P::Vertex>;
@@ -402,6 +405,11 @@ where
     /// This allows the default indexer (used by `collect`) to be overridden or
     /// otherwise made explicit in calling code.
     ///
+    /// # Errors
+    ///
+    /// Returns an error defined by the implementer if the target type cannot be
+    /// constructed from the indexed vertices.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -416,9 +424,10 @@ where
     /// # fn main() {
     /// let mesh = Cube::new()
     ///     .polygons_with_position()
-    ///     .collect_with_indexer::<Mesh<Point3<f32>>, _>(HashIndexer::default());
+    ///     .collect_with_indexer::<Mesh<Point3<f32>>, _>(HashIndexer::default())
+    ///     .unwrap();
     /// # }
-    fn collect_with_indexer<T, N>(self, indexer: N) -> T
+    fn collect_with_indexer<T, N>(self, indexer: N) -> Result<T, T::Error>
     where
         T: FromIndexer<P, Q>,
         N: Indexer<Q, P::Vertex>;
@@ -430,7 +439,7 @@ where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
-    fn collect_with_indexer<T, N>(self, indexer: N) -> T
+    fn collect_with_indexer<T, N>(self, indexer: N) -> Result<T, T::Error>
     where
         T: FromIndexer<P, Q>,
         N: Indexer<Q, P::Vertex>,
