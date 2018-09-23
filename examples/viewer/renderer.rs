@@ -106,7 +106,7 @@ where
                 &shaders,
                 Primitive::TriangleList,
                 Rasterizer {
-                    method: RasterMethod::Line(2),
+                    method: RasterMethod::Fill,
                     front_face: FrontFace::CounterClockwise,
                     cull_face: CullFace::Back,
                     offset: None,

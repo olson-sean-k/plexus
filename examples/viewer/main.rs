@@ -40,13 +40,13 @@ impl Geometry for FaceColorGeometry {
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
-    let mut mesh = UvSphere::new(32, 32)
+    let mut mesh = UvSphere::new(32, 16)
         .polygons_with_position_from(Bounds::unit_radius())
-        .triangulate()
         .collect::<Mesh<FaceColorGeometry>>();
     for mut face in mesh.orphan_faces() {
         face.geometry = Color4::random();
     }
+    mesh.triangulate().unwrap();
     mesh.to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))
         .unwrap()
 }
