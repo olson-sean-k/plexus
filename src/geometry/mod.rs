@@ -76,7 +76,8 @@ pub trait Attribute: Clone {}
 ///             color: Vector4::new(1.0, 1.0, 1.0, 1.0),
 ///         }
 ///     })
-///     .collect_with_indexer::<Mesh<VertexGeometry>, _>(LruIndexer::with_capacity(64));
+///     .collect_with_indexer::<Mesh<VertexGeometry>, _>(LruIndexer::with_capacity(64))
+///     .unwrap();
 /// # }
 /// ```
 pub trait Geometry: Sized {
