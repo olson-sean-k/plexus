@@ -103,11 +103,25 @@ impl PositionGenerator for Cube {
 impl PositionVertexGenerator for Cube {
     type Output = Triplet<R32>;
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
-        let x = if index & 0b100 == 0b100 { state.upper } else { state.lower };
-        let y = if index & 0b010 == 0b010 { state.upper } else { state.lower };
-        let z = if index & 0b001 == 0b001 { state.upper } else { state.lower };
+        let x = if index & 0b100 == 0b100 {
+            state.upper
+        }
+        else {
+            state.lower
+        };
+        let y = if index & 0b010 == 0b010 {
+            state.upper
+        }
+        else {
+            state.lower
+        };
+        let z = if index & 0b001 == 0b001 {
+            state.upper
+        }
+        else {
+            state.lower
+        };
         Triplet(x, y, z)
     }
 }
