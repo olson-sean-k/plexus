@@ -7,7 +7,7 @@ use primitive::generate::{
     PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
     VertexGenerator,
 };
-use primitive::topology::{MapVerticesInto, Quad};
+use primitive::topology::{Converged, Map, Quad};
 use primitive::Half;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -117,7 +117,7 @@ impl PositionPolygonGenerator for Cube {
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         self.polygon_with_index_from(&Default::default(), index)
-            .map_vertices_into(|index| self.vertex_with_position_from(state, index))
+            .map(|index| self.vertex_with_position_from(state, index))
     }
 }
 

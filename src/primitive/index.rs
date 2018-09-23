@@ -5,7 +5,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use primitive::decompose::IntoVertices;
-use primitive::topology::{Arity, MapVerticesInto, Topological};
+use primitive::topology::{Arity, Map, Topological};
 
 /// Vertex indexer.
 ///
@@ -223,7 +223,7 @@ where
 /// See `HashIndexer` and `LruIndexer`.
 pub trait IndexVertices<P>: Sized
 where
-    P: MapVerticesInto<usize> + Topological,
+    P: Map<usize> + Topological,
 {
     /// Indexes a topology stream into a structured index buffer and vertex
     /// buffer using the given indexer and keying function.
@@ -231,7 +231,7 @@ where
         self,
         indexer: N,
         f: F,
-    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
+    ) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K;
@@ -253,10 +253,7 @@ where
     ///     .triangulate()
     ///     .index_vertices(HashIndexer::default());
     /// ```
-    fn index_vertices<N>(
-        self,
-        indexer: N,
-    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
+    fn index_vertices<N>(self, indexer: N) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
     where
         N: Indexer<P, P::Vertex>,
     {
@@ -270,13 +267,13 @@ where
 impl<P, I> IndexVertices<P> for I
 where
     I: Iterator<Item = P>,
-    P: MapVerticesInto<usize> + Topological,
+    P: Map<usize> + Topological,
 {
     fn index_vertices_with<N, K, F>(
         self,
         mut indexer: N,
         f: F,
-    ) -> (Vec<<P as MapVerticesInto<usize>>::Output>, Vec<P::Vertex>)
+    ) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K,
@@ -284,7 +281,7 @@ where
         let mut indeces = Vec::new();
         let mut vertices = Vec::new();
         for topology in self {
-            indeces.push(topology.map_vertices_into(|vertex| {
+            indeces.push(topology.map(|vertex| {
                 let (index, vertex) = indexer.index(vertex, &f);
                 if let Some(vertex) = vertex {
                     vertices.push(vertex);

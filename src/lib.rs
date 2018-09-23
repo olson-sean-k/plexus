@@ -31,10 +31,10 @@ pub use decorum::{R32, R64};
 pub mod prelude {
     pub use geometry::{Duplet, Triplet};
     pub use primitive::{
-        CollectWithIndexer, Edges, FlatIndexVertices, IndexVertices, IntoEdges, IntoSubdivisions,
-        IntoTetrahedrons, IntoTriangles, IntoVertices, MapVertices, PolygonGenerator,
-        PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Subdivide, Tetrahedrons,
-        Triangulate, VertexGenerator, Vertices, VerticesWithPosition,
+        CollectWithIndexer, Converged, Edges, FlatIndexVertices, IndexVertices, IntoEdges,
+        IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices, Map, MapVertices,
+        PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Subdivide,
+        Tetrahedrons, Triangulate, VertexGenerator, Vertices, VerticesWithPosition, Zip,
     };
 }
 

@@ -24,8 +24,7 @@ use graph::view::{
 };
 use graph::GraphError;
 use primitive::{
-    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, MapVerticesInto,
-    Quad,
+    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, Map, Quad,
 };
 
 /// Half-edge graph representation of a mesh.
@@ -489,7 +488,7 @@ where
 impl<G, P> FromIndexer<P, P> for Mesh<G>
 where
     G: Geometry,
-    P: MapVerticesInto<usize> + primitive::Topological,
+    P: Map<usize> + primitive::Topological,
     P::Output: IntoVertices,
     P::Vertex: IntoGeometry<G::Vertex>,
 {
@@ -523,7 +522,7 @@ where
 impl<G, P> FromIterator<P> for Mesh<G>
 where
     G: Geometry,
-    P: MapVerticesInto<usize> + primitive::Topological,
+    P: Map<usize> + primitive::Topological,
     P::Output: IntoVertices,
     P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
 {

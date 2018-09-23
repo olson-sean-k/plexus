@@ -69,7 +69,6 @@ use num::{One, Zero};
 use std::ops::Div;
 
 pub(crate) use self::index::{FromIndexer, Indexer};
-pub(crate) use self::topology::{Arity, MapVerticesInto};
 
 pub use self::decompose::{
     Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices, Subdivide,
@@ -83,7 +82,8 @@ pub use self::index::{
     CollectWithIndexer, FlatIndexVertices, HashIndexer, IndexVertices, LruIndexer,
 };
 pub use self::topology::{
-    zip_vertices, Edge, MapVertices, Polygon, Polygonal, Quad, Rotate, Topological, Triangle,
+    zip_vertices, Arity, Converged, Edge, Map, MapVertices, Polygon, Polygonal, Quad, Rotate,
+    Topological, Triangle, Zip,
 };
 
 trait Half {
