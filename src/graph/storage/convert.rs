@@ -1,6 +1,23 @@
 use graph::storage::Storage;
 use graph::topology::Topological;
 
+pub trait FromInnerKey<K> {
+    fn from_inner_key(key: K) -> Self;
+}
+
+pub trait IntoOpaqueKey<K> {
+    fn into_opaque_key(self) -> K;
+}
+
+impl<K, I> IntoOpaqueKey<I> for K
+where
+    I: FromInnerKey<K>,
+{
+    fn into_opaque_key(self) -> I {
+        I::from_inner_key(self)
+    }
+}
+
 pub trait AsStorage<T>
 where
     T: Topological,

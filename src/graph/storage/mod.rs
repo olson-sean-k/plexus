@@ -3,8 +3,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use self::alias::*;
-use graph::storage::convert::{AsStorage, AsStorageMut};
+use graph::storage::convert::{AsStorage, AsStorageMut, FromInnerKey};
 use graph::topology::Topological;
 
 pub mod convert;
@@ -23,33 +22,32 @@ impl KeySequence for u64 {
     }
 }
 
-pub trait OpaqueKey: Copy + Sized {
-    type Inner: Copy + Eq + Hash + Into<Self>;
+pub trait OpaqueKey: Copy + Eq + Hash + Sized {
     type Sequence: KeySequence;
-
-    fn into_inner(self) -> Self::Inner;
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VertexKey(u64);
 
-impl From<u64> for VertexKey {
-    fn from(key: u64) -> Self {
-        VertexKey(key)
+impl FromInnerKey<u64> for VertexKey {
+    fn from_inner_key(inner: u64) -> Self {
+        VertexKey(inner)
+    }
+}
+
+impl KeySequence for VertexKey {
+    fn into_next_key(self) -> Self {
+        let VertexKey(inner) = self;
+        VertexKey(inner.into_next_key())
     }
 }
 
 impl OpaqueKey for VertexKey {
-    type Inner = u64;
-    type Sequence = u64;
-
-    fn into_inner(self) -> Self::Inner {
-        self.0
-    }
+    type Sequence = Self;
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct EdgeKey(u64, u64);
+pub struct EdgeKey(VertexKey, VertexKey);
 
 impl EdgeKey {
     // TODO: This may be useful in some existing code that constructs the
@@ -60,47 +58,38 @@ impl EdgeKey {
     }
 
     pub(in graph) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
-        (self.0.into(), self.1.into())
-    }
-}
-
-impl OpaqueKey for EdgeKey {
-    type Inner = (u64, u64);
-    type Sequence = ();
-
-    fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
-    }
-}
-
-impl From<(u64, u64)> for EdgeKey {
-    fn from(key: (u64, u64)) -> Self {
-        EdgeKey(key.0, key.1)
     }
 }
 
 impl From<(VertexKey, VertexKey)> for EdgeKey {
     fn from(key: (VertexKey, VertexKey)) -> Self {
-        EdgeKey(key.0.into_inner(), key.1.into_inner())
+        EdgeKey(key.0, key.1)
     }
+}
+
+impl OpaqueKey for EdgeKey {
+    type Sequence = ();
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(u64);
 
-impl From<u64> for FaceKey {
-    fn from(key: u64) -> Self {
-        FaceKey(key)
+impl FromInnerKey<u64> for FaceKey {
+    fn from_inner_key(inner: u64) -> Self {
+        FaceKey(inner)
+    }
+}
+
+impl KeySequence for FaceKey {
+    fn into_next_key(self) -> Self {
+        let FaceKey(inner) = self;
+        FaceKey(inner.into_next_key())
     }
 }
 
 impl OpaqueKey for FaceKey {
-    type Inner = u64;
-    type Sequence = u64;
-
-    fn into_inner(self) -> Self::Inner {
-        self.0
-    }
+    type Sequence = Self;
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -133,8 +122,8 @@ pub struct Storage<T>
 where
     T: Topological,
 {
-    sequence: Sequence<T>,
-    hash: HashMap<InnerKey<T>, T>,
+    sequence: <<T as Topological>::Key as OpaqueKey>::Sequence,
+    hash: HashMap<T::Key, T>,
 }
 
 impl<T> Storage<T>
@@ -176,50 +165,49 @@ where
         self.hash.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&InnerKey<T>, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&T::Key, &T)> {
         self.hash.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&InnerKey<T>, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&T::Key, &mut T)> {
         self.hash.iter_mut()
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = &InnerKey<T>> {
+    pub fn keys(&self) -> impl Iterator<Item = &T::Key> {
         self.hash.keys()
     }
 
     pub fn contains_key(&self, key: &T::Key) -> bool {
-        self.hash.contains_key(&key.into_inner())
+        self.hash.contains_key(key)
     }
 
     pub fn get(&self, key: &T::Key) -> Option<&T> {
-        self.hash.get(&key.into_inner())
+        self.hash.get(key)
     }
 
     pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
-        self.hash.get_mut(&key.into_inner())
+        self.hash.get_mut(key)
     }
 
     pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
-        self.hash.insert(key.into_inner(), item)
+        self.hash.insert(*key, item)
     }
 
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
-        self.hash.remove(&key.into_inner())
+        self.hash.remove(key)
     }
 }
 
-impl<T, K> Storage<T>
+impl<T> Storage<T>
 where
     T: Topological,
-    T::Key: From<K> + OpaqueKey<Inner = K, Sequence = K>,
-    K: Eq + Hash + KeySequence,
+    T::Key: KeySequence + OpaqueKey<Sequence = T::Key>,
 {
     pub fn insert(&mut self, item: T) -> T::Key {
         let key = self.sequence;
         self.hash.insert(key, item);
         self.sequence = self.sequence.into_next_key();
-        key.into()
+        key
     }
 }
 
@@ -239,11 +227,4 @@ where
     fn as_storage_mut(&mut self) -> &mut Storage<T> {
         self
     }
-}
-
-pub mod alias {
-    use super::*;
-
-    pub type InnerKey<T> = <<T as Topological>::Key as OpaqueKey>::Inner;
-    pub type Sequence<T> = <<T as Topological>::Key as OpaqueKey>::Sequence;
 }

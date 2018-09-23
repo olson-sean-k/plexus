@@ -14,7 +14,6 @@ use graph::container::alias::OwnedCore;
 use graph::container::{Bind, Consistent, Core};
 use graph::geometry::FaceCentroid;
 use graph::mutation::{Mutate, Mutation};
-use graph::storage::alias::InnerKey;
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
@@ -538,7 +537,7 @@ impl<G> Consistent for Mesh<G> where G: Geometry {}
 
 pub struct Iter<'a, I, T, G, Output>
 where
-    I: 'a + Iterator<Item = &'a InnerKey<T>>,
+    I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
     (T::Key, &'a Mesh<G>): IntoView<Output>,
@@ -550,7 +549,7 @@ where
 
 impl<'a, I, T, G, Output> From<(I, &'a Mesh<G>)> for Iter<'a, I, T, G, Output>
 where
-    I: 'a + Iterator<Item = &'a InnerKey<T>>,
+    I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
     (T::Key, &'a Mesh<G>): IntoView<Output>,
@@ -567,7 +566,7 @@ where
 
 impl<'a, I, T, G, Output> Iterator for Iter<'a, I, T, G, Output>
 where
-    I: 'a + Iterator<Item = &'a InnerKey<T>>,
+    I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
     (T::Key, &'a Mesh<G>): IntoView<Output>,
@@ -577,13 +576,13 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.input
             .next()
-            .map(|key| ((*key).into(), self.storage).into_view().unwrap())
+            .map(|key| (*key, self.storage).into_view().unwrap())
     }
 }
 
 pub struct IterMut<'a, I, T, Output>
 where
-    I: 'a + Iterator<Item = (&'a InnerKey<T>, &'a mut T)>,
+    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
     T: 'a + Topological,
     (T::Key, &'a mut T): IntoView<Output>,
 {
@@ -593,7 +592,7 @@ where
 
 impl<'a, I, T, Output> From<I> for IterMut<'a, I, T, Output>
 where
-    I: 'a + Iterator<Item = (&'a InnerKey<T>, &'a mut T)>,
+    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
     T: 'a + Topological,
     (T::Key, &'a mut T): IntoView<Output>,
 {
@@ -607,7 +606,7 @@ where
 
 impl<'a, I, T, Output> Iterator for IterMut<'a, I, T, Output>
 where
-    I: 'a + Iterator<Item = (&'a InnerKey<T>, &'a mut T)>,
+    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
     T: 'a + Topological,
     (T::Key, &'a mut T): IntoView<Output>,
 {
@@ -615,7 +614,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|entry| {
-            ((*entry.0).into(), unsafe {
+            (*entry.0, unsafe {
                 use std::mem;
 
                 mem::transmute::<&'_ mut T, &'a mut T>(entry.1)
