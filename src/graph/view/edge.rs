@@ -41,6 +41,9 @@ where
     M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
+    // TODO: This may become useful as the `mutation` module is developed. It
+    //       may also be necessary to expose this API to user code.
+    #[allow(dead_code)]
     pub(in graph) fn bind<T, N>(self, storage: N) -> EdgeView<<M as Bind<T, N>>::Output, G>
     where
         T: Topological,
@@ -152,6 +155,9 @@ where
     M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
+    // TODO: This is basic infrastructure and it is reasonably likely this will
+    //       be used in the future.
+    #[allow(dead_code)]
     fn interior_reborrow_mut(&mut self) -> EdgeView<&mut M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow_mut();

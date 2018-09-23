@@ -12,6 +12,20 @@ use graph::view::convert::FromKeyedSource;
 use graph::view::VertexView;
 use graph::{GraphError, IteratorExt};
 
+// TODO: This type needs some serious refactoring. Here are a few important
+//       points to keep in mind:
+//
+//       1. Some notion of a region may become an important part of the public
+//          API. A `RegionView` type may even be useful.
+//       2. There are two similar but distinct notions of a region that must be
+//          considered: a vertex-bounded region (which could encompass multiple
+//          faces) and a "potential face", which is conceptually a face that
+//          hasn't yet been inserted into a graph.
+//
+//       The API for `Region` is currently a bit of a mess. It's primary use is
+//       to provide a basic API for "potential faces" and singularity detection
+//       for insertions and removals.
+
 /// Vertex-bounded region connectivity.
 ///
 /// Describes the per-vertex edge connectivity of a region bounded by a set of

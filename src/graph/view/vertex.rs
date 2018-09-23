@@ -33,6 +33,9 @@ where
     M::Target: AsStorage<Vertex<G>>,
     G: Geometry,
 {
+    // TODO: This may become useful as the `mutation` module is developed. It
+    //       may also be necessary to expose this API to user code.
+    #[allow(dead_code)]
     pub(in graph) fn bind<T, N>(self, storage: N) -> VertexView<<M as Bind<T, N>>::Output, G>
     where
         T: Topological,
