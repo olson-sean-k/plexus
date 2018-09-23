@@ -191,7 +191,13 @@ pub enum GraphError {
 //       along "happy" or "expected" paths (this happens often in the
 //       `mutation` module.
 
-pub trait ResultExt<T>: Sized {
+trait ResultExt<T>: Sized {
+    /// If the `Result` is an error with the value
+    /// `GraphError::TopologyConflict`, then the given function is executed and
+    /// its `Result` is returned. Otherwise, the original `Result` is returned.
+    ///
+    /// Because this operates on the result of an operation, it does not cancel
+    /// or negate any mutations that may have occurred.
     fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
     where
         F: FnOnce() -> Result<T, Error>;
