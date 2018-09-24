@@ -17,7 +17,7 @@ use graph::mutation::{Mutate, Mutation};
 use graph::storage::convert::{AsStorage, AsStorageMut};
 use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::convert::{FromKeyedSource, IntoView};
+use graph::view::convert::IntoView;
 use graph::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
@@ -255,11 +255,10 @@ where
     {
         let faces = <Self as AsStorage<Face<G>>>::as_storage(self)
             .keys()
-            .map(|key| FaceKey::from(*key))
+            .cloned()
             .collect::<Vec<_>>();
         for face in faces {
-            let face = FaceView::<&mut Self, G>::from_keyed_source((face, self)).unwrap();
-            face.triangulate()?;
+            self.face_mut(face).unwrap().triangulate()?;
         }
         Ok(())
     }
