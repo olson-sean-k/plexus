@@ -1,5 +1,6 @@
 //! Storage for topological data in a mesh.
 
+use fnv::FnvBuildHasher;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -123,7 +124,7 @@ where
     T: Topological,
 {
     sequence: <<T as Topological>::Key as OpaqueKey>::Sequence,
-    hash: HashMap<T::Key, T>,
+    hash: HashMap<T::Key, T, FnvBuildHasher>,
 }
 
 impl<T> Storage<T>
@@ -133,7 +134,7 @@ where
     pub fn new() -> Self {
         Storage {
             sequence: Default::default(),
-            hash: HashMap::new(),
+            hash: HashMap::default(),
         }
     }
 
@@ -151,7 +152,7 @@ where
         U: Topological<Key = T::Key>,
         F: FnMut(T) -> U,
     {
-        let mut hash = HashMap::new();
+        let mut hash = HashMap::default();
         for (key, value) in self.hash {
             hash.insert(key, f(value));
         }

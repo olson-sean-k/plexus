@@ -48,6 +48,7 @@ arrayvec = "0.4.*"
 decorum = "0.0.11" # Unstable. Depend on exact version only.
 derivative = "1.0.*"
 failure = "0.1.*"
+fnv = "1.0.*"
 itertools = "0.6.*"
 num = "0.1.*"
 
