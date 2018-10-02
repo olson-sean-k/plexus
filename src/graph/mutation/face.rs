@@ -373,7 +373,7 @@ where
             .collect();
         Ok(FaceRemoveCache {
             abc,
-            mutuals: face.mutuals().into_iter().collect(),
+            mutuals: face.reachable_mutuals().into_iter().collect(),
             edges,
             // Find any boundary edges. Once this face is removed, such edges
             // will have no face on either side.

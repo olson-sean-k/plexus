@@ -194,8 +194,16 @@ where
                 .map(|edge| edge.to_key_topology()),
         )
     }
+}
 
-    pub fn arity(&self) -> usize {
+/// Reachable API.
+impl<M, G> FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    G: Geometry,
+{
+    pub(in graph) fn reachable_arity(&self) -> usize {
         self.reachable_interior_edges().count()
     }
 }
@@ -203,10 +211,22 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn arity(&self) -> usize {
+        self.reachable_arity()
+    }
+}
+
+/// Reachable API.
+impl<M, G> FaceView<M, G>
+where
+    M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn mutuals(&self) -> HashSet<VertexKey> {
+    pub(in graph) fn reachable_mutuals(&self) -> HashSet<VertexKey> {
         self.reachable_neighboring_faces()
             .map(|face| {
                 face.reachable_vertices()
