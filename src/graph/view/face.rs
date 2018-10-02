@@ -188,11 +188,7 @@ where
     G: Geometry,
 {
     pub fn to_key_topology(&self) -> FaceKeyTopology {
-        FaceKeyTopology::new(
-            self.key,
-            self.reachable_interior_edges()
-                .map(|edge| edge.to_key_topology()),
-        )
+        FaceKeyTopology::from(self.interior_reborrow())
     }
 }
 
@@ -590,22 +586,29 @@ pub struct FaceKeyTopology {
 }
 
 impl FaceKeyTopology {
-    fn new<I>(face: FaceKey, edges: I) -> Self
-    where
-        I: IntoIterator<Item = EdgeKeyTopology>,
-    {
-        FaceKeyTopology {
-            key: face,
-            edges: edges.into_iter().collect(),
-        }
-    }
-
     pub fn key(&self) -> FaceKey {
         self.key
     }
 
     pub fn interior_edges(&self) -> &[EdgeKeyTopology] {
         self.edges.as_slice()
+    }
+}
+
+impl<M, G> From<FaceView<M, G>> for FaceKeyTopology
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    G: Geometry,
+{
+    fn from(face: FaceView<M, G>) -> Self {
+        FaceKeyTopology {
+            key: face.key,
+            edges: face
+                .reachable_interior_edges()
+                .map(|edge| edge.to_key_topology())
+                .collect(),
+        }
     }
 }
 

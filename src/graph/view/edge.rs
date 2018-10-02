@@ -114,7 +114,7 @@ where
     }
 
     pub fn to_key_topology(&self) -> EdgeKeyTopology {
-        EdgeKeyTopology::new(self.key, self.key.to_vertex_keys())
+        EdgeKeyTopology::from(self.interior_reborrow())
     }
 
     pub fn is_boundary_edge(&self) -> bool {
@@ -680,19 +680,26 @@ pub struct EdgeKeyTopology {
 }
 
 impl EdgeKeyTopology {
-    fn new(edge: EdgeKey, vertices: (VertexKey, VertexKey)) -> Self {
-        EdgeKeyTopology {
-            key: edge,
-            vertices,
-        }
-    }
-
     pub fn key(&self) -> EdgeKey {
         self.key
     }
 
     pub fn vertices(&self) -> (VertexKey, VertexKey) {
         self.vertices
+    }
+}
+
+impl<M, G> From<EdgeView<M, G>> for EdgeKeyTopology
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn from(edge: EdgeView<M, G>) -> Self {
+        EdgeKeyTopology {
+            key: edge.key,
+            vertices: edge.key.to_vertex_keys(),
+        }
     }
 }
 
