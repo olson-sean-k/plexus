@@ -20,7 +20,7 @@ use graph::GraphError;
 pub trait FaceNormal: Geometry {
     type Normal;
 
-    fn normal<M>(face: &FaceView<M, Self>) -> Result<Self::Normal, Error>
+    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
@@ -36,7 +36,7 @@ where
 {
     type Normal = <<VertexPosition<G> as Sub>::Output as Cross>::Output;
 
-    fn normal<M>(face: &FaceView<M, Self>) -> Result<Self::Normal, Error>
+    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
@@ -56,7 +56,7 @@ where
 pub trait FaceCentroid: Geometry {
     type Centroid;
 
-    fn centroid<M>(face: &FaceView<M, Self>) -> Result<Self::Centroid, Error>
+    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
@@ -69,7 +69,7 @@ where
 {
     type Centroid = G::Vertex;
 
-    fn centroid<M>(face: &FaceView<M, Self>) -> Result<Self::Centroid, Error>
+    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
@@ -84,7 +84,7 @@ where
 pub trait EdgeMidpoint: Geometry {
     type Midpoint;
 
-    fn midpoint<M>(edge: &EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
+    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
@@ -98,7 +98,7 @@ where
 {
     type Midpoint = <VertexPosition<G> as Interpolate>::Output;
 
-    fn midpoint<M>(edge: &EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
+    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
@@ -122,7 +122,7 @@ where
 pub trait EdgeLateral: Geometry {
     type Lateral;
 
-    fn lateral<M>(edge: &EdgeView<M, Self>) -> Result<Self::Lateral, Error>
+    fn lateral<M>(edge: EdgeView<M, Self>) -> Result<Self::Lateral, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
@@ -141,7 +141,7 @@ where
 {
     type Lateral = <VertexPosition<G> as Sub>::Output;
 
-    fn lateral<M>(edge: &EdgeView<M, Self>) -> Result<Self::Lateral, Error>
+    fn lateral<M>(edge: EdgeView<M, Self>) -> Result<Self::Lateral, Error>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,

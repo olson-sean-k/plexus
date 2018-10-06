@@ -263,7 +263,7 @@ where
             .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
             .geometry
             .clone();
-        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(&edge)?;
+        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(edge)?;
         Ok(EdgeSplitCache {
             ab,
             ba: (b, a).into(),

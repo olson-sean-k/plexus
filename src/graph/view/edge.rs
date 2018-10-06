@@ -483,7 +483,7 @@ where
     G: EdgeMidpoint + Geometry,
 {
     pub fn midpoint(&self) -> Result<G::Midpoint, Error> {
-        G::midpoint(self)
+        G::midpoint(self.interior_reborrow())
     }
 }
 
@@ -516,7 +516,7 @@ where
     G: Geometry + EdgeLateral,
 {
     pub fn lateral(&self) -> Result<G::Lateral, Error> {
-        G::lateral(self)
+        G::lateral(self.interior_reborrow())
     }
 }
 

@@ -390,7 +390,7 @@ where
     G: FaceCentroid + Geometry,
 {
     pub fn centroid(&self) -> Result<G::Centroid, Error> {
-        G::centroid(self)
+        G::centroid(self.interior_reborrow())
     }
 }
 
@@ -422,7 +422,7 @@ where
     G: FaceNormal + Geometry,
 {
     pub fn normal(&self) -> Result<G::Normal, Error> {
-        G::normal(self)
+        G::normal(self.interior_reborrow())
     }
 }
 
