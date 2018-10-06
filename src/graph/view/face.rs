@@ -228,7 +228,8 @@ where
                 face.reachable_vertices()
                     .map(|vertex| vertex.key())
                     .collect::<HashSet<_>>()
-            }).fold(
+            })
+            .fold(
                 self.reachable_vertices()
                     .map(|vertex| vertex.key())
                     .collect::<HashSet<_>>(),

@@ -438,7 +438,8 @@ where
                     .get(&incoming)
                     .map(|incoming| incoming.next)
                     .map(|outgoing| (incoming, outgoing))
-            }).and_then(|(incoming, outgoing)| {
+            })
+            .and_then(|(incoming, outgoing)| {
                 self.breadcrumb.map(|_| {
                     if self.breadcrumb == outgoing {
                         self.breadcrumb = None;

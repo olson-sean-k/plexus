@@ -65,7 +65,8 @@ fn new_renderer(width: u32, height: u32) -> (EventsLoop, Renderer<GlutinRenderer
             .with_dimensions((width, height).into()),
         ContextBuilder::new(),
         &seat,
-    ).unwrap();
+    )
+    .unwrap();
     (seat, Renderer::from_glutin_window(window))
 }
 

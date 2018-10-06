@@ -434,7 +434,8 @@ where
             .chain(
                 self.reachable_opposite_edge()
                     .and_then(|opposite| opposite.face),
-            ).collect();
+            )
+            .collect();
         let storage = self.storage.reborrow();
         (keys, storage).into_view().unwrap()
     }
@@ -888,7 +889,8 @@ mod tests {
             vec![0, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
-        ).unwrap();
+        )
+        .unwrap();
         let source = find_edge_with_geometry(&mesh, ((1.0, 1.0), (1.0, 0.0))).unwrap();
         mesh.edge_mut(source).unwrap().extrude(1.0).unwrap();
 
@@ -912,7 +914,8 @@ mod tests {
                 (1.0, 1.0, 0.0), // 7
             ],
             4,
-        ).unwrap();
+        )
+        .unwrap();
         let source = find_edge_with_geometry(&mesh, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
         let destination =
             find_edge_with_geometry(&mesh, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();

@@ -93,12 +93,14 @@ impl<T> OptionExt<T> for Option<T> {
         F: Fn(&T) -> bool,
     {
         match self.take() {
-            Some(value) => if f(&value) {
-                Some(value)
+            Some(value) => {
+                if f(&value) {
+                    Some(value)
+                }
+                else {
+                    None
+                }
             }
-            else {
-                None
-            },
             _ => None,
         }
     }

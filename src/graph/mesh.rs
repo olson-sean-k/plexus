@@ -145,7 +145,8 @@ where
                 return Err(GraphError::ArityConflict {
                     expected: arity,
                     actual: face.len(),
-                }.context("index buffer lenght is not a multiple of arity")
+                }
+                .context("index buffer length is not a multiple of arity")
                 .into());
             }
             let mut perimeter = Vec::with_capacity(arity);
@@ -737,7 +738,8 @@ mod tests {
             vec![0, 1, 3, 1, 4, 3, 1, 2, 4],
             vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
             3,
-        ).unwrap();
+        )
+        .unwrap();
         // TODO: Create a shared testing geometry that allows topology to be
         //       marked and more easily located. Finding very specific geometry
         //       like this is cumbersome.
@@ -756,7 +758,8 @@ mod tests {
                     .map(|position| (position.x, position.y))
                     .collect::<HashSet<_>>()
                     == *geometry
-            }).unwrap()
+            })
+            .unwrap()
             .key();
         let cache = FaceRemoveCache::snapshot(&mesh, key).unwrap();
         let mut mutation = Mutation::mutate(mesh);

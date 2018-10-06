@@ -258,7 +258,8 @@ mod tests {
                 UvSphere::new(3, 2)
                     .polygons_with_index() // 18 vertices, 5 indeces.
                     .vertices()
-            ).len()
+            )
+            .len()
         )
     }
 }

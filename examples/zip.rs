@@ -34,6 +34,7 @@ fn main() {
     let (_, _) = polygons
         .map_vertices(|(position, plane)| {
             (position, plane, map_unit_uv(position, plane, 8.0.into()))
-        }).triangulate()
+        })
+        .triangulate()
         .index_vertices(HashIndexer::default());
 }

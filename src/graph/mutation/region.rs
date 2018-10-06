@@ -133,7 +133,8 @@ where
                         .map(|edge| edge.key())
                         .collect::<Vec<_>>(),
                 )
-            }).collect::<HashMap<_, _>>();
+            })
+            .collect::<HashMap<_, _>>();
         let incoming = self
             .vertices
             .iter()
@@ -147,7 +148,8 @@ where
                         .map(|edge| edge.key())
                         .collect::<Vec<_>>(),
                 )
-            }).collect::<HashMap<_, _>>();
+            })
+            .collect::<HashMap<_, _>>();
         // If only one vertex has any outgoing edges, then this face shares
         // exactly one vertex with other faces and is therefore non-manifold.
         //
