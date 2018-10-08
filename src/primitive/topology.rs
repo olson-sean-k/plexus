@@ -60,7 +60,7 @@ where
     T: Clone,
     U: Clone,
 {
-    fn map_vertices<F>(self, f: F) -> FlatMap<Self, T, U, F>
+    fn map_vertices<F>(self, f: F) -> InteriorMap<Self, T, U, F>
     where
         F: FnMut(T) -> U;
 }
@@ -73,23 +73,23 @@ where
     T: Clone,
     U: Clone,
 {
-    fn map_vertices<F>(self, f: F) -> FlatMap<Self, T, U, F>
+    fn map_vertices<F>(self, f: F) -> InteriorMap<Self, T, U, F>
     where
         F: FnMut(T) -> U,
     {
-        FlatMap::new(self, f)
+        InteriorMap::new(self, f)
     }
 }
 
-pub struct FlatMap<I, T, U, F> {
+pub struct InteriorMap<I, T, U, F> {
     input: I,
     f: F,
     phantom: PhantomData<(T, U)>,
 }
 
-impl<I, T, U, F> FlatMap<I, T, U, F> {
+impl<I, T, U, F> InteriorMap<I, T, U, F> {
     fn new(input: I, f: F) -> Self {
-        FlatMap {
+        InteriorMap {
             input,
             f,
             phantom: PhantomData,
@@ -97,7 +97,7 @@ impl<I, T, U, F> FlatMap<I, T, U, F> {
     }
 }
 
-impl<I, T, U, F, P, Q> Iterator for FlatMap<I, T, U, F>
+impl<I, T, U, F, P, Q> Iterator for InteriorMap<I, T, U, F>
 where
     I: Iterator<Item = P>,
     F: FnMut(T) -> U,
