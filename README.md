@@ -1,19 +1,19 @@
 ![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.png)
 
-**Plexus** is a Rust library for generating and manipulating 2D and 3D meshes.
+**Plexus** is a Rust library for manipulating 2D and 3D meshes.
 
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
 [![Build Status](https://ci.appveyor.com/api/projects/status/0uy6rcg3tvbu6cms?svg=true)](https://ci.appveyor.com/project/olson-sean-k/plexus)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
 [![Crate](https://img.shields.io/crates/v/plexus.svg)](https://crates.io/crates/plexus)
 
-## Generation and Iterator Expressions
+## Primitives and Iterator Expressions
 
 Streams of topological and geometric data can be generated from primitives like
 cubes and spheres using iterator expressions. Primitives emit topological
 structures like `Triangle`s or `Quad`s, which contain arbitrary data in their
 vertices. These can be transformed and decomposed into other topologies and
-geometric data via triangulation, tesselation, and other operations.
+geometric data via tessellation and other operations.
 
 ```rust
 use nalgebra::Point3;
@@ -39,11 +39,11 @@ example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 
 ## Half-Edge Graph Meshes
 
-Generators produce an ephemeral stream of topology and vertex geometry. A
+Primitives produce an ephemeral stream of topology and vertex geometry. A
 `Mesh`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
 arbitrary geometry for vertices, edges, and faces. The graph can also be
-traversed and manipulated in ways that generators and iterator expressions
+traversed and manipulated in ways that iterator expressions and simple buffers
 cannot, such as circulation, extrusion, merging, and joining.
 
 ```rust
@@ -66,7 +66,7 @@ if let Ok(face) = mesh.face_mut(key).unwrap().extrude(1.0) {
 
 Plexus avoids exposing very basic topological operations like inserting
 individual vertices, because they can easily be done incorrectly and lead to
-invalid topologies. Instead, meshes are manipulated with higher-level
+invalid topologies. Instead, meshes are typically manipulated with higher-level
 operations like extrusion and joining.
 
 ## Geometric Traits
@@ -115,6 +115,6 @@ positional data, operations like extrusion, splitting, etc. are exposed.
 Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) and
 [cgmath](https://crates.io/crates/cgmath) crates so that common types can be
-used right away for vertex geometry. See the `geometry-cgmath` and
+used out-of-the-box for vertex geometry. See the `geometry-cgmath` and
 `geometry-nalgebra` (enabled by default) crate features. Both 2D and 3D
 geometry are supported by mesh operations.

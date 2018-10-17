@@ -10,7 +10,7 @@ use primitive::topology::{Arity, Map, Topological};
 /// Vertex indexer.
 ///
 /// Disambiguates arbitrary vertex data and emits a one-to-one mapping of
-/// indeces to vertices. This is essential for forming basic rendering buffers
+/// indeces to vertices. This is useful for generating basic rendering buffers
 /// for graphics pipelines.
 pub trait Indexer<T, K>
 where
@@ -32,10 +32,13 @@ where
 /// reliable, and requires no configuration. Prefer this indexer when possible.
 ///
 /// The vertex key data must be hashable (implement `Hash`). Most vertex data
-/// includes floating point values (i.e., `f32` or `f64`), which do not
+/// includes floating-point values (i.e., `f32` or `f64`), which do not
 /// implement `Hash`. To avoid problems with hashing, primitive generators emit
-/// wrapper types (see `R32` and `R64`) that provide hashable floating point
+/// wrapper types (see `R32` and `R64`) that provide hashable floating-point
 /// values, so this indexer can typically be used without any additional work.
+///
+/// See the [decorum](https://crates.io/crates/decorum) crate for more about
+/// hashable floating-point values.
 ///
 /// # Examples
 ///
@@ -108,7 +111,7 @@ where
 
 /// LRU caching vertex indexer.
 ///
-/// This indexer uses an LRU (least recently used) cache to form an index. To
+/// This indexer uses an LRU (least-recently-used) cache to form an index. To
 /// function correctly, an adequate cache capacity is necessary. If the
 /// capacity is insufficient, then redundant vertex data may be emitted. See
 /// `with_capacity`.
@@ -221,6 +224,35 @@ where
 /// constant arity, see `FlatIndexVertices`.
 ///
 /// See `HashIndexer` and `LruIndexer`.
+///
+/// # Examples
+///
+/// Note that using an indexer is not always the most effecient method to
+/// create buffers or meshes from a topology stream. Depending on the iterator
+/// expression, it may be possible to use `PolygonsWithIndex` to produce an
+/// index buffer separately and more effeciently.
+///
+/// ```rust
+/// use plexus::prelude::*;
+/// use plexus::primitive::sphere::UvSphere;
+/// use plexus::primitive::HashIndexer;
+///
+/// let sphere = UvSphere::new(64, 32);
+///
+/// // More efficient.
+/// let (indeces, positions) = (
+///     sphere.polygons_with_index()
+///         .triangulate()
+///         .collect::<Vec<_>>(),
+///     sphere.vertices_with_position()
+///         .collect::<Vec<_>>(),
+/// );
+///
+/// // Less efficient.
+/// let (indeces, positions) = sphere.polygons_with_position()
+///     .triangulate()
+///     .index_vertices(HashIndexer::default());
+/// ```
 pub trait IndexVertices<P>: Sized
 where
     P: Map<usize> + Topological,
@@ -301,12 +333,37 @@ where
 /// ensure that all polygons have the same arity. For structured buffers with
 /// variable arity, see `IndexVertices`.
 ///
+/// See `HashIndexer` and `LruIndexer`.
+///
+/// # Examples
+///
 /// Note that using an indexer is not always the most effecient method to
 /// create buffers or meshes from a topology stream. Depending on the iterator
 /// expression, it may be possible to use `PolygonsWithIndex` to produce an
 /// index buffer separately and more effeciently.
 ///
-/// See `HashIndexer` and `LruIndexer`.
+/// ```rust
+/// use plexus::prelude::*;
+/// use plexus::primitive::sphere::UvSphere;
+/// use plexus::primitive::HashIndexer;
+///
+/// let sphere = UvSphere::new(64, 32);
+///
+/// // More efficient.
+/// let (indeces, positions) = (
+///     sphere.polygons_with_index()
+///         .triangulate()
+///         .vertices()
+///         .collect::<Vec<_>>(),
+///     sphere.vertices_with_position()
+///         .collect::<Vec<_>>(),
+/// );
+///
+/// // Less efficient.
+/// let (indeces, positions) = sphere.polygons_with_position()
+///     .triangulate()
+///     .flat_index_vertices(HashIndexer::default());
+/// ```
 pub trait FlatIndexVertices<P>: Sized
 where
     P: Arity + IntoVertices + Topological,
@@ -389,7 +446,7 @@ where
         N: Indexer<Q, P::Vertex>;
 }
 
-/// Functions for collecting a topology stream into a mesh or buffer.
+/// Functions for collecting a topology stream into a mesh, buffer, etc.
 ///
 /// See `HashIndexer` and `LruIndexer`.
 pub trait CollectWithIndexer<P, Q>
@@ -397,7 +454,7 @@ where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
-    /// Collects a topology stream into a mesh or buffer using an indexer.
+    /// Collects a topology stream into a mesh, buffer, etc. using an indexer.
     ///
     /// This allows the default indexer (used by `collect`) to be overridden or
     /// otherwise made explicit in calling code.

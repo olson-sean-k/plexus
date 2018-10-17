@@ -39,10 +39,25 @@ where
     I: Iterator<Item = P>,
     R: IntoIterator<Item = P>,
 {
-    // TODO: This is questionable, but allows operations whose inputs and
-    //       outputs are the same to recurse. This is especially useful for
-    //       larger `n` values, where chaining calls to operations like
-    //       `subdivide` is not practical.
+    /// Reapplies a congruent decomposition.
+    ///
+    /// A decomposition is congruent if its input and output types are the
+    /// same. This is useful when the number of applications is somewhat large
+    /// or variable, in which case chaining calls is impractical or impossible.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::HashIndexer;
+    ///
+    /// let (indeces, positions) = Cube::new()
+    ///     .polygons_with_position()
+    ///     .subdivide()
+    ///     .remap(7) // 8 subdivision operations are applied.
+    ///     .flat_index_vertices(HashIndexer::default());
+    /// ```
     pub fn remap(self, n: usize) -> Decompose<Remap<P>, P, P, R> {
         let Decompose { input, output, f } = self;
         Decompose::new(output.into_iter().rev().chain(remap(n, input, f)), f)

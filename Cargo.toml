@@ -5,7 +5,7 @@ authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/olson-sean-k/plexus"
-description = "3D mesh generation and manipulation."
+description = "2D and 3D mesh manipulation."
 keywords = ["graphics", "half-edge", "mesh", "topology"]
 
 [package.metadata.docs.rs]
@@ -13,11 +13,6 @@ keywords = ["graphics", "half-edge", "mesh", "topology"]
 # linear algebra crates are shown.
 all-features = true
 rustdoc-args = [
-    # Including this option exposes documentation for aliased and dereferenced
-    # types that are not re-exported. However, it also generates a lot of
-    # spurious documentation. When enabled, the documentation is more clean but
-    # incomplete. Topological views are undocumented, for example.
-    #
     # https://github.com/rust-lang/rust/issues/39437
     #
     #"--document-private-items"
