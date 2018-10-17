@@ -3,7 +3,6 @@
 **Plexus** is a Rust library for manipulating 2D and 3D meshes.
 
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
-[![Build Status](https://ci.appveyor.com/api/projects/status/0uy6rcg3tvbu6cms?svg=true)](https://ci.appveyor.com/project/olson-sean-k/plexus)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
 [![Crate](https://img.shields.io/crates/v/plexus.svg)](https://crates.io/crates/plexus)
 

@@ -19,7 +19,6 @@ rustdoc-args = [
 ]
 
 [badges]
-appveyor = { repository = "olson-sean-k/plexus" }
 travis-ci = { repository = "olson-sean-k/plexus" }
 
 [[example]]
