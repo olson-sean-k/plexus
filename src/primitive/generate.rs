@@ -19,7 +19,7 @@ impl<'a, G, S, P> Generate<'a, G, S, P>
 where
     G: 'a,
 {
-    pub(super) fn new(
+    pub(in primitive) fn new(
         generator: &'a G,
         state: S,
         range: Range<usize>,
