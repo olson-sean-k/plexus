@@ -21,7 +21,7 @@ use glutin::{
 use nalgebra::{Matrix4, Point3, Scalar};
 use plexus::buffer::MeshBuffer;
 use plexus::geometry::{Attribute, Geometry};
-use plexus::graph::Mesh;
+use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
@@ -40,14 +40,15 @@ impl Geometry for FaceColorGeometry {
 }
 
 fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
-    let mut mesh = UvSphere::new(32, 16)
+    let mut graph = UvSphere::new(32, 16)
         .polygons_with_position_from(Bounds::unit_radius())
-        .collect::<Mesh<FaceColorGeometry>>();
-    for mut face in mesh.orphan_faces() {
+        .collect::<MeshGraph<FaceColorGeometry>>();
+    for mut face in graph.orphan_faces() {
         face.geometry = Color4::random();
     }
-    mesh.triangulate().unwrap();
-    mesh.to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))
+    graph.triangulate().unwrap();
+    graph
+        .to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))
         .unwrap()
 }
 
@@ -73,7 +74,7 @@ fn new_renderer(width: u32, height: u32) -> (EventsLoop, Renderer<GlutinRenderer
 fn main() {
     let (mut seat, mut renderer) = new_renderer(1024, 576);
     let mut camera = new_camera(1024.0 / 576.0);
-    let mesh = new_mesh_buffer();
+    let buffer = new_mesh_buffer();
     seat.run_forever(|event| {
         match event {
             Event::WindowEvent {
@@ -95,7 +96,7 @@ fn main() {
         renderer
             .set_transform(&Transform::new(&camera.transform(), &Matrix4::identity()))
             .unwrap();
-        renderer.draw_mesh_buffer(&mesh);
+        renderer.draw_mesh_buffer(&buffer);
         renderer.flush().unwrap();
         ControlFlow::Continue
     });

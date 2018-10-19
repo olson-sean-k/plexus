@@ -7,12 +7,12 @@
 //!
 //! # Representation
 //!
-//! `Mesh`es store topological data using associative collections. Keys are
+//! `MeshGraph`s store topological data using associative collections. Keys are
 //! exposed as strongly typed and opaque values, which can be used to refer to
 //! a topological structure, such as `VertexKey`. Topology is typically
 //! manipulated using a view.
 //!
-//! A `Mesh` is conceptually composed of vertices, half-edges, and faces.
+//! A `MeshGraph` is conceptually composed of vertices, half-edges, and faces.
 //! Half-edges are directed and join vertices. Every half-edge is paired with
 //! an opposite half-edge with the opposite direction.  Given a half-edge that
 //! connects a vertex `a` to a vertex `b`, that half-edge will have an opposite
@@ -32,10 +32,10 @@
 //!
 //! # Topological Views
 //!
-//! `Mesh`es expose views over their topological structures (vertices, edges,
-//! and faces). Views are accessed via keys or iteration and behave similarly
-//! to references. They provide the primary API for interacting with a mesh's
-//! topology and geometry. There are three types summarized below:
+//! `MeshGraph`s expose views over their topological structures (vertices,
+//! edges, and faces). Views are accessed via keys or iteration and behave
+//! similarly to references. They provide the primary API for interacting with
+//! a mesh's topology and geometry. There are three types summarized below:
 //!
 //! | Type      | Traversal | Exclusive | Geometry  | Topology  |
 //! |-----------|-----------|-----------|-----------|-----------|
@@ -81,14 +81,14 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::graph::Mesh;
+//! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let mut mesh = UvSphere::new(16, 16)
+//! let mut graph = UvSphere::new(16, 16)
 //!     .polygons_with_position()
-//!     .collect::<Mesh<Point3<f32>>>();
+//!     .collect::<MeshGraph<Point3<f32>>>();
 //! # }
 //! ```
 //!
@@ -98,16 +98,16 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
-//! use plexus::graph::Mesh;
+//! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let mut mesh = UvSphere::new(16, 16)
+//! let mut graph = UvSphere::new(16, 16)
 //!     .polygons_with_position()
-//!     .collect::<Mesh<Point3<f32>>>();
-//! let key = mesh.faces().nth(0).unwrap().key(); // Get the key of the first face.
-//! mesh.face_mut(key).unwrap().extrude(1.0).unwrap(); // Extrude the face.
+//!     .collect::<MeshGraph<Point3<f32>>>();
+//! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
+//! graph.face_mut(key).unwrap().extrude(1.0).unwrap(); // Extrude the face.
 //! # }
 //! ```
 //!
@@ -117,20 +117,20 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point2;
-//! use plexus::graph::Mesh;
+//! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mut mesh = Mesh::<Point2<f32>>::from_raw_buffers(
+//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
 //!     vec![0, 1, 2, 3],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //!     4,
 //! ).unwrap();
-//! mesh.triangulate().unwrap();
+//! graph.triangulate().unwrap();
 //!
 //! // Traverse an edge and use a circulator to get the faces of a nearby vertex.
-//! let key = mesh.edges().nth(0).unwrap().key();
-//! let mut vertex = mesh
+//! let key = graph.edges().nth(0).unwrap().key();
+//! let mut vertex = graph
 //!     .edge_mut(key)
 //!     .unwrap()
 //!     .into_opposite_edge()
@@ -152,10 +152,10 @@ mod view;
 
 use failure::Error;
 
-pub use self::mesh::Mesh;
+pub use self::mesh::MeshGraph;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
-//       for mutable, immutable, and orphan views over a `Mesh` would be
+//       for mutable, immutable, and orphan views over a `MeshGraph` would be
 //       simpler and help insulate users from the complexity of views, but it
 //       is currently not possible to document such aliases. See:
 //       https://github.com/rust-lang/rust/issues/39437

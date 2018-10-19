@@ -384,7 +384,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::sphere::UvSphere;
     /// use plexus::primitive::HashIndexer;
@@ -395,7 +395,7 @@ where
     ///     .triangulate()
     ///     .flat_index_vertices(HashIndexer::default());
     /// // `indeces` is a flat buffer with arity 3.
-    /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
     /// # }
     /// ```
     fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
@@ -470,15 +470,15 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::HashIndexer;
     ///
     /// # fn main() {
-    /// let mesh = Cube::new()
+    /// let graph = Cube::new()
     ///     .polygons_with_position()
-    ///     .collect_with_indexer::<Mesh<Point3<f32>>, _>(HashIndexer::default())
+    ///     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
     ///     .unwrap();
     /// # }
     fn collect_with_indexer<T, N>(self, indexer: N) -> Result<T, T::Error>

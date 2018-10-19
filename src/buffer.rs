@@ -26,22 +26,22 @@
 //! # }
 //! ```
 //!
-//! Converting a `Mesh` to a `MeshBuffer`:
+//! Converting a `MeshGraph` to a `MeshBuffer`:
 //!
 //! ```rust
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
-//! use plexus::graph::Mesh;
+//! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //!
 //! # fn main() {
-//! let mesh = Cube::new()
+//! let graph = Cube::new()
 //!     .polygons_with_position()
-//!     .collect::<Mesh<Point3<f32>>>();
-//! let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<f32>>().unwrap();
+//!     .collect::<MeshGraph<Point3<f32>>>();
+//! let buffer = graph.to_mesh_buffer_by_vertex::<u32, Point3<f32>>().unwrap();
 //! # }
 //! ```
 
@@ -239,10 +239,12 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
-        let mesh = sphere::UvSphere::new(3, 2)
+        let graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
-        let buffer = mesh.to_mesh_buffer_by_vertex::<u32, Point3<f32>>().unwrap();
+            .collect::<MeshGraph<Point3<f32>>>();
+        let buffer = graph
+            .to_mesh_buffer_by_vertex::<u32, Point3<f32>>()
+            .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -250,10 +252,10 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_face() {
-        let mesh = sphere::UvSphere::new(3, 2)
+        let graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
-        let buffer = mesh.to_mesh_buffer_by_face::<u32, Point3<f32>>().unwrap();
+            .collect::<MeshGraph<Point3<f32>>>();
+        let buffer = graph.to_mesh_buffer_by_face::<u32, Point3<f32>>().unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(18, buffer.as_vertex_slice().len());

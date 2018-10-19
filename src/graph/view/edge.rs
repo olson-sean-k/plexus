@@ -79,17 +79,17 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point2;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let mut mesh = Mesh::<Point2<f32>>::from_raw_buffers(
+    /// let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
     ///     vec![0, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     ///     4,
     /// ).unwrap();
-    /// let key = mesh.edges().find(|edge| edge.is_boundary_edge()).unwrap().key();
-    /// let edge = mesh.edge_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    /// let key = graph.edges().find(|edge| edge.is_boundary_edge()).unwrap().key();
+    /// let edge = graph.edge_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = edge.into_next_edge().into_next_edge().into_face();
@@ -855,19 +855,20 @@ mod tests {
     use graph::*;
     use primitive::*;
 
-    fn find_vertex_with_geometry<G, T>(mesh: &Mesh<G>, geometry: T) -> Option<VertexKey>
+    fn find_vertex_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: T) -> Option<VertexKey>
     where
         G: Geometry,
         G::Vertex: PartialEq,
         T: IntoGeometry<G::Vertex>,
     {
         let geometry = geometry.into_geometry();
-        mesh.vertices()
+        graph
+            .vertices()
             .find(|vertex| vertex.geometry == geometry)
             .map(|vertex| vertex.key())
     }
 
-    fn find_edge_with_geometry<G, T>(mesh: &Mesh<G>, geometry: (T, T)) -> Option<EdgeKey>
+    fn find_edge_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<EdgeKey>
     where
         G: Geometry,
         G::Vertex: PartialEq,
@@ -875,8 +876,8 @@ mod tests {
     {
         let (source, destination) = geometry;
         match (
-            find_vertex_with_geometry(mesh, source),
-            find_vertex_with_geometry(mesh, destination),
+            find_vertex_with_geometry(graph, source),
+            find_vertex_with_geometry(graph, destination),
         ) {
             (Some(source), Some(destination)) => Some((source, destination).into()),
             _ => None,
@@ -885,23 +886,23 @@ mod tests {
 
     #[test]
     fn extrude_edge() {
-        let mut mesh = Mesh::<Point2<f32>>::from_raw_buffers(
+        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
             vec![0, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
         )
         .unwrap();
-        let source = find_edge_with_geometry(&mesh, ((1.0, 1.0), (1.0, 0.0))).unwrap();
-        mesh.edge_mut(source).unwrap().extrude(1.0).unwrap();
+        let source = find_edge_with_geometry(&graph, ((1.0, 1.0), (1.0, 0.0))).unwrap();
+        graph.edge_mut(source).unwrap().extrude(1.0).unwrap();
 
-        assert_eq!(14, mesh.edge_count());
-        assert_eq!(2, mesh.face_count());
+        assert_eq!(14, graph.edge_count());
+        assert_eq!(2, graph.face_count());
     }
 
     #[test]
     fn join_edges() {
         // Construct a mesh with two independent quads.
-        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(
+        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(
             vec![0, 1, 2, 3, 4, 5, 6, 7],
             vec![
                 (-2.0, 0.0, 0.0),
@@ -916,13 +917,13 @@ mod tests {
             4,
         )
         .unwrap();
-        let source = find_edge_with_geometry(&mesh, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
+        let source = find_edge_with_geometry(&graph, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
         let destination =
-            find_edge_with_geometry(&mesh, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
-        mesh.edge_mut(source).unwrap().join(destination).unwrap();
+            find_edge_with_geometry(&graph, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
+        graph.edge_mut(source).unwrap().join(destination).unwrap();
 
-        assert_eq!(20, mesh.edge_count());
-        assert_eq!(3, mesh.face_count());
+        assert_eq!(20, graph.edge_count());
+        assert_eq!(3, graph.face_count());
     }
 
     #[test]
@@ -930,9 +931,9 @@ mod tests {
         let (indeces, vertices) = cube::Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
-        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
-        let key = mesh.edges().nth(0).unwrap().key();
-        let vertex = mesh.edge_mut(key).unwrap().split().unwrap().into_ref();
+        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
+        let key = graph.edges().nth(0).unwrap().key();
+        let vertex = graph.edge_mut(key).unwrap().split().unwrap().into_ref();
 
         assert_eq!(5, vertex.into_outgoing_edge().into_face().unwrap().arity());
         assert_eq!(

@@ -68,9 +68,9 @@ where
 /// its storage, it is ephemeral. A core that owns storage for all topologies
 /// is known as an owned core. See the `OwnedCore` type alias.
 ///
-/// Unlike `Mesh`, `Core` does not implement the `Consistent` trait. `Mesh`
-/// contains an owned core, but does not mutate it outside of the mutation API,
-/// which maintains consistency.
+/// Unlike `MeshGraph`, `Core` does not implement the `Consistent` trait.
+/// `MeshGraph` contains an owned core, but does not mutate it outside of the
+/// mutation API, which maintains consistency.
 pub struct Core<V = (), E = (), F = ()> {
     vertices: V,
     edges: E,

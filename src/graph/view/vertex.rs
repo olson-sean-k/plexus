@@ -71,16 +71,16 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
-    /// let mut mesh = Cube::new()
+    /// let mut graph = Cube::new()
     ///     .polygons_with_position()
-    ///     .collect::<Mesh<Point3<f32>>>();
-    /// let key = mesh.edges().nth(0).unwrap().key();
-    /// let vertex = mesh.edge_mut(key).unwrap().split().unwrap().into_ref();
+    ///     .collect::<MeshGraph<Point3<f32>>>();
+    /// let key = graph.edges().nth(0).unwrap().key();
+    /// let vertex = graph.edge_mut(key).unwrap().split().unwrap().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = vertex.into_outgoing_edge().into_face().unwrap();
@@ -590,13 +590,13 @@ mod tests {
 
     #[test]
     fn circulate_over_edges() {
-        let mesh = sphere::UvSphere::new(4, 2)
+        let graph = sphere::UvSphere::new(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f32>>>();
 
         // All faces should be triangles and all vertices should have 4
         // (incoming) edges.
-        for vertex in mesh.vertices() {
+        for vertex in graph.vertices() {
             assert_eq!(4, vertex.incoming_edges().count());
         }
     }

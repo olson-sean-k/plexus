@@ -4,7 +4,7 @@
 //! graphs. Implementing these traits implicitly implements internal traits,
 //! which in turn enable geometric features.
 //!
-//! To use types as geometry in a `Mesh` only requires implementing the
+//! To use types as geometry in a `MeshGraph` only requires implementing the
 //! `Geometry` and `Attribute` traits. Implementing operations like `Cross`,
 //! `Normalize`, etc., enable features like extrusion and splitting.
 
@@ -34,7 +34,7 @@ pub trait Attribute: Clone {}
 /// use nalgebra::{Point3, Vector4};
 /// use plexus::geometry::convert::{AsPosition, IntoGeometry};
 /// use plexus::geometry::{Attribute, Geometry};
-/// use plexus::graph::Mesh;
+/// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
 /// use plexus::primitive::LruIndexer;
@@ -68,7 +68,7 @@ pub trait Attribute: Clone {}
 ///
 /// # fn main() {
 /// // Create a mesh from a sphere primitive and map the geometry data.
-/// let mut mesh = UvSphere::new(8, 8)
+/// let mut graph = UvSphere::new(8, 8)
 ///     .polygons_with_position()
 ///     .map_vertices(|position| {
 ///         VertexGeometry {
@@ -76,7 +76,7 @@ pub trait Attribute: Clone {}
 ///             color: Vector4::new(1.0, 1.0, 1.0, 1.0),
 ///         }
 ///     })
-///     .collect_with_indexer::<Mesh<VertexGeometry>, _>(LruIndexer::with_capacity(64))
+///     .collect_with_indexer::<MeshGraph<VertexGeometry>, _>(LruIndexer::with_capacity(64))
 ///     .unwrap();
 /// # }
 /// ```

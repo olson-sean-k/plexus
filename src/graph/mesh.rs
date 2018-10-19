@@ -32,11 +32,11 @@ use primitive::{
 /// half-edge is directed from one vertex to another, with an opposing
 /// half-edge joining the vertices in the other direction.
 ///
-/// `Mesh`es expose topological views, which can be used to traverse and
+/// `MeshGraph`s expose topological views, which can be used to traverse and
 /// manipulate topology and geometry.
 ///
 /// See the module documentation for more details.
-pub struct Mesh<G = ()>
+pub struct MeshGraph<G = ()>
 where
     G: Geometry,
 {
@@ -44,7 +44,7 @@ where
 }
 
 /// Storage.
-impl<G> Mesh<G>
+impl<G> MeshGraph<G>
 where
     G: Geometry,
 {
@@ -65,21 +65,21 @@ where
     }
 }
 
-impl<G> Mesh<G>
+impl<G> MeshGraph<G>
 where
     G: Geometry,
 {
-    /// Creates an empty `Mesh`.
+    /// Creates an empty `MeshGraph`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     ///
-    /// let mut mesh = Mesh::<()>::new();
+    /// let mut graph = MeshGraph::<()>::new();
     /// ```
     pub fn new() -> Self {
-        Mesh::from(
+        MeshGraph::from(
             Core::empty()
                 .bind(Storage::<Vertex<G>>::new())
                 .bind(Storage::<Edge<G>>::new())
@@ -87,12 +87,12 @@ where
         )
     }
 
-    /// Creates an empty `Mesh`.
+    /// Creates an empty `MeshGraph`.
     ///
     /// Underlying storage has zero capacity and does not allocate until the
     /// first insertion.
     pub fn empty() -> Self {
-        Mesh::from(
+        MeshGraph::from(
             Core::empty()
                 .bind(Storage::<Vertex<G>>::empty())
                 .bind(Storage::<Edge<G>>::empty())
@@ -100,8 +100,8 @@ where
         )
     }
 
-    /// Creates a `Mesh` from raw index and vertex buffers. The arity of the
-    /// polygons in the index buffer must be known and constant.
+    /// Creates a `MeshGraph` from raw index and vertex buffers. The arity of
+    /// the polygons in the index buffer must be known and constant.
     ///
     /// # Errors
     ///
@@ -115,7 +115,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::sphere::UvSphere;
     /// use plexus::primitive::LruIndexer;
@@ -125,7 +125,7 @@ where
     ///     .polygons_with_position()
     ///     .triangulate()
     ///     .flat_index_vertices(LruIndexer::with_capacity(256));
-    /// let mut mesh = Mesh::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, Error>
@@ -134,7 +134,7 @@ where
         J: IntoIterator,
         J::Item: IntoGeometry<G::Vertex>,
     {
-        let mut mutation = Mutation::mutate(Mesh::new());
+        let mut mutation = Mutation::mutate(MeshGraph::new());
         let vertices = vertices
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
@@ -381,7 +381,7 @@ where
     }
 }
 
-impl<G> AsStorage<Vertex<G>> for Mesh<G>
+impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -390,7 +390,7 @@ where
     }
 }
 
-impl<G> AsStorage<Edge<G>> for Mesh<G>
+impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -399,7 +399,7 @@ where
     }
 }
 
-impl<G> AsStorage<Face<G>> for Mesh<G>
+impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -408,7 +408,7 @@ where
     }
 }
 
-impl<G> AsStorageMut<Vertex<G>> for Mesh<G>
+impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -417,7 +417,7 @@ where
     }
 }
 
-impl<G> AsStorageMut<Edge<G>> for Mesh<G>
+impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -426,7 +426,7 @@ where
     }
 }
 
-impl<G> AsStorageMut<Face<G>> for Mesh<G>
+impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
@@ -435,37 +435,37 @@ where
     }
 }
 
-impl<G> Default for Mesh<G>
+impl<G> Default for MeshGraph<G>
 where
     G: Geometry,
 {
     fn default() -> Self {
         // Because `default` is likely to be used in more generic contexts,
         // `empty` is used to avoid any unnecessary allocations.
-        Mesh::empty()
+        MeshGraph::empty()
     }
 }
 
-impl<G> From<OwnedCore<G>> for Mesh<G>
+impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
     fn from(core: OwnedCore<G>) -> Self {
-        Mesh { core }
+        MeshGraph { core }
     }
 }
 
-impl<G> Into<OwnedCore<G>> for Mesh<G>
+impl<G> Into<OwnedCore<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
     fn into(self) -> OwnedCore<G> {
-        let Mesh { core, .. } = self;
+        let MeshGraph { core, .. } = self;
         core
     }
 }
 
-impl<G, H> FromInteriorGeometry<Mesh<H>> for Mesh<G>
+impl<G, H> FromInteriorGeometry<MeshGraph<H>> for MeshGraph<G>
 where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
@@ -473,18 +473,18 @@ where
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
-    fn from_interior_geometry(mesh: Mesh<H>) -> Self {
-        let Mesh { core, .. } = mesh;
+    fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
+        let MeshGraph { core, .. } = graph;
         let (vertices, edges, faces) = core.into_storage();
         let core = Core::empty()
             .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
             .bind(edges.map_values_into(|edge| Edge::<G>::from_interior_geometry(edge)))
             .bind(faces.map_values_into(|face| Face::<G>::from_interior_geometry(face)));
-        Mesh::from(core)
+        MeshGraph::from(core)
     }
 }
 
-impl<G, P> FromIndexer<P, P> for Mesh<G>
+impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
     G: Geometry,
     P: Map<usize> + primitive::Topological,
@@ -498,7 +498,7 @@ where
         I: IntoIterator<Item = P>,
         N: Indexer<P, P::Vertex>,
     {
-        let mut mutation = Mutation::mutate(Mesh::new());
+        let mut mutation = Mutation::mutate(MeshGraph::new());
         let (indeces, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
@@ -518,7 +518,7 @@ where
     }
 }
 
-impl<G, P> FromIterator<P> for Mesh<G>
+impl<G, P> FromIterator<P> for MeshGraph<G>
 where
     G: Geometry,
     P: Map<usize> + primitive::Topological,
@@ -533,28 +533,28 @@ where
     }
 }
 
-impl<G> Consistent for Mesh<G> where G: Geometry {}
+impl<G> Consistent for MeshGraph<G> where G: Geometry {}
 
 pub struct Iter<'a, I, T, G, Output>
 where
     I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
-    (T::Key, &'a Mesh<G>): IntoView<Output>,
+    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
 {
     input: I,
-    storage: &'a Mesh<G>,
+    storage: &'a MeshGraph<G>,
     phantom: PhantomData<(T, Output)>,
 }
 
-impl<'a, I, T, G, Output> From<(I, &'a Mesh<G>)> for Iter<'a, I, T, G, Output>
+impl<'a, I, T, G, Output> From<(I, &'a MeshGraph<G>)> for Iter<'a, I, T, G, Output>
 where
     I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
-    (T::Key, &'a Mesh<G>): IntoView<Output>,
+    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
 {
-    fn from(source: (I, &'a Mesh<G>)) -> Self {
+    fn from(source: (I, &'a MeshGraph<G>)) -> Self {
         let (input, storage) = source;
         Iter {
             input,
@@ -569,7 +569,7 @@ where
     I: 'a + Iterator<Item = &'a T::Key>,
     T: 'a + Topological,
     G: 'a + Geometry,
-    (T::Key, &'a Mesh<G>): IntoView<Output>,
+    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
 {
     type Item = Output;
 
@@ -639,30 +639,30 @@ mod tests {
 
     #[test]
     fn collect_topology_into_mesh() {
-        let mesh = sphere::UvSphere::new(3, 2)
+        let graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f32>>>();
 
-        assert_eq!(5, mesh.vertex_count());
-        assert_eq!(18, mesh.edge_count());
-        assert_eq!(6, mesh.face_count());
+        assert_eq!(5, graph.vertex_count());
+        assert_eq!(18, graph.edge_count());
+        assert_eq!(6, graph.face_count());
     }
 
     #[test]
     fn iterate_mesh_topology() {
-        let mut mesh = sphere::UvSphere::new(4, 2)
+        let mut graph = sphere::UvSphere::new(4, 2)
             .polygons_with_position() // 8 triangles, 24 vertices.
-            .collect::<Mesh<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f32>>>();
 
-        assert_eq!(6, mesh.vertices().count());
-        assert_eq!(24, mesh.edges().count());
-        assert_eq!(8, mesh.faces().count());
-        for vertex in mesh.vertices() {
+        assert_eq!(6, graph.vertices().count());
+        assert_eq!(24, graph.edges().count());
+        assert_eq!(8, graph.faces().count());
+        for vertex in graph.vertices() {
             // Every vertex is connected to 4 triangles with 4 (incoming)
             // edges. Traversal of topology should be possible.
             assert_eq!(4, vertex.incoming_edges().count());
         }
-        for mut vertex in mesh.orphan_vertices() {
+        for mut vertex in graph.orphan_vertices() {
             // Geometry should be mutable.
             vertex.geometry += Vector3::zero();
         }
@@ -670,13 +670,14 @@ mod tests {
 
     #[test]
     fn non_manifold_error_deferred() {
-        let mesh = sphere::UvSphere::new(32, 32)
+        let graph = sphere::UvSphere::new(32, 32)
             .polygons_with_position()
             .triangulate()
-            .collect::<Mesh<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f32>>>();
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
-        mesh.to_mesh_buffer_by_face_with::<usize, Point3<f32>, _>(|_, vertex| vertex.geometry)
+        graph
+            .to_mesh_buffer_by_face_with::<usize, Point3<f32>, _>(|_, vertex| vertex.geometry)
             .unwrap();
     }
 
@@ -685,13 +686,13 @@ mod tests {
         // Construct a mesh with a "fan" of three triangles sharing the same
         // edge along the Z-axis. The edge would have three associated faces,
         // which should not be possible.
-        let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
+        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
             vec![0, 1, 2, 0, 1, 3, 0, 1, 4],
             vec![(0, 0, 1), (0, 0, -1), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
             3,
         );
 
-        assert!(match *mesh
+        assert!(match *graph
             .err()
             .unwrap()
             .root_cause()
@@ -707,7 +708,7 @@ mod tests {
     fn error_on_singularity_mesh() {
         // Construct a mesh with three non-neighboring triangles sharing a
         // single vertex.
-        let mesh = Mesh::<Point3<i32>>::from_raw_buffers(
+        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
             vec![0, 1, 2, 0, 3, 4, 0, 5, 6],
             vec![
                 (0, 0, 0),
@@ -721,7 +722,7 @@ mod tests {
             3,
         );
 
-        assert!(match *mesh
+        assert!(match *graph
             .err()
             .unwrap()
             .root_cause()
@@ -734,7 +735,7 @@ mod tests {
 
         // Construct a mesh with three triangles forming a rectangle, where one
         // vertex (at the origin) is shared by all three triangles.
-        let mesh = Mesh::<Point2<i32>>::from_raw_buffers(
+        let graph = MeshGraph::<Point2<i32>>::from_raw_buffers(
             vec![0, 1, 3, 1, 4, 3, 1, 2, 4],
             vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
             3,
@@ -750,7 +751,7 @@ mod tests {
             .iter()
             .cloned()
             .collect::<HashSet<_>>();
-        let key = mesh
+        let key = graph
             .faces()
             .find(|face| {
                 face.vertices()
@@ -761,8 +762,8 @@ mod tests {
             })
             .unwrap()
             .key();
-        let cache = FaceRemoveCache::snapshot(&mesh, key).unwrap();
-        let mut mutation = Mutation::mutate(mesh);
+        let cache = FaceRemoveCache::snapshot(&graph, key).unwrap();
+        let mut mutation = Mutation::mutate(graph);
         assert!(match *mutation
             .remove_face_with_cache(cache)
             .err()
@@ -792,17 +793,17 @@ mod tests {
 
         // Create a mesh with a floating point value associated with each face.
         // Use a mutable iterator to write to the geometry of each face.
-        let mut mesh = sphere::UvSphere::new(4, 4)
+        let mut graph = sphere::UvSphere::new(4, 4)
             .polygons_with_position()
-            .collect::<Mesh<ValueGeometry>>();
+            .collect::<MeshGraph<ValueGeometry>>();
         let value = 3.14;
-        for mut face in mesh.orphan_faces() {
+        for mut face in graph.orphan_faces() {
             face.geometry = value;
         }
 
         // Read the geometry of each face using an immutable iterator to ensure
         // it is what we expect.
-        for face in mesh.faces() {
+        for face in graph.faces() {
             assert_eq!(value, face.geometry);
         }
     }

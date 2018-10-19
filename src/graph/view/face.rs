@@ -79,16 +79,16 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::graph::Mesh;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
-    /// let mut mesh = Cube::new()
+    /// let mut graph = Cube::new()
     ///     .polygons_with_position()
-    ///     .collect::<Mesh<Point3<f32>>>();
-    /// let key = mesh.faces().nth(0).unwrap().key();
-    /// let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    ///     .collect::<MeshGraph<Point3<f32>>>();
+    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let face = graph.face_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = face.into_edge();
@@ -860,10 +860,10 @@ mod tests {
 
     #[test]
     fn circulate_over_edges() {
-        let mesh = sphere::UvSphere::new(3, 2)
+        let graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
-        let face = mesh.faces().nth(0).unwrap();
+            .collect::<MeshGraph<Point3<f32>>>();
+        let face = graph.faces().nth(0).unwrap();
 
         // All faces should be triangles and should have three edges.
         assert_eq!(3, face.interior_edges().count());
@@ -871,10 +871,10 @@ mod tests {
 
     #[test]
     fn circulate_over_faces() {
-        let mesh = sphere::UvSphere::new(3, 2)
+        let graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
-        let face = mesh.faces().nth(0).unwrap();
+            .collect::<MeshGraph<Point3<f32>>>();
+        let face = graph.faces().nth(0).unwrap();
 
         // No matter which face is selected, it should have three neighbors.
         assert_eq!(3, face.neighboring_faces().count());
@@ -882,26 +882,26 @@ mod tests {
 
     #[test]
     fn extrude_face() {
-        let mut mesh = sphere::UvSphere::new(3, 2)
+        let mut graph = sphere::UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<Mesh<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f32>>>();
         {
-            let key = mesh.faces().nth(0).unwrap().key();
-            let face = mesh.face_mut(key).unwrap().extrude(1.0).unwrap();
+            let key = graph.faces().nth(0).unwrap().key();
+            let face = graph.face_mut(key).unwrap().extrude(1.0).unwrap();
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.
             assert_eq!(3, face.neighboring_faces().count());
         }
 
-        assert_eq!(8, mesh.vertex_count());
+        assert_eq!(8, graph.vertex_count());
         // The mesh begins with 18 edges. The extrusion adds three quads with
         // four interior edges each, so there are `18 + (3 * 4)` edges.
-        assert_eq!(30, mesh.edge_count());
+        assert_eq!(30, graph.edge_count());
         // All faces are triangles and the mesh begins with six such faces. The
         // extruded face remains, in addition to three connective faces, each
         // of which is constructed from quads.
-        assert_eq!(9, mesh.face_count());
+        assert_eq!(9, graph.face_count());
     }
 
     #[test]
@@ -909,14 +909,14 @@ mod tests {
         let (indeces, vertices) = cube::Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
-        let mut mesh = Mesh::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
-        mesh.triangulate().unwrap();
+        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
+        graph.triangulate().unwrap();
 
         // There are 8 unique vertices and a vertex is added for each quad,
         // yielding `8 + 6` vertices.
-        assert_eq!(14, mesh.vertex_count());
-        assert_eq!(72, mesh.edge_count());
+        assert_eq!(14, graph.vertex_count());
+        assert_eq!(72, graph.edge_count());
         // Each quad becomes a tetrahedron, so 6 quads become 24 triangles.
-        assert_eq!(24, mesh.face_count());
+        assert_eq!(24, graph.face_count());
     }
 }

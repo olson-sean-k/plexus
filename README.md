@@ -39,7 +39,7 @@ example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 ## Half-Edge Graph Meshes
 
 Primitives produce an ephemeral stream of topology and vertex geometry. A
-`Mesh`, represented as a [half-edge
+`MeshGraph`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
 arbitrary geometry for vertices, edges, and faces. The graph can also be
 traversed and manipulated in ways that iterator expressions and simple buffers
@@ -47,18 +47,18 @@ cannot, such as circulation, extrusion, merging, and joining.
 
 ```rust
 use nalgebra::Point3;
-use plexus::graph::Mesh;
+use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
 // Construct a mesh from a sphere primitive. The vertex geometry is convertible
 // to `Point3` via the `FromGeometry` trait in this example.
-let mut mesh = sphere::UvSphere::new(8, 8)
+let mut graph = sphere::UvSphere::new(8, 8)
     .polygons_with_position_from(Bounds::unit_width())
-    .collect::<Mesh<Point3<f32>>>();
+    .collect::<MeshGraph<Point3<f32>>>();
 // Extrude a face in the mesh.
-let key = mesh.faces().nth(0).unwrap().key();
-if let Ok(face) = mesh.face_mut(key).unwrap().extrude(1.0) {
+let key = graph.faces().nth(0).unwrap().key();
+if let Ok(face) = graph.face_mut(key).unwrap().extrude(1.0) {
     // ...
 }
 ```
