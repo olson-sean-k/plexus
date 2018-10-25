@@ -1,4 +1,3 @@
-use failure::{Error, Fail};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
@@ -58,27 +57,25 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, Error> {
+    pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, GraphError> {
         // A face requires at least three vertices (edges). This invariant
         // should be maintained by any code that is able to mutate the mesh,
         // such that code manipulating faces (via `FaceView`) may assume this
         // is true. Panics resulting from faces with fewer than three vertices
         // are bugs.
         if vertices.len() < 3 {
-            return Err(GraphError::TopologyMalformed
-                .context("non-polygonal arity")
-                .into());
+            // Non-polygonal arity.
+            return Err(GraphError::TopologyMalformed);
         }
         if vertices.len() != vertices.iter().unique().count() {
-            return Err(GraphError::TopologyMalformed
-                .context("non-manifold bounds")
-                .into());
+            // Non-manifold bounds.
+            return Err(GraphError::TopologyMalformed);
         }
         // Fail if any vertex is not present.
         if vertices.iter().any(|vertex| {
             !AsStorage::<Vertex<G>>::as_storage(storage.reborrow()).contains_key(vertex)
         }) {
-            return Err(GraphError::TopologyNotFound.into());
+            return Err(GraphError::TopologyNotFound);
         }
         let faces = vertices
             .iter()
@@ -89,9 +86,8 @@ where
             .collect::<HashSet<_>>();
         // Fail if the edges refer to more than one face.
         if faces.len() > 1 {
-            return Err(GraphError::TopologyMalformed
-                .context("non-closed region")
-                .into());
+            // Non-closed region.
+            return Err(GraphError::TopologyMalformed);
         }
         Ok(Region {
             storage,

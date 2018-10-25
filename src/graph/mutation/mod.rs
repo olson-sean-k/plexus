@@ -3,7 +3,6 @@ pub mod face;
 mod region;
 pub mod vertex;
 
-use failure::Error;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::mem;
@@ -16,6 +15,7 @@ use graph::mutation::face::FaceMutation;
 use graph::storage::convert::AsStorage;
 use graph::storage::Storage;
 use graph::topology::{Edge, Face, Vertex};
+use graph::GraphError;
 
 pub trait Mutate: Sized {
     type Mutant;
@@ -262,7 +262,7 @@ where
     G: Geometry,
 {
     type Mutant = M;
-    type Error = Error;
+    type Error = GraphError;
 
     fn mutate(container: Self::Mutant) -> Self {
         Mutation {

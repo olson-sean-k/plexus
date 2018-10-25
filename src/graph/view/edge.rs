@@ -1,5 +1,4 @@
 use arrayvec::ArrayVec;
-use failure::Error;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -17,6 +16,7 @@ use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{FaceView, OrphanFaceView, OrphanVertexView, VertexView};
+use graph::GraphError;
 use BoolExt;
 
 /// Reference to an edge.
@@ -466,7 +466,7 @@ where
     // TODO: Rename this to something like "extend". It is very similar to
     //       `extrude`. Terms like "join" or "merge" are better suited for
     //       directly joining two adjacent faces over a shared edge.
-    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, Error> {
+    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, GraphError> {
         let (source, storage) = self.into_keyed_storage();
         let cache = EdgeJoinCache::snapshot(&storage, source, destination)?;
         let (storage, edge) = Mutation::replace(storage, Default::default())
@@ -482,7 +482,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: EdgeMidpoint + Geometry,
 {
-    pub fn midpoint(&self) -> Result<G::Midpoint, Error> {
+    pub fn midpoint(&self) -> Result<G::Midpoint, GraphError> {
         G::midpoint(self.interior_reborrow())
     }
 }
@@ -499,7 +499,7 @@ where
     G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn split(self) -> Result<VertexView<&'a mut M, G>, Error> {
+    pub fn split(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
         let (ab, storage) = self.into_keyed_storage();
         let cache = EdgeSplitCache::snapshot(&storage, ab)?;
         let (storage, vertex) = Mutation::replace(storage, Default::default())
@@ -515,7 +515,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry + EdgeLateral,
 {
-    pub fn lateral(&self) -> Result<G::Lateral, Error> {
+    pub fn lateral(&self) -> Result<G::Lateral, GraphError> {
         G::lateral(self.interior_reborrow())
     }
 }
@@ -532,7 +532,7 @@ where
     G: 'a + Geometry + EdgeLateral,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<EdgeView<&'a mut M, G>, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<EdgeView<&'a mut M, G>, GraphError>
     where
         G::Lateral: Mul<T>,
         ScaledEdgeLateral<G, T>: Clone,

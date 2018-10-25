@@ -1,5 +1,3 @@
-use failure::Error;
-
 use geometry::Geometry;
 use graph::container::{Bind, Core};
 use graph::mutation::Mutate;
@@ -27,25 +25,28 @@ where
         self.storage.insert(Vertex::new(geometry))
     }
 
-    pub fn connect_outgoing_edge(&mut self, a: VertexKey, ab: EdgeKey) -> Result<(), Error> {
+    pub fn connect_outgoing_edge(&mut self, a: VertexKey, ab: EdgeKey) -> Result<(), GraphError> {
         if a == ab.to_vertex_keys().0 {
             let vertex = self
                 .storage
                 .get_mut(&a)
-                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+                .ok_or_else(|| GraphError::TopologyNotFound)?;
             vertex.edge = Some(ab);
             Ok(())
         }
         else {
-            Err(Error::from(GraphError::TopologyMalformed))
+            Err(GraphError::TopologyMalformed)
         }
     }
 
-    pub fn disconnect_outgoing_edge(&mut self, a: VertexKey) -> Result<Option<EdgeKey>, Error> {
+    pub fn disconnect_outgoing_edge(
+        &mut self,
+        a: VertexKey,
+    ) -> Result<Option<EdgeKey>, GraphError> {
         let edge = self
             .storage
             .get_mut(&a)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .edge
             .take();
         Ok(edge)
@@ -66,7 +67,7 @@ where
     G: Geometry,
 {
     type Mutant = Core<Storage<Vertex<G>>, (), ()>;
-    type Error = Error;
+    type Error = GraphError;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let VertexMutation {

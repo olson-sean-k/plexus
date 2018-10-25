@@ -45,7 +45,6 @@
 //! # }
 //! ```
 
-use failure::Error;
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -126,7 +125,7 @@ where
     /// let buffer = MeshBuffer::from_raw_buffers(indeces, vertices).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, Error>
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = V>,
@@ -135,7 +134,7 @@ where
         let vertices = vertices.into_iter().collect::<Vec<_>>();
         let len = N::from(vertices.len()).unwrap();
         if indeces.iter().any(|index| *index >= len) {
-            Err(BufferError::IndexOutOfBounds.into())
+            Err(BufferError::IndexOutOfBounds)
         }
         else {
             Ok(MeshBuffer { indeces, vertices })
@@ -189,7 +188,7 @@ where
     P::Vertex: IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Error = Error;
+    type Error = BufferError;
 
     fn from_indexer<I, M>(input: I, indexer: M) -> Result<Self, Self::Error>
     where

@@ -152,6 +152,8 @@ mod view;
 
 use failure::Error;
 
+use buffer::BufferError;
+
 pub use self::mesh::MeshGraph;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
@@ -186,10 +188,12 @@ pub enum GraphError {
     ArityNonConstant,
 }
 
-// TODO: Using `Error` so broadly is a misuse case. Look at how complex
-//       `ResultExt` is! Just use `GraphError` directly. Never use `Error`
-//       along "happy" or "expected" paths (this happens often in the
-//       `mutation` module.
+impl From<BufferError> for GraphError {
+    fn from(_: BufferError) -> Self {
+        // TODO: How should buffer errors be handled? Is this sufficient?
+        GraphError::TopologyMalformed
+    }
+}
 
 trait ResultExt<T>: Sized {
     /// If the `Result` is an error with the value
@@ -198,15 +202,15 @@ trait ResultExt<T>: Sized {
     ///
     /// Because this operates on the result of an operation, it does not cancel
     /// or negate any mutations that may have occurred.
-    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
     where
-        F: FnOnce() -> Result<T, Error>;
+        F: FnOnce() -> Result<T, GraphError>;
 }
 
 impl<T> ResultExt<T> for Result<T, Error> {
-    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
     where
-        F: FnOnce() -> Result<T, Error>,
+        F: FnOnce() -> Result<T, GraphError>,
     {
         self.map_err(|error| error.downcast::<GraphError>().unwrap())
             .or_if_conflict(f)
@@ -214,13 +218,13 @@ impl<T> ResultExt<T> for Result<T, Error> {
 }
 
 impl<T> ResultExt<T> for Result<T, GraphError> {
-    fn or_if_conflict<F>(self, f: F) -> Result<T, Error>
+    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
     where
-        F: FnOnce() -> Result<T, Error>,
+        F: FnOnce() -> Result<T, GraphError>,
     {
         self.or_else(|error| match error {
             GraphError::TopologyConflict => f(),
-            error => Err(error.into()),
+            error => Err(error),
         })
     }
 }

@@ -1,5 +1,4 @@
 use arrayvec::ArrayVec;
-use failure::{Error, Fail};
 use itertools::Itertools;
 use num::{Integer, NumCast, Unsigned};
 use std::collections::HashMap;
@@ -128,7 +127,7 @@ where
     /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, Error>
+    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, GraphError>
     where
         I: IntoIterator<Item = usize>,
         J: IntoIterator,
@@ -142,19 +141,18 @@ where
         for face in &indeces.into_iter().chunks(arity) {
             let face = face.collect::<Vec<_>>();
             if face.len() != arity {
+                // Index buffer length is not a multiple of arity.
                 return Err(GraphError::ArityConflict {
                     expected: arity,
                     actual: face.len(),
-                }
-                .context("index buffer length is not a multiple of arity")
-                .into());
+                });
             }
             let mut perimeter = Vec::with_capacity(arity);
             for index in face {
                 perimeter.push(
                     *vertices
                         .get(index)
-                        .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?,
+                        .ok_or_else(|| GraphError::TopologyNotFound)?,
                 );
             }
             mutation.insert_face(&perimeter, Default::default())?;
@@ -184,7 +182,10 @@ where
     /// let mut graph = MeshGraph::<Point2<f32>>::from_mesh_buffer(buffer, 4).unwrap();
     /// # }
     /// ```
-    pub fn from_mesh_buffer<N, V>(buffer: MeshBuffer<N, V>, arity: usize) -> Result<Self, Error>
+    pub fn from_mesh_buffer<N, V>(
+        buffer: MeshBuffer<N, V>,
+        arity: usize,
+    ) -> Result<Self, GraphError>
     where
         N: Copy + Integer + NumCast + Unsigned,
         V: Clone + IntoGeometry<G::Vertex>,
@@ -287,7 +288,7 @@ where
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
-    pub fn triangulate(&mut self) -> Result<(), Error>
+    pub fn triangulate(&mut self) -> Result<(), GraphError>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
     {
@@ -309,7 +310,7 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, Error>
+    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, GraphError>
     where
         G::Vertex: IntoGeometry<V>,
         N: Copy + Integer + NumCast + Unsigned,
@@ -329,7 +330,7 @@ where
     pub fn to_mesh_buffer_by_vertex_with<N, V, F>(
         &self,
         mut f: F,
-    ) -> Result<MeshBuffer<N, V>, Error>
+    ) -> Result<MeshBuffer<N, V>, GraphError>
     where
         N: Copy + Integer + NumCast + Unsigned,
         F: FnMut(VertexView<&Self, G>) -> V,
@@ -351,7 +352,7 @@ where
             let mut indeces = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(GraphError::ArityNonConstant.into());
+                    return Err(GraphError::ArityNonConstant);
                 }
                 for vertex in face.vertices() {
                     indeces.push(N::from(keys[&vertex.key()]).unwrap());
@@ -359,7 +360,7 @@ where
             }
             indeces
         };
-        MeshBuffer::from_raw_buffers(indeces, vertices)
+        MeshBuffer::from_raw_buffers(indeces, vertices).map_err(|error| error.into())
     }
 
     /// Creates a mesh buffer from the mesh.
@@ -371,7 +372,7 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, Error>
+    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, GraphError>
     where
         G::Vertex: IntoGeometry<V>,
         N: Copy + Integer + NumCast + Unsigned,
@@ -388,7 +389,10 @@ where
     ///
     /// Returns an error if the mesh does not have constant arity. Typically, a
     /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face_with<N, V, F>(&self, mut f: F) -> Result<MeshBuffer<N, V>, Error>
+    pub fn to_mesh_buffer_by_face_with<N, V, F>(
+        &self,
+        mut f: F,
+    ) -> Result<MeshBuffer<N, V>, GraphError>
     where
         N: Copy + Integer + NumCast + Unsigned,
         F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> V,
@@ -401,7 +405,7 @@ where
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(GraphError::ArityNonConstant.into());
+                    return Err(GraphError::ArityNonConstant);
                 }
                 for vertex in face.vertices() {
                     // TODO: Can some sort of dereference be used here?
@@ -415,6 +419,7 @@ where
             (0..vertices.len()).map(|index| N::from(index).unwrap()),
             vertices,
         )
+        .map_err(|error| error.into())
     }
 }
 
@@ -528,7 +533,7 @@ where
     P::Output: IntoVertices,
     P::Vertex: IntoGeometry<G::Vertex>,
 {
-    type Error = Error;
+    type Error = GraphError;
 
     fn from_indexer<I, N>(input: I, indexer: N) -> Result<Self, Self::Error>
     where
@@ -731,13 +736,7 @@ mod tests {
             3,
         );
 
-        assert!(match *graph
-            .err()
-            .unwrap()
-            .root_cause()
-            .downcast_ref::<GraphError>()
-            .unwrap()
-        {
+        assert!(match graph.err().unwrap() {
             GraphError::TopologyConflict => true,
             _ => false,
         });
@@ -761,13 +760,7 @@ mod tests {
             3,
         );
 
-        assert!(match *graph
-            .err()
-            .unwrap()
-            .root_cause()
-            .downcast_ref::<GraphError>()
-            .unwrap()
-        {
+        assert!(match graph.err().unwrap() {
             GraphError::TopologyMalformed => true,
             _ => false,
         });
@@ -803,17 +796,12 @@ mod tests {
             .key();
         let cache = FaceRemoveCache::snapshot(&graph, key).unwrap();
         let mut mutation = Mutation::mutate(graph);
-        assert!(match *mutation
-            .remove_face_with_cache(cache)
-            .err()
-            .unwrap()
-            .root_cause()
-            .downcast_ref::<GraphError>()
-            .unwrap()
-        {
-            GraphError::TopologyConflict => true,
-            _ => false,
-        });
+        assert!(
+            match mutation.remove_face_with_cache(cache).err().unwrap() {
+                GraphError::TopologyConflict => true,
+                _ => false,
+            }
+        );
     }
 
     // This test is a sanity check for mesh iterators, topological views, and

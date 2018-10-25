@@ -1,4 +1,3 @@
-use failure::{Error, Fail};
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -40,7 +39,7 @@ where
         &mut self,
         vertices: &[VertexKey],
         geometry: (G::Edge, G::Face),
-    ) -> Result<FaceKey, Error> {
+    ) -> Result<FaceKey, GraphError> {
         let cache = FaceInsertCache::snapshot(
             &Core::empty()
                 .bind(self.as_vertex_storage())
@@ -52,7 +51,10 @@ where
         self.insert_face_with_cache(cache)
     }
 
-    pub fn insert_face_with_cache(&mut self, cache: FaceInsertCache<G>) -> Result<FaceKey, Error> {
+    pub fn insert_face_with_cache(
+        &mut self,
+        cache: FaceInsertCache<G>,
+    ) -> Result<FaceKey, GraphError> {
         let FaceInsertCache {
             vertices,
             connectivity,
@@ -91,7 +93,10 @@ where
         Ok(face)
     }
 
-    pub fn remove_face_with_cache(&mut self, cache: FaceRemoveCache<G>) -> Result<Face<G>, Error> {
+    pub fn remove_face_with_cache(
+        &mut self,
+        cache: FaceRemoveCache<G>,
+    ) -> Result<Face<G>, GraphError> {
         let FaceRemoveCache {
             abc,
             mutuals,
@@ -112,7 +117,7 @@ where
             // a face is being ignored, exactly one gap is expected. If any
             // additional gaps exist, then removal will create a singularity.
             let vertex = VertexView::from_keyed_source((vertex, &core))
-                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+                .ok_or_else(|| GraphError::TopologyNotFound)?;
             let n = vertex
                 .reachable_neighboring_faces()
                 .filter(|face| face.key() != abc)
@@ -131,7 +136,7 @@ where
                 })
                 .count();
             if n > 1 {
-                return Err(GraphError::TopologyConflict.into());
+                return Err(GraphError::TopologyConflict);
             }
         }
         self.disconnect_face_interior(&edges)?;
@@ -141,21 +146,25 @@ where
         let face = self
             .storage
             .remove(&abc)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(face)
     }
 
     // TODO: Should there be a distinction between `connect_face_to_edge` and
     //       `connect_edge_to_face`?
-    pub fn connect_face_to_edge(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), Error> {
+    pub fn connect_face_to_edge(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), GraphError> {
         self.storage
             .get_mut(&abc)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .edge = ab;
         Ok(())
     }
 
-    fn connect_face_interior(&mut self, edges: &[EdgeKey], face: FaceKey) -> Result<(), Error> {
+    fn connect_face_interior(
+        &mut self,
+        edges: &[EdgeKey],
+        face: FaceKey,
+    ) -> Result<(), GraphError> {
         for (ab, bc) in edges.iter().cloned().perimeter() {
             self.connect_neighboring_edges(ab, bc)?;
             self.connect_edge_to_face(ab, face)?;
@@ -163,7 +172,7 @@ where
         Ok(())
     }
 
-    fn disconnect_face_interior(&mut self, edges: &[EdgeKey]) -> Result<(), Error> {
+    fn disconnect_face_interior(&mut self, edges: &[EdgeKey]) -> Result<(), GraphError> {
         for ab in edges {
             self.disconnect_edge_from_face(*ab)?;
         }
@@ -174,7 +183,7 @@ where
         &mut self,
         edges: &[EdgeKey],
         connectivity: (Connectivity, Connectivity),
-    ) -> Result<(), Error> {
+    ) -> Result<(), GraphError> {
         let (incoming, outgoing) = connectivity;
         for (a, b) in edges.iter().map(|edge| edge.to_vertex_keys()) {
             let neighbors = {
@@ -236,7 +245,7 @@ where
     G: Geometry,
 {
     type Mutant = OwnedCore<G>;
-    type Error = Error;
+    type Error = GraphError;
 
     fn mutate(core: Self::Mutant) -> Self {
         let (vertices, edges, faces) = core.into_storage();
@@ -273,9 +282,8 @@ where
                                 .collect(),
                         ) {
                             if AsStorage::<Face<G>>::as_storage(&core).contains_key(unreachable) {
-                                return Err(GraphError::TopologyMalformed
-                                    .context("non-manifold connectivity")
-                                    .into());
+                                // Non-manifold connectivity.
+                                return Err(GraphError::TopologyMalformed);
                             }
                         }
                     }
@@ -324,7 +332,7 @@ where
         storage: M,
         vertices: &'a [VertexKey],
         geometry: (G::Edge, G::Face),
-    ) -> Result<Self, Error>
+    ) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
@@ -333,7 +341,7 @@ where
         // the incoming and outgoing edges for each vertex in the region.
         let region = Region::from_keyed_storage(vertices, storage)?;
         if region.face().is_some() {
-            return Err(GraphError::TopologyConflict.into());
+            return Err(GraphError::TopologyConflict);
         }
         let (connectivity, singularity) = region.reachable_connectivity();
         Ok(FaceInsertCache {
@@ -360,14 +368,14 @@ impl<G> FaceRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
+    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let face = match FaceView::from_keyed_source((abc, storage)) {
             Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound.into()),
+            _ => return Err(GraphError::TopologyNotFound),
         };
         let edges = face.interior_edges().map(|edge| edge.key()).collect();
         let boundaries = face
@@ -401,7 +409,7 @@ impl<G> FaceTriangulateCache<G>
 where
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, Error>
+    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -409,7 +417,7 @@ where
         let storage = storage.reborrow();
         let face = match FaceView::from_keyed_source((abc, storage)) {
             Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound.into()),
+            _ => return Err(GraphError::TopologyNotFound),
         };
         let vertices = face.vertices().map(|vertex| vertex.key()).collect();
         Ok(FaceTriangulateCache {
@@ -434,7 +442,11 @@ impl<G> FaceJoinCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, source: FaceKey, destination: FaceKey) -> Result<Self, Error>
+    pub fn snapshot<M>(
+        storage: M,
+        source: FaceKey,
+        destination: FaceKey,
+    ) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -450,7 +462,7 @@ where
         let destination = FaceView::from_keyed_source((destination, storage))
             .ok_or(GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
-            return Err(GraphError::ArityNonConstant.into());
+            return Err(GraphError::ArityNonConstant);
         }
         Ok(FaceJoinCache {
             sources: source
@@ -489,7 +501,7 @@ where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, Error>
+    pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -524,7 +536,7 @@ where
 pub fn triangulate_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceTriangulateCache<G>,
-) -> Result<Option<VertexKey>, Error>
+) -> Result<Option<VertexKey>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -549,7 +561,7 @@ where
     Ok(Some(c))
 }
 
-pub fn join_with_cache<M, N, G>(mut mutation: N, cache: FaceJoinCache<G>) -> Result<(), Error>
+pub fn join_with_cache<M, N, G>(mut mutation: N, cache: FaceJoinCache<G>) -> Result<(), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -585,7 +597,7 @@ where
 pub fn extrude_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceExtrudeCache<G>,
-) -> Result<FaceKey, Error>
+) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,

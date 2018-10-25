@@ -1,4 +1,3 @@
-use failure::Error;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
 use geometry::convert::AsPosition;
@@ -36,7 +35,7 @@ where
         &mut self,
         vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
-    ) -> Result<EdgeKey, Error> {
+    ) -> Result<EdgeKey, GraphError> {
         let (a, b) = vertices;
         let ab = (a, b).into();
         let ba = (b, a).into();
@@ -46,10 +45,10 @@ where
         // half-edge, at most one following half-edge, and may form at most one
         // closed loop.
         if self.storage.contains_key(&ab) {
-            return Err(GraphError::TopologyConflict.into());
+            return Err(GraphError::TopologyConflict);
         }
         if !self.mutation.as_storage().contains_key(&b) {
-            return Err(GraphError::TopologyNotFound.into());
+            return Err(GraphError::TopologyNotFound);
         }
         let mut edge = Edge::new(b, geometry);
         if let Some(opposite) = self.storage.get_mut(&ba) {
@@ -65,7 +64,7 @@ where
         &mut self,
         vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
-    ) -> Result<EdgeKey, Error> {
+    ) -> Result<EdgeKey, GraphError> {
         self.insert_edge(vertices, geometry)
             .or_if_conflict(|| Ok(vertices.into()))
     }
@@ -74,19 +73,19 @@ where
         &mut self,
         vertices: (VertexKey, VertexKey),
         geometry: G::Edge,
-    ) -> Result<(EdgeKey, EdgeKey), Error> {
+    ) -> Result<(EdgeKey, EdgeKey), GraphError> {
         let (a, b) = vertices;
         let ab = self.get_or_insert_edge((a, b), geometry.clone())?;
         let ba = self.get_or_insert_edge((b, a), geometry)?;
         Ok((ab, ba))
     }
 
-    pub fn remove_edge(&mut self, ab: EdgeKey) -> Result<Edge<G>, Error> {
+    pub fn remove_edge(&mut self, ab: EdgeKey) -> Result<Edge<G>, GraphError> {
         let (a, _) = ab.to_vertex_keys();
         let (xa, bx) = {
             self.storage
                 .get(&ab)
-                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))
+                .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|edge| (edge.previous, edge.next))
         }?;
         if let Some(xa) = xa {
@@ -99,41 +98,45 @@ where
         Ok(self.storage.remove(&ab).unwrap())
     }
 
-    pub fn remove_composite_edge(&mut self, ab: EdgeKey) -> Result<(Edge<G>, Edge<G>), Error> {
+    pub fn remove_composite_edge(&mut self, ab: EdgeKey) -> Result<(Edge<G>, Edge<G>), GraphError> {
         let (a, b) = ab.to_vertex_keys();
         let edge = self.remove_edge((a, b).into())?;
         let opposite = self.remove_edge((b, a).into())?;
         Ok((edge, opposite))
     }
 
-    pub fn connect_neighboring_edges(&mut self, ab: EdgeKey, bc: EdgeKey) -> Result<(), Error> {
+    pub fn connect_neighboring_edges(
+        &mut self,
+        ab: EdgeKey,
+        bc: EdgeKey,
+    ) -> Result<(), GraphError> {
         if ab.to_vertex_keys().1 == bc.to_vertex_keys().0 {
             let previous = match self.storage.get_mut(&ab) {
                 Some(previous) => {
                     previous.next = Some(bc);
                     Ok(())
                 }
-                _ => Err(Error::from(GraphError::TopologyNotFound)),
+                _ => Err(GraphError::TopologyNotFound),
             };
             let next = match self.storage.get_mut(&bc) {
                 Some(next) => {
                     next.previous = Some(ab);
                     Ok(())
                 }
-                _ => Err(Error::from(GraphError::TopologyNotFound)),
+                _ => Err(GraphError::TopologyNotFound),
             };
             previous.and(next)
         }
         else {
-            Err(Error::from(GraphError::TopologyMalformed))
+            Err(GraphError::TopologyMalformed)
         }
     }
 
-    pub fn disconnect_next_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, Error> {
+    pub fn disconnect_next_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, GraphError> {
         let bx = {
             self.storage
                 .get_mut(&ab)
-                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+                .ok_or_else(|| GraphError::TopologyNotFound)?
                 .next
                 .take()
         };
@@ -143,11 +146,11 @@ where
         Ok(bx)
     }
 
-    pub fn disconnect_previous_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, Error> {
+    pub fn disconnect_previous_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, GraphError> {
         let xa = {
             self.storage
                 .get_mut(&ab)
-                .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+                .ok_or_else(|| GraphError::TopologyNotFound)?
                 .previous
                 .take()
         };
@@ -157,20 +160,23 @@ where
         Ok(xa)
     }
 
-    pub fn connect_edge_to_face(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), Error> {
+    pub fn connect_edge_to_face(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), GraphError> {
         let edge = self
             .storage
             .get_mut(&ab)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?;
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         edge.face = Some(abc);
         Ok(())
     }
 
-    pub fn disconnect_edge_from_face(&mut self, ab: EdgeKey) -> Result<Option<FaceKey>, Error> {
+    pub fn disconnect_edge_from_face(
+        &mut self,
+        ab: EdgeKey,
+    ) -> Result<Option<FaceKey>, GraphError> {
         let face = self
             .storage
             .get_mut(&ab)
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .face
             .take();
         Ok(face)
@@ -191,7 +197,7 @@ where
     G: Geometry,
 {
     type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
-    type Error = Error;
+    type Error = GraphError;
 
     fn mutate(mutant: Self::Mutant) -> Self {
         let (vertices, edges, ..) = mutant.into_storage();
@@ -248,7 +254,7 @@ where
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, Error>
+    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
@@ -256,11 +262,11 @@ where
         let (a, b) = ab.to_vertex_keys();
         let edge: EdgeView<M, G> = match (ab, storage).into_view() {
             Some(edge) => edge,
-            _ => return Err(GraphError::TopologyNotFound.into()),
+            _ => return Err(GraphError::TopologyNotFound),
         };
         let mut midpoint = edge
             .reachable_source_vertex()
-            .ok_or_else(|| Error::from(GraphError::TopologyNotFound))?
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry
             .clone();
         *midpoint.as_position_mut() = EdgeMidpoint::midpoint(edge)?;
@@ -286,7 +292,11 @@ impl<G> EdgeJoinCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, source: EdgeKey, destination: EdgeKey) -> Result<Self, Error>
+    pub fn snapshot<M>(
+        storage: M,
+        source: EdgeKey,
+        destination: EdgeKey,
+    ) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
@@ -299,7 +309,7 @@ where
             EdgeView::from_keyed_source((destination, storage)),
         ) {
             (Some(source), Some(_)) => source,
-            _ => return Err(GraphError::TopologyNotFound.into()),
+            _ => return Err(GraphError::TopologyNotFound),
         };
         // At this point, we can assume the points a, b, c, and d exist in the
         // mesh. Before mutating the mesh, ensure that existing interior edges
@@ -311,7 +321,7 @@ where
             .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), storage)))
         {
             if !edge.is_boundary_edge() {
-                return Err(GraphError::TopologyConflict.into());
+                return Err(GraphError::TopologyConflict);
             }
         }
         Ok(EdgeJoinCache {
@@ -340,7 +350,7 @@ impl<G> EdgeExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M, T>(storage: M, ab: EdgeKey, distance: T) -> Result<Self, Error>
+    pub fn snapshot<M, T>(storage: M, ab: EdgeKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -354,18 +364,18 @@ where
         let (vertices, edge) = {
             let edge = match EdgeView::from_keyed_source((ab, storage)) {
                 Some(edge) => edge,
-                _ => return Err(GraphError::TopologyNotFound.into()),
+                _ => return Err(GraphError::TopologyNotFound),
             };
             if !edge.is_boundary_edge() {
                 return Err(GraphError::TopologyConflict.into());
             }
             let mut vertices = (
                 edge.reachable_destination_vertex()
-                    .ok_or_else(|| Error::from(GraphError::TopologyConflict))?
+                    .ok_or_else(|| GraphError::TopologyConflict)?
                     .geometry
                     .clone(),
                 edge.reachable_source_vertex()
-                    .ok_or_else(|| Error::from(GraphError::TopologyConflict))?
+                    .ok_or_else(|| GraphError::TopologyConflict)?
                     .geometry
                     .clone(),
             );
@@ -381,7 +391,7 @@ where
 pub fn split_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeSplitCache<G>,
-) -> Result<VertexKey, Error>
+) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -392,7 +402,7 @@ where
         mut mutation: N,
         ab: EdgeKey,
         m: VertexKey,
-    ) -> Result<(EdgeKey, EdgeKey), Error>
+    ) -> Result<(EdgeKey, EdgeKey), GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -431,7 +441,10 @@ where
     Ok(m)
 }
 
-pub fn join_with_cache<M, N, G>(mut mutation: N, cache: EdgeJoinCache<G>) -> Result<EdgeKey, Error>
+pub fn join_with_cache<M, N, G>(
+    mut mutation: N,
+    cache: EdgeJoinCache<G>,
+) -> Result<EdgeKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -453,7 +466,7 @@ where
 pub fn extrude_with_cache<M, N, G, T>(
     mut mutation: N,
     cache: EdgeExtrudeCache<G>,
-) -> Result<EdgeKey, Error>
+) -> Result<EdgeKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,

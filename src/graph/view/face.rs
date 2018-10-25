@@ -1,4 +1,3 @@
-use failure::Error;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
@@ -17,6 +16,7 @@ use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
+use graph::GraphError;
 use BoolExt;
 
 /// Reference to a face.
@@ -373,7 +373,7 @@ where
         + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    pub fn join(self, destination: FaceKey) -> Result<(), Error> {
+    pub fn join(self, destination: FaceKey) -> Result<(), GraphError> {
         let (source, storage) = self.into_keyed_storage();
         let cache = FaceJoinCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
@@ -389,7 +389,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: FaceCentroid + Geometry,
 {
-    pub fn centroid(&self) -> Result<G::Centroid, Error> {
+    pub fn centroid(&self) -> Result<G::Centroid, GraphError> {
         G::centroid(self.interior_reborrow())
     }
 }
@@ -405,7 +405,7 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, Error> {
+    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
         let (storage, vertex) = Mutation::replace(storage, Default::default())
@@ -421,7 +421,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: FaceNormal + Geometry,
 {
-    pub fn normal(&self) -> Result<G::Normal, Error> {
+    pub fn normal(&self) -> Result<G::Normal, GraphError> {
         G::normal(self.interior_reborrow())
     }
 }
@@ -438,7 +438,7 @@ where
     G: 'a + FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, Error>
+    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, GraphError>
     where
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
