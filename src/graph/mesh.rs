@@ -162,6 +162,43 @@ where
         mutation.commit()
     }
 
+    /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
+    /// the index buffer must be known and constant.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point2;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    ///
+    /// # fn main() {
+    /// let buffer = MeshBuffer::<u32, _>::from_raw_buffers(
+    ///     vec![0, 1, 2, 3],
+    ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    /// )
+    /// .unwrap();
+    /// let mut graph = MeshGraph::<Point2<f32>>::from_mesh_buffer(buffer, 4).unwrap();
+    /// # }
+    /// ```
+    pub fn from_mesh_buffer<N, V>(buffer: MeshBuffer<N, V>, arity: usize) -> Result<Self, Error>
+    where
+        N: Copy + Integer + NumCast + Unsigned,
+        V: Clone + IntoGeometry<G::Vertex>,
+    {
+        MeshGraph::from_raw_buffers(
+            buffer
+                .as_index_slice()
+                .iter()
+                .map(|index| NumCast::from(*index).unwrap()),
+            buffer.as_vertex_slice().iter().cloned(),
+            arity,
+        )
+    }
+
     /// Gets the number of vertices in the mesh.
     pub fn vertex_count(&self) -> usize {
         self.as_storage::<Vertex<G>>().len()
