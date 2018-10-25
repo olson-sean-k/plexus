@@ -856,11 +856,14 @@ mod tests {
     use nalgebra::Point3;
 
     use graph::*;
-    use primitive::*;
+    use primitive::cube::Cube;
+    use primitive::generate::*;
+    use primitive::index::*;
+    use primitive::sphere::UvSphere;
 
     #[test]
     fn circulate_over_edges() {
-        let graph = sphere::UvSphere::new(3, 2)
+        let graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let face = graph.faces().nth(0).unwrap();
@@ -871,7 +874,7 @@ mod tests {
 
     #[test]
     fn circulate_over_faces() {
-        let graph = sphere::UvSphere::new(3, 2)
+        let graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let face = graph.faces().nth(0).unwrap();
@@ -882,7 +885,7 @@ mod tests {
 
     #[test]
     fn extrude_face() {
-        let mut graph = sphere::UvSphere::new(3, 2)
+        let mut graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         {
@@ -906,7 +909,7 @@ mod tests {
 
     #[test]
     fn triangulate_mesh() {
-        let (indeces, vertices) = cube::Cube::new()
+        let (indeces, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();

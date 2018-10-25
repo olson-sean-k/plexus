@@ -1,3 +1,24 @@
+//! Sphere primitives.
+//!
+//! # Examples
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
+//! use plexus::graph::MeshGraph;
+//! use plexus::prelude::*;
+//! use plexus::primitive::index::HashIndexer;
+//! use plexus::primitive::sphere::UvSphere;
+//!
+//! # fn main() {
+//! let graph = UvSphere::new(16, 8)
+//!     .polygons_with_position()
+//!     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
+//!     .unwrap();
+//! # }
+//! ```
+
 use decorum::{Real, R32};
 use num::traits::FloatConst;
 use num::{NumCast, One};
@@ -226,8 +247,9 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
-    use primitive::sphere::*;
-    use primitive::*;
+    use primitive::decompose::*;
+    use primitive::generate::*;
+    use primitive::sphere::UvSphere;
 
     #[test]
     fn vertex_count() {

@@ -1,3 +1,24 @@
+//! Indexing and aggregation.
+//!
+//! This module provides _indexers_, which disambiguate geometry and produce
+//! the minimal set of topological and geometric data. This can be collected
+//! into aggregate data structures like `MeshGraph` and `MeshBuffer`.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use plexus::buffer::MeshBuffer;
+//! use plexus::prelude::*;
+//! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::index::HashIndexer;
+//!
+//! let (indeces, positions) = Cube::new()
+//!     .polygons_with_position()
+//!     .triangulate()
+//!     .flat_index_vertices(HashIndexer::default());
+//! let buffer = MeshBuffer::from_raw_buffers(indeces, positions).unwrap();
+//! ```
+
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -45,7 +66,7 @@ where
 /// ```rust
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
-/// use plexus::primitive::HashIndexer;
+/// use plexus::primitive::index::HashIndexer;
 ///
 /// let (indeces, positions) = Cube::new()
 ///     .polygons_with_position()
@@ -124,8 +145,8 @@ where
 ///
 /// ```rust
 /// use plexus::prelude::*;
+/// use plexus::primitive::index::LruIndexer;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::primitive::LruIndexer;
 ///
 /// let (indeces, positions) = UvSphere::new(8, 8)
 ///     .polygons_with_position()
@@ -234,8 +255,8 @@ where
 ///
 /// ```rust
 /// use plexus::prelude::*;
+/// use plexus::primitive::index::HashIndexer;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::primitive::HashIndexer;
 ///
 /// let sphere = UvSphere::new(64, 32);
 ///
@@ -276,7 +297,7 @@ where
     /// ```rust
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::HashIndexer;
+    /// use plexus::primitive::index::HashIndexer;
     ///
     /// // `indeces` contains `Triangle`s with index data.
     /// let (indeces, positions) = Cube::new()
@@ -345,7 +366,7 @@ where
 /// ```rust
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::primitive::HashIndexer;
+/// use plexus::primitive::index::HashIndexer;
 ///
 /// let sphere = UvSphere::new(64, 32);
 ///
@@ -386,8 +407,8 @@ where
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::index::HashIndexer;
     /// use plexus::primitive::sphere::UvSphere;
-    /// use plexus::primitive::HashIndexer;
     ///
     /// # fn main() {
     /// let (indeces, positions) = UvSphere::new(16, 16)
@@ -473,7 +494,7 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::HashIndexer;
+    /// use plexus::primitive::index::HashIndexer;
     ///
     /// # fn main() {
     /// let graph = Cube::new()

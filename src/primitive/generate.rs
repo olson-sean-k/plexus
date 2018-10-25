@@ -1,5 +1,7 @@
-//! This module provides a generic iterator and traits for mapping from an
-//! index to a topology of a primitive.
+//! Primitive generation.
+//!
+//! This module provides a generic iterator and traits for generating streams
+//! of geometric and topological data for primitives like cubes and spheres.
 
 use std::ops::Range;
 
@@ -154,8 +156,8 @@ pub trait PolygonsWithPosition<P>: PositionGenerator + Sized {
     ///
     /// ```rust
     /// use plexus::prelude::*;
+    /// use plexus::primitive::index::HashIndexer;
     /// use plexus::primitive::sphere::UvSphere;
-    /// use plexus::primitive::HashIndexer;
     ///
     /// let (indeces, positions) = UvSphere::new(8, 8)
     ///     .polygons_with_position()
@@ -176,7 +178,7 @@ pub trait PolygonsWithPosition<P>: PositionGenerator + Sized {
     /// ```rust
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::{Bounds, Cube};
-    /// use plexus::primitive::HashIndexer;
+    /// use plexus::primitive::index::HashIndexer;
     ///
     /// let (indeces, positions) = Cube::new()
     ///     .polygons_with_position_from(Bounds::unit_radius())
@@ -286,7 +288,8 @@ pub trait PolygonsWithTexture<P>: Sized + TextureGenerator {
     /// ```rust
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::{self, HashIndexer};
+    /// use plexus::primitive::index::HashIndexer;
+    /// use plexus::primitive;
     ///
     /// let cube = Cube::new();
     /// let (indeces, positions) = primitive::zip_vertices((

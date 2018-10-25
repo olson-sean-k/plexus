@@ -853,7 +853,9 @@ mod tests {
     use geometry::convert::IntoGeometry;
     use geometry::*;
     use graph::*;
-    use primitive::*;
+    use primitive::cube::Cube;
+    use primitive::generate::*;
+    use primitive::index::*;
 
     fn find_vertex_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: T) -> Option<VertexKey>
     where
@@ -928,7 +930,7 @@ mod tests {
 
     #[test]
     fn split_composite_edge() {
-        let (indeces, vertices) = cube::Cube::new()
+        let (indeces, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();

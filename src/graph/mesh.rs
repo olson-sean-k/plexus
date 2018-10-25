@@ -22,9 +22,9 @@ use graph::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
 use graph::GraphError;
-use primitive::{
-    self, Arity, FromIndexer, HashIndexer, IndexVertices, Indexer, IntoVertices, Map, Quad,
-};
+use primitive::decompose::IntoVertices;
+use primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
+use primitive::{self, Arity, Map, Quad};
 
 /// Half-edge graph representation of a mesh.
 ///
@@ -117,15 +117,15 @@ where
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::index::LruIndexer;
     /// use plexus::primitive::sphere::UvSphere;
-    /// use plexus::primitive::LruIndexer;
     ///
     /// # fn main() {
     /// let (indeces, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
     ///     .flat_index_vertices(LruIndexer::with_capacity(256));
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3).unwrap();
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, Error>
@@ -635,11 +635,13 @@ mod tests {
     use graph::mutation::face::FaceRemoveCache;
     use graph::mutation::{Mutate, Mutation};
     use graph::*;
-    use primitive::*;
+    use primitive::decompose::*;
+    use primitive::generate::*;
+    use primitive::sphere::UvSphere;
 
     #[test]
     fn collect_topology_into_mesh() {
-        let graph = sphere::UvSphere::new(3, 2)
+        let graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
 
@@ -650,7 +652,7 @@ mod tests {
 
     #[test]
     fn iterate_mesh_topology() {
-        let mut graph = sphere::UvSphere::new(4, 2)
+        let mut graph = UvSphere::new(4, 2)
             .polygons_with_position() // 8 triangles, 24 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
 
@@ -670,7 +672,7 @@ mod tests {
 
     #[test]
     fn non_manifold_error_deferred() {
-        let graph = sphere::UvSphere::new(32, 32)
+        let graph = UvSphere::new(32, 32)
             .polygons_with_position()
             .triangulate()
             .collect::<MeshGraph<Point3<f32>>>();
@@ -793,7 +795,7 @@ mod tests {
 
         // Create a mesh with a floating point value associated with each face.
         // Use a mutable iterator to write to the geometry of each face.
-        let mut graph = sphere::UvSphere::new(4, 4)
+        let mut graph = UvSphere::new(4, 4)
             .polygons_with_position()
             .collect::<MeshGraph<ValueGeometry>>();
         let value = 3.14;

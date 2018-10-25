@@ -586,11 +586,12 @@ mod tests {
     use nalgebra::Point3;
 
     use graph::*;
-    use primitive::*;
+    use primitive::generate::*;
+    use primitive::sphere::UvSphere;
 
     #[test]
     fn circulate_over_edges() {
-        let graph = sphere::UvSphere::new(4, 2)
+        let graph = UvSphere::new(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
 

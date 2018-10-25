@@ -36,8 +36,8 @@ pub trait Attribute: Clone {}
 /// use plexus::geometry::{Attribute, Geometry};
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
+/// use plexus::primitive::index::LruIndexer;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::primitive::LruIndexer;
 ///
 /// // Vertex-only geometry with a position and color.
 /// #[derive(Clone, Copy, PartialEq, PartialOrd)]
@@ -68,6 +68,7 @@ pub trait Attribute: Clone {}
 ///
 /// # fn main() {
 /// // Create a mesh from a sphere primitive and map the geometry data.
+/// let indexer = LruIndexer::with_capacity(64);
 /// let mut graph = UvSphere::new(8, 8)
 ///     .polygons_with_position()
 ///     .map_vertices(|position| {
@@ -76,7 +77,7 @@ pub trait Attribute: Clone {}
 ///             color: Vector4::new(1.0, 1.0, 1.0, 1.0),
 ///         }
 ///     })
-///     .collect_with_indexer::<MeshGraph<VertexGeometry>, _>(LruIndexer::with_capacity(64))
+///     .collect_with_indexer::<MeshGraph<VertexGeometry>, _>(indexer)
 ///     .unwrap();
 /// # }
 /// ```

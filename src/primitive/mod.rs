@@ -49,7 +49,7 @@
 //! ```rust
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::{Bounds, Cube};
-//! use plexus::primitive::LruIndexer;
+//! use plexus::primitive::index::LruIndexer;
 //!
 //! let (indeces, positions) = Cube::new()
 //!     .polygons_with_position_from(Bounds::unit_radius())
@@ -57,10 +57,14 @@
 //!     .index_vertices(LruIndexer::default());
 //! ```
 
+// TODO: This module used to employ the private-in-public pattern to hide
+//       traits from user code. Consider using `#[doc(hidden)]` or nested
+//       modules to prevent exposing internal traits.
+
 pub mod cube;
-mod decompose;
-mod generate;
-mod index;
+pub mod decompose;
+pub mod generate;
+pub mod index;
 pub mod sphere;
 mod topology;
 
@@ -68,19 +72,6 @@ use decorum::Real;
 use num::{One, Zero};
 use std::ops::Div;
 
-pub(crate) use self::index::{FromIndexer, Indexer};
-
-pub use self::decompose::{
-    Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices, Subdivide,
-    Tetrahedrons, Triangulate, Vertices,
-};
-pub use self::generate::{
-    PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
-    VertexGenerator, VerticesWithPosition,
-};
-pub use self::index::{
-    CollectWithIndexer, FlatIndexVertices, HashIndexer, IndexVertices, LruIndexer,
-};
 pub use self::topology::{
     zip_vertices, Arity, Converged, Edge, Map, MapVertices, Polygon, Polygonal, Quad, Rotate,
     Topological, Triangle, Zip,

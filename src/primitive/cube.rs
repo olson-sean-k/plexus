@@ -1,3 +1,24 @@
+//! Cube primitives.
+//!
+//! # Examples
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! use nalgebra::Point3;
+//! use plexus::graph::MeshGraph;
+//! use plexus::prelude::*;
+//! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::index::HashIndexer;
+//!
+//! # fn main() {
+//! let graph = Cube::new()
+//!     .polygons_with_position()
+//!     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
+//!     .unwrap();
+//! # }
+//! ```
+
 use decorum::R32;
 use num::{One, Zero};
 

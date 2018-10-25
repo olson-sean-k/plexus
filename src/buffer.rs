@@ -51,9 +51,9 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 
 use geometry::convert::IntoGeometry;
-use primitive::{
-    Arity, FlatIndexVertices, FromIndexer, HashIndexer, Indexer, IntoVertices, Topological,
-};
+use primitive::decompose::IntoVertices;
+use primitive::index::{FlatIndexVertices, FromIndexer, HashIndexer, Indexer};
+use primitive::{Arity, Topological};
 
 #[derive(Debug, Fail)]
 pub enum BufferError {
@@ -224,11 +224,13 @@ mod tests {
 
     use buffer::*;
     use graph::*;
-    use primitive::*;
+    use primitive::decompose::*;
+    use primitive::generate::*;
+    use primitive::sphere::UvSphere;
 
     #[test]
     fn collect_topology_into_buffer() {
-        let buffer = sphere::UvSphere::new(3, 2)
+        let buffer = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .triangulate()
             .collect::<MeshBuffer<u32, Point3<f32>>>();
@@ -239,7 +241,7 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
-        let graph = sphere::UvSphere::new(3, 2)
+        let graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let buffer = graph
@@ -252,7 +254,7 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_face() {
-        let graph = sphere::UvSphere::new(3, 2)
+        let graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let buffer = graph.to_mesh_buffer_by_face::<u32, Point3<f32>>().unwrap();

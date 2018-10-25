@@ -31,12 +31,16 @@ pub use decorum::{R32, R64};
 
 pub mod prelude {
     pub use geometry::{Duplet, Triplet};
-    pub use primitive::{
-        CollectWithIndexer, Converged, Edges, FlatIndexVertices, IndexVertices, IntoEdges,
-        IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices, Map, MapVertices,
-        PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture, Subdivide,
-        Tetrahedrons, Triangulate, VertexGenerator, Vertices, VerticesWithPosition, Zip,
+    pub use primitive::decompose::{
+        Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices,
+        Subdivide, Tetrahedrons, Triangulate, Vertices,
     };
+    pub use primitive::generate::{
+        PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
+        VertexGenerator, VerticesWithPosition,
+    };
+    pub use primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
+    pub use primitive::{Converged, Map, MapVertices, Zip};
 }
 
 trait BoolExt: Sized {

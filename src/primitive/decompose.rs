@@ -1,5 +1,7 @@
-//! This module provides a generic iterator and traits for decomposing
-//! topologies and tessellating polygons.
+//! Topological decomposition and tessellation.
+//!
+//! The `Decompose` iterator uses various traits to decompose and tessellate
+//! streams of topological structures.
 
 use arrayvec::ArrayVec;
 use std::collections::{vec_deque, VecDeque};
@@ -22,7 +24,7 @@ impl<I, P, Q, R> Decompose<I, P, Q, R>
 where
     R: IntoIterator<Item = Q>,
 {
-    fn new(input: I, f: fn(P) -> R) -> Self {
+    pub(in primitive) fn new(input: I, f: fn(P) -> R) -> Self {
         Decompose {
             input,
             output: VecDeque::new(),
@@ -31,6 +33,8 @@ where
     }
 }
 
+// TODO: Use `impl Iterator<Item = P>` instead of this alias after
+//       https://github.com/rust-lang/rust/issues/50823 is fixed.
 // Names the iterator fed into the `Decompose` adapter in `remap`.
 type Remap<P> = Chain<Rev<vec_deque::IntoIter<P>>, vec::IntoIter<P>>;
 
@@ -50,7 +54,7 @@ where
     /// ```rust
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::HashIndexer;
+    /// use plexus::primitive::index::HashIndexer;
     ///
     /// let (indeces, positions) = Cube::new()
     ///     .polygons_with_position()

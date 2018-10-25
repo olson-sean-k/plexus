@@ -5,8 +5,9 @@ extern crate plexus;
 use decorum::R32;
 use nalgebra::{Point2, Point3};
 use plexus::prelude::*;
+use plexus::primitive;
 use plexus::primitive::cube::{Cube, Plane};
-use plexus::primitive::{self, HashIndexer};
+use plexus::primitive::index::HashIndexer;
 
 fn map_unit_uv(position: Point3<R32>, plane: Plane, unit: R32) -> Point2<R32> {
     let map = |position: R32| -> R32 { position / unit };
