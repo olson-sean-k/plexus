@@ -3,6 +3,7 @@ use itertools::structs::Zip as ItemZip; // Avoid collision with `Zip`.
 use num::Integer;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
+use std::ops::{Index, Range};
 
 use primitive::decompose::IntoVertices;
 
@@ -113,6 +114,49 @@ where
     }
 }
 
+struct Iter<'a, T>
+where
+    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
+{
+    topology: &'a T,
+    range: Range<usize>,
+}
+
+impl<'a, T> Iter<'a, T>
+where
+    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
+{
+    fn with_arity(topology: &'a T, arity: usize) -> Self {
+        Iter {
+            topology,
+            range: 0..arity,
+        }
+    }
+}
+
+impl<'a, T> Iter<'a, T>
+where
+    T: 'a + Arity + Index<usize, Output = <T as Topological>::Vertex> + Topological,
+{
+    fn new(topology: &'a T) -> Self {
+        Iter {
+            topology,
+            range: 0..T::ARITY,
+        }
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T>
+where
+    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
+{
+    type Item = &'a T::Vertex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.range.next().map(|index| self.topology.index(index))
+    }
+}
+
 pub struct Edge<T> {
     pub a: T,
     pub b: T,
@@ -121,6 +165,15 @@ pub struct Edge<T> {
 impl<T> Edge<T> {
     pub fn new(a: T, b: T) -> Self {
         Edge { a, b }
+    }
+}
+
+impl<T> Edge<T>
+where
+    T: Clone,
+{
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        Iter::new(self)
     }
 }
 
@@ -149,6 +202,18 @@ impl<T> FromIterator<T> for Edge<T> {
 zip!(topology => Edge, geometries => (A, B));
 zip!(topology => Edge, geometries => (A, B, C));
 zip!(topology => Edge, geometries => (A, B, C, D));
+
+impl<T> Index<usize> for Edge<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.a,
+            1 => &self.b,
+            _ => panic!(),
+        }
+    }
+}
 
 impl<T, U> Map<U> for Edge<T>
 where
@@ -200,6 +265,15 @@ impl<T> Triangle<T> {
     }
 }
 
+impl<T> Triangle<T>
+where
+    T: Clone,
+{
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        Iter::new(self)
+    }
+}
+
 impl<T> Arity for Triangle<T> {
     const ARITY: usize = 3;
 }
@@ -229,6 +303,19 @@ impl<T> FromIterator<T> for Triangle<T> {
 zip!(topology => Triangle, geometries => (A, B));
 zip!(topology => Triangle, geometries => (A, B, C));
 zip!(topology => Triangle, geometries => (A, B, C, D));
+
+impl<T> Index<usize> for Triangle<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.a,
+            1 => &self.b,
+            2 => &self.c,
+            _ => panic!(),
+        }
+    }
+}
 
 impl<T, U> Map<U> for Triangle<T>
 where
@@ -288,6 +375,15 @@ impl<T> Quad<T> {
     }
 }
 
+impl<T> Quad<T>
+where
+    T: Clone,
+{
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        Iter::new(self)
+    }
+}
+
 impl<T> Arity for Quad<T> {
     const ARITY: usize = 4;
 }
@@ -318,6 +414,20 @@ impl<T> FromIterator<T> for Quad<T> {
 zip!(topology => Quad, geometries => (A, B));
 zip!(topology => Quad, geometries => (A, B, C));
 zip!(topology => Quad, geometries => (A, B, C, D));
+
+impl<T> Index<usize> for Quad<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.a,
+            1 => &self.b,
+            2 => &self.c,
+            3 => &self.d,
+            _ => panic!(),
+        }
+    }
+}
 
 impl<T, U> Map<U> for Quad<T>
 where
@@ -373,6 +483,24 @@ pub enum Polygon<T> {
     Quad(Quad<T>),
 }
 
+impl<T> Polygon<T> {
+    pub fn arity(&self) -> usize {
+        match *self {
+            Polygon::Triangle(..) => Triangle::<T>::ARITY,
+            Polygon::Quad(..) => Quad::<T>::ARITY,
+        }
+    }
+}
+
+impl<T> Polygon<T>
+where
+    T: Clone,
+{
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        Iter::with_arity(self, self.arity())
+    }
+}
+
 impl<T> From<Triangle<T>> for Polygon<T> {
     fn from(triangle: Triangle<T>) -> Self {
         Polygon::Triangle(triangle)
@@ -406,6 +534,17 @@ impl<T> FromIterator<T> for Polygon<T> {
 zip!(topology => Polygon, geometries => (A, B));
 zip!(topology => Polygon, geometries => (A, B, C));
 zip!(topology => Polygon, geometries => (A, B, C, D));
+
+impl<T> Index<usize> for Polygon<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match *self {
+            Polygon::Triangle(ref triangle) => triangle.index(index),
+            Polygon::Quad(ref quad) => quad.index(index),
+        }
+    }
+}
 
 impl<T, U> Map<U> for Polygon<T>
 where
