@@ -302,7 +302,8 @@ where
     M: Copy + Reborrow,
     M::Target: AsStorage<Vertex<G>>,
     G: Geometry,
-{}
+{
+}
 
 impl<M, G> Deref for VertexView<M, G>
 where

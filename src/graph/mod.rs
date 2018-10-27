@@ -180,8 +180,7 @@ pub enum GraphError {
     TopologyMalformed,
     #[fail(
         display = "conflicting arity; expected {}, but got {}",
-        expected,
-        actual
+        expected, actual
     )]
     ArityConflict { expected: usize, actual: usize },
     #[fail(display = "face arity is non-constant")]

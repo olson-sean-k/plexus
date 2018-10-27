@@ -567,7 +567,8 @@ where
     M: Copy + Reborrow,
     M::Target: AsStorage<Edge<G>>,
     G: Geometry,
-{}
+{
+}
 
 impl<M, G> Deref for EdgeView<M, G>
 where

@@ -473,7 +473,8 @@ where
     M: Copy + Reborrow,
     M::Target: AsStorage<Face<G>>,
     G: Geometry,
-{}
+{
+}
 
 impl<M, G> Deref for FaceView<M, G>
 where
