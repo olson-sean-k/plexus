@@ -565,7 +565,7 @@ where
     G: Geometry,
     P: Map<usize> + primitive::Topological,
     P::Output: IntoVertices,
-    P::Vertex: Eq + Hash + IntoGeometry<G::Vertex>,
+    P::Vertex: Clone + Eq + Hash + IntoGeometry<G::Vertex>,
 {
     fn from_iter<I>(input: I) -> Self
     where

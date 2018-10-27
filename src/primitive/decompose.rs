@@ -108,26 +108,17 @@ pub trait IntoTriangles: Polygonal {
     fn into_triangles(self) -> Self::Output;
 }
 
-pub trait IntoSubdivisions: Polygonal
-where
-    Self::Vertex: Clone + Interpolate<Output = Self::Vertex>,
-{
+pub trait IntoSubdivisions: Polygonal {
     type Output: IntoIterator<Item = Self>;
 
     fn into_subdivisions(self) -> Self::Output;
 }
 
-pub trait IntoTetrahedrons: Polygonal
-where
-    Self::Vertex: Clone + Interpolate<Output = Self::Vertex>,
-{
+pub trait IntoTetrahedrons: Polygonal {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]>;
 }
 
-impl<T> IntoVertices for Edge<T>
-where
-    T: Clone,
-{
+impl<T> IntoVertices for Edge<T> {
     type Output = ArrayVec<[Self::Vertex; 2]>;
 
     fn into_vertices(self) -> Self::Output {
@@ -136,10 +127,7 @@ where
     }
 }
 
-impl<T> IntoVertices for Triangle<T>
-where
-    T: Clone,
-{
+impl<T> IntoVertices for Triangle<T> {
     type Output = ArrayVec<[Self::Vertex; 3]>;
 
     fn into_vertices(self) -> Self::Output {
@@ -148,10 +136,7 @@ where
     }
 }
 
-impl<T> IntoVertices for Quad<T>
-where
-    T: Clone,
-{
+impl<T> IntoVertices for Quad<T> {
     type Output = ArrayVec<[Self::Vertex; 4]>;
 
     fn into_vertices(self) -> Self::Output {
@@ -160,10 +145,7 @@ where
     }
 }
 
-impl<T> IntoVertices for Polygon<T>
-where
-    T: Clone,
-{
+impl<T> IntoVertices for Polygon<T> {
     type Output = Vec<Self::Vertex>;
 
     fn into_vertices(self) -> Self::Output {
@@ -174,10 +156,7 @@ where
     }
 }
 
-impl<T> IntoEdges for Edge<T>
-where
-    T: Clone,
-{
+impl<T> IntoEdges for Edge<T> {
     type Output = ArrayVec<[Edge<Self::Vertex>; 1]>;
 
     fn into_edges(self) -> Self::Output {
@@ -232,10 +211,7 @@ where
     }
 }
 
-impl<T> IntoTriangles for Triangle<T>
-where
-    T: Clone,
-{
+impl<T> IntoTriangles for Triangle<T> {
     type Output = ArrayVec<[Triangle<Self::Vertex>; 1]>;
 
     fn into_triangles(self) -> Self::Output {
@@ -359,7 +335,6 @@ impl<I, P> Vertices<P> for I
 where
     I: Iterator<Item = P>,
     P: IntoVertices,
-    P::Vertex: Clone,
 {
     fn vertices(self) -> Decompose<Self, P, P::Vertex, P::Output> {
         Decompose::new(self, P::into_vertices)
@@ -395,7 +370,6 @@ impl<I, P> Triangulate<P> for I
 where
     I: Iterator<Item = P>,
     P: IntoTriangles,
-    P::Vertex: Clone,
 {
     fn triangulate(self) -> Decompose<Self, P, Triangle<P::Vertex>, P::Output> {
         Decompose::new(self, P::into_triangles)
@@ -405,7 +379,6 @@ where
 pub trait Subdivide<P>: Sized
 where
     P: IntoSubdivisions,
-    P::Vertex: Clone + Interpolate<Output = P::Vertex>,
 {
     fn subdivide(self) -> Decompose<Self, P, P, P::Output>;
 }
@@ -414,7 +387,6 @@ impl<I, P> Subdivide<P> for I
 where
     I: Iterator<Item = P>,
     P: IntoSubdivisions,
-    P::Vertex: Clone + Interpolate<Output = P::Vertex>,
 {
     fn subdivide(self) -> Decompose<Self, P, P, P::Output> {
         Decompose::new(self, P::into_subdivisions)

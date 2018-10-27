@@ -8,7 +8,7 @@ use std::ops::{Index, Range};
 use primitive::decompose::IntoVertices;
 
 pub trait Topological: Sized {
-    type Vertex: Clone;
+    type Vertex;
 }
 
 pub trait Polygonal: Topological {}
@@ -25,10 +25,7 @@ pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
 
-pub trait Map<U>: Topological
-where
-    U: Clone,
-{
+pub trait Map<U>: Topological {
     type Output: Topological<Vertex = U>;
 
     fn map<F>(self, f: F) -> Self::Output
@@ -45,7 +42,7 @@ pub trait Zip {
 macro_rules! zip {
     (topology => $t:ident, geometries => ($($g:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($g: Clone),*> Zip for ($($t<$g>),*) {
+        impl<$($g),*> Zip for ($($t<$g>),*) {
             type Output = $t<($($g),*)>;
 
             fn zip(self) -> Self::Output {
@@ -56,11 +53,7 @@ macro_rules! zip {
     );
 }
 
-pub trait MapVertices<T, U>: Sized
-where
-    T: Clone,
-    U: Clone,
-{
+pub trait MapVertices<T, U>: Sized {
     fn map_vertices<F>(self, f: F) -> InteriorMap<Self, T, U, F>
     where
         F: FnMut(T) -> U;
@@ -71,8 +64,6 @@ where
     I: Iterator<Item = P>,
     P: Map<U, Output = Q> + Topological<Vertex = T>,
     Q: Topological<Vertex = U>,
-    T: Clone,
-    U: Clone,
 {
     fn map_vertices<F>(self, f: F) -> InteriorMap<Self, T, U, F>
     where
@@ -104,8 +95,6 @@ where
     F: FnMut(T) -> U,
     P: Map<U, Output = Q> + Topological<Vertex = T>,
     Q: Topological<Vertex = U>,
-    T: Clone,
-    U: Clone,
 {
     type Item = Q;
 
@@ -166,12 +155,7 @@ impl<T> Edge<T> {
     pub fn new(a: T, b: T) -> Self {
         Edge { a, b }
     }
-}
 
-impl<T> Edge<T>
-where
-    T: Clone,
-{
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self)
     }
@@ -215,11 +199,7 @@ impl<T> Index<usize> for Edge<T> {
     }
 }
 
-impl<T, U> Map<U> for Edge<T>
-where
-    T: Clone,
-    U: Clone,
-{
+impl<T, U> Map<U> for Edge<T> {
     type Output = Edge<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
@@ -231,17 +211,11 @@ where
     }
 }
 
-impl<T> Topological for Edge<T>
-where
-    T: Clone,
-{
+impl<T> Topological for Edge<T> {
     type Vertex = T;
 }
 
-impl<T> Rotate for Edge<T>
-where
-    T: Clone,
-{
+impl<T> Rotate for Edge<T> {
     fn rotate(self, n: isize) -> Self {
         if n % 2 != 0 {
             let Edge { a, b } = self;
@@ -263,12 +237,7 @@ impl<T> Triangle<T> {
     pub fn new(a: T, b: T, c: T) -> Self {
         Triangle { a, b, c }
     }
-}
 
-impl<T> Triangle<T>
-where
-    T: Clone,
-{
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self)
     }
@@ -317,11 +286,7 @@ impl<T> Index<usize> for Triangle<T> {
     }
 }
 
-impl<T, U> Map<U> for Triangle<T>
-where
-    T: Clone,
-    U: Clone,
-{
+impl<T, U> Map<U> for Triangle<T> {
     type Output = Triangle<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
@@ -333,19 +298,13 @@ where
     }
 }
 
-impl<T> Topological for Triangle<T>
-where
-    T: Clone,
-{
+impl<T> Topological for Triangle<T> {
     type Vertex = T;
 }
 
-impl<T> Polygonal for Triangle<T> where T: Clone {}
+impl<T> Polygonal for Triangle<T> {}
 
-impl<T> Rotate for Triangle<T>
-where
-    T: Clone,
-{
+impl<T> Rotate for Triangle<T> {
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
@@ -373,12 +332,7 @@ impl<T> Quad<T> {
     pub fn new(a: T, b: T, c: T, d: T) -> Self {
         Quad { a, b, c, d }
     }
-}
 
-impl<T> Quad<T>
-where
-    T: Clone,
-{
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self)
     }
@@ -429,11 +383,7 @@ impl<T> Index<usize> for Quad<T> {
     }
 }
 
-impl<T, U> Map<U> for Quad<T>
-where
-    T: Clone,
-    U: Clone,
-{
+impl<T, U> Map<U> for Quad<T> {
     type Output = Quad<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
@@ -445,19 +395,13 @@ where
     }
 }
 
-impl<T> Topological for Quad<T>
-where
-    T: Clone,
-{
+impl<T> Topological for Quad<T> {
     type Vertex = T;
 }
 
-impl<T> Polygonal for Quad<T> where T: Clone {}
+impl<T> Polygonal for Quad<T> {}
 
-impl<T> Rotate for Quad<T>
-where
-    T: Clone,
-{
+impl<T> Rotate for Quad<T> {
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
@@ -490,12 +434,7 @@ impl<T> Polygon<T> {
             Polygon::Quad(..) => Quad::<T>::ARITY,
         }
     }
-}
 
-impl<T> Polygon<T>
-where
-    T: Clone,
-{
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::with_arity(self, self.arity())
     }
@@ -546,11 +485,7 @@ impl<T> Index<usize> for Polygon<T> {
     }
 }
 
-impl<T, U> Map<U> for Polygon<T>
-where
-    T: Clone,
-    U: Clone,
-{
+impl<T, U> Map<U> for Polygon<T> {
     type Output = Polygon<U>;
 
     fn map<F>(self, f: F) -> Self::Output
@@ -564,19 +499,13 @@ where
     }
 }
 
-impl<T> Topological for Polygon<T>
-where
-    T: Clone,
-{
+impl<T> Topological for Polygon<T> {
     type Vertex = T;
 }
 
-impl<T> Polygonal for Polygon<T> where T: Clone {}
+impl<T> Polygonal for Polygon<T> {}
 
-impl<T> Rotate for Polygon<T>
-where
-    T: Clone,
-{
+impl<T> Rotate for Polygon<T> {
     fn rotate(self, n: isize) -> Self {
         match self {
             Polygon::Triangle(triangle) => Polygon::Triangle(triangle.rotate(n)),

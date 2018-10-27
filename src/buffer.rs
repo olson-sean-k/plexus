@@ -206,7 +206,7 @@ where
 impl<N, V, P> FromIterator<P> for MeshBuffer<N, V>
 where
     P: Arity + IntoVertices + Topological,
-    P::Vertex: Eq + Hash + IntoGeometry<V>,
+    P::Vertex: Clone + Eq + Hash + IntoGeometry<V>,
     N: Copy + Integer + NumCast + Unsigned,
 {
     fn from_iter<I>(input: I) -> Self
