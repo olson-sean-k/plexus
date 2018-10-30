@@ -45,6 +45,7 @@ failure = "0.1.*"
 fnv = "1.0.*"
 itertools = "0.6.*"
 num = "0.2.*"
+typenum = "1.10.*"
 
 cgmath = { version = "0.16.*", optional = true }
 nalgebra = { version = "0.16.*", optional = true }

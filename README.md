@@ -16,7 +16,7 @@ geometric data via tessellation and other operations.
 
 ```rust
 use nalgebra::Point3;
-use plexus::buffer::MeshBuffer;
+use plexus::buffer::MeshBuffer3;
 use plexus::prelude::*;
 use plexus::primitive::sphere::UvSphere;
 
@@ -29,7 +29,8 @@ let buffer = UvSphere::new(16, 16)
     .map_vertices(|position| -> Point3<f32> { position.into() })
     .map_vertices(|position| position * 10.0)
     .map_vertices(|position| Vertex::new(position, Color::white()))
-    .collect::<MeshBuffer<u32, Vertex>>();
+    .triangulate()
+    .collect::<MeshBuffer3<u32, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 

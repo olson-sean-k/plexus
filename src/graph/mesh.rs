@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
+use typenum::{self, NonZero};
 
-use buffer::MeshBuffer;
+use buffer::{Flat, IndexBuffer, MeshBuffer};
 use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use geometry::Geometry;
 use graph::container::alias::OwnedCore;
@@ -163,32 +164,33 @@ where
     /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
     /// the index buffer must be known and constant.
     ///
+    /// `MeshGraph` also implements `From` for `MeshBuffer`, but will panic if
+    /// the conversion fails.
+    ///
     /// # Examples
     ///
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point2;
-    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::buffer::{Flat4, MeshBuffer};
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let buffer = MeshBuffer::<u32, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
     ///     vec![0, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f32>>::from_mesh_buffer(buffer, 4).unwrap();
+    /// let mut graph = MeshGraph::<Point2<f32>>::from_mesh_buffer(buffer).unwrap();
     /// # }
     /// ```
-    pub fn from_mesh_buffer<N, V>(
-        buffer: MeshBuffer<N, V>,
-        arity: usize,
-    ) -> Result<Self, GraphError>
+    pub fn from_mesh_buffer<A, N, H>(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, GraphError>
     where
+        A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
-        V: Clone + IntoGeometry<G::Vertex>,
+        H: Clone + IntoGeometry<G::Vertex>,
     {
         MeshGraph::from_raw_buffers(
             buffer
@@ -196,7 +198,7 @@ where
                 .iter()
                 .map(|index| NumCast::from(*index).unwrap()),
             buffer.as_vertex_slice().iter().cloned(),
-            arity,
+            buffer.arity().unwrap(),
         )
     }
 
@@ -308,11 +310,13 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity. Typically, a
-    /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_vertex<N, V>(&self) -> Result<MeshBuffer<N, V>, GraphError>
+    /// Returns an error if the mesh does not have constant arity that is
+    /// compatible with the index buffer. Typically, a mesh is triangulated
+    /// before being converted to a mesh buffer.
+    pub fn to_mesh_buffer_by_vertex<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
-        G::Vertex: IntoGeometry<V>,
+        G::Vertex: IntoGeometry<H>,
+        A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
     {
         self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.clone().into_geometry())
@@ -325,15 +329,17 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity. Typically, a
-    /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_vertex_with<N, V, F>(
+    /// Returns an error if the mesh does not have constant arity that is
+    /// compatible with the index buffer. Typically, a mesh is triangulated
+    /// before being converted to a mesh buffer.
+    pub fn to_mesh_buffer_by_vertex_with<A, N, H, F>(
         &self,
         mut f: F,
-    ) -> Result<MeshBuffer<N, V>, GraphError>
+    ) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
+        A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
-        F: FnMut(VertexView<&Self, G>) -> V,
+        F: FnMut(VertexView<&Self, G>) -> H,
     {
         let (keys, vertices) = {
             let mut keys = HashMap::with_capacity(self.vertex_count());
@@ -345,14 +351,14 @@ where
             (keys, vertices)
         };
         let indeces = {
-            let arity = match self.faces().nth(0) {
-                Some(face) => face.arity(),
-                _ => 0,
-            };
+            let arity = Flat::<A, N>::ARITY.unwrap();
             let mut indeces = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(GraphError::ArityNonConstant);
+                    return Err(GraphError::ArityConflict {
+                        expected: arity,
+                        actual: face.arity(),
+                    });
                 }
                 for vertex in face.vertices() {
                     indeces.push(N::from(keys[&vertex.key()]).unwrap());
@@ -360,7 +366,8 @@ where
             }
             indeces
         };
-        MeshBuffer::from_raw_buffers(indeces, vertices).map_err(|error| error.into())
+        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(indeces, vertices)
+            .map_err(|error| error.into())
     }
 
     /// Creates a mesh buffer from the mesh.
@@ -370,11 +377,13 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity. Typically, a
-    /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face<N, V>(&self) -> Result<MeshBuffer<N, V>, GraphError>
+    /// Returns an error if the mesh does not have constant arity that is
+    /// compatible with the index buffer. Typically, a mesh is triangulated
+    /// before being converted to a mesh buffer.
+    pub fn to_mesh_buffer_by_face<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
-        G::Vertex: IntoGeometry<V>,
+        G::Vertex: IntoGeometry<H>,
+        A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
     {
         self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.clone().into_geometry())
@@ -387,25 +396,27 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity. Typically, a
-    /// mesh is triangulated before being converted to a mesh buffer.
-    pub fn to_mesh_buffer_by_face_with<N, V, F>(
+    /// Returns an error if the mesh does not have constant arity that is
+    /// compatible with the index buffer. Typically, a mesh is triangulated
+    /// before being converted to a mesh buffer.
+    pub fn to_mesh_buffer_by_face_with<A, N, H, F>(
         &self,
         mut f: F,
-    ) -> Result<MeshBuffer<N, V>, GraphError>
+    ) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
+        A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
-        F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> V,
+        F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> H,
     {
         let vertices = {
-            let arity = match self.faces().nth(0) {
-                Some(face) => face.arity(),
-                _ => 0,
-            };
+            let arity = Flat::<A, N>::ARITY.unwrap();
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
-                    return Err(GraphError::ArityNonConstant);
+                    return Err(GraphError::ArityConflict {
+                        expected: arity,
+                        actual: face.arity(),
+                    });
                 }
                 for vertex in face.vertices() {
                     // TODO: Can some sort of dereference be used here?
@@ -414,7 +425,7 @@ where
             }
             vertices
         };
-        MeshBuffer::from_raw_buffers(
+        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(
             // TODO: Cannot use the bound `N: Step`, which is unstable.
             (0..vertices.len()).map(|index| N::from(index).unwrap()),
             vertices,
@@ -673,6 +684,7 @@ mod tests {
     use num::Zero;
     use std::collections::HashSet;
 
+    use buffer::U3;
     use geometry::*;
     use graph::mutation::face::FaceRemoveCache;
     use graph::mutation::{Mutate, Mutation};
@@ -721,7 +733,7 @@ mod tests {
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
         graph
-            .to_mesh_buffer_by_face_with::<usize, Point3<f32>, _>(|_, vertex| vertex.geometry)
+            .to_mesh_buffer_by_face_with::<U3, usize, _, _>(|_, vertex| vertex.geometry)
             .unwrap();
     }
 

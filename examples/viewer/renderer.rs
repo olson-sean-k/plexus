@@ -6,7 +6,7 @@ use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Res
 use gfx_device_gl;
 use gfx_window_glutin;
 use glutin::{GlContext, GlWindow};
-use plexus::buffer::MeshBuffer;
+use plexus::buffer::MeshBuffer3;
 
 use pipeline::{self, Data, Meta, Transform, Vertex};
 
@@ -146,7 +146,7 @@ where
         }
     }
 
-    pub fn draw_mesh_buffer(&mut self, buffer: &MeshBuffer<u32, Vertex>) {
+    pub fn draw_mesh_buffer(&mut self, buffer: &MeshBuffer3<u32, Vertex>) {
         let (buffer, slice) = self
             .factory
             .create_vertex_buffer_with_slice(buffer.as_vertex_slice(), buffer.as_index_slice());

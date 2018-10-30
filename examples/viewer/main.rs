@@ -19,7 +19,7 @@ use glutin::{
     ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
 };
 use nalgebra::{Matrix4, Point3, Scalar};
-use plexus::buffer::MeshBuffer;
+use plexus::buffer::MeshBuffer3;
 use plexus::geometry::{Attribute, Geometry};
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
@@ -39,7 +39,7 @@ impl Geometry for FaceColorGeometry {
     type Face = Color4<f32>;
 }
 
-fn new_mesh_buffer() -> MeshBuffer<u32, Vertex> {
+fn new_mesh_buffer() -> MeshBuffer3<u32, Vertex> {
     let mut graph = UvSphere::new(32, 16)
         .polygons_with_position_from(Bounds::unit_radius())
         .collect::<MeshGraph<FaceColorGeometry>>();

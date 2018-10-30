@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use plexus::buffer::MeshBuffer;
+//! use plexus::buffer::MeshBuffer3;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::index::HashIndexer;
@@ -16,7 +16,7 @@
 //!     .polygons_with_position()
 //!     .triangulate()
 //!     .flat_index_vertices(HashIndexer::default());
-//! let buffer = MeshBuffer::from_raw_buffers(indeces, positions).unwrap();
+//! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indeces, positions).unwrap();
 //! ```
 
 use std::cmp;

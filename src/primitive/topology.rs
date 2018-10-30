@@ -146,6 +146,7 @@ where
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Edge<T> {
     pub a: T,
     pub b: T,
@@ -227,6 +228,7 @@ impl<T> Rotate for Edge<T> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Triangle<T> {
     pub a: T,
     pub b: T,
@@ -321,6 +323,7 @@ impl<T> Rotate for Triangle<T> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Quad<T> {
     pub a: T,
     pub b: T,
@@ -422,6 +425,7 @@ impl<T> Rotate for Quad<T> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum Polygon<T> {
     Triangle(Triangle<T>),
     Quad(Quad<T>),

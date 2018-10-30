@@ -20,6 +20,7 @@ extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;
 extern crate num;
+extern crate typenum;
 
 pub mod buffer;
 pub mod geometry;
