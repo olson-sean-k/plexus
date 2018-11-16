@@ -121,14 +121,14 @@ where
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
-    /// let (indeces, positions) = UvSphere::new(16, 16)
+    /// let (indices, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
     ///     .flat_index_vertices(LruIndexer::with_capacity(256));
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3).unwrap();
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, positions, 3).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J, arity: usize) -> Result<Self, GraphError>
+    pub fn from_raw_buffers<I, J>(indices: I, vertices: J, arity: usize) -> Result<Self, GraphError>
     where
         I: IntoIterator<Item = usize>,
         J: IntoIterator,
@@ -139,7 +139,7 @@ where
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
-        for face in &indeces.into_iter().chunks(arity) {
+        for face in &indices.into_iter().chunks(arity) {
             let face = face.collect::<Vec<_>>();
             if face.len() != arity {
                 // Index buffer length is not a multiple of arity.
@@ -350,9 +350,9 @@ where
             }
             (keys, vertices)
         };
-        let indeces = {
+        let indices = {
             let arity = Flat::<A, N>::ARITY.unwrap();
-            let mut indeces = Vec::with_capacity(arity * self.face_count());
+            let mut indices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
                     return Err(GraphError::ArityConflict {
@@ -361,12 +361,12 @@ where
                     });
                 }
                 for vertex in face.vertices() {
-                    indeces.push(N::from(keys[&vertex.key()]).unwrap());
+                    indices.push(N::from(keys[&vertex.key()]).unwrap());
                 }
             }
-            indeces
+            indices
         };
-        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(indeces, vertices)
+        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(indices, vertices)
             .map_err(|error| error.into())
     }
 
@@ -552,12 +552,12 @@ where
         N: Indexer<P, P::Vertex>,
     {
         let mut mutation = Mutation::mutate(MeshGraph::new());
-        let (indeces, vertices) = input.into_iter().index_vertices(indexer);
+        let (indices, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
-        for face in indeces {
+        for face in indices {
             // The topology with the greatest arity emitted by indexing is a
             // quad. Avoid allocations by using an `ArrayVec`.
             let perimeter = face

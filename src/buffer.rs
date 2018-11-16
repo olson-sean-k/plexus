@@ -188,14 +188,14 @@ pub type MeshBufferN<N, G> = MeshBuffer<Structured<N>, G>;
 /// A `MeshBuffer` is a linear representation of a mesh that can be consumed by
 /// a graphics pipeline. A `MeshBuffer` is composed of two separate buffers:
 /// an index buffer and a vertex buffer. The index buffer contains ordered
-/// indeces into the data in the vertex buffer and describes the topology of
+/// indices into the data in the vertex buffer and describes the topology of
 /// the mesh. The vertex buffer contains arbitrary geometric data.
 #[derive(Debug)]
 pub struct MeshBuffer<I, G>
 where
     I: IndexBuffer,
 {
-    indeces: Vec<I::Unit>,
+    indices: Vec<I::Unit>,
     vertices: Vec<G>,
 }
 
@@ -223,7 +223,7 @@ where
 
     /// Gets a slice of the index data.
     pub fn as_index_slice(&self) -> &[I::Unit] {
-        self.indeces.as_slice()
+        self.indices.as_slice()
     }
 
     /// Gets a slice of the vertex data.
@@ -238,7 +238,7 @@ where
 {
     fn default() -> Self {
         MeshBuffer {
-            indeces: Default::default(),
+            indices: Default::default(),
             vertices: Default::default(),
         }
     }
@@ -268,7 +268,7 @@ where
     ///
     /// # fn main() {
     /// let cube = Cube::new();
-    /// let indeces = cube
+    /// let indices = cube
     ///     .polygons_with_index()
     ///     .triangulate()
     ///     .vertices()
@@ -277,16 +277,16 @@ where
     ///     .vertices_with_position()
     ///     .map(|position| -> Point3<f32> { position.into() })
     ///     .collect::<Vec<_>>();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indeces, vertices).unwrap();
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, BufferError>
+    pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator,
         I::Item: ToPrimitive,
         J: IntoIterator<Item = G>,
     {
-        let indeces = indeces
+        let indices = indices
             .into_iter()
             .map(|index| <<Flat<A, N> as IndexBuffer>::Unit as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
@@ -295,11 +295,11 @@ where
             .map(|vertex| vertex)
             .collect::<Vec<_>>();
         let len = N::from(vertices.len()).unwrap();
-        if indeces.iter().any(|index| *index >= len) {
+        if indices.iter().any(|index| *index >= len) {
             Err(BufferError::IndexOutOfBounds)
         }
         else {
-            Ok(MeshBuffer { indeces, vertices })
+            Ok(MeshBuffer { indices, vertices })
         }
     }
 
@@ -318,8 +318,8 @@ where
                 .drain(..)
                 .map(|vertex| vertex.into_geometry()),
         );
-        self.indeces
-            .extend(buffer.indeces.drain(..).map(|index| index.into() + offset))
+        self.indices
+            .extend(buffer.indices.drain(..).map(|index| index.into() + offset))
     }
 }
 
@@ -346,23 +346,23 @@ where
     ///
     /// # fn main() {
     /// let sphere = UvSphere::new(8, 8);
-    /// let indeces = sphere
+    /// let indices = sphere
     ///     .polygons_with_index()
     ///     .collect::<Vec<_>>();
     /// let vertices = sphere
     ///     .vertices_with_position()
     ///     .map(|position| -> Point3<f32> { position.into() })
     ///     .collect::<Vec<_>>();
-    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(indeces, vertices).unwrap();
+    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
     /// # }
     /// ```
-    pub fn from_raw_buffers<I, J>(indeces: I, vertices: J) -> Result<Self, BufferError>
+    pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator,
         I::Item: Into<<Structured<N> as IndexBuffer>::Unit>,
         J: IntoIterator<Item = G>,
     {
-        let indeces = indeces
+        let indices = indices
             .into_iter()
             .map(|topology| topology.into())
             .collect::<Vec<_>>();
@@ -371,14 +371,14 @@ where
             .map(|geometry| geometry)
             .collect::<Vec<_>>();
         let len = N::from(vertices.len()).unwrap();
-        if indeces
+        if indices
             .iter()
             .any(|polygon| polygon.iter().any(|index| *index >= len))
         {
             Err(BufferError::IndexOutOfBounds)
         }
         else {
-            Ok(MeshBuffer { indeces, vertices })
+            Ok(MeshBuffer { indices, vertices })
         }
     }
 
@@ -397,9 +397,9 @@ where
                 .drain(..)
                 .map(|vertex| vertex.into_geometry()),
         );
-        self.indeces.extend(
+        self.indices.extend(
             buffer
-                .indeces
+                .indices
                 .drain(..)
                 .map(|topology| topology.into().map(|index| index + offset)),
         )
@@ -420,9 +420,9 @@ where
         I: IntoIterator<Item = P>,
         M: Indexer<P, P::Vertex>,
     {
-        let (indeces, vertices) = input.into_iter().flat_index_vertices(indexer);
+        let (indices, vertices) = input.into_iter().flat_index_vertices(indexer);
         MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(
-            indeces.into_iter().map(|index| N::from(index).unwrap()),
+            indices.into_iter().map(|index| N::from(index).unwrap()),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
         )
     }
@@ -443,9 +443,9 @@ where
         I: IntoIterator<Item = P>,
         M: Indexer<P, P::Vertex>,
     {
-        let (indeces, vertices) = input.into_iter().index_vertices(indexer);
+        let (indices, vertices) = input.into_iter().index_vertices(indexer);
         MeshBuffer::<Structured<_>, _>::from_raw_buffers(
-            indeces
+            indices
                 .into_iter()
                 .map(|topology| topology.map(|index| N::from(index).unwrap())),
             vertices.into_iter().map(|vertex| vertex.into_geometry()),

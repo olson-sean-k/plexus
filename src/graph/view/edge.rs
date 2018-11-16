@@ -931,10 +931,10 @@ mod tests {
 
     #[test]
     fn split_composite_edge() {
-        let (indeces, vertices) = Cube::new()
+        let (indices, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indeces, vertices, 4).unwrap();
+        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices, 4).unwrap();
         let key = graph.edges().nth(0).unwrap().key();
         let vertex = graph.edge_mut(key).unwrap().split().unwrap().into_ref();
 

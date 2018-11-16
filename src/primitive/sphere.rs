@@ -278,7 +278,7 @@ mod tests {
             5,
             BTreeSet::from_iter(
                 UvSphere::new(3, 2)
-                    .polygons_with_index() // 18 vertices, 5 indeces.
+                    .polygons_with_index() // 18 vertices, 5 indices.
                     .vertices()
             )
             .len()

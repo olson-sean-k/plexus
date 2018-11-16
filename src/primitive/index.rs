@@ -12,11 +12,11 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::index::HashIndexer;
 //!
-//! let (indeces, positions) = Cube::new()
+//! let (indices, positions) = Cube::new()
 //!     .polygons_with_position()
 //!     .triangulate()
 //!     .flat_index_vertices(HashIndexer::default());
-//! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indeces, positions).unwrap();
+//! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
 //! ```
 
 use std::cmp;
@@ -31,7 +31,7 @@ use primitive::topology::{Arity, Map, Topological};
 /// Vertex indexer.
 ///
 /// Disambiguates arbitrary vertex data and emits a one-to-one mapping of
-/// indeces to vertices. This is useful for generating basic rendering buffers
+/// indices to vertices. This is useful for generating basic rendering buffers
 /// for graphics pipelines.
 pub trait Indexer<T, K>
 where
@@ -68,7 +68,7 @@ where
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::index::HashIndexer;
 ///
-/// let (indeces, positions) = Cube::new()
+/// let (indices, positions) = Cube::new()
 ///     .polygons_with_position()
 ///     .triangulate()
 ///     .index_vertices(HashIndexer::default());
@@ -148,7 +148,7 @@ where
 /// use plexus::primitive::index::LruIndexer;
 /// use plexus::primitive::sphere::UvSphere;
 ///
-/// let (indeces, positions) = UvSphere::new(8, 8)
+/// let (indices, positions) = UvSphere::new(8, 8)
 ///     .polygons_with_position()
 ///     .triangulate()
 ///     .index_vertices(LruIndexer::with_capacity(64));
@@ -177,7 +177,7 @@ where
     /// Creates a new `LruIndexer` with the specified capacity.
     ///
     /// The capacity of the cache must be sufficient in order to generate a
-    /// unique set of vertex data and indeces.
+    /// unique set of vertex data and indices.
     pub fn with_capacity(capacity: usize) -> Self {
         let capacity = cmp::max(1, capacity);
         LruIndexer {
@@ -261,7 +261,7 @@ where
 /// let sphere = UvSphere::new(64, 32);
 ///
 /// // More efficient.
-/// let (indeces, positions) = (
+/// let (indices, positions) = (
 ///     sphere.polygons_with_index()
 ///         .triangulate()
 ///         .collect::<Vec<_>>(),
@@ -270,7 +270,7 @@ where
 /// );
 ///
 /// // Less efficient.
-/// let (indeces, positions) = sphere.polygons_with_position()
+/// let (indices, positions) = sphere.polygons_with_position()
 ///     .triangulate()
 ///     .index_vertices(HashIndexer::default());
 /// ```
@@ -299,8 +299,8 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::index::HashIndexer;
     ///
-    /// // `indeces` contains `Triangle`s with index data.
-    /// let (indeces, positions) = Cube::new()
+    /// // `indices` contains `Triangle`s with index data.
+    /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position()
     ///     .subdivide()
     ///     .triangulate()
@@ -314,8 +314,8 @@ where
     }
 }
 
-// TODO: The name `(indeces, vertices)` that is commonly used for indexing
-//       output is a bit ambiguous. The indeces are contained in topological
+// TODO: The name `(indices, vertices)` that is commonly used for indexing
+//       output is a bit ambiguous. The indices are contained in topological
 //       structures which have vertices.
 impl<P, I> IndexVertices<P> for I
 where
@@ -331,10 +331,10 @@ where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K,
     {
-        let mut indeces = Vec::new();
+        let mut indices = Vec::new();
         let mut vertices = Vec::new();
         for topology in self {
-            indeces.push(topology.map(|vertex| {
+            indices.push(topology.map(|vertex| {
                 let (index, vertex) = indexer.index(vertex, &f);
                 if let Some(vertex) = vertex {
                     vertices.push(vertex);
@@ -342,7 +342,7 @@ where
                 index
             }));
         }
-        (indeces, vertices)
+        (indices, vertices)
     }
 }
 
@@ -371,7 +371,7 @@ where
 /// let sphere = UvSphere::new(64, 32);
 ///
 /// // More efficient.
-/// let (indeces, positions) = (
+/// let (indices, positions) = (
 ///     sphere.polygons_with_index()
 ///         .triangulate()
 ///         .vertices()
@@ -381,7 +381,7 @@ where
 /// );
 ///
 /// // Less efficient.
-/// let (indeces, positions) = sphere.polygons_with_position()
+/// let (indices, positions) = sphere.polygons_with_position()
 ///     .triangulate()
 ///     .flat_index_vertices(HashIndexer::default());
 /// ```
@@ -411,12 +411,12 @@ where
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
-    /// let (indeces, positions) = UvSphere::new(16, 16)
+    /// let (indices, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
     ///     .flat_index_vertices(HashIndexer::default());
-    /// // `indeces` is a flat buffer with arity 3.
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indeces, positions, 3);
+    /// // `indices` is a flat buffer with arity 3.
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, positions, 3);
     /// # }
     /// ```
     fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
@@ -439,7 +439,7 @@ where
     {
         // Do not use `index_vertices`, because flattening index topologies
         // would require allocated an additional `Vec`.
-        let mut indeces = Vec::new();
+        let mut indices = Vec::new();
         let mut vertices = Vec::new();
         for topology in self {
             for vertex in topology.into_vertices() {
@@ -447,10 +447,10 @@ where
                 if let Some(vertex) = vertex {
                     vertices.push(vertex);
                 }
-                indeces.push(index);
+                indices.push(index);
             }
         }
-        (indeces, vertices)
+        (indices, vertices)
     }
 }
 

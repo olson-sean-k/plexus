@@ -37,10 +37,10 @@
 //!     .map(|position| -> Point3<f32> { position.into() }) // Convert into a nalgebra type.
 //!     .map(|position| position * 10.0) // Scale the positions by 10.
 //!     .collect::<Vec<_>>();
-//! let indeces = sphere
+//! let indices = sphere
 //!     .polygons_with_index() // Generate polygons indexing the unique set of vertices.
 //!     .triangulate() // Decompose the polygons into triangles.
-//!     .vertices() // Decompose the triangles into vertices (indeces).
+//!     .vertices() // Decompose the triangles into vertices (indices).
 //!     .collect::<Vec<_>>();
 //! # }
 //! ```
@@ -51,7 +51,7 @@
 //! use plexus::primitive::cube::{Bounds, Cube};
 //! use plexus::primitive::index::LruIndexer;
 //!
-//! let (indeces, positions) = Cube::new()
+//! let (indices, positions) = Cube::new()
 //!     .polygons_with_position_from(Bounds::unit_radius())
 //!     .triangulate()
 //!     .index_vertices(LruIndexer::default());

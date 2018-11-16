@@ -56,7 +56,7 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::index::HashIndexer;
     ///
-    /// let (indeces, positions) = Cube::new()
+    /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
