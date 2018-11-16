@@ -86,6 +86,8 @@ pub use typenum::{U3, U4};
 pub enum BufferError {
     #[fail(display = "index into vertex data out of bounds")]
     IndexOutOfBounds,
+    #[fail(display = "conflicting arity")]
+    ArityConflict,
 }
 
 /// Index buffer.
@@ -254,7 +256,8 @@ where
     /// # Errors
     ///
     /// Returns an error if the index data is out of bounds within the vertex
-    /// buffer.
+    /// buffer or if the number of indices disagrees with the arity of the
+    /// index buffer.
     ///
     /// # Examples
     ///
@@ -290,16 +293,21 @@ where
             .into_iter()
             .map(|index| <<Flat<A, N> as IndexBuffer>::Unit as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
-        let vertices = vertices
-            .into_iter()
-            .map(|vertex| vertex)
-            .collect::<Vec<_>>();
-        let len = N::from(vertices.len()).unwrap();
-        if indices.iter().any(|index| *index >= len) {
-            Err(BufferError::IndexOutOfBounds)
+        if indices.len() % Flat::<A, N>::ARITY.unwrap() != 0 {
+            Err(BufferError::ArityConflict)
         }
         else {
-            Ok(MeshBuffer { indices, vertices })
+            let vertices = vertices
+                .into_iter()
+                .map(|vertex| vertex)
+                .collect::<Vec<_>>();
+            let len = N::from(vertices.len()).unwrap();
+            if indices.iter().any(|index| *index >= len) {
+                Err(BufferError::IndexOutOfBounds)
+            }
+            else {
+                Ok(MeshBuffer { indices, vertices })
+            }
         }
     }
 
