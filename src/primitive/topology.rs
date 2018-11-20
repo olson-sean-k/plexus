@@ -542,8 +542,8 @@ where
 /// # extern crate plexus;
 /// # use plexus::R32;
 /// use plexus::prelude::*;
-/// use plexus::primitive::cube::Cube;
 /// use plexus::primitive;
+/// use plexus::primitive::cube::Cube;
 ///
 /// # use num::One;
 /// # fn map_uv_to_color(texture: &Duplet<R32>) -> Triplet<R32> {

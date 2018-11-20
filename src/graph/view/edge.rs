@@ -87,9 +87,19 @@ where
     ///     vec![0, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     ///     4,
-    /// ).unwrap();
-    /// let key = graph.edges().find(|edge| edge.is_boundary_edge()).unwrap().key();
-    /// let edge = graph.edge_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    /// )
+    /// .unwrap();
+    /// let key = graph
+    ///     .edges()
+    ///     .find(|edge| edge.is_boundary_edge())
+    ///     .unwrap()
+    ///     .key();
+    /// let edge = graph
+    ///     .edge_mut(key)
+    ///     .unwrap()
+    ///     .extrude(1.0)
+    ///     .unwrap()
+    ///     .into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = edge.into_next_edge().into_next_edge().into_face();

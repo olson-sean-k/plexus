@@ -86,9 +86,7 @@ pub trait VerticesWithPosition<P>: PositionGenerator + Sized {
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// let sphere = UvSphere::new(8, 8);
-    /// let vertices = sphere
-    ///     .vertices_with_position()
-    ///     .collect::<Vec<_>>();
+    /// let vertices = sphere.vertices_with_position().collect::<Vec<_>>();
     /// let indices = sphere
     ///     .polygons_with_index()
     ///     .triangulate()
@@ -231,9 +229,7 @@ pub trait PolygonsWithIndex<P>: IndexGenerator + Sized {
     /// use plexus::primitive::cube::Cube;
     ///
     /// let cube = Cube::new();
-    /// let vertices = cube
-    ///     .vertices_with_position()
-    ///     .collect::<Vec<_>>();
+    /// let vertices = cube.vertices_with_position().collect::<Vec<_>>();
     /// let indices = cube
     ///     .polygons_with_index()
     ///     .triangulate()
@@ -287,16 +283,14 @@ pub trait PolygonsWithTexture<P>: Sized + TextureGenerator {
     ///
     /// ```rust
     /// use plexus::prelude::*;
+    /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::index::HashIndexer;
-    /// use plexus::primitive;
     ///
     /// let cube = Cube::new();
-    /// let (indices, positions) = primitive::zip_vertices((
-    ///         cube.polygons_with_position(),
-    ///         cube.polygons_with_texture(),
-    ///     ))
-    ///     .index_vertices(HashIndexer::default());
+    /// let (indices, positions) =
+    ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
+    ///         .index_vertices(HashIndexer::default());
     /// ```
     fn polygons_with_texture(&self) -> Generate<Self, Self::State, P> {
         self.polygons_with_texture_from(Default::default())

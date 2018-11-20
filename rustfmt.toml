@@ -1,1 +1,2 @@
 control_brace_style = "ClosingNextLine"
+format_doc_comments = true

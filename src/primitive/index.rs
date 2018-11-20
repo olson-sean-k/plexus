@@ -262,15 +262,16 @@ where
 ///
 /// // More efficient.
 /// let (indices, positions) = (
-///     sphere.polygons_with_index()
+///     sphere
+///         .polygons_with_index()
 ///         .triangulate()
 ///         .collect::<Vec<_>>(),
-///     sphere.vertices_with_position()
-///         .collect::<Vec<_>>(),
+///     sphere.vertices_with_position().collect::<Vec<_>>(),
 /// );
 ///
 /// // Less efficient.
-/// let (indices, positions) = sphere.polygons_with_position()
+/// let (indices, positions) = sphere
+///     .polygons_with_position()
 ///     .triangulate()
 ///     .index_vertices(HashIndexer::default());
 /// ```
@@ -365,23 +366,24 @@ where
 ///
 /// ```rust
 /// use plexus::prelude::*;
-/// use plexus::primitive::sphere::UvSphere;
 /// use plexus::primitive::index::HashIndexer;
+/// use plexus::primitive::sphere::UvSphere;
 ///
 /// let sphere = UvSphere::new(64, 32);
 ///
 /// // More efficient.
 /// let (indices, positions) = (
-///     sphere.polygons_with_index()
+///     sphere
+///         .polygons_with_index()
 ///         .triangulate()
 ///         .vertices()
 ///         .collect::<Vec<_>>(),
-///     sphere.vertices_with_position()
-///         .collect::<Vec<_>>(),
+///     sphere.vertices_with_position().collect::<Vec<_>>(),
 /// );
 ///
 /// // Less efficient.
-/// let (indices, positions) = sphere.polygons_with_position()
+/// let (indices, positions) = sphere
+///     .polygons_with_position()
 ///     .triangulate()
 ///     .flat_index_vertices(HashIndexer::default());
 /// ```

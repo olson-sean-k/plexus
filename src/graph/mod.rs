@@ -125,7 +125,8 @@
 //!     vec![0, 1, 2, 3],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //!     4,
-//! ).unwrap();
+//! )
+//! .unwrap();
 //! graph.triangulate().unwrap();
 //!
 //! // Traverse an edge and use a circulator to get the faces of a nearby vertex.
@@ -136,7 +137,7 @@
 //!     .into_opposite_edge()
 //!     .into_next_edge()
 //!     .into_destination_vertex();
-//! for face in vertex.neighboring_orphan_faces() {
+//! for mut face in vertex.neighboring_orphan_faces() {
 //!     // `face.geometry` is mutable here.
 //! }
 //! # }

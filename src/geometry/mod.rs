@@ -71,11 +71,9 @@ pub trait Attribute: Clone {}
 /// let indexer = LruIndexer::with_capacity(64);
 /// let mut graph = UvSphere::new(8, 8)
 ///     .polygons_with_position()
-///     .map_vertices(|position| {
-///         VertexGeometry {
-///             position: position.into_geometry(),
-///             color: Vector4::new(1.0, 1.0, 1.0, 1.0),
-///         }
+///     .map_vertices(|position| VertexGeometry {
+///         position: position.into_geometry(),
+///         color: Vector4::new(1.0, 1.0, 1.0, 1.0),
 ///     })
 ///     .collect_with_indexer::<MeshGraph<VertexGeometry>, _>(indexer)
 ///     .unwrap();

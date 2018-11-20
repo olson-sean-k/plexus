@@ -37,8 +37,8 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer3;
-//! use plexus::primitive::sphere::UvSphere;
 //! use plexus::prelude::*;
+//! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let buffer = UvSphere::new(16, 16)
@@ -65,7 +65,9 @@
 //! let graph = Cube::new()
 //!     .polygons_with_position()
 //!     .collect::<MeshGraph<Point3<f32>>>();
-//! let buffer = graph.to_mesh_buffer_by_vertex::<U4, u32, Point3<f32>>().unwrap();
+//! let buffer = graph
+//!     .to_mesh_buffer_by_vertex::<U4, u32, Point3<f32>>()
+//!     .unwrap();
 //! # }
 //! ```
 
@@ -266,21 +268,17 @@ where
     /// # extern crate plexus;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer3;
-    /// use plexus::primitive::cube::Cube;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
     /// let cube = Cube::new();
-    /// let indices = cube
-    ///     .polygons_with_index()
-    ///     .triangulate()
-    ///     .vertices()
-    ///     .collect::<Vec<_>>();
-    /// let vertices = cube
-    ///     .vertices_with_position()
-    ///     .map(|position| -> Point3<f32> { position.into() })
-    ///     .collect::<Vec<_>>();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
+    ///     cube.polygons_with_index().triangulate().vertices(),
+    ///     cube.vertices_with_position()
+    ///         .map(|position| -> Point3<f32> { position.into() }),
+    /// )
+    /// .unwrap();
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
@@ -349,19 +347,18 @@ where
     /// # extern crate plexus;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBufferN;
-    /// use plexus::primitive::sphere::UvSphere;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
     /// let sphere = UvSphere::new(8, 8);
-    /// let indices = sphere
-    ///     .polygons_with_index()
-    ///     .collect::<Vec<_>>();
-    /// let vertices = sphere
-    ///     .vertices_with_position()
-    ///     .map(|position| -> Point3<f32> { position.into() })
-    ///     .collect::<Vec<_>>();
-    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
+    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
+    ///     sphere.polygons_with_index(),
+    ///     sphere
+    ///         .vertices_with_position()
+    ///         .map(|position| -> Point3<f32> { position.into() }),
+    /// )
+    /// .unwrap();
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>

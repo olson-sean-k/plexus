@@ -84,7 +84,11 @@ where
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = vertex.into_outgoing_edge().into_face().unwrap();
-    /// let _ = vertex.into_outgoing_edge().into_opposite_edge().into_face().unwrap();
+    /// let _ = vertex
+    ///     .into_outgoing_edge()
+    ///     .into_opposite_edge()
+    ///     .into_face()
+    ///     .unwrap();
     /// # }
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M, G> {
