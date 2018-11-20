@@ -25,7 +25,7 @@ pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
 
-pub trait Map<U>: Topological {
+pub trait Map<U = <Self as Topological>::Vertex>: Topological {
     type Output: Topological<Vertex = U>;
 
     fn map<F>(self, f: F) -> Self::Output

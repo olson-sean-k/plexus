@@ -1,4 +1,4 @@
-//! Mesh generation from primitives like cubes and spheres.
+//! Primitive topological structures.
 //!
 //! This module provides unit primitives that can be used to form complex
 //! iterator expressions to generate meshes via a stream of topology and
