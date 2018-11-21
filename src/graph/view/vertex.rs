@@ -1,3 +1,4 @@
+use fool::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -9,7 +10,6 @@ use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
-use BoolExt;
 
 /// Reference to a vertex.
 ///

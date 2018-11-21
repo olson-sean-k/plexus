@@ -1,3 +1,4 @@
+use fool::prelude::*;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
@@ -17,7 +18,6 @@ use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
 use graph::GraphError;
-use BoolExt;
 
 /// Reference to a face.
 ///

@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use fool::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -17,7 +18,6 @@ use graph::topology::{Edge, Face, Topological, Vertex};
 use graph::view::convert::{FromKeyedSource, IntoView};
 use graph::view::{FaceView, OrphanFaceView, OrphanVertexView, VertexView};
 use graph::GraphError;
-use BoolExt;
 
 /// Reference to an edge.
 ///

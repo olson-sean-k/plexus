@@ -15,6 +15,7 @@ extern crate derivative;
 #[macro_use]
 extern crate failure;
 extern crate fnv;
+extern crate fool;
 #[macro_use]
 extern crate itertools;
 #[cfg(feature = "geometry-nalgebra")]
@@ -42,71 +43,4 @@ pub mod prelude {
     };
     pub use primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use primitive::{Converged, Map, MapVertices, Zip};
-}
-
-trait BoolExt: Sized {
-    fn option(self) -> Option<()>;
-
-    fn some<T>(self, some: T) -> Option<T>;
-
-    fn some_with<T, F>(self, f: F) -> Option<T>
-    where
-        F: Fn() -> T;
-}
-
-impl BoolExt for bool {
-    fn option(self) -> Option<()> {
-        if self {
-            Some(())
-        }
-        else {
-            None
-        }
-    }
-
-    fn some<T>(self, some: T) -> Option<T> {
-        if self {
-            Some(some)
-        }
-        else {
-            None
-        }
-    }
-
-    fn some_with<T, F>(self, f: F) -> Option<T>
-    where
-        F: Fn() -> T,
-    {
-        if self {
-            Some(f())
-        }
-        else {
-            None
-        }
-    }
-}
-
-trait OptionExt<T> {
-    fn and_if<F>(self, f: F) -> Self
-    where
-        F: Fn(&T) -> bool;
-}
-
-impl<T> OptionExt<T> for Option<T> {
-    fn and_if<F>(mut self, f: F) -> Self
-    where
-        F: Fn(&T) -> bool,
-    {
-        match self.take() {
-            Some(value) => {
-                if f(&value) {
-                    Some(value)
-                }
-                else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
 }
