@@ -99,7 +99,7 @@ pub enum BufferError {
 
 /// Index buffer.
 pub trait IndexBuffer {
-    type Unit;
+    type Item;
 
     // TODO: Use `Option<NonZeroU8>`.
     /// Arity of the index buffer (and by extension the mesh).
@@ -137,7 +137,7 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Unit = N;
+    type Item = N;
 
     const ARITY: Option<usize> = Some(A::USIZE);
 }
@@ -186,7 +186,7 @@ impl<N> IndexBuffer for Structured<Polygon<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Unit = Polygon<N>;
+    type Item = Polygon<N>;
 
     const ARITY: Option<usize> = None;
 }
@@ -195,7 +195,7 @@ impl<N> IndexBuffer for Structured<Triangle<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Unit = Triangle<N>;
+    type Item = Triangle<N>;
 
     const ARITY: Option<usize> = Some(Triangle::<N>::ARITY);
 }
@@ -204,7 +204,7 @@ impl<N> IndexBuffer for Structured<Quad<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Unit = Quad<N>;
+    type Item = Quad<N>;
 
     const ARITY: Option<usize> = Some(Quad::<N>::ARITY);
 }
@@ -231,7 +231,7 @@ pub struct MeshBuffer<I, G>
 where
     I: IndexBuffer,
 {
-    indices: Vec<I::Unit>,
+    indices: Vec<I::Item>,
     vertices: Vec<G>,
 }
 
@@ -258,7 +258,7 @@ where
     }
 
     /// Gets a slice of the index data.
-    pub fn as_index_slice(&self) -> &[I::Unit] {
+    pub fn as_index_slice(&self) -> &[I::Item] {
         self.indices.as_slice()
     }
 
@@ -321,7 +321,7 @@ where
     {
         let indices = indices
             .into_iter()
-            .map(|index| <<Flat<A, N> as IndexBuffer>::Unit as NumCast>::from(index).unwrap())
+            .map(|index| <<Flat<A, N> as IndexBuffer>::Item as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
         if indices.len() % Flat::<A, N>::ARITY.unwrap() != 0 {
             Err(BufferError::ArityConflict)
@@ -346,7 +346,7 @@ where
     pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
     where
         U: IndexBuffer,
-        U::Unit: Into<<Flat<A, N> as IndexBuffer>::Unit>,
+        U::Item: Into<<Flat<A, N> as IndexBuffer>::Item>,
         H: IntoGeometry<G>,
     {
         let offset = N::from(self.vertices.len()).unwrap();
@@ -397,7 +397,7 @@ where
                 .into_iter()
                 .chunks(Flat3::<N>::ARITY.unwrap())
                 .into_iter()
-                .map(|triangle| <Poly3<N> as IndexBuffer>::Unit::from_iter(triangle))
+                .map(|triangle| <Poly3<N> as IndexBuffer>::Item::from_iter(triangle))
                 .collect(),
             vertices,
         }
@@ -440,7 +440,7 @@ where
                 .into_iter()
                 .chunks(Flat4::<N>::ARITY.unwrap())
                 .into_iter()
-                .map(|quad| <Poly4<N> as IndexBuffer>::Unit::from_iter(quad))
+                .map(|quad| <Poly4<N> as IndexBuffer>::Item::from_iter(quad))
                 .collect(),
             vertices,
         }
@@ -484,9 +484,9 @@ where
     pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator,
-        I::Item: Into<<Structured<P> as IndexBuffer>::Unit>,
+        I::Item: Into<<Structured<P> as IndexBuffer>::Item>,
         J: IntoIterator<Item = G>,
-        <Structured<P> as IndexBuffer>::Unit: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
+        <Structured<P> as IndexBuffer>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
     {
         let indices = indices
             .into_iter()
@@ -515,10 +515,10 @@ where
     pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
     where
         U: IndexBuffer,
-        U::Unit: Into<<Structured<P> as IndexBuffer>::Unit>,
+        U::Item: Into<<Structured<P> as IndexBuffer>::Item>,
         H: IntoGeometry<G>,
-        <Structured<P> as IndexBuffer>::Unit: Copy
-            + Map<Output = <Structured<P> as IndexBuffer>::Unit>
+        <Structured<P> as IndexBuffer>::Item: Copy
+            + Map<Output = <Structured<P> as IndexBuffer>::Item>
             + Topological<Vertex = P::Vertex>,
     {
         let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
@@ -649,7 +649,7 @@ where
     Q: Polygonal,
     Q::Vertex: Copy + Integer + NumCast + Unsigned,
     Structured<Q>: IndexBuffer,
-    <Structured<Q> as IndexBuffer>::Unit: Copy
+    <Structured<Q> as IndexBuffer>::Item: Copy
         + From<<P::Output as Map<Q::Vertex>>::Output>
         + IntoVertices
         + Topological<Vertex = Q::Vertex>,
@@ -694,7 +694,7 @@ where
     Q: Polygonal,
     Q::Vertex: Copy + Integer + NumCast + Unsigned,
     Structured<Q>: IndexBuffer,
-    <Structured<Q> as IndexBuffer>::Unit: Copy
+    <Structured<Q> as IndexBuffer>::Item: Copy
         + From<<P::Output as Map<Q::Vertex>>::Output>
         + IntoVertices
         + Topological<Vertex = Q::Vertex>,
