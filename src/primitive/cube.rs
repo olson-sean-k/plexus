@@ -81,7 +81,7 @@ impl Cube {
         Generate::new(
             self,
             (),
-            0..self.polygon_count(),
+            self.polygon_count(),
             Cube::polygon_with_plane_from,
         )
     }

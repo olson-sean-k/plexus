@@ -24,13 +24,13 @@ where
     pub(in primitive) fn new(
         generator: &'a G,
         state: S,
-        range: Range<usize>,
+        n: usize,
         f: fn(&'a G, &S, usize) -> P,
     ) -> Self {
         Generate {
             generator,
             state,
-            range,
+            range: 0..n,
             f,
         }
     }
@@ -133,7 +133,7 @@ where
         Generate::new(
             self,
             state,
-            0..self.vertex_count(),
+            self.vertex_count(),
             G::vertex_with_position_from,
         )
     }
@@ -194,7 +194,7 @@ where
         Generate::new(
             self,
             state,
-            0..self.polygon_count(),
+            self.polygon_count(),
             G::polygon_with_position_from,
         )
     }
@@ -254,7 +254,7 @@ where
         Generate::new(
             self,
             state,
-            0..self.polygon_count(),
+            self.polygon_count(),
             G::polygon_with_index_from,
         )
     }
@@ -310,7 +310,7 @@ where
         Generate::new(
             self,
             state,
-            0..self.polygon_count(),
+            self.polygon_count(),
             G::polygon_with_texture_from,
         )
     }
