@@ -210,14 +210,14 @@ where
 }
 
 /// Alias for a structured and triangular index buffer.
-pub type Poly3<N = usize> = Structured<Triangle<N>>;
+pub type Structured3<N = usize> = Structured<Triangle<N>>;
 /// Alias for a structured and quadrilateral index buffer.
-pub type Poly4<N = usize> = Structured<Quad<N>>;
+pub type Structured4<N = usize> = Structured<Quad<N>>;
 /// Alias for a structured and polygonal (variable arity) index buffer.
-pub type PolyN<N = usize> = Structured<Polygon<N>>;
+pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 
 /// Alias for a structured and polygonal `MeshBuffer`.
-pub type MeshBufferN<N, G> = MeshBuffer<PolyN<N>, G>;
+pub type MeshBufferN<N, G> = MeshBuffer<StructuredN<N>, G>;
 
 /// Linear representation of a mesh.
 ///
@@ -390,14 +390,14 @@ where
     /// }
     /// # }
     /// ```
-    pub fn into_structured_index(self) -> MeshBuffer<Poly3<N>, G> {
+    pub fn into_structured_index(self) -> MeshBuffer<Structured3<N>, G> {
         let MeshBuffer { indices, vertices } = self;
         MeshBuffer {
             indices: indices
                 .into_iter()
                 .chunks(Flat3::<N>::ARITY.unwrap())
                 .into_iter()
-                .map(|triangle| <Poly3<N> as IndexBuffer>::Item::from_iter(triangle))
+                .map(|triangle| <Structured3<N> as IndexBuffer>::Item::from_iter(triangle))
                 .collect(),
             vertices,
         }
@@ -433,14 +433,14 @@ where
     /// }
     /// # }
     /// ```
-    pub fn into_structured_index(self) -> MeshBuffer<Poly4<N>, G> {
+    pub fn into_structured_index(self) -> MeshBuffer<Structured4<N>, G> {
         let MeshBuffer { indices, vertices } = self;
         MeshBuffer {
             indices: indices
                 .into_iter()
                 .chunks(Flat4::<N>::ARITY.unwrap())
                 .into_iter()
-                .map(|quad| <Poly4<N> as IndexBuffer>::Item::from_iter(quad))
+                .map(|quad| <Structured4<N> as IndexBuffer>::Item::from_iter(quad))
                 .collect(),
             vertices,
         }
@@ -537,7 +537,7 @@ where
     }
 }
 
-impl<N, G> MeshBuffer<Poly3<N>, G>
+impl<N, G> MeshBuffer<Structured3<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
@@ -549,13 +549,13 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Poly3};
+    /// use plexus::buffer::{MeshBuffer, Structured3};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Poly3, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Structured3, _>::from_raw_buffers(
     ///     cube.polygons_with_index().triangulate(),
     ///     cube.vertices_with_position(),
     /// )
@@ -578,7 +578,7 @@ where
     }
 }
 
-impl<N, G> MeshBuffer<Poly4<N>, G>
+impl<N, G> MeshBuffer<Structured4<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
@@ -590,13 +590,13 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Poly4};
+    /// use plexus::buffer::{MeshBuffer, Structured4};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Poly4, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Structured4, _>::from_raw_buffers(
     ///     cube.polygons_with_index(),
     ///     cube.vertices_with_position(),
     /// )
@@ -743,11 +743,11 @@ mod tests {
     fn append_structured_buffers() {
         let mut buffer = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshBuffer<PolyN<u32>, Point3<f32>>>();
+            .collect::<MeshBuffer<StructuredN<u32>, Point3<f32>>>();
         buffer.append(
             &mut Cube::new()
                 .polygons_with_position() // 6 quads, 24 vertices.
-                .collect::<MeshBuffer<Poly4<u32>, Point3<f32>>>(),
+                .collect::<MeshBuffer<Structured4<u32>, Point3<f32>>>(),
         );
 
         assert_eq!(12, buffer.as_index_slice().len());
