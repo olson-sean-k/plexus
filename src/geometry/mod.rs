@@ -93,7 +93,7 @@ impl Geometry for () {
     type Face = ();
 }
 
-/// Pair of values.
+/// Homogeneous duplet.
 ///
 /// Provides basic vertex geometry and a grouping of values emitted by
 /// generators. Conversions into commonly used types from commonly used
@@ -101,7 +101,7 @@ impl Geometry for () {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Duplet<T>(pub T, pub T);
 
-/// Triple of values.
+/// Homogeneous triplet.
 ///
 /// Provides basic vertex geometry and a grouping of values emitted by
 /// generators. Conversions into commonly used types from commonly used
@@ -241,6 +241,138 @@ mod feature_geometry_cgmath {
                 T::from(self.1).unwrap(),
                 T::from(self.2).unwrap(),
             )
+        }
+    }
+
+    impl<T> Attribute for Point2<T> where T: Clone {}
+
+    impl<T> Attribute for Point3<T> where T: Clone {}
+
+    impl<T> Geometry for Point2<T>
+    where
+        T: Clone,
+    {
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
+    }
+
+    impl<T> Geometry for Point3<T>
+    where
+        T: Clone,
+    {
+        type Vertex = Self;
+        type Edge = ();
+        type Face = ();
+    }
+}
+
+#[cfg(feature = "geometry-mint")]
+mod feature_geometry_mint {
+    use mint::{Point2, Point3, Vector2, Vector3};
+    use num::{NumCast, ToPrimitive};
+
+    use geometry::*;
+
+    impl<T, U> From<Point2<U>> for Duplet<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from(other: Point2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
+        }
+    }
+
+    impl<T, U> From<Vector2<U>> for Duplet<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from(other: Vector2<U>) -> Self {
+            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
+        }
+    }
+
+    impl<T, U> Into<Point2<T>> for Duplet<U>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn into(self) -> Point2<T> {
+            Point2 {
+                x: T::from(self.0).unwrap(),
+                y: T::from(self.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> Into<Vector2<T>> for Duplet<U>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn into(self) -> Vector2<T> {
+            Vector2 {
+                x: T::from(self.0).unwrap(),
+                y: T::from(self.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> From<Point3<U>> for Triplet<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from(other: Point3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> From<Vector3<U>> for Triplet<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from(other: Vector3<U>) -> Self {
+            Triplet(
+                T::from(other.x).unwrap(),
+                T::from(other.y).unwrap(),
+                T::from(other.z).unwrap(),
+            )
+        }
+    }
+
+    impl<T, U> Into<Point3<T>> for Triplet<U>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn into(self) -> Point3<T> {
+            Point3 {
+                x: T::from(self.0).unwrap(),
+                y: T::from(self.1).unwrap(),
+                z: T::from(self.2).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> Into<Vector3<T>> for Triplet<U>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn into(self) -> Vector3<T> {
+            Vector3 {
+                x: T::from(self.0).unwrap(),
+                y: T::from(self.1).unwrap(),
+                z: T::from(self.2).unwrap(),
+            }
         }
     }
 

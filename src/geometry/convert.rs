@@ -258,6 +258,183 @@ mod feature_geometry_cgmath {
     }
 }
 
+#[cfg(feature = "geometry-mint")]
+mod feature_geometry_mint {
+    use decorum::{Finite, NotNan, Ordered, Primitive};
+    use mint::{Point2, Point3, Vector2, Vector3};
+    use num::{Float, NumCast, ToPrimitive};
+
+    use geometry::convert::*;
+    use geometry::{Duplet, Triplet};
+
+    // TODO: Implement `FromGeometry` for proxy types via specialization.
+    // TODO: Implement these conversions for two-dimensional points.
+    macro_rules! ordered {
+        (geometry => $g:ident,proxy => $p:ident) => {
+            impl<T> FromGeometry<$g<$p<T>>> for $g<T>
+            where
+                T: Float + Primitive,
+            {
+                fn from_geometry(other: $g<$p<T>>) -> Self {
+                    $g {
+                        x: other.x.into_inner(),
+                        y: other.y.into_inner(),
+                        z: other.z.into_inner(),
+                    }
+                }
+            }
+
+            impl<T> FromGeometry<$g<T>> for $g<$p<T>>
+            where
+                T: Float + Primitive,
+            {
+                fn from_geometry(other: $g<T>) -> Self {
+                    $g {
+                        x: $p::<T>::from_inner(other.x),
+                        y: $p::<T>::from_inner(other.y),
+                        z: $p::<T>::from_inner(other.z),
+                    }
+                }
+            }
+        };
+    }
+    ordered!(geometry => Point3, proxy => Finite);
+    ordered!(geometry => Point3, proxy => NotNan);
+    ordered!(geometry => Point3, proxy => Ordered);
+
+    impl<T, U> FromGeometry<(U, U)> for Point2<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U)) -> Self {
+            Point2 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Point3 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+                z: T::from(other.2).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Point2 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<Triplet<U>> for Point3<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Triplet<U>) -> Self {
+            Point3 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+                z: T::from(other.2).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U)> for Vector2<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U)) -> Self {
+            Vector2 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<(U, U, U)> for Vector3<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: (U, U, U)) -> Self {
+            Vector3 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+                z: T::from(other.2).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<Duplet<U>> for Vector2<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Duplet<U>) -> Self {
+            Vector2 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+            }
+        }
+    }
+
+    impl<T, U> FromGeometry<Triplet<U>> for Vector3<T>
+    where
+        T: NumCast,
+        U: ToPrimitive,
+    {
+        fn from_geometry(other: Triplet<U>) -> Self {
+            Vector3 {
+                x: T::from(other.0).unwrap(),
+                y: T::from(other.1).unwrap(),
+                z: T::from(other.2).unwrap(),
+            }
+        }
+    }
+
+    impl<T> AsPosition for Point2<T> {
+        type Target = Self;
+
+        fn as_position(&self) -> &Self::Target {
+            self
+        }
+
+        fn as_position_mut(&mut self) -> &mut Self::Target {
+            self
+        }
+    }
+
+    impl<T> AsPosition for Point3<T> {
+        type Target = Self;
+
+        fn as_position(&self) -> &Self::Target {
+            self
+        }
+
+        fn as_position_mut(&mut self) -> &mut Self::Target {
+            self
+        }
+    }
+}
+
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
     use decorum::{Finite, NotNan, Ordered, Primitive};

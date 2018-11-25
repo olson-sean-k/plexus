@@ -18,6 +18,8 @@ extern crate fnv;
 extern crate fool;
 #[macro_use]
 extern crate itertools;
+#[cfg(feature = "geometry-mint")]
+extern crate mint;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;
 extern crate num;
