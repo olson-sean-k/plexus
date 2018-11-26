@@ -19,7 +19,7 @@
 //! # }
 //! ```
 
-use decorum::{Real, R32};
+use decorum::{Real, R64};
 use num::traits::FloatConst;
 use num::{NumCast, One};
 use std::cmp;
@@ -34,17 +34,17 @@ use primitive::Half;
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
-    radius: R32,
+    radius: R64,
 }
 
 impl Bounds {
     pub fn unit_radius() -> Self {
-        Bounds { radius: R32::one() }
+        Bounds { radius: R64::one() }
     }
 
     pub fn unit_width() -> Self {
         Bounds {
-            radius: R32::half(),
+            radius: R64::half(),
         }
     }
 }
@@ -74,12 +74,12 @@ impl UvSphere {
         state: &<Self as PositionGenerator>::State,
         u: usize,
         v: usize,
-    ) -> Triplet<R32> {
-        let u = (<R32 as NumCast>::from(u).unwrap() / <R32 as NumCast>::from(self.nu).unwrap())
-            * R32::PI()
+    ) -> Triplet<R64> {
+        let u = (<R64 as NumCast>::from(u).unwrap() / <R64 as NumCast>::from(self.nu).unwrap())
+            * R64::PI()
             * 2.0;
-        let v = (<R32 as NumCast>::from(v).unwrap() / <R32 as NumCast>::from(self.nv).unwrap())
-            * R32::PI();
+        let v = (<R64 as NumCast>::from(v).unwrap() / <R64 as NumCast>::from(self.nv).unwrap())
+            * R64::PI();
         Triplet(
             state.radius * u.cos() * v.sin(),
             state.radius * u.sin() * v.sin(),
@@ -132,7 +132,7 @@ impl PositionGenerator for UvSphere {
 }
 
 impl PositionVertexGenerator for UvSphere {
-    type Output = Triplet<R32>;
+    type Output = Triplet<R64>;
 
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         if index == 0 {
@@ -149,7 +149,7 @@ impl PositionVertexGenerator for UvSphere {
 }
 
 impl PositionPolygonGenerator for UvSphere {
-    type Output = Polygon<Triplet<R32>>;
+    type Output = Polygon<Triplet<R64>>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented

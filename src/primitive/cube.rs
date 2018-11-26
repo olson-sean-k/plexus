@@ -19,7 +19,7 @@
 //! # }
 //! ```
 
-use decorum::R32;
+use decorum::R64;
 use num::{One, Zero};
 
 use geometry::{Duplet, Triplet};
@@ -43,22 +43,22 @@ pub enum Plane {
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
-    lower: R32,
-    upper: R32,
+    lower: R64,
+    upper: R64,
 }
 
 impl Bounds {
     pub fn unit_radius() -> Self {
         Bounds {
-            lower: -R32::one(),
-            upper: R32::one(),
+            lower: -R64::one(),
+            upper: R64::one(),
         }
     }
 
     pub fn unit_width() -> Self {
         Bounds {
-            lower: -R32::half(),
-            upper: R32::half(),
+            lower: -R64::half(),
+            upper: R64::half(),
         }
     }
 }
@@ -122,7 +122,7 @@ impl PositionGenerator for Cube {
 }
 
 impl PositionVertexGenerator for Cube {
-    type Output = Triplet<R32>;
+    type Output = Triplet<R64>;
 
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         let x = if index & 0b100 == 0b100 {
@@ -148,7 +148,7 @@ impl PositionVertexGenerator for Cube {
 }
 
 impl PositionPolygonGenerator for Cube {
-    type Output = Quad<Triplet<R32>>;
+    type Output = Quad<Triplet<R64>>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         self.polygon_with_index_from(&Default::default(), index)
@@ -185,7 +185,7 @@ impl TextureGenerator for Cube {
 }
 
 impl TexturePolygonGenerator for Cube {
-    type Output = Quad<Duplet<R32>>;
+    type Output = Quad<Duplet<R64>>;
 
     fn polygon_with_texture_from(
         &self,

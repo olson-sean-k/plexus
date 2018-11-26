@@ -540,13 +540,13 @@ where
 /// ```rust
 /// # extern crate num;
 /// # extern crate plexus;
-/// # use plexus::R32;
+/// # use plexus::R64;
 /// use plexus::prelude::*;
 /// use plexus::primitive;
 /// use plexus::primitive::cube::Cube;
 ///
 /// # use num::One;
-/// # fn map_uv_to_color(texture: &Duplet<R32>) -> Triplet<R32> {
+/// # fn map_uv_to_color(texture: &Duplet<R64>) -> Triplet<R64> {
 /// #     Triplet(One::one(), One::one(), One::one())
 /// # }
 /// # fn main() {

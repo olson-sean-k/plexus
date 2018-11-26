@@ -26,7 +26,7 @@ use render::{self, Color, Vertex};
 // Construct a buffer of index and vertex data from a sphere primitive.
 let buffer = UvSphere::new(16, 16)
     .polygons_with_position()
-    .map_vertices(|position| -> Point3<f32> { position.into() })
+    .map_vertices(|position| -> Point3<f64> { position.into() })
     .map_vertices(|position| position * 10.0)
     .map_vertices(|position| Vertex::new(position, Color::white()))
     .triangulate()
@@ -56,7 +56,7 @@ use plexus::primitive::sphere::{Bounds, UvSphere};
 // to `Point3` via the `FromGeometry` trait in this example.
 let mut graph = sphere::UvSphere::new(8, 8)
     .polygons_with_position_from(Bounds::unit_width())
-    .collect::<MeshGraph<Point3<f32>>>();
+    .collect::<MeshGraph<Point3<f64>>>();
 // Extrude a face in the mesh.
 let key = graph.faces().nth(0).unwrap().key();
 if let Ok(face) = graph.face_mut(key).unwrap().extrude(1.0) {
@@ -83,8 +83,8 @@ use plexus::geometry::{Attribute, Geometry};
 
 #[derive(Clone, Copy)]
 pub struct VertexGeometry {
-    pub position: Point3<f32>,
-    pub normal: Vector3<f32>,
+    pub position: Point3<f64>,
+    pub normal: Vector3<f64>,
 }
 
 impl Attribute for VertexGeometry {}
@@ -96,7 +96,7 @@ impl Geometry for VertexGeometry {
 }
 
 impl AsPosition for VertexGeometry {
-    type Target = Point3<f32>;
+    type Target = Point3<f64>;
 
     fn as_position(&self) -> &Self::Target {
         &self.position
