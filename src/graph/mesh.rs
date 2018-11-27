@@ -500,6 +500,18 @@ where
     }
 }
 
+impl<A, N, H, G> From<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+    H: Clone + IntoGeometry<G::Vertex>,
+    G: Geometry,
+{
+    fn from(buffer: MeshBuffer<Flat<A, N>, H>) -> Self {
+        MeshGraph::from_mesh_buffer(buffer).unwrap()
+    }
+}
+
 impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
     G: Geometry,
