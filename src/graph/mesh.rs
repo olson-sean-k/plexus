@@ -192,13 +192,14 @@ where
         N: Copy + Integer + NumCast + Unsigned,
         H: Clone + IntoGeometry<G::Vertex>,
     {
+        let arity = buffer.arity().unwrap();
+        let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers(
-            buffer
-                .as_index_slice()
-                .iter()
-                .map(|index| NumCast::from(*index).unwrap()),
-            buffer.as_vertex_slice().iter().cloned(),
-            buffer.arity().unwrap(),
+            indices
+                .into_iter()
+                .map(|index| NumCast::from(index).unwrap()),
+            vertices.into_iter(),
+            arity,
         )
     }
 

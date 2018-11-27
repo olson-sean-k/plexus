@@ -253,6 +253,11 @@ where
         Self::default()
     }
 
+    pub fn into_raw_buffers(self) -> (Vec<I::Item>, Vec<G>) {
+        let MeshBuffer { indices, vertices } = self;
+        (indices, vertices)
+    }
+
     pub fn arity(&self) -> Option<usize> {
         I::ARITY
     }
