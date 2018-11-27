@@ -191,22 +191,14 @@ where
     const ARITY: Option<usize> = None;
 }
 
-impl<N> IndexBuffer for Structured<Triangle<N>>
+impl<P> IndexBuffer for Structured<P>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    P: Arity + Polygonal,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
-    type Item = Triangle<N>;
+    type Item = P;
 
-    const ARITY: Option<usize> = Some(Triangle::<N>::ARITY);
-}
-
-impl<N> IndexBuffer for Structured<Quad<N>>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    type Item = Quad<N>;
-
-    const ARITY: Option<usize> = Some(Quad::<N>::ARITY);
+    const ARITY: Option<usize> = Some(<P as Arity>::ARITY);
 }
 
 /// Alias for a structured and triangular index buffer.
