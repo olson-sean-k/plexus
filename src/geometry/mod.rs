@@ -8,7 +8,8 @@
 //! `Geometry` and `Attribute` traits. Implementing operations like `Cross`,
 //! `Normalize`, etc., enable features like extrusion and splitting.
 
-use num::{self, Num, NumCast};
+use decorum::R64;
+use num::{self, Num, NumCast, One, Zero};
 
 pub mod convert;
 pub mod ops;
@@ -131,13 +132,13 @@ where
     type Face = ();
 }
 
-pub fn lerp<T>(a: T, b: T, f: f64) -> T
+pub fn lerp<T>(a: T, b: T, f: R64) -> T
 where
     T: Num + NumCast,
 {
-    let f = num::clamp(f, 0.0, 1.0);
-    let af = <f64 as NumCast>::from(a).unwrap() * (1.0 - f);
-    let bf = <f64 as NumCast>::from(b).unwrap() * f;
+    let f = num::clamp(f, Zero::zero(), One::one());
+    let af = <R64 as NumCast>::from(a).unwrap() * (R64::one() - f);
+    let bf = <R64 as NumCast>::from(b).unwrap() * f;
     <T as NumCast>::from(af + bf).unwrap()
 }
 

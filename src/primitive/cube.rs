@@ -29,7 +29,7 @@ use primitive::generate::{
     VertexGenerator,
 };
 use primitive::topology::{Converged, Map, Quad};
-use primitive::Half;
+use Half;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Plane {

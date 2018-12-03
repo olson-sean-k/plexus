@@ -30,7 +30,7 @@ use primitive::generate::{
     PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
 };
 use primitive::topology::{Polygon, Quad, Triangle};
-use primitive::Half;
+use Half;
 
 #[derive(Clone, Copy)]
 pub struct Bounds {

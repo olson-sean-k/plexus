@@ -68,25 +68,7 @@ pub mod index;
 pub mod sphere;
 mod topology;
 
-use decorum::Real;
-use num::{One, Zero};
-use std::ops::Div;
-
 pub use self::topology::{
     zip_vertices, Arity, Converged, Edge, Map, MapVertices, Polygon, Polygonal, Quad, Rotate,
     Topological, Triangle, Zip,
 };
-
-trait Half {
-    fn half() -> Self;
-}
-
-impl<T> Half for T
-where
-    T: Div<T, Output = T> + One + Real + Zero,
-{
-    fn half() -> Self {
-        let one = T::one();
-        one / (one + one)
-    }
-}

@@ -25,6 +25,10 @@ extern crate nalgebra;
 extern crate num;
 extern crate typenum;
 
+use decorum::Real;
+use num::{One, Zero};
+use std::ops::Div;
+
 pub mod buffer;
 pub mod geometry;
 pub mod graph;
@@ -45,4 +49,18 @@ pub mod prelude {
     };
     pub use primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use primitive::{Converged, Map, MapVertices, Zip};
+}
+
+trait Half {
+    fn half() -> Self;
+}
+
+impl<T> Half for T
+where
+    T: Div<T, Output = T> + One + Real + Zero,
+{
+    fn half() -> Self {
+        let one = T::one();
+        one / (one + one)
+    }
 }

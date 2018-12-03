@@ -1,7 +1,9 @@
+use decorum::R64;
 use num::{Num, NumCast};
 use std::ops::{Div, Mul};
 
 use geometry::{self, Duplet, Triplet};
+use Half;
 
 pub trait Normalize {
     fn normalize(self) -> Self;
@@ -16,10 +18,10 @@ pub trait Average: Sized {
 pub trait Interpolate<T = Self>: Sized {
     type Output;
 
-    fn lerp(self, other: T, f: f64) -> Self::Output;
+    fn lerp(self, other: T, f: R64) -> Self::Output;
 
     fn midpoint(self, other: T) -> Self::Output {
-        self.lerp(other, 0.5)
+        self.lerp(other, Half::half())
     }
 }
 
@@ -61,7 +63,7 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: f64) -> Self::Output {
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
         Duplet(
             geometry::lerp(self.0, other.0, f),
             geometry::lerp(self.1, other.1, f),
@@ -75,7 +77,7 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: f64) -> Self::Output {
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
         Triplet(
             geometry::lerp(self.0, other.0, f),
             geometry::lerp(self.1, other.1, f),
@@ -161,7 +163,7 @@ mod feature_geometry_cgmath {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point2::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -175,7 +177,7 @@ mod feature_geometry_cgmath {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point3::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -190,7 +192,7 @@ mod feature_geometry_cgmath {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector2::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -204,7 +206,7 @@ mod feature_geometry_cgmath {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector3::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -354,7 +356,7 @@ mod feature_geometry_mint {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point2 {
                 x: geometry::lerp(self.x, other.x, f),
                 y: geometry::lerp(self.y, other.y, f),
@@ -368,7 +370,7 @@ mod feature_geometry_mint {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point3 {
                 x: geometry::lerp(self.x, other.x, f),
                 y: geometry::lerp(self.y, other.y, f),
@@ -383,7 +385,7 @@ mod feature_geometry_mint {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector2 {
                 x: geometry::lerp(self.x, other.x, f),
                 y: geometry::lerp(self.y, other.y, f),
@@ -397,7 +399,7 @@ mod feature_geometry_mint {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector3 {
                 x: geometry::lerp(self.x, other.x, f),
                 y: geometry::lerp(self.y, other.y, f),
@@ -521,7 +523,7 @@ mod feature_geometry_nalgebra {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point2::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -535,7 +537,7 @@ mod feature_geometry_nalgebra {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Point3::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -550,7 +552,7 @@ mod feature_geometry_nalgebra {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector2::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
@@ -564,7 +566,7 @@ mod feature_geometry_nalgebra {
     {
         type Output = Self;
 
-        fn lerp(self, other: Self, f: f64) -> Self::Output {
+        fn lerp(self, other: Self, f: R64) -> Self::Output {
             Vector3::new(
                 geometry::lerp(self.x, other.x, f),
                 geometry::lerp(self.y, other.y, f),
