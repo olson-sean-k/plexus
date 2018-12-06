@@ -171,7 +171,9 @@ where
         })
     }
 
-    pub(in crate::graph) fn reachable_incoming_edges(&self) -> EdgeCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_incoming_edges(
+        &self,
+    ) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 }
@@ -190,7 +192,7 @@ where
         self.reachable_outgoing_edge().unwrap()
     }
 
-    pub fn incoming_edges(&self) -> EdgeCirculator<&M::Target, G> {
+    pub fn incoming_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
         self.reachable_incoming_edges()
     }
 }
@@ -202,7 +204,9 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_neighboring_faces(
+        &self,
+    ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -213,7 +217,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
     }
 }
@@ -236,7 +240,7 @@ where
 
     pub(in crate::graph) fn reachable_incoming_orphan_edges(
         &mut self,
-    ) -> EdgeCirculator<&mut M::Target, G> {
+    ) -> impl Iterator<Item = OrphanEdgeView<G>> {
         EdgeCirculator::from(self.interior_reborrow_mut())
     }
 }
@@ -251,7 +255,7 @@ where
         self.reachable_outgoing_orphan_edge().unwrap()
     }
 
-    pub fn incoming_orphan_edges(&mut self) -> EdgeCirculator<&mut M::Target, G> {
+    pub fn incoming_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
         self.reachable_incoming_orphan_edges()
     }
 }
@@ -266,7 +270,7 @@ where
 {
     pub(in crate::graph) fn reachable_neighboring_orphan_faces(
         &mut self,
-    ) -> FaceCirculator<&mut M::Target, G> {
+    ) -> impl Iterator<Item = OrphanFaceView<G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow_mut()))
     }
 }
@@ -281,7 +285,7 @@ where
         + Consistent,
     G: Geometry,
 {
-    pub fn neighboring_orphan_faces(&mut self) -> FaceCirculator<&mut M::Target, G> {
+    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.reachable_neighboring_orphan_faces()
     }
 }
@@ -414,7 +418,7 @@ where
     }
 }
 
-pub struct EdgeCirculator<M, G>
+struct EdgeCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>>,
@@ -509,7 +513,7 @@ where
     }
 }
 
-pub struct FaceCirculator<M, G>
+struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,

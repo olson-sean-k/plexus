@@ -4,9 +4,8 @@
 //! streams of topological structures.
 
 use arrayvec::ArrayVec;
-use std::collections::{vec_deque, VecDeque};
-use std::iter::{Chain, IntoIterator, Rev};
-use std::vec;
+use std::collections::VecDeque;
+use std::iter::IntoIterator;
 
 use crate::geometry::ops::Interpolate;
 use crate::primitive::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
@@ -33,11 +32,6 @@ where
     }
 }
 
-// TODO: Use `impl Iterator<Item = P>` instead of this alias after
-//       https://github.com/rust-lang/rust/issues/50823 is fixed.
-// Names the iterator fed into the `Decompose` adapter in `remap`.
-type Remap<P> = Chain<Rev<vec_deque::IntoIter<P>>, vec::IntoIter<P>>;
-
 impl<I, P, R> Decompose<I, P, P, R>
 where
     I: Iterator<Item = P>,
@@ -62,7 +56,7 @@ where
     ///     .remap(7) // 8 subdivision operations are applied.
     ///     .flat_index_vertices(HashIndexer::default());
     /// ```
-    pub fn remap(self, n: usize) -> Decompose<Remap<P>, P, P, R> {
+    pub fn remap(self, n: usize) -> Decompose<impl Iterator<Item = P>, P, P, R> {
         let Decompose { input, output, f } = self;
         Decompose::new(output.into_iter().rev().chain(remap(n, input, f)), f)
     }

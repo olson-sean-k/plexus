@@ -389,10 +389,12 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_vertices(&self) -> VertexCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_vertices(
+        &self,
+    ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
         let (a, b) = self.key.to_vertex_keys();
         let storage = self.storage.reborrow();
-        (ArrayVec::from([b, a]), storage).into_view().unwrap()
+        VertexCirculator::from_keyed_source((ArrayVec::from([b, a]), storage)).unwrap()
     }
 }
 
@@ -402,7 +404,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn vertices(&self) -> VertexCirculator<&M::Target, G> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
 }
@@ -416,10 +418,10 @@ where
 {
     pub(in crate::graph) fn reachable_orphan_vertices(
         &mut self,
-    ) -> VertexCirculator<&mut M::Target, G> {
+    ) -> impl Iterator<Item = OrphanVertexView<G>> {
         let (a, b) = self.key.to_vertex_keys();
         let storage = self.storage.reborrow_mut();
-        (ArrayVec::from([b, a]), storage).into_view().unwrap()
+        VertexCirculator::from_keyed_source((ArrayVec::from([b, a]), storage)).unwrap()
     }
 }
 
@@ -429,7 +431,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn orphan_vertices(&mut self) -> VertexCirculator<&mut M::Target, G> {
+    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         self.reachable_orphan_vertices()
     }
 }
@@ -441,7 +443,9 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_faces(
+        &self,
+    ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
         let keys = self
             .face
             .into_iter()
@@ -451,7 +455,7 @@ where
             )
             .collect();
         let storage = self.storage.reborrow();
-        (keys, storage).into_view().unwrap()
+        FaceCirculator::from_keyed_source((keys, storage)).unwrap()
     }
 }
 
@@ -461,7 +465,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
-    pub fn faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_faces()
     }
 }
@@ -719,7 +723,7 @@ where
     }
 }
 
-pub struct VertexCirculator<M, G>
+struct VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Vertex<G>>,
@@ -790,7 +794,7 @@ where
     }
 }
 
-pub struct FaceCirculator<M, G>
+struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Face<G>>,
