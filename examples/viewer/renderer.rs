@@ -8,7 +8,7 @@ use gfx_window_glutin;
 use glutin::{GlContext, GlWindow};
 use plexus::buffer::MeshBuffer3;
 
-use pipeline::{self, Data, Meta, Transform, Vertex};
+use crate::pipeline::{self, Data, Meta, Transform, Vertex};
 
 const CLEAR_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 

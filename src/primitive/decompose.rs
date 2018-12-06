@@ -8,8 +8,8 @@ use std::collections::{vec_deque, VecDeque};
 use std::iter::{Chain, IntoIterator, Rev};
 use std::vec;
 
-use geometry::ops::Interpolate;
-use primitive::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::geometry::ops::Interpolate;
+use crate::primitive::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -24,7 +24,7 @@ impl<I, P, Q, R> Decompose<I, P, Q, R>
 where
     R: IntoIterator<Item = Q>,
 {
-    pub(in primitive) fn new(input: I, f: fn(P) -> R) -> Self {
+    pub(in crate::primitive) fn new(input: I, f: fn(P) -> R) -> Self {
         Decompose {
             input,
             output: VecDeque::new(),

@@ -2,8 +2,8 @@ use decorum::R64;
 use num::{Num, NumCast};
 use std::ops::{Div, Mul};
 
-use geometry::{self, Duplet, Triplet};
-use Half;
+use crate::geometry::{self, Duplet, Triplet};
+use crate::Half;
 
 pub trait Normalize {
     fn normalize(self) -> Self;
@@ -453,8 +453,8 @@ mod feature_geometry_nalgebra {
     use num::{Float, Num, NumCast};
     use std::ops::{AddAssign, MulAssign};
 
-    use geometry;
-    use geometry::ops::*;
+    use crate::geometry;
+    use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where

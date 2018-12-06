@@ -7,14 +7,14 @@
 use std::ops::{Add, Sub};
 
 use self::alias::*;
-use geometry::convert::AsPosition;
-use geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
-use geometry::Geometry;
-use graph::container::Reborrow;
-use graph::storage::convert::AsStorage;
-use graph::topology::{Edge, Face, Vertex};
-use graph::view::{EdgeView, FaceView};
-use graph::GraphError;
+use crate::geometry::convert::AsPosition;
+use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
+use crate::geometry::Geometry;
+use crate::graph::container::Reborrow;
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::view::{EdgeView, FaceView};
+use crate::graph::GraphError;
 
 pub trait FaceNormal: Geometry {
     type Normal;

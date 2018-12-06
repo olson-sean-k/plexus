@@ -405,7 +405,7 @@ mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
 
-    use geometry::*;
+    use crate::geometry::*;
 
     impl<T, U> From<Point2<U>> for Duplet<T>
     where

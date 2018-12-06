@@ -1,5 +1,5 @@
-use graph::storage::Storage;
-use graph::topology::Topological;
+use crate::graph::storage::Storage;
+use crate::graph::topology::Topological;
 
 pub trait FromInnerKey<K> {
     fn from_inner_key(key: K) -> Self;

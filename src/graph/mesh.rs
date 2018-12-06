@@ -7,24 +7,24 @@ use std::iter::FromIterator;
 use std::marker::PhantomData;
 use typenum::{self, NonZero};
 
-use buffer::{Flat, IndexBuffer, MeshBuffer};
-use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
-use geometry::Geometry;
-use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Core};
-use graph::geometry::FaceCentroid;
-use graph::mutation::{Mutate, Mutation};
-use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::convert::IntoView;
-use graph::view::{
+use crate::buffer::{Flat, IndexBuffer, MeshBuffer};
+use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
+use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::{Bind, Consistent, Core};
+use crate::graph::geometry::FaceCentroid;
+use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::{AsStorage, AsStorageMut};
+use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Edge, Face, Topological, Vertex};
+use crate::graph::view::convert::IntoView;
+use crate::graph::view::{
     EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
-use graph::GraphError;
-use primitive::decompose::IntoVertices;
-use primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
-use primitive::{self, Arity, Map, Quad};
+use crate::graph::GraphError;
+use crate::primitive::decompose::IntoVertices;
+use crate::primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
+use crate::primitive::{self, Arity, Map, Quad};
 
 /// Half-edge graph representation of a mesh.
 ///
@@ -697,14 +697,14 @@ mod tests {
     use num::Zero;
     use std::collections::HashSet;
 
-    use buffer::U3;
-    use geometry::*;
-    use graph::mutation::face::FaceRemoveCache;
-    use graph::mutation::{Mutate, Mutation};
-    use graph::*;
-    use primitive::decompose::*;
-    use primitive::generate::*;
-    use primitive::sphere::UvSphere;
+    use crate::buffer::U3;
+    use crate::geometry::*;
+    use crate::graph::mutation::face::FaceRemoveCache;
+    use crate::graph::mutation::{Mutate, Mutation};
+    use crate::graph::*;
+    use crate::primitive::decompose::*;
+    use crate::primitive::generate::*;
+    use crate::primitive::sphere::UvSphere;
 
     #[test]
     fn collect_topology_into_mesh() {

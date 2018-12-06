@@ -1,6 +1,6 @@
-use geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
-use geometry::{Attribute, Geometry};
-use graph::storage::{EdgeKey, FaceKey, OpaqueKey, VertexKey};
+use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
+use crate::geometry::{Attribute, Geometry};
+use crate::graph::storage::{EdgeKey, FaceKey, OpaqueKey, VertexKey};
 
 pub trait Topological {
     type Key: OpaqueKey;
@@ -23,7 +23,7 @@ impl<G> Vertex<G>
 where
     G: Geometry,
 {
-    pub(in graph) fn new(geometry: G::Vertex) -> Self {
+    pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
         Vertex {
             geometry,
             edge: None,
@@ -73,7 +73,7 @@ impl<G> Edge<G>
 where
     G: Geometry,
 {
-    pub(in graph) fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
+    pub(in crate::graph) fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
         Edge {
             geometry,
             vertex,
@@ -127,7 +127,7 @@ impl<G> Face<G>
 where
     G: Geometry,
 {
-    pub(in graph) fn new(edge: EdgeKey, geometry: G::Face) -> Self {
+    pub(in crate::graph) fn new(edge: EdgeKey, geometry: G::Face) -> Self {
         Face { geometry, edge }
     }
 }

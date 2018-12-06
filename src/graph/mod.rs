@@ -153,7 +153,7 @@ mod view;
 
 use failure::Error;
 
-use buffer::BufferError;
+use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
 pub use self::storage::{EdgeKey, FaceKey, VertexKey};

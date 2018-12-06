@@ -5,7 +5,7 @@
 
 use std::ops::Range;
 
-use primitive::topology::Polygonal;
+use crate::primitive::topology::Polygonal;
 
 pub struct Generate<'a, G, S, P>
 where
@@ -21,7 +21,7 @@ impl<'a, G, S, P> Generate<'a, G, S, P>
 where
     G: 'a,
 {
-    pub(in primitive) fn new(
+    pub(in crate::primitive) fn new(
         generator: &'a G,
         state: S,
         n: usize,

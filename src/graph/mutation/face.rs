@@ -2,21 +2,21 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use geometry::convert::AsPosition;
-use geometry::Geometry;
-use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Core, Reborrow};
-use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
-use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
-use graph::mutation::region::{Connectivity, Region, Singularity};
-use graph::mutation::{Mutate, Mutation};
-use graph::storage::convert::AsStorage;
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{Edge, Face, Vertex};
-use graph::view::convert::FromKeyedSource;
-use graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, VertexView};
-use graph::{GraphError, IteratorExt};
+use crate::geometry::convert::AsPosition;
+use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::{Bind, Consistent, Core, Reborrow};
+use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
+use crate::graph::geometry::{FaceCentroid, FaceNormal};
+use crate::graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
+use crate::graph::mutation::region::{Connectivity, Region, Singularity};
+use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::view::convert::FromKeyedSource;
+use crate::graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, VertexView};
+use crate::graph::{GraphError, IteratorExt};
 
 pub struct FaceMutation<G>
 where

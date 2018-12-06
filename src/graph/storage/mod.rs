@@ -4,8 +4,8 @@ use fnv::FnvBuildHasher;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use graph::storage::convert::{AsStorage, AsStorageMut, FromInnerKey};
-use graph::topology::Topological;
+use crate::graph::storage::convert::{AsStorage, AsStorageMut, FromInnerKey};
+use crate::graph::topology::Topological;
 
 pub mod convert;
 
@@ -54,11 +54,11 @@ impl EdgeKey {
     // TODO: This may be useful in some existing code that constructs the
     //       opposite edge key.
     #[allow(dead_code)]
-    pub(in graph) fn to_opposite_key(&self) -> EdgeKey {
+    pub(in crate::graph) fn to_opposite_key(&self) -> EdgeKey {
         EdgeKey(self.1, self.0)
     }
 
-    pub(in graph) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
+    pub(in crate::graph) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
         (self.0, self.1)
     }
 }

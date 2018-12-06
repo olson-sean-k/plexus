@@ -1,19 +1,19 @@
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use geometry::convert::AsPosition;
-use geometry::Geometry;
-use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Core, Reborrow};
-use graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
-use graph::geometry::{EdgeLateral, EdgeMidpoint};
-use graph::mutation::vertex::VertexMutation;
-use graph::mutation::{Mutate, Mutation};
-use graph::storage::convert::AsStorage;
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{Edge, Face, Vertex};
-use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::EdgeView;
-use graph::{GraphError, IteratorExt, ResultExt};
+use crate::geometry::convert::AsPosition;
+use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::{Bind, Consistent, Core, Reborrow};
+use crate::graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
+use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
+use crate::graph::mutation::vertex::VertexMutation;
+use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::view::convert::{FromKeyedSource, IntoView};
+use crate::graph::view::EdgeView;
+use crate::graph::{GraphError, IteratorExt, ResultExt};
 
 pub struct EdgeMutation<G>
 where

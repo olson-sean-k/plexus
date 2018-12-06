@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, Range};
 
-use primitive::decompose::IntoVertices;
+use crate::primitive::decompose::IntoVertices;
 
 pub trait Topological: Sized {
     type Vertex;

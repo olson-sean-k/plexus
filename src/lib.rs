@@ -38,17 +38,17 @@ pub mod primitive;
 pub use decorum::{R32, R64};
 
 pub mod prelude {
-    pub use geometry::{Duplet, Triplet};
-    pub use primitive::decompose::{
+    pub use crate::geometry::{Duplet, Triplet};
+    pub use crate::primitive::decompose::{
         Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices,
         Subdivide, Tetrahedrons, Triangulate, Vertices,
     };
-    pub use primitive::generate::{
+    pub use crate::primitive::generate::{
         PolygonGenerator, PolygonsWithIndex, PolygonsWithPosition, PolygonsWithTexture,
         VertexGenerator, VerticesWithPosition,
     };
-    pub use primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
-    pub use primitive::{Converged, Map, MapVertices, Zip};
+    pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
+    pub use crate::primitive::{Converged, Map, MapVertices, Zip};
 }
 
 trait Half {

@@ -3,13 +3,13 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use geometry::Geometry;
-use graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
-use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
+use crate::geometry::Geometry;
+use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::storage::convert::{AsStorage, AsStorageMut};
+use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Edge, Face, Topological, Vertex};
+use crate::graph::view::convert::{FromKeyedSource, IntoView};
+use crate::graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
 
 /// Reference to a vertex.
 ///
@@ -36,7 +36,7 @@ where
     // TODO: This may become useful as the `mutation` module is developed. It
     //       may also be necessary to expose this API to user code.
     #[allow(dead_code)]
-    pub(in graph) fn bind<T, N>(self, storage: N) -> VertexView<<M as Bind<T, N>>::Output, G>
+    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> VertexView<<M as Bind<T, N>>::Output, G>
     where
         T: Topological,
         M: Bind<T, N>,
@@ -156,7 +156,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn into_reachable_outgoing_edge(self) -> Option<EdgeView<M, G>> {
+    pub(in crate::graph) fn into_reachable_outgoing_edge(self) -> Option<EdgeView<M, G>> {
         let key = self.edge;
         key.and_then(move |key| {
             let (_, storage) = self.into_keyed_storage();
@@ -164,14 +164,14 @@ where
         })
     }
 
-    pub(in graph) fn reachable_outgoing_edge(&self) -> Option<EdgeView<&M::Target, G>> {
+    pub(in crate::graph) fn reachable_outgoing_edge(&self) -> Option<EdgeView<&M::Target, G>> {
         self.edge.and_then(|key| {
             let storage = self.storage.reborrow();
             (key, storage).into_view()
         })
     }
 
-    pub(in graph) fn reachable_incoming_edges(&self) -> EdgeCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_incoming_edges(&self) -> EdgeCirculator<&M::Target, G> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 }
@@ -202,7 +202,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -225,7 +225,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_outgoing_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
+    pub(in crate::graph) fn reachable_outgoing_orphan_edge(&mut self) -> Option<OrphanEdgeView<G>> {
         if let Some(key) = self.edge {
             (key, self.storage.reborrow_mut()).into_view()
         }
@@ -234,7 +234,7 @@ where
         }
     }
 
-    pub(in graph) fn reachable_incoming_orphan_edges(
+    pub(in crate::graph) fn reachable_incoming_orphan_edges(
         &mut self,
     ) -> EdgeCirculator<&mut M::Target, G> {
         EdgeCirculator::from(self.interior_reborrow_mut())
@@ -264,7 +264,7 @@ where
         AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_neighboring_orphan_faces(
+    pub(in crate::graph) fn reachable_neighboring_orphan_faces(
         &mut self,
     ) -> FaceCirculator<&mut M::Target, G> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow_mut()))
@@ -590,9 +590,9 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use graph::*;
-    use primitive::generate::*;
-    use primitive::sphere::UvSphere;
+    use crate::graph::*;
+    use crate::primitive::generate::*;
+    use crate::primitive::sphere::UvSphere;
 
     #[test]
     fn circulate_over_edges() {

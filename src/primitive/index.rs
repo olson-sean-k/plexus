@@ -25,8 +25,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use primitive::decompose::IntoVertices;
-use primitive::topology::{Arity, Map, Topological};
+use crate::primitive::decompose::IntoVertices;
+use crate::primitive::topology::{Arity, Map, Topological};
 
 /// Vertex indexer.
 ///

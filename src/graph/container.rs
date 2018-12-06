@@ -1,7 +1,7 @@
-use geometry::Geometry;
-use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::Storage;
-use graph::topology::{Edge, Face, Topological, Vertex};
+use crate::geometry::Geometry;
+use crate::graph::storage::convert::{AsStorage, AsStorageMut};
+use crate::graph::storage::Storage;
+use crate::graph::topology::{Edge, Face, Topological, Vertex};
 
 /// Marker trait for containers that promise to be in a consistent state.
 ///
@@ -233,8 +233,8 @@ where
 pub mod alias {
     use super::*;
 
-    use graph::storage::Storage;
-    use graph::topology::{Edge, Face, Vertex};
+    use crate::graph::storage::Storage;
+    use crate::graph::topology::{Edge, Face, Vertex};
 
     pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 }

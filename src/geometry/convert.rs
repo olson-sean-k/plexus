@@ -1,6 +1,6 @@
 use num::{NumCast, ToPrimitive};
 
-use geometry::{Duplet, Triplet};
+use crate::geometry::{Duplet, Triplet};
 
 pub trait FromGeometry<T> {
     fn from_geometry(other: T) -> Self;
@@ -441,8 +441,8 @@ mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::{Float, NumCast, ToPrimitive};
 
-    use geometry::convert::*;
-    use geometry::{Duplet, Triplet};
+    use crate::geometry::convert::*;
+    use crate::geometry::{Duplet, Triplet};
 
     // TODO: Implement `FromGeometry` for proxy types via specialization.
     // TODO: Implement these conversions for two-dimensional points.

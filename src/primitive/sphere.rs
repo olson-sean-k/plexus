@@ -24,13 +24,13 @@ use num::traits::FloatConst;
 use num::{NumCast, One};
 use std::cmp;
 
-use geometry::Triplet;
-use primitive::generate::{
+use crate::geometry::Triplet;
+use crate::primitive::generate::{
     IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
 };
-use primitive::topology::{Polygon, Quad, Triangle};
-use Half;
+use crate::primitive::topology::{Polygon, Quad, Triangle};
+use crate::Half;
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
@@ -247,9 +247,9 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
-    use primitive::decompose::*;
-    use primitive::generate::*;
-    use primitive::sphere::UvSphere;
+    use crate::primitive::decompose::*;
+    use crate::primitive::generate::*;
+    use crate::primitive::sphere::UvSphere;
 
     #[test]
     fn vertex_count() {

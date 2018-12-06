@@ -4,20 +4,20 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use geometry::convert::AsPosition;
-use geometry::Geometry;
-use graph::container::alias::OwnedCore;
-use graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
-use graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
-use graph::geometry::{FaceCentroid, FaceNormal};
-use graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
-use graph::mutation::{Mutate, Mutation};
-use graph::storage::convert::{AsStorage, AsStorageMut};
-use graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use graph::topology::{Edge, Face, Topological, Vertex};
-use graph::view::convert::{FromKeyedSource, IntoView};
-use graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
-use graph::GraphError;
+use crate::geometry::convert::AsPosition;
+use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
+use crate::graph::geometry::{FaceCentroid, FaceNormal};
+use crate::graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
+use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::{AsStorage, AsStorageMut};
+use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Edge, Face, Topological, Vertex};
+use crate::graph::view::convert::{FromKeyedSource, IntoView};
+use crate::graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
+use crate::graph::GraphError;
 
 /// Reference to a face.
 ///
@@ -44,7 +44,7 @@ where
     // TODO: This may become useful as the `mutation` module is developed. It
     //       may also be necessary to expose this API to user code.
     #[allow(dead_code)]
-    pub(in graph) fn bind<T, N>(self, storage: N) -> FaceView<<M as Bind<T, N>>::Output, G>
+    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> FaceView<<M as Bind<T, N>>::Output, G>
     where
         T: Topological,
         M: Bind<T, N>,
@@ -165,23 +165,23 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_edge(&self) -> Option<EdgeView<&M::Target, G>> {
+    pub(in crate::graph) fn reachable_edge(&self) -> Option<EdgeView<&M::Target, G>> {
         let key = self.edge;
         let storage = self.storage.reborrow();
         (key, storage).into_view()
     }
 
-    pub(in graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
+    pub(in crate::graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
         let key = self.edge;
         let (_, storage) = self.into_keyed_storage();
         (key, storage).into_view()
     }
 
-    pub(in graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_interior_edges(&self) -> EdgeCirculator<&M::Target, G> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 
-    pub(in graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_neighboring_faces(&self) -> FaceCirculator<&M::Target, G> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -204,7 +204,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_arity(&self) -> usize {
+    pub(in crate::graph) fn reachable_arity(&self) -> usize {
         self.reachable_interior_edges().count()
     }
 }
@@ -227,7 +227,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_mutuals(&self) -> HashSet<VertexKey> {
+    pub(in crate::graph) fn reachable_mutuals(&self) -> HashSet<VertexKey> {
         self.reachable_neighboring_faces()
             .map(|face| {
                 face.reachable_vertices()
@@ -273,7 +273,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_vertices(&self) -> VertexCirculator<&M::Target, G> {
+    pub(in crate::graph) fn reachable_vertices(&self) -> VertexCirculator<&M::Target, G> {
         VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -296,7 +296,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_interior_orphan_edges(
+    pub(in crate::graph) fn reachable_interior_orphan_edges(
         &mut self,
     ) -> EdgeCirculator<&mut M::Target, G> {
         EdgeCirculator::from(self.interior_reborrow_mut())
@@ -310,7 +310,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_neighboring_orphan_faces(
+    pub(in crate::graph) fn reachable_neighboring_orphan_faces(
         &mut self,
     ) -> FaceCirculator<&mut M::Target, G> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow_mut()))
@@ -347,7 +347,9 @@ where
         AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
     G: Geometry,
 {
-    pub(in graph) fn reachable_orphan_vertices(&mut self) -> VertexCirculator<&mut M::Target, G> {
+    pub(in crate::graph) fn reachable_orphan_vertices(
+        &mut self,
+    ) -> VertexCirculator<&mut M::Target, G> {
         VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow_mut()))
     }
 }
@@ -861,11 +863,11 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use graph::*;
-    use primitive::cube::Cube;
-    use primitive::generate::*;
-    use primitive::index::*;
-    use primitive::sphere::UvSphere;
+    use crate::graph::*;
+    use crate::primitive::cube::Cube;
+    use crate::primitive::generate::*;
+    use crate::primitive::index::*;
+    use crate::primitive::sphere::UvSphere;
 
     #[test]
     fn circulate_over_edges() {

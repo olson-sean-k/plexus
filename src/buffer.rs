@@ -82,10 +82,12 @@ use std::iter::FromIterator;
 use std::marker::PhantomData;
 use typenum::{self, NonZero};
 
-use geometry::convert::IntoGeometry;
-use primitive::decompose::IntoVertices;
-use primitive::index::{FlatIndexVertices, FromIndexer, HashIndexer, IndexVertices, Indexer};
-use primitive::{Arity, Map, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::geometry::convert::IntoGeometry;
+use crate::primitive::decompose::IntoVertices;
+use crate::primitive::index::{
+    FlatIndexVertices, FromIndexer, HashIndexer, IndexVertices, Indexer,
+};
+use crate::primitive::{Arity, Map, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub use typenum::{U3, U4};
 
@@ -708,12 +710,12 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use buffer::*;
-    use graph::*;
-    use primitive::cube::Cube;
-    use primitive::decompose::*;
-    use primitive::generate::*;
-    use primitive::sphere::UvSphere;
+    use crate::buffer::*;
+    use crate::graph::*;
+    use crate::primitive::cube::Cube;
+    use crate::primitive::decompose::*;
+    use crate::primitive::generate::*;
+    use crate::primitive::sphere::UvSphere;
 
     #[test]
     fn collect_topology_into_flat_buffer() {

@@ -1,10 +1,10 @@
-use geometry::Geometry;
-use graph::container::{Bind, Core};
-use graph::mutation::Mutate;
-use graph::storage::convert::AsStorage;
-use graph::storage::{EdgeKey, Storage, VertexKey};
-use graph::topology::Vertex;
-use graph::GraphError;
+use crate::geometry::Geometry;
+use crate::graph::container::{Bind, Core};
+use crate::graph::mutation::Mutate;
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::{EdgeKey, Storage, VertexKey};
+use crate::graph::topology::Vertex;
+use crate::graph::GraphError;
 
 pub struct VertexMutation<G>
 where

@@ -2,14 +2,14 @@ use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
-use geometry::Geometry;
-use graph::container::Reborrow;
-use graph::storage::convert::AsStorage;
-use graph::storage::{EdgeKey, FaceKey, VertexKey};
-use graph::topology::{Edge, Face, Vertex};
-use graph::view::convert::FromKeyedSource;
-use graph::view::VertexView;
-use graph::{GraphError, IteratorExt};
+use crate::geometry::Geometry;
+use crate::graph::container::Reborrow;
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::{EdgeKey, FaceKey, VertexKey};
+use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::view::convert::FromKeyedSource;
+use crate::graph::view::VertexView;
+use crate::graph::{GraphError, IteratorExt};
 
 // TODO: This type needs some serious refactoring. Here are a few important
 //       points to keep in mind:

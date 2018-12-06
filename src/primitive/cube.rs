@@ -22,14 +22,14 @@
 use decorum::R64;
 use num::{One, Zero};
 
-use geometry::{Duplet, Triplet};
-use primitive::generate::{
+use crate::geometry::{Duplet, Triplet};
+use crate::primitive::generate::{
     Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
     VertexGenerator,
 };
-use primitive::topology::{Converged, Map, Quad};
-use Half;
+use crate::primitive::topology::{Converged, Map, Quad};
+use crate::Half;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Plane {

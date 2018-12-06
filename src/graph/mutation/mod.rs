@@ -8,14 +8,14 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use geometry::Geometry;
-use graph::container::alias::OwnedCore;
-use graph::container::Consistent;
-use graph::mutation::face::FaceMutation;
-use graph::storage::convert::AsStorage;
-use graph::storage::Storage;
-use graph::topology::{Edge, Face, Vertex};
-use graph::GraphError;
+use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::Consistent;
+use crate::graph::mutation::face::FaceMutation;
+use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::Storage;
+use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::GraphError;
 
 pub trait Mutate: Sized {
     type Mutant;
