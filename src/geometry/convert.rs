@@ -93,8 +93,8 @@ mod feature_geometry_cgmath {
     use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
     use decorum::{Finite, NotNan, Ordered, Primitive};
 
-    use geometry::convert::*;
-    use geometry::{Duplet, Triplet};
+    use crate::geometry::convert::*;
+    use crate::geometry::{Duplet, Triplet};
 
     // TODO: Implement `FromGeometry` for proxy types via specialization.
     // TODO: Implement these conversions for two-dimensional points.
@@ -264,8 +264,8 @@ mod feature_geometry_mint {
     use mint::{Point2, Point3, Vector2, Vector3};
     use num::{Float, NumCast, ToPrimitive};
 
-    use geometry::convert::*;
-    use geometry::{Duplet, Triplet};
+    use crate::geometry::convert::*;
+    use crate::geometry::{Duplet, Triplet};
 
     // TODO: Implement `FromGeometry` for proxy types via specialization.
     // TODO: Implement these conversions for two-dimensional points.

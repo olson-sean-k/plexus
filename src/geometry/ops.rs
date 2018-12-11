@@ -195,8 +195,8 @@ mod feature_geometry_cgmath {
     use num::NumCast;
     use std::ops::{AddAssign, MulAssign};
 
-    use geometry;
-    use geometry::ops::*;
+    use crate::geometry;
+    use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where
@@ -356,8 +356,8 @@ mod feature_geometry_mint {
     use num::{Float, Num, NumCast};
     use std::ops::{AddAssign, MulAssign};
 
-    use geometry;
-    use geometry::ops::*;
+    use crate::geometry;
+    use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where

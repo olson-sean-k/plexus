@@ -147,7 +147,7 @@ mod feature_geometry_cgmath {
     use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
 
-    use geometry::*;
+    use crate::geometry::*;
 
     impl<T, U> From<Point2<U>> for Duplet<T>
     where
@@ -273,7 +273,7 @@ mod feature_geometry_mint {
     use mint::{Point2, Point3, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
 
-    use geometry::*;
+    use crate::geometry::*;
 
     impl<T, U> From<Point2<U>> for Duplet<T>
     where
