@@ -1,6 +1,6 @@
-use decorum::R64;
-use num::{Float, Num, NumCast};
-use std::ops::{Div, Mul};
+use decorum::{Real, R64};
+use num::{Num, NumCast};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::geometry::{self, Duplet, Triplet};
 use crate::Half;
@@ -73,7 +73,7 @@ where
 
 impl<T> Normalize for Duplet<T>
 where
-    T: Float,
+    T: Real,
 {
     fn normalize(self) -> Self {
         let m = (self.0.powi(2) + self.1.powi(2)).sqrt();
@@ -105,7 +105,8 @@ where
 
 impl<T> Dot for Duplet<T>
 where
-    T: Float,
+    T: Mul,
+    <T as Mul>::Output: Add<Output = T>,
 {
     type Output = T;
 
@@ -131,7 +132,7 @@ where
 
 impl<T> Normalize for Triplet<T>
 where
-    T: Float,
+    T: Real,
 {
     fn normalize(self) -> Self {
         let m = (self.0.powi(2) + self.1.powi(2) + self.2.powi(2)).sqrt();
@@ -163,7 +164,8 @@ where
 
 impl<T> Dot for Triplet<T>
 where
-    T: Float,
+    T: Mul<Output = T>,
+    <T as Mul>::Output: Add<Output = T>,
 {
     type Output = T;
 
@@ -174,15 +176,17 @@ where
 
 impl<T> Cross for Triplet<T>
 where
-    T: Float,
+    T: Clone + Mul + Neg,
+    <T as Mul>::Output: Sub<Output = T>,
+    <<T as Mul>::Output as Sub>::Output: Neg<Output = T>,
 {
     type Output = Self;
 
     fn cross(self, other: Self) -> Self::Output {
         Triplet(
-            (self.1 * other.2) - (self.2 * other.1),
-            -((self.0 * other.2) - (self.2 * other.0)),
-            (self.0 * other.1) - (self.1 * other.0),
+            (self.1.clone() * other.2.clone()) - (self.2.clone() * other.1.clone()),
+            -((self.0.clone() * other.2.clone()) - (self.2 * other.0.clone())),
+            (self.0.clone() * other.1.clone()) - (self.1 * other.0),
         )
     }
 }
@@ -190,17 +194,17 @@ where
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
     use cgmath::{
-        ApproxEq, BaseFloat, BaseNum, EuclideanSpace, InnerSpace, Point2, Point3, Vector2, Vector3,
+        BaseFloat, BaseNum, EuclideanSpace, InnerSpace, Point2, Point3, Vector2, Vector3,
     };
-    use num::NumCast;
-    use std::ops::{AddAssign, MulAssign};
+    use num::{Num, NumCast};
+    use std::ops::AddAssign;
 
     use crate::geometry;
     use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where
-        T: ApproxEq + BaseFloat + BaseNum,
+        T: BaseFloat,
     {
         fn normalize(self) -> Self {
             <Self as InnerSpace>::normalize(self)
@@ -209,7 +213,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Normalize for Vector3<T>
     where
-        T: ApproxEq + BaseFloat + BaseNum,
+        T: BaseFloat,
     {
         fn normalize(self) -> Self {
             <Self as InnerSpace>::normalize(self)
@@ -218,7 +222,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Average for Point2<T>
     where
-        T: AddAssign + BaseNum + MulAssign + NumCast,
+        T: AddAssign + BaseNum + NumCast,
     {
         fn average<I>(values: I) -> Self
         where
@@ -239,7 +243,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Average for Point3<T>
     where
-        T: AddAssign + BaseNum + MulAssign + NumCast,
+        T: AddAssign + BaseNum + NumCast,
     {
         fn average<I>(values: I) -> Self
         where
@@ -260,7 +264,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Interpolate for Point2<T>
     where
-        T: BaseNum + NumCast,
+        T: Num + NumCast,
     {
         type Output = Self;
 
@@ -274,7 +278,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Interpolate for Point3<T>
     where
-        T: BaseNum + NumCast,
+        T: Num + NumCast,
     {
         type Output = Self;
 
@@ -289,7 +293,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Interpolate for Vector2<T>
     where
-        T: BaseNum + NumCast,
+        T: Num + NumCast,
     {
         type Output = Self;
 
@@ -303,7 +307,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Interpolate for Vector3<T>
     where
-        T: BaseNum + NumCast,
+        T: Num + NumCast,
     {
         type Output = Self;
 
@@ -318,7 +322,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Dot for Vector2<T>
     where
-        T: BaseFloat + BaseNum,
+        T: BaseFloat,
     {
         type Output = T;
 
@@ -329,7 +333,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Dot for Vector3<T>
     where
-        T: BaseFloat + BaseNum,
+        T: BaseFloat,
     {
         type Output = T;
 
@@ -340,7 +344,7 @@ mod feature_geometry_cgmath {
 
     impl<T> Cross for Vector3<T>
     where
-        T: BaseFloat + BaseNum,
+        T: BaseFloat,
     {
         type Output = Self;
 
@@ -352,16 +356,17 @@ mod feature_geometry_cgmath {
 
 #[cfg(feature = "geometry-mint")]
 mod feature_geometry_mint {
+    use decorum::Real;
     use mint::{Point2, Point3, Vector2, Vector3};
-    use num::{Float, Num, NumCast};
-    use std::ops::{AddAssign, MulAssign};
+    use num::{Num, NumCast};
+    use std::ops::{Add, Mul, Neg, Sub};
 
     use crate::geometry;
     use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where
-        T: Float,
+        T: Real,
     {
         fn normalize(self) -> Self {
             let m = (self.x.powi(2) + self.y.powi(2)).sqrt();
@@ -374,7 +379,7 @@ mod feature_geometry_mint {
 
     impl<T> Normalize for Vector3<T>
     where
-        T: Float,
+        T: Real,
     {
         fn normalize(self) -> Self {
             let m = (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt();
@@ -511,7 +516,8 @@ mod feature_geometry_mint {
 
     impl<T> Dot for Vector2<T>
     where
-        T: AddAssign + Float + MulAssign,
+        T: Mul,
+        <T as Mul>::Output: Add<Output = T>,
     {
         type Output = T;
 
@@ -522,7 +528,8 @@ mod feature_geometry_mint {
 
     impl<T> Dot for Vector3<T>
     where
-        T: AddAssign + Float + MulAssign,
+        T: Mul<Output = T>,
+        <T as Mul>::Output: Add<Output = T>,
     {
         type Output = T;
 
@@ -533,15 +540,17 @@ mod feature_geometry_mint {
 
     impl<T> Cross for Vector3<T>
     where
-        T: Float,
+        T: Clone + Mul + Neg,
+        <T as Mul>::Output: Sub<Output = T>,
+        <<T as Mul>::Output as Sub>::Output: Neg<Output = T>,
     {
         type Output = Self;
 
         fn cross(self, other: Self) -> Self::Output {
             Vector3 {
-                x: (self.y * other.z) - (self.z * other.y),
-                y: -((self.x * other.z) - (self.z * other.x)),
-                z: (self.x * other.y) - (self.y * other.x),
+                x: (self.y.clone() * other.z.clone()) - (self.z.clone() * other.y.clone()),
+                y: -((self.x.clone() * other.z.clone()) - (self.z * other.x.clone())),
+                z: (self.x.clone() * other.y.clone()) - (self.y * other.x),
             }
         }
     }
@@ -549,29 +558,48 @@ mod feature_geometry_mint {
 
 #[cfg(feature = "geometry-nalgebra")]
 mod feature_geometry_nalgebra {
+    use decorum::Real;
     use nalgebra::core::Matrix;
-    use nalgebra::{Point2, Point3, Real, Scalar, Vector2, Vector3};
-    use num::{Float, Num, NumCast};
-    use std::ops::{AddAssign, MulAssign};
+    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
+    use num::{Num, NumCast, Zero};
+    use std::ops::{AddAssign, Mul, MulAssign, Neg, Sub};
 
     use crate::geometry;
     use crate::geometry::ops::*;
 
     impl<T> Normalize for Vector2<T>
     where
-        T: Float + Real + Scalar,
+        T: Real + Scalar,
     {
+        // nalgebra provides an implementation via:
+        //
+        // ```rust
+        // Matrix::normalize(&self)
+        // ```
+        //
+        // However, that requires a bound on nalgebra's `Real` trait, which is
+        // only implemented for a limited set of types.
         fn normalize(self) -> Self {
-            Matrix::normalize(&self)
+            let m = (self.x.powi(2) + self.y.powi(2)).sqrt();
+            Vector2::new(self.x / m, self.y / m)
         }
     }
 
     impl<T> Normalize for Vector3<T>
     where
-        T: Float + Real + Scalar,
+        T: Real + Scalar,
     {
+        // nalgebra provides an implementation via:
+        //
+        // ```rust
+        // Matrix::normalize(&self)
+        // ```
+        //
+        // However, that requires a bound on nalgebra's `Real` trait, which is
+        // only implemented for a limited set of types.
         fn normalize(self) -> Self {
-            Matrix::normalize(&self)
+            let m = (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt();
+            Vector3::new(self.x / m, self.y / m, self.z / m)
         }
     }
 
@@ -678,7 +706,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Dot for Vector2<T>
     where
-        T: AddAssign + Float + MulAssign + Scalar,
+        T: AddAssign + Mul<Output = T> + MulAssign + Scalar + Zero,
     {
         type Output = T;
 
@@ -689,7 +717,7 @@ mod feature_geometry_nalgebra {
 
     impl<T> Dot for Vector3<T>
     where
-        T: AddAssign + Float + MulAssign + Scalar,
+        T: AddAssign + Mul<Output = T> + MulAssign + Scalar + Zero,
     {
         type Output = T;
 
@@ -700,12 +728,25 @@ mod feature_geometry_nalgebra {
 
     impl<T> Cross for Vector3<T>
     where
-        T: Float + Real + Scalar,
+        T: Mul + Neg + Scalar,
+        <T as Mul>::Output: Sub<Output = T>,
+        <<T as Mul>::Output as Sub>::Output: Neg<Output = T>,
     {
         type Output = Self;
 
+        // nalgebra provides an implementation via:
+        //
+        // ```rust
+        // Matrix::cross(&self, &other)
+        // ```
+        //
+        // However, that requires a bound on alga's `AbstractRing` trait.
         fn cross(self, other: Self) -> Self::Output {
-            Matrix::cross(&self, &other)
+            Vector3::new(
+                (self.y * other.z) - (self.z * other.y),
+                -((self.x * other.z) - (self.z * other.x)),
+                (self.x * other.y) - (self.y * other.x),
+            )
         }
     }
 }

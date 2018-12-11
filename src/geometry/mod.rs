@@ -144,7 +144,7 @@ where
 
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
-    use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
+    use cgmath::{Point2, Point3, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
 
     use crate::geometry::*;
@@ -152,7 +152,7 @@ mod feature_geometry_cgmath {
     impl<T, U> From<Point2<U>> for Duplet<T>
     where
         T: NumCast,
-        U: BaseNum + ToPrimitive,
+        U: ToPrimitive,
     {
         fn from(other: Point2<U>) -> Self {
             Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
@@ -162,7 +162,7 @@ mod feature_geometry_cgmath {
     impl<T, U> From<Vector2<U>> for Duplet<T>
     where
         T: NumCast,
-        U: BaseNum + ToPrimitive,
+        U: ToPrimitive,
     {
         fn from(other: Vector2<U>) -> Self {
             Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
@@ -171,7 +171,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> Into<Point2<T>> for Duplet<U>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn into(self) -> Point2<T> {
@@ -181,7 +181,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> Into<Vector2<T>> for Duplet<U>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn into(self) -> Vector2<T> {
@@ -192,7 +192,7 @@ mod feature_geometry_cgmath {
     impl<T, U> From<Point3<U>> for Triplet<T>
     where
         T: NumCast,
-        U: BaseNum + ToPrimitive,
+        U: ToPrimitive,
     {
         fn from(other: Point3<U>) -> Self {
             Triplet(
@@ -206,7 +206,7 @@ mod feature_geometry_cgmath {
     impl<T, U> From<Vector3<U>> for Triplet<T>
     where
         T: NumCast,
-        U: BaseNum + ToPrimitive,
+        U: ToPrimitive,
     {
         fn from(other: Vector3<U>) -> Self {
             Triplet(
@@ -219,7 +219,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> Into<Point3<T>> for Triplet<U>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn into(self) -> Point3<T> {
@@ -233,7 +233,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> Into<Vector3<T>> for Triplet<U>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn into(self) -> Vector3<T> {

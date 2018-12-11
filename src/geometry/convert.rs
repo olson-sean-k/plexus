@@ -90,8 +90,9 @@ pub trait AsPosition {
 //       type `T`, which is arguably a more important implementation.
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
-    use cgmath::{BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
+    use cgmath::{Point2, Point3, Vector2, Vector3};
     use decorum::{Finite, NotNan, Ordered, Primitive};
+    use num::Float;
 
     use crate::geometry::convert::*;
     use crate::geometry::{Duplet, Triplet};
@@ -102,7 +103,7 @@ mod feature_geometry_cgmath {
         (geometry => $g:ident,proxy => $p:ident) => {
             impl<T> FromGeometry<$g<$p<T>>> for $g<T>
             where
-                T: BaseFloat + BaseNum + Primitive,
+                T: Float + Primitive,
             {
                 fn from_geometry(other: $g<$p<T>>) -> Self {
                     $g::new(
@@ -115,7 +116,7 @@ mod feature_geometry_cgmath {
 
             impl<T> FromGeometry<$g<T>> for $g<$p<T>>
             where
-                T: BaseFloat + BaseNum + Primitive,
+                T: Float + Primitive,
             {
                 fn from_geometry(other: $g<T>) -> Self {
                     $g::new(
@@ -133,7 +134,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<(U, U)> for Point2<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: (U, U)) -> Self {
@@ -143,7 +144,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: (U, U, U)) -> Self {
@@ -157,7 +158,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: Duplet<U>) -> Self {
@@ -167,7 +168,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<Triplet<U>> for Point3<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: Triplet<U>) -> Self {
@@ -181,7 +182,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<(U, U)> for Vector2<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: (U, U)) -> Self {
@@ -191,7 +192,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<(U, U, U)> for Vector3<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: (U, U, U)) -> Self {
@@ -205,7 +206,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<Duplet<U>> for Vector2<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: Duplet<U>) -> Self {
@@ -215,7 +216,7 @@ mod feature_geometry_cgmath {
 
     impl<T, U> FromGeometry<Triplet<U>> for Vector3<T>
     where
-        T: BaseNum + NumCast,
+        T: NumCast,
         U: ToPrimitive,
     {
         fn from_geometry(other: Triplet<U>) -> Self {
@@ -227,10 +228,7 @@ mod feature_geometry_cgmath {
         }
     }
 
-    impl<T> AsPosition for Point2<T>
-    where
-        T: BaseNum,
-    {
+    impl<T> AsPosition for Point2<T> {
         type Target = Self;
 
         fn as_position(&self) -> &Self::Target {
@@ -242,10 +240,7 @@ mod feature_geometry_cgmath {
         }
     }
 
-    impl<T> AsPosition for Point3<T>
-    where
-        T: BaseNum,
-    {
+    impl<T> AsPosition for Point3<T> {
         type Target = Self;
 
         fn as_position(&self) -> &Self::Target {
