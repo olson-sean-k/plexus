@@ -37,6 +37,10 @@ pub mod primitive;
 // Re-exported to avoid requiring a direct dependency on decorum.
 pub use decorum::{R32, R64};
 
+// TODO: Documentation comments include static image content from the GitHub
+//       repository. This is fragile and difficult to maintain. Use a mechanism
+//       provided by rustdoc or doxidize for this instead.
+
 pub mod prelude {
     pub use crate::geometry::{Duplet, Triplet};
     pub use crate::primitive::decompose::{
