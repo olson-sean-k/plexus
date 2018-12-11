@@ -1,5 +1,5 @@
 use decorum::R64;
-use num::{Num, NumCast};
+use num::{Float, Num, NumCast};
 use std::ops::{Div, Mul};
 
 use crate::geometry::{self, Duplet, Triplet};
@@ -71,6 +71,49 @@ where
     }
 }
 
+impl<T> Normalize for Duplet<T>
+where
+    T: Float,
+{
+    fn normalize(self) -> Self {
+        let m = (self.0.powi(2) + self.1.powi(2)).sqrt();
+        Duplet(self.0 / m, self.1 / m)
+    }
+}
+
+impl<T> Average for Duplet<T>
+where
+    T: Clone + Num + NumCast,
+{
+    fn average<I>(values: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        let values = values.into_iter().collect::<Vec<_>>();
+        let n = <T as NumCast>::from(values.len()).unwrap();
+        let sum = {
+            let mut sum = Duplet(T::zero(), T::zero());
+            for point in values {
+                sum = Duplet(sum.0 + point.0, sum.1 + point.1);
+            }
+            sum
+        };
+        let m = T::one() / n;
+        Duplet(sum.0 * m.clone(), sum.1 * m)
+    }
+}
+
+impl<T> Dot for Duplet<T>
+where
+    T: Float,
+{
+    type Output = T;
+
+    fn dot(self, other: Self) -> Self::Output {
+        (self.0 * other.0) + (self.1 * other.1)
+    }
+}
+
 impl<T> Interpolate for Triplet<T>
 where
     T: Copy + Num + NumCast,
@@ -82,6 +125,64 @@ where
             geometry::lerp(self.0, other.0, f),
             geometry::lerp(self.1, other.1, f),
             geometry::lerp(self.2, other.2, f),
+        )
+    }
+}
+
+impl<T> Normalize for Triplet<T>
+where
+    T: Float,
+{
+    fn normalize(self) -> Self {
+        let m = (self.0.powi(2) + self.1.powi(2) + self.2.powi(2)).sqrt();
+        Triplet(self.0 / m, self.1 / m, self.2 / m)
+    }
+}
+
+impl<T> Average for Triplet<T>
+where
+    T: Clone + Num + NumCast,
+{
+    fn average<I>(values: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        let values = values.into_iter().collect::<Vec<_>>();
+        let n = <T as NumCast>::from(values.len()).unwrap();
+        let sum = {
+            let mut sum = Triplet(T::zero(), T::zero(), T::zero());
+            for point in values {
+                sum = Triplet(sum.0 + point.0, sum.1 + point.1, sum.2 + point.2);
+            }
+            sum
+        };
+        let m = T::one() / n;
+        Triplet(sum.0 * m.clone(), sum.1 * m.clone(), sum.2 * m)
+    }
+}
+
+impl<T> Dot for Triplet<T>
+where
+    T: Float,
+{
+    type Output = T;
+
+    fn dot(self, other: Self) -> Self::Output {
+        (self.0 * other.0) + (self.1 * other.1) + (self.2 * other.2)
+    }
+}
+
+impl<T> Cross for Triplet<T>
+where
+    T: Float,
+{
+    type Output = Self;
+
+    fn cross(self, other: Self) -> Self::Output {
+        Triplet(
+            (self.1 * other.2) - (self.2 * other.1),
+            -((self.0 * other.2) - (self.2 * other.0)),
+            (self.0 * other.1) - (self.1 * other.0),
         )
     }
 }

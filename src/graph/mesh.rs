@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use decorum::R64;
 use itertools::Itertools;
 use num::{Integer, NumCast, Unsigned};
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ use typenum::{self, NonZero};
 
 use crate::buffer::{Flat, IndexBuffer, MeshBuffer};
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Triplet};
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core};
 use crate::graph::geometry::FaceCentroid;
@@ -36,7 +37,7 @@ use crate::primitive::{self, Arity, Map, Quad};
 /// manipulate topology and geometry.
 ///
 /// See the module documentation for more details.
-pub struct MeshGraph<G = ()>
+pub struct MeshGraph<G = Triplet<R64>>
 where
     G: Geometry,
 {
