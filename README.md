@@ -77,14 +77,15 @@ operations and features, but only two basic traits are required: `Geometry` and
 `Attribute`.
 
 ```rust
+use decorum::R64;
 use nalgebra::{Point3, Vector3};
 use plexus::geometry::convert::AsPosition;
 use plexus::geometry::{Attribute, Geometry};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct VertexGeometry {
-    pub position: Point3<f64>,
-    pub normal: Vector3<f64>,
+    pub position: Point3<R64>,
+    pub normal: Vector3<R64>,
 }
 
 impl Attribute for VertexGeometry {}
@@ -96,7 +97,7 @@ impl Geometry for VertexGeometry {
 }
 
 impl AsPosition for VertexGeometry {
-    type Target = Point3<f64>;
+    type Target = Point3<R64>;
 
     fn as_position(&self) -> &Self::Target {
         &self.position
@@ -113,8 +114,10 @@ positional data from vertices and implementing geometric traits for that
 positional data, operations like extrusion, splitting, etc. are exposed.
 
 Geometric traits are optionally implemented for types in the
-[nalgebra](https://crates.io/crates/nalgebra) and
-[cgmath](https://crates.io/crates/cgmath) crates so that common types can be
-used out-of-the-box for vertex geometry. See the `geometry-cgmath` and
-`geometry-nalgebra` (enabled by default) crate features. Both 2D and 3D
-geometry are supported by mesh operations.
+[cgmath](https://crates.io/crates/cgmath),
+[mint](https://crates.io/crates/mint), and
+[nalgebra](https://crates.io/crates/nalgebra) crates so that common types can be
+used out-of-the-box for vertex geometry. See the `geometry-cgmath`,
+`geometry-mint`, and `geometry-nalgebra` crate features. By default, the
+`geometry-nalgebra` feature is enabled. Both 2D and 3D geometry are supported
+by mesh operations.
