@@ -1,6 +1,6 @@
 use decorum::{Real, R64};
 use num::{Num, NumCast};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 use crate::geometry::{self, Duplet, Triplet};
 use crate::Half;
@@ -83,20 +83,20 @@ where
 
 impl<T> Average for Duplet<T>
 where
-    T: Clone + Num + NumCast,
+    T: AddAssign + Clone + Num + NumCast,
 {
     fn average<I>(values: I) -> Self
     where
         I: IntoIterator<Item = Self>,
     {
-        let values = values.into_iter().collect::<Vec<_>>();
-        let n = <T as NumCast>::from(values.len()).unwrap();
-        let sum = {
+        let (n, sum) = {
+            let mut n = T::zero();
             let mut sum = Duplet(T::zero(), T::zero());
             for point in values {
+                n += T::one();
                 sum = Duplet(sum.0 + point.0, sum.1 + point.1);
             }
-            sum
+            (n, sum)
         };
         let m = T::one() / n;
         Duplet(sum.0 * m.clone(), sum.1 * m)
@@ -142,20 +142,20 @@ where
 
 impl<T> Average for Triplet<T>
 where
-    T: Clone + Num + NumCast,
+    T: AddAssign + Clone + Num + NumCast,
 {
     fn average<I>(values: I) -> Self
     where
         I: IntoIterator<Item = Self>,
     {
-        let values = values.into_iter().collect::<Vec<_>>();
-        let n = <T as NumCast>::from(values.len()).unwrap();
-        let sum = {
+        let (n, sum) = {
+            let mut n = T::zero();
             let mut sum = Triplet(T::zero(), T::zero(), T::zero());
             for point in values {
+                n += T::one();
                 sum = Triplet(sum.0 + point.0, sum.1 + point.1, sum.2 + point.2);
             }
-            sum
+            (n, sum)
         };
         let m = T::one() / n;
         Triplet(sum.0 * m.clone(), sum.1 * m.clone(), sum.2 * m)
@@ -228,14 +228,14 @@ mod feature_geometry_cgmath {
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point2::origin();
                 for point in values {
+                    n += T::one();
                     sum += Vector2::<T>::new(point.x, point.y);
                 }
-                sum
+                (n, sum)
             };
             sum * (T::one() / n)
         }
@@ -249,14 +249,14 @@ mod feature_geometry_cgmath {
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point3::origin();
                 for point in values {
+                    n += T::one();
                     sum += Vector3::<T>::new(point.x, point.y, point.z);
                 }
-                sum
+                (n, sum)
             };
             sum * (T::one() / n)
         }
@@ -393,26 +393,26 @@ mod feature_geometry_mint {
 
     impl<T> Average for Point2<T>
     where
-        T: Clone + Num + NumCast,
+        T: AddAssign + Clone + Num + NumCast,
     {
         fn average<I>(values: I) -> Self
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point2 {
                     x: T::zero(),
                     y: T::zero(),
                 };
                 for point in values {
+                    n += T::one();
                     sum = Point2 {
                         x: sum.x + point.x,
                         y: sum.y + point.y,
                     };
                 }
-                sum
+                (n, sum)
             };
             let m = T::one() / n;
             Point2 {
@@ -424,28 +424,28 @@ mod feature_geometry_mint {
 
     impl<T> Average for Point3<T>
     where
-        T: Clone + Num + NumCast,
+        T: AddAssign + Clone + Num + NumCast,
     {
         fn average<I>(values: I) -> Self
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point3 {
                     x: T::zero(),
                     y: T::zero(),
                     z: T::zero(),
                 };
                 for point in values {
+                    n += T::one();
                     sum = Point3 {
                         x: sum.x + point.x,
                         y: sum.y + point.y,
                         z: sum.z + point.z,
                     };
                 }
-                sum
+                (n, sum)
             };
             let m = T::one() / n;
             Point3 {
@@ -612,14 +612,14 @@ mod feature_geometry_nalgebra {
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point2::origin();
                 for point in values {
+                    n += T::one();
                     sum += Vector2::<T>::new(point.x, point.y);
                 }
-                sum
+                (n, sum)
             };
             sum * (T::one() / n)
         }
@@ -633,14 +633,14 @@ mod feature_geometry_nalgebra {
         where
             I: IntoIterator<Item = Self>,
         {
-            let values = values.into_iter().collect::<Vec<_>>();
-            let n = <T as NumCast>::from(values.len()).unwrap();
-            let sum = {
+            let (n, sum) = {
+                let mut n = T::zero();
                 let mut sum = Point3::origin();
                 for point in values {
+                    n += T::one();
                     sum += Vector3::<T>::new(point.x, point.y, point.z);
                 }
-                sum
+                (n, sum)
             };
             sum * (T::one() / n)
         }
