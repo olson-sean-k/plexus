@@ -29,7 +29,6 @@ use crate::primitive::generate::{
     VertexGenerator,
 };
 use crate::primitive::topology::{Converged, Map, Quad};
-use crate::Half;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Plane {
@@ -48,18 +47,23 @@ pub struct Bounds {
 }
 
 impl Bounds {
-    pub fn unit_radius() -> Self {
+    pub fn with_radius(radius: R64) -> Self {
         Bounds {
-            lower: -R64::one(),
-            upper: R64::one(),
+            lower: -radius,
+            upper: radius,
         }
     }
 
+    pub fn with_width(width: R64) -> Self {
+        Self::with_radius(width / 2.0)
+    }
+
+    pub fn unit_radius() -> Self {
+        Self::with_radius(One::one())
+    }
+
     pub fn unit_width() -> Self {
-        Bounds {
-            lower: -R64::half(),
-            upper: R64::half(),
-        }
+        Self::with_width(One::one())
     }
 }
 

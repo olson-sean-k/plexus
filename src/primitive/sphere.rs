@@ -30,7 +30,6 @@ use crate::primitive::generate::{
     PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
 };
 use crate::primitive::topology::{Polygon, Quad, Triangle};
-use crate::Half;
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
@@ -38,14 +37,20 @@ pub struct Bounds {
 }
 
 impl Bounds {
+    pub fn with_radius(radius: R64) -> Self {
+        Bounds { radius }
+    }
+
+    pub fn with_width(width: R64) -> Self {
+        Self::with_radius(width / 2.0)
+    }
+
     pub fn unit_radius() -> Self {
-        Bounds { radius: R64::one() }
+        Self::with_radius(One::one())
     }
 
     pub fn unit_width() -> Self {
-        Bounds {
-            radius: R64::half(),
-        }
+        Self::with_width(One::one())
     }
 }
 
