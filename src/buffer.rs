@@ -295,11 +295,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate decorum;
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use decorum::R64;
-    /// use nalgebra::{Point2, Point3};
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
     /// use plexus::primitive;
@@ -309,10 +304,9 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let (indices, vertices) = primitive::zip_vertices((
-    ///     cube.polygons_with_position()
-    ///         .map_vertices(|position| -> Point3<R64> { position.into() }),
-    ///     cube.polygons_with_uv_map()
-    ///         .map_vertices(|uv| -> Point2<R64> { uv.into() }),
+    ///     cube.polygons_with_position(),
+    ///     cube.polygons_with_normal(),
+    ///     cube.polygons_with_uv_map(),
     /// ))
     /// .flat_index_vertices(HashIndexer::default());
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();

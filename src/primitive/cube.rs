@@ -24,13 +24,13 @@ use num::{One, Zero};
 
 use crate::geometry::{Duplet, Triplet};
 use crate::primitive::generate::{
-    Generate, PolygonGenerator, PositionGenerator, PositionIndexGenerator,
-    PositionPolygonGenerator, PositionVertexGenerator, UvMapGenerator, UvMapPolygonGenerator,
-    VertexGenerator,
+    Generate, NormalGenerator, NormalIndexGenerator, NormalPolygonGenerator, NormalVertexGenerator,
+    PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
+    PositionVertexGenerator, UvMapGenerator, UvMapPolygonGenerator, VertexGenerator,
 };
 use crate::primitive::topology::{Converged, Map, Quad};
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Plane {
     XY,
     NXY,
@@ -38,6 +38,21 @@ pub enum Plane {
     NZY,
     XZ,
     XNZ,
+}
+
+impl Plane {
+    pub fn normal(&self) -> Triplet<R64> {
+        let zero = R64::zero();
+        let one = R64::one();
+        match *self {
+            Plane::XY => Triplet(zero, zero, one),   // front
+            Plane::NXY => Triplet(zero, one, zero),  // right
+            Plane::ZY => Triplet(-one, zero, zero),  // top
+            Plane::NZY => Triplet(zero, -one, zero), // left
+            Plane::XZ => Triplet(one, zero, zero),   // bottom
+            Plane::XNZ => Triplet(zero, zero, -one), // back
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -87,16 +102,26 @@ impl Cube {
         })
     }
 
-    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
+    // TODO: This follows the pattern of traits used for common generators.
+    #[allow(dead_code)]
+    fn vertex_with_plane_count(&self) -> usize {
+        self.polygon_count()
+    }
+
+    fn vertex_with_plane(&self, index: usize) -> Plane {
         match index {
-            0 => Quad::converged(Plane::XY),  // front
-            1 => Quad::converged(Plane::NZY), // right
-            2 => Quad::converged(Plane::XNZ), // top
-            3 => Quad::converged(Plane::ZY),  // left
-            4 => Quad::converged(Plane::XZ),  // bottom
-            5 => Quad::converged(Plane::NXY), // back
+            0 => Plane::XY,  // front
+            1 => Plane::NZY, // right
+            2 => Plane::XNZ, // top
+            3 => Plane::ZY,  // left
+            4 => Plane::XZ,  // bottom
+            5 => Plane::NXY, // back
             _ => panic!(),
         }
+    }
+
+    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
+        Quad::converged(self.vertex_with_plane(index))
     }
 }
 
@@ -111,6 +136,41 @@ impl VertexGenerator for Cube {}
 impl PolygonGenerator for Cube {
     fn polygon_count(&self) -> usize {
         6
+    }
+}
+
+impl NormalGenerator for Cube {
+    type State = ();
+}
+
+impl NormalVertexGenerator for Cube {
+    type Output = Triplet<R64>;
+
+    fn vertex_with_normal_from(&self, _: &Self::State, index: usize) -> Self::Output {
+        // There is a unique normal for each face (plane).
+        self.vertex_with_plane(index).normal()
+    }
+
+    fn vertex_with_normal_count(&self) -> usize {
+        self.polygon_count()
+    }
+}
+
+impl NormalPolygonGenerator for Cube {
+    type Output = Quad<<Self as NormalVertexGenerator>::Output>;
+
+    fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        self.index_for_normal(index)
+            .map(|index| self.vertex_with_normal_from(state, index))
+    }
+}
+
+impl NormalIndexGenerator for Cube {
+    type Output = Quad<usize>;
+
+    fn index_for_normal(&self, index: usize) -> <Self as PositionIndexGenerator>::Output {
+        assert!(index < self.polygon_count());
+        Quad::converged(index)
     }
 }
 

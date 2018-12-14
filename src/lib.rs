@@ -48,8 +48,9 @@ pub mod prelude {
         Subdivide, Tetrahedrons, Triangulate, Vertices,
     };
     pub use crate::primitive::generate::{
-        IndicesForPosition, PolygonGenerator, PolygonsWithPosition, PolygonsWithUvMap,
-        VertexGenerator, VerticesWithPosition,
+        IndicesForNormal, IndicesForPosition, PolygonGenerator, PolygonsWithNormal,
+        PolygonsWithPosition, PolygonsWithUvMap, VertexGenerator, VerticesWithNormal,
+        VerticesWithPosition,
     };
     pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use crate::primitive::{Converged, Map, MapVertices, Zip};

@@ -58,6 +58,87 @@ pub trait PolygonGenerator {
     fn polygon_count(&self) -> usize;
 }
 
+pub trait NormalGenerator {
+    type State: Default;
+}
+
+pub trait NormalVertexGenerator: NormalGenerator + VertexGenerator {
+    type Output;
+
+    fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
+
+    /// Gets the number of unique vertices with normal data that comprise a primitive.
+    fn vertex_with_normal_count(&self) -> usize;
+}
+
+/// Functions for generating vertices with normal data.
+pub trait VerticesWithNormal: NormalVertexGenerator + Sized {
+    fn vertices_with_normal(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as NormalVertexGenerator>::Output> {
+        self.vertices_with_normal_from(Default::default())
+    }
+
+    fn vertices_with_normal_from(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as NormalVertexGenerator>::Output> {
+        Generate::new(
+            self,
+            state,
+            self.vertex_with_normal_count(),
+            Self::vertex_with_normal_from,
+        )
+    }
+}
+
+impl<G> VerticesWithNormal for G where G: NormalVertexGenerator + Sized {}
+
+pub trait NormalIndexGenerator: PolygonGenerator + NormalVertexGenerator {
+    type Output: Polygonal<Vertex = usize>;
+
+    fn index_for_normal(&self, index: usize) -> <Self as NormalIndexGenerator>::Output;
+}
+
+pub trait IndicesForNormal: NormalIndexGenerator + Sized {
+    fn indices_for_normal(&self) -> Generate<Self, (), <Self as NormalIndexGenerator>::Output> {
+        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
+            generator.index_for_normal(index)
+        })
+    }
+}
+
+impl<G> IndicesForNormal for G where G: NormalIndexGenerator + Sized {}
+
+pub trait NormalPolygonGenerator: PolygonGenerator + NormalGenerator {
+    type Output: Polygonal;
+
+    fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
+}
+
+/// Functions for generating polygons with normal data.
+pub trait PolygonsWithNormal: NormalPolygonGenerator + Sized {
+    fn polygons_with_normal(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator>::Output> {
+        self.polygons_with_normal_from(Default::default())
+    }
+
+    fn polygons_with_normal_from(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator>::Output> {
+        Generate::new(
+            self,
+            state,
+            self.polygon_count(),
+            Self::polygon_with_normal_from,
+        )
+    }
+}
+
+impl<G> PolygonsWithNormal for G where G: NormalPolygonGenerator {}
+
 pub trait PositionGenerator {
     type State: Default;
 }
