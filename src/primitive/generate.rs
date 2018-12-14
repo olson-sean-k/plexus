@@ -72,7 +72,7 @@ pub trait PositionVertexGenerator: PositionGenerator + VertexGenerator {
 }
 
 /// Functions for generating vertices with position data.
-pub trait VerticesWithPosition<P>: PositionGenerator + Sized {
+pub trait VerticesWithPosition: PositionVertexGenerator + Sized {
     /// Provides an iterator over the set of unique vertices with position
     /// data.
     ///
@@ -93,7 +93,9 @@ pub trait VerticesWithPosition<P>: PositionGenerator + Sized {
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// ```
-    fn vertices_with_position(&self) -> Generate<Self, Self::State, P> {
+    fn vertices_with_position(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as PositionVertexGenerator>::Output> {
         self.vertices_with_position_from(Default::default())
     }
 
@@ -122,22 +124,20 @@ pub trait VerticesWithPosition<P>: PositionGenerator + Sized {
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// ```
-    fn vertices_with_position_from(&self, state: Self::State) -> Generate<Self, Self::State, P>;
-}
-
-impl<G, P> VerticesWithPosition<P> for G
-where
-    G: PositionVertexGenerator<Output = P>,
-{
-    fn vertices_with_position_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {
+    fn vertices_with_position_from(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as PositionVertexGenerator>::Output> {
         Generate::new(
             self,
             state,
             self.vertex_with_position_count(),
-            G::vertex_with_position_from,
+            Self::vertex_with_position_from,
         )
     }
 }
+
+impl<G> VerticesWithPosition for G where G: PositionVertexGenerator + Sized {}
 
 pub trait PositionIndexGenerator: PolygonGenerator + PositionVertexGenerator {
     type Output: Polygonal<Vertex = usize>;
@@ -162,7 +162,7 @@ pub trait PositionPolygonGenerator: PolygonGenerator + PositionGenerator {
 }
 
 /// Functions for generating polygons with position data.
-pub trait PolygonsWithPosition<P>: PositionGenerator + Sized {
+pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     /// Provides an iterator over the set of unique polygons with position
     /// data.
     ///
@@ -177,7 +177,9 @@ pub trait PolygonsWithPosition<P>: PositionGenerator + Sized {
     ///     .polygons_with_position()
     ///     .index_vertices(HashIndexer::default());
     /// ```
-    fn polygons_with_position(&self) -> Generate<Self, Self::State, P> {
+    fn polygons_with_position(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator>::Output> {
         self.polygons_with_position_from(Default::default())
     }
 
@@ -198,23 +200,20 @@ pub trait PolygonsWithPosition<P>: PositionGenerator + Sized {
     ///     .polygons_with_position_from(Bounds::unit_radius())
     ///     .index_vertices(HashIndexer::default());
     /// ```
-    fn polygons_with_position_from(&self, state: Self::State) -> Generate<Self, Self::State, P>;
-}
-
-impl<G, P> PolygonsWithPosition<P> for G
-where
-    G: PositionPolygonGenerator<Output = P>,
-    P: Polygonal,
-{
-    fn polygons_with_position_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {
+    fn polygons_with_position_from(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator>::Output> {
         Generate::new(
             self,
             state,
             self.polygon_count(),
-            G::polygon_with_position_from,
+            Self::polygon_with_position_from,
         )
     }
 }
+
+impl<G> PolygonsWithPosition for G where G: PositionPolygonGenerator {}
 
 pub trait UvMapGenerator {
     type State: Default;
@@ -232,7 +231,7 @@ pub trait UvMapPolygonGenerator: PolygonGenerator + UvMapGenerator {
 
 /// Functions for generating polygons with UV-mapping (texture coordinate)
 /// data.
-pub trait PolygonsWithUvMap<P>: Sized + UvMapGenerator {
+pub trait PolygonsWithUvMap: Sized + UvMapPolygonGenerator {
     /// Provides an iterator over the set of unique polygons with UV-mapping
     /// data.
     ///
@@ -249,26 +248,25 @@ pub trait PolygonsWithUvMap<P>: Sized + UvMapGenerator {
     ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
     ///         .index_vertices(HashIndexer::default());
     /// ```
-    fn polygons_with_uv_map(&self) -> Generate<Self, Self::State, P> {
+    fn polygons_with_uv_map(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator>::Output> {
         self.polygons_with_uv_map_from(Default::default())
     }
 
     /// Provides an iterator over the set of unique polygons with UV-mapping
     /// data using the provided state.
-    fn polygons_with_uv_map_from(&self, state: Self::State) -> Generate<Self, Self::State, P>;
-}
-
-impl<G, P> PolygonsWithUvMap<P> for G
-where
-    G: PolygonGenerator + UvMapPolygonGenerator<Output = P>,
-    P: Polygonal,
-{
-    fn polygons_with_uv_map_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {
+    fn polygons_with_uv_map_from(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator>::Output> {
         Generate::new(
             self,
             state,
             self.polygon_count(),
-            G::polygon_with_uv_map_from,
+            Self::polygon_with_uv_map_from,
         )
     }
 }
+
+impl<G> PolygonsWithUvMap for G where G: UvMapPolygonGenerator {}
