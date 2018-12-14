@@ -1,5 +1,5 @@
 use arrayvec::ArrayVec;
-use itertools::structs::Zip as ItemZip; // Avoid collision with `Zip`.
+use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::Integer;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -529,13 +529,12 @@ where
 /// iterator.
 ///
 /// This is useful for zipping different attributes of a primitive generator.
-/// For example, it can be used to combine position, plane, and texture
-/// coordinate data of a cube into a single topology stream.
+/// For example, it can be used to combine position, plane, and UV-mapping data
+/// data of a cube into a single topology stream.
 ///
 /// # Examples
 ///
-/// Create a topological stream of position and texture coordinate data for a
-/// cube:
+/// Create a topological stream of position and UV-mapping data for a cube:
 ///
 /// ```rust
 /// # extern crate num;
@@ -546,25 +545,25 @@ where
 /// use plexus::primitive::cube::Cube;
 ///
 /// # use num::One;
-/// # fn map_uv_to_color(texture: &Duplet<R64>) -> Triplet<R64> {
+/// # fn map_uv_to_color(uv: &Duplet<R64>) -> Triplet<R64> {
 /// #     Triplet(One::one(), One::one(), One::one())
 /// # }
 /// # fn main() {
 /// let cube = Cube::new();
 /// let polygons =
 ///     // Zip positions and texture coordinates into each vertex.
-///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
-///         .map_vertices(|(position, texture)| (position, texture, map_uv_to_color(&texture)))
+///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
+///         .map_vertices(|(position, uv)| (position, uv, map_uv_to_color(&uv)))
 ///         .triangulate()
 ///         .collect::<Vec<_>>();
 /// # }
 /// ```
 pub fn zip_vertices<T, U>(
     tuple: U,
-) -> impl Iterator<Item = <<ItemZip<T> as Iterator>::Item as Zip>::Output>
+) -> impl Iterator<Item = <<OuterZip<T> as Iterator>::Item as Zip>::Output>
 where
-    ItemZip<T>: From<U> + Iterator,
-    <ItemZip<T> as Iterator>::Item: Zip,
+    OuterZip<T>: From<U> + Iterator,
+    <OuterZip<T> as Iterator>::Item: Zip,
 {
-    ItemZip::from(tuple).map(|item| item.zip())
+    OuterZip::from(tuple).map(|item| item.zip())
 }

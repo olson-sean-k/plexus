@@ -25,7 +25,7 @@ use num::{One, Zero};
 use crate::geometry::{Duplet, Triplet};
 use crate::primitive::generate::{
     Generate, PolygonGenerator, PositionGenerator, PositionIndexGenerator,
-    PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
+    PositionPolygonGenerator, PositionVertexGenerator, UvMapGenerator, UvMapPolygonGenerator,
     VertexGenerator,
 };
 use crate::primitive::topology::{Converged, Map, Quad};
@@ -176,14 +176,14 @@ impl PositionIndexGenerator for Cube {
     }
 }
 
-impl TextureGenerator for Cube {
+impl UvMapGenerator for Cube {
     type State = ();
 }
 
-impl TexturePolygonGenerator for Cube {
+impl UvMapPolygonGenerator for Cube {
     type Output = Quad<Duplet<R64>>;
 
-    fn polygon_with_texture_from(&self, _: &Self::State, index: usize) -> Self::Output {
+    fn polygon_with_uv_map_from(&self, _: &Self::State, index: usize) -> Self::Output {
         let uu = Duplet::one();
         let ul = Duplet(One::one(), Zero::zero());
         let ll = Duplet::zero();

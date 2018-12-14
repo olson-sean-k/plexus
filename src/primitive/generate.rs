@@ -219,24 +219,25 @@ where
     }
 }
 
-pub trait TextureGenerator {
+pub trait UvMapGenerator {
     type State: Default;
 }
 
-pub trait TexturePolygonGenerator: PolygonGenerator + TextureGenerator {
+pub trait UvMapPolygonGenerator: PolygonGenerator + UvMapGenerator {
     type Output: Polygonal;
 
-    fn polygon_with_texture_from(
+    fn polygon_with_uv_map_from(
         &self,
         state: &Self::State,
         index: usize,
-    ) -> <Self as TexturePolygonGenerator>::Output;
+    ) -> <Self as UvMapPolygonGenerator>::Output;
 }
 
-/// Functions for generating polygons with texture coordinate data.
-pub trait PolygonsWithTexture<P>: Sized + TextureGenerator {
-    /// Provides an iterator over the set of unique polygons with texture
-    /// coordinate data.
+/// Functions for generating polygons with UV-mapping (texture coordinate)
+/// data.
+pub trait PolygonsWithUvMap<P>: Sized + UvMapGenerator {
+    /// Provides an iterator over the set of unique polygons with UV-mapping
+    /// data.
     ///
     /// # Examples
     ///
@@ -248,29 +249,29 @@ pub trait PolygonsWithTexture<P>: Sized + TextureGenerator {
     ///
     /// let cube = Cube::new();
     /// let (indices, positions) =
-    ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_texture()))
+    ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
     ///         .index_vertices(HashIndexer::default());
     /// ```
-    fn polygons_with_texture(&self) -> Generate<Self, Self::State, P> {
-        self.polygons_with_texture_from(Default::default())
+    fn polygons_with_uv_map(&self) -> Generate<Self, Self::State, P> {
+        self.polygons_with_uv_map_from(Default::default())
     }
 
-    /// Provides an iterator over the set of unique polygons with texture
-    /// coordinate data using the provided state.
-    fn polygons_with_texture_from(&self, state: Self::State) -> Generate<Self, Self::State, P>;
+    /// Provides an iterator over the set of unique polygons with UV-mapping
+    /// data using the provided state.
+    fn polygons_with_uv_map_from(&self, state: Self::State) -> Generate<Self, Self::State, P>;
 }
 
-impl<G, P> PolygonsWithTexture<P> for G
+impl<G, P> PolygonsWithUvMap<P> for G
 where
-    G: PolygonGenerator + TexturePolygonGenerator<Output = P>,
+    G: PolygonGenerator + UvMapPolygonGenerator<Output = P>,
     P: Polygonal,
 {
-    fn polygons_with_texture_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {
+    fn polygons_with_uv_map_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {
         Generate::new(
             self,
             state,
             self.polygon_count(),
-            G::polygon_with_texture_from,
+            G::polygon_with_uv_map_from,
         )
     }
 }

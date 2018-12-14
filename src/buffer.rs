@@ -311,8 +311,8 @@ where
     /// let (indices, vertices) = primitive::zip_vertices((
     ///     cube.polygons_with_position()
     ///         .map_vertices(|position| -> Point3<R64> { position.into() }),
-    ///     cube.polygons_with_texture()
-    ///         .map_vertices(|texture| -> Point2<R64> { texture.into() }),
+    ///     cube.polygons_with_uv_map()
+    ///         .map_vertices(|uv| -> Point2<R64> { uv.into() }),
     /// ))
     /// .flat_index_vertices(HashIndexer::default());
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
