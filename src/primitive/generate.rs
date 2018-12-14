@@ -147,12 +147,9 @@ pub trait PositionIndexGenerator: PolygonGenerator + PositionVertexGenerator {
 
 pub trait IndicesForPosition: PositionIndexGenerator + Sized {
     fn indices_for_position(&self) -> Generate<Self, (), <Self as PositionIndexGenerator>::Output> {
-        Generate::new(
-            self,
-            (),
-            self.polygon_count(),
-            |generator: &Self, _: &(), index: usize| generator.index_for_position(index),
-        )
+        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
+            generator.index_for_position(index)
+        })
     }
 }
 

@@ -82,15 +82,12 @@ impl Cube {
     }
 
     pub fn polygons_with_plane(&self) -> Generate<Self, (), Quad<Plane>> {
-        Generate::new(
-            self,
-            (),
-            self.polygon_count(),
-            Cube::polygon_with_plane_from,
-        )
+        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
+            generator.polygon_with_plane(index)
+        })
     }
 
-    fn polygon_with_plane_from(&self, _: &(), index: usize) -> Quad<Plane> {
+    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
         match index {
             0 => Quad::converged(Plane::XY),  // front
             1 => Quad::converged(Plane::NZY), // right
