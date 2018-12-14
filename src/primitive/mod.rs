@@ -14,14 +14,14 @@
 //! recommended to import the `prelude`'s contents as seen in the examples.
 //!
 //! Generator traits implemented by primitives expose verbose function names
-//! like `polygons_with_index` or `vertices_with_position` to avoid ambiguity.
-//! This is a somewhat unorthodox use of the term "with" in Rust function
-//! names, but the alternatives are much less clear, especially when
+//! like `polygons_with_texture` or `vertices_with_position` to avoid
+//! ambiguity.  This is a somewhat unorthodox use of the term "with" in Rust
+//! function names, but the alternatives are much less clear, especially when
 //! neighboring other similar function names.
 //!
 //! # Examples
 //!
-//! Generating position and index buffers for a scaled sphere:
+//! Generating position data for a sphere:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -32,29 +32,34 @@
 //!
 //! # fn main() {
 //! let sphere = UvSphere::new(16, 16);
+//! // Generate the unique set of positional vertices.
+//! // Convert the position data into `Point3<f32>` and collect it into a buffer.
 //! let positions = sphere
-//!     .vertices_with_position() // Generate the unique set of positional vertices.
-//!     .map(|position| -> Point3<f32> { position.into() }) // Convert into a nalgebra type.
-//!     .map(|position| position * 10.0) // Scale the positions by 10.
+//!     .vertices_with_position()
+//!     .map(|position| -> Point3<f32> { position.into() })
 //!     .collect::<Vec<_>>();
+//! // Generate polygons indexing the unique set of positional vertices.
+//! // These indeces depend on the attribute (position, normal, etc.).
+//! // Decompose the indexing polygons into triangles and vertices and then collect
+//! // the index data into a buffer.
 //! let indices = sphere
-//!     .polygons_with_index() // Generate polygons indexing the unique set of vertices.
-//!     .triangulate() // Decompose the polygons into triangles.
-//!     .vertices() // Decompose the triangles into vertices (indices).
+//!     .indices_for_position()
+//!     .triangulate()
+//!     .vertices()
 //!     .collect::<Vec<_>>();
 //! # }
 //! ```
-//! Generating position and index buffers using an indexer:
+//! Generating position data for a cube using an indexer:
 //!
 //! ```rust
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::{Bounds, Cube};
-//! use plexus::primitive::index::LruIndexer;
+//! use plexus::primitive::index::HashIndexer;
 //!
 //! let (indices, positions) = Cube::new()
 //!     .polygons_with_position_from(Bounds::unit_radius())
 //!     .triangulate()
-//!     .index_vertices(LruIndexer::default());
+//!     .index_vertices(HashIndexer::default());
 //! ```
 
 // TODO: This module used to employ the private-in-public pattern to hide

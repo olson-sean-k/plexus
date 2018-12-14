@@ -24,7 +24,7 @@ use num::{One, Zero};
 
 use crate::geometry::{Duplet, Triplet};
 use crate::primitive::generate::{
-    Generate, IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
+    Generate, PolygonGenerator, PositionGenerator, PositionIndexGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, TextureGenerator, TexturePolygonGenerator,
     VertexGenerator,
 };
@@ -155,19 +155,15 @@ impl PositionPolygonGenerator for Cube {
     type Output = Quad<Triplet<R64>>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
-        self.polygon_with_index_from(&Default::default(), index)
+        self.index_for_position(index)
             .map(|index| self.vertex_with_position_from(state, index))
     }
 }
 
-impl IndexGenerator for Cube {
-    type State = ();
-}
-
-impl IndexPolygonGenerator for Cube {
+impl PositionIndexGenerator for Cube {
     type Output = Quad<usize>;
 
-    fn polygon_with_index_from(&self, _: &Self::State, index: usize) -> Self::Output {
+    fn index_for_position(&self, index: usize) -> <Self as PositionIndexGenerator>::Output {
         match index {
             0 => Quad::new(5, 7, 3, 1), // front
             1 => Quad::new(6, 7, 5, 4), // right

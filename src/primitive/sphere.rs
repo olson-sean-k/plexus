@@ -26,8 +26,8 @@ use std::cmp;
 
 use crate::geometry::Triplet;
 use crate::primitive::generate::{
-    IndexGenerator, IndexPolygonGenerator, PolygonGenerator, PositionGenerator,
-    PositionPolygonGenerator, PositionVertexGenerator, VertexGenerator,
+    PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
+    PositionVertexGenerator, VertexGenerator,
 };
 use crate::primitive::topology::{Polygon, Quad, Triangle};
 
@@ -92,12 +92,7 @@ impl UvSphere {
         )
     }
 
-    fn vertex_with_index_from(
-        &self,
-        _: &<Self as IndexGenerator>::State,
-        u: usize,
-        v: usize,
-    ) -> usize {
+    fn index_for_position(&self, u: usize, v: usize) -> usize {
         if v == 0 {
             0
         }
@@ -205,39 +200,27 @@ impl PositionPolygonGenerator for UvSphere {
     }
 }
 
-impl IndexGenerator for UvSphere {
-    type State = ();
-}
-
-impl IndexPolygonGenerator for UvSphere {
+impl PositionIndexGenerator for UvSphere {
     type Output = Polygon<usize>;
 
-    fn polygon_with_index_from(&self, state: &Self::State, index: usize) -> Self::Output {
+    fn index_for_position(&self, index: usize) -> <Self as PositionIndexGenerator>::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
-        let low = self.vertex_with_index_from(state, u, v);
-        let high = self.vertex_with_index_from(state, p, q);
+        let low = self.index_for_position(u, v);
+        let high = self.index_for_position(p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(
-                low,
-                self.vertex_with_index_from(state, u, q),
-                high,
-            ))
+            Polygon::Triangle(Triangle::new(low, self.index_for_position(u, q), high))
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(
-                high,
-                self.vertex_with_index_from(state, p, v),
-                low,
-            ))
+            Polygon::Triangle(Triangle::new(high, self.index_for_position(p, v), low))
         }
         else {
             Polygon::Quad(Quad::new(
                 low,
-                self.vertex_with_index_from(state, u, q),
+                self.index_for_position(u, q),
                 high,
-                self.vertex_with_index_from(state, p, v),
+                self.index_for_position(p, v),
             ))
         }
     }
@@ -274,12 +257,12 @@ mod tests {
     }
 
     #[test]
-    fn index_to_vertex_mapping() {
+    fn position_index_to_vertex_mapping() {
         assert_eq!(
             5,
             BTreeSet::from_iter(
                 UvSphere::new(3, 2)
-                    .polygons_with_index() // 18 vertices, 5 indices.
+                    .indices_for_position() // 18 vertices, 5 indices.
                     .vertices()
             )
             .len()

@@ -295,21 +295,27 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
-    /// use nalgebra::Point3;
+    /// use decorum::R64;
+    /// use nalgebra::{Point2, Point3};
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
+    /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::index::HashIndexer;
     ///
     /// # fn main() {
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
-    ///     cube.polygons_with_index().triangulate().vertices(),
-    ///     cube.vertices_with_position()
-    ///         .map(|position| -> Point3<f32> { position.into() }),
-    /// )
-    /// .unwrap();
+    /// let (indices, vertices) = primitive::zip_vertices((
+    ///     cube.polygons_with_position()
+    ///         .map_vertices(|position| -> Point3<R64> { position.into() }),
+    ///     cube.polygons_with_texture()
+    ///         .map_vertices(|texture| -> Point2<R64> { texture.into() }),
+    /// ))
+    /// .flat_index_vertices(HashIndexer::default());
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
     /// # }
     /// ```
     pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
@@ -379,7 +385,7 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
-    ///     cube.polygons_with_index().triangulate().vertices(),
+    ///     cube.indices_for_position().triangulate().vertices(),
     ///     cube.vertices_with_position(),
     /// )
     /// .unwrap();
@@ -422,7 +428,7 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
-    ///     cube.polygons_with_index().vertices(),
+    ///     cube.indices_for_position().vertices(),
     ///     cube.vertices_with_position(),
     /// )
     /// .unwrap();
@@ -472,7 +478,7 @@ where
     /// # fn main() {
     /// let sphere = UvSphere::new(8, 8);
     /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
-    ///     sphere.polygons_with_index(),
+    ///     sphere.indices_for_position(),
     ///     sphere
     ///         .vertices_with_position()
     ///         .map(|position| -> Point3<f32> { position.into() }),
@@ -555,7 +561,7 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer::<Structured3, _>::from_raw_buffers(
-    ///     cube.polygons_with_index().triangulate(),
+    ///     cube.indices_for_position().triangulate(),
     ///     cube.vertices_with_position(),
     /// )
     /// .unwrap();
@@ -596,7 +602,7 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer::<Structured4, _>::from_raw_buffers(
-    ///     cube.polygons_with_index(),
+    ///     cube.indices_for_position(),
     ///     cube.vertices_with_position(),
     /// )
     /// .unwrap();

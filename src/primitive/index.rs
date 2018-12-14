@@ -249,27 +249,29 @@ where
 /// # Examples
 ///
 /// Note that using an indexer is not always the most effecient method to
-/// create buffers or meshes from a topology stream. Depending on the iterator
-/// expression, it may be possible to use `PolygonsWithIndex` to produce an
-/// index buffer separately and more effeciently.
+/// create buffers or meshes from a topology stream. Primitives provide
+/// per-attribute indeces that may be less expensive to generate than using an
+/// indexer. For iterator expressions operating on a single attribute
+/// (position, normal, etc.), this can be more effecient.
 ///
 /// ```rust
 /// use plexus::prelude::*;
 /// use plexus::primitive::index::HashIndexer;
 /// use plexus::primitive::sphere::UvSphere;
 ///
+/// // Detailed UV-sphere.
 /// let sphere = UvSphere::new(64, 32);
 ///
-/// // More efficient.
+/// // Using a positional index is more efficient.
 /// let (indices, positions) = (
 ///     sphere
-///         .polygons_with_index()
+///         .indices_for_position()
 ///         .triangulate()
 ///         .collect::<Vec<_>>(),
 ///     sphere.vertices_with_position().collect::<Vec<_>>(),
 /// );
 ///
-/// // Less efficient.
+/// // Using an indexer is less efficient.
 /// let (indices, positions) = sphere
 ///     .polygons_with_position()
 ///     .triangulate()
@@ -360,9 +362,10 @@ where
 /// # Examples
 ///
 /// Note that using an indexer is not always the most effecient method to
-/// create buffers or meshes from a topology stream. Depending on the iterator
-/// expression, it may be possible to use `PolygonsWithIndex` to produce an
-/// index buffer separately and more effeciently.
+/// create buffers or meshes from a topology stream. Primitives provide
+/// per-attribute indeces that may be less expensive to generate than using an
+/// indexer. For iterator expressions operating on a single attribute
+/// (position, normal, etc.), this can be more effecient.
 ///
 /// ```rust
 /// use plexus::prelude::*;
@@ -371,17 +374,17 @@ where
 ///
 /// let sphere = UvSphere::new(64, 32);
 ///
-/// // More efficient.
+/// // Using a positional index is more efficient.
 /// let (indices, positions) = (
 ///     sphere
-///         .polygons_with_index()
+///         .indices_for_position()
 ///         .triangulate()
 ///         .vertices()
 ///         .collect::<Vec<_>>(),
 ///     sphere.vertices_with_position().collect::<Vec<_>>(),
 /// );
 ///
-/// // Less efficient.
+/// // Using an indexer is less efficient.
 /// let (indices, positions) = sphere
 ///     .polygons_with_position()
 ///     .triangulate()
