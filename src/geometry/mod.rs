@@ -100,20 +100,26 @@ impl Geometry for () {
 /// Provides basic vertex geometry and a grouping of values emitted by
 /// generators. Conversions into commonly used types from commonly used
 /// libraries are supported. See feature flags.
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Duplet<T>(pub T, pub T);
 
-/// Homogeneous triplet.
-///
-/// Provides basic vertex geometry and a grouping of values emitted by
-/// generators. Conversions into commonly used types from commonly used
-/// libraries are supported. See feature flags.
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Triplet<T>(pub T, pub T, pub T);
+impl<T> Duplet<T> {
+    pub fn one() -> Self
+    where
+        T: One,
+    {
+        Duplet(One::one(), One::one())
+    }
+
+    pub fn zero() -> Self
+    where
+        T: Zero,
+    {
+        Duplet(Zero::zero(), Zero::zero())
+    }
+}
 
 impl<T> Attribute for Duplet<T> where T: Clone {}
-
-impl<T> Attribute for Triplet<T> where T: Clone {}
 
 impl<T> Geometry for Duplet<T>
 where
@@ -123,6 +129,32 @@ where
     type Edge = ();
     type Face = ();
 }
+
+/// Homogeneous triplet.
+///
+/// Provides basic vertex geometry and a grouping of values emitted by
+/// generators. Conversions into commonly used types from commonly used
+/// libraries are supported. See feature flags.
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Triplet<T>(pub T, pub T, pub T);
+
+impl<T> Triplet<T> {
+    pub fn one() -> Self
+    where
+        T: One,
+    {
+        Triplet(One::one(), One::one(), One::one())
+    }
+
+    pub fn zero() -> Self
+    where
+        T: Zero,
+    {
+        Triplet(Zero::zero(), Zero::zero(), Zero::zero())
+    }
+}
+
+impl<T> Attribute for Triplet<T> where T: Clone {}
 
 impl<T> Geometry for Triplet<T>
 where

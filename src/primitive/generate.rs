@@ -50,10 +50,7 @@ where
 }
 
 /// Vertex generating primitive.
-pub trait VertexGenerator {
-    /// Gets the number of unique vertices that comprise a primitive.
-    fn vertex_count(&self) -> usize;
-}
+pub trait VertexGenerator {}
 
 /// Polygon generating primitive.
 pub trait PolygonGenerator {
@@ -69,6 +66,9 @@ pub trait PositionVertexGenerator: PositionGenerator + VertexGenerator {
     type Output;
 
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output;
+
+    /// Gets the number of unique vertices with position data that comprise a primitive.
+    fn vertex_with_position_count(&self) -> usize;
 }
 
 /// Functions for generating vertices with position data.
@@ -133,7 +133,7 @@ where
         Generate::new(
             self,
             state,
-            self.vertex_count(),
+            self.vertex_with_position_count(),
             G::vertex_with_position_from,
         )
     }
@@ -204,7 +204,7 @@ pub trait IndexGenerator {
     type State: Default;
 }
 
-pub trait IndexPolygonGenerator: IndexGenerator + PolygonGenerator + VertexGenerator {
+pub trait IndexPolygonGenerator: IndexGenerator + PolygonGenerator {
     type Output: Polygonal;
 
     fn polygon_with_index_from(
@@ -247,7 +247,7 @@ pub trait PolygonsWithIndex<P>: IndexGenerator + Sized {
 
 impl<G, P> PolygonsWithIndex<P> for G
 where
-    G: IndexPolygonGenerator<Output = P> + VertexGenerator + PolygonGenerator,
+    G: IndexPolygonGenerator<Output = P> + PolygonGenerator,
     P: Polygonal,
 {
     fn polygons_with_index_from(&self, state: Self::State) -> Generate<Self, Self::State, P> {

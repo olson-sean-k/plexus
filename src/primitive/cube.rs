@@ -109,11 +109,7 @@ impl Default for Cube {
     }
 }
 
-impl VertexGenerator for Cube {
-    fn vertex_count(&self) -> usize {
-        8
-    }
-}
+impl VertexGenerator for Cube {}
 
 impl PolygonGenerator for Cube {
     fn polygon_count(&self) -> usize {
@@ -149,6 +145,10 @@ impl PositionVertexGenerator for Cube {
         };
         Triplet(x, y, z)
     }
+
+    fn vertex_with_position_count(&self) -> usize {
+        8
+    }
 }
 
 impl PositionPolygonGenerator for Cube {
@@ -167,11 +167,7 @@ impl IndexGenerator for Cube {
 impl IndexPolygonGenerator for Cube {
     type Output = Quad<usize>;
 
-    fn polygon_with_index_from(
-        &self,
-        _: &Self::State,
-        index: usize,
-    ) -> <Self as IndexPolygonGenerator>::Output {
+    fn polygon_with_index_from(&self, _: &Self::State, index: usize) -> Self::Output {
         match index {
             0 => Quad::new(5, 7, 3, 1), // front
             1 => Quad::new(6, 7, 5, 4), // right
@@ -191,14 +187,10 @@ impl TextureGenerator for Cube {
 impl TexturePolygonGenerator for Cube {
     type Output = Quad<Duplet<R64>>;
 
-    fn polygon_with_texture_from(
-        &self,
-        _: &Self::State,
-        index: usize,
-    ) -> <Self as TexturePolygonGenerator>::Output {
-        let uu = Duplet(One::one(), One::one());
+    fn polygon_with_texture_from(&self, _: &Self::State, index: usize) -> Self::Output {
+        let uu = Duplet::one();
         let ul = Duplet(One::one(), Zero::zero());
-        let ll = Duplet(Zero::zero(), Zero::zero());
+        let ll = Duplet::zero();
         let lu = Duplet(Zero::zero(), One::one());
         match index {
             0 | 4 | 5 => Quad::new(uu, ul, ll, lu), // front | bottom | back

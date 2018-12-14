@@ -79,7 +79,7 @@ impl UvSphere {
         state: &<Self as PositionGenerator>::State,
         u: usize,
         v: usize,
-    ) -> Triplet<R64> {
+    ) -> <Self as PositionVertexGenerator>::Output {
         let u = (<R64 as NumCast>::from(u).unwrap() / <R64 as NumCast>::from(self.nu).unwrap())
             * R64::PI()
             * 2.0;
@@ -120,11 +120,7 @@ impl Default for UvSphere {
     }
 }
 
-impl VertexGenerator for UvSphere {
-    fn vertex_count(&self) -> usize {
-        (self.nv - 1) * self.nu + 2
-    }
-}
+impl VertexGenerator for UvSphere {}
 
 impl PolygonGenerator for UvSphere {
     fn polygon_count(&self) -> usize {
@@ -143,13 +139,17 @@ impl PositionVertexGenerator for UvSphere {
         if index == 0 {
             self.vertex_with_position_from(state, 0, 0)
         }
-        else if index == self.vertex_count() - 1 {
+        else if index == self.vertex_with_position_count() - 1 {
             self.vertex_with_position_from(state, 0, self.nv)
         }
         else {
             let index = index - 1;
             self.vertex_with_position_from(state, index % self.nu, (index / self.nu) + 1)
         }
+    }
+
+    fn vertex_with_position_count(&self) -> usize {
+        (self.nv - 1) * self.nu + 2
     }
 }
 
@@ -212,11 +212,7 @@ impl IndexGenerator for UvSphere {
 impl IndexPolygonGenerator for UvSphere {
     type Output = Polygon<usize>;
 
-    fn polygon_with_index_from(
-        &self,
-        state: &Self::State,
-        index: usize,
-    ) -> <Self as IndexPolygonGenerator>::Output {
+    fn polygon_with_index_from(&self, state: &Self::State, index: usize) -> Self::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
