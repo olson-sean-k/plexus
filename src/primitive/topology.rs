@@ -9,6 +9,8 @@ use crate::primitive::decompose::IntoVertices;
 
 pub trait Topological: Sized {
     type Vertex;
+
+    fn arity(&self) -> usize;
 }
 
 pub trait Polygonal: Topological {}
@@ -214,6 +216,10 @@ impl<T, U> Map<U> for Edge<T> {
 
 impl<T> Topological for Edge<T> {
     type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
 }
 
 impl<T> Rotate for Edge<T> {
@@ -302,6 +308,10 @@ impl<T, U> Map<U> for Triangle<T> {
 
 impl<T> Topological for Triangle<T> {
     type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
 }
 
 impl<T> Polygonal for Triangle<T> {}
@@ -400,6 +410,10 @@ impl<T, U> Map<U> for Quad<T> {
 
 impl<T> Topological for Quad<T> {
     type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
 }
 
 impl<T> Polygonal for Quad<T> {}
@@ -432,13 +446,6 @@ pub enum Polygon<T> {
 }
 
 impl<T> Polygon<T> {
-    pub fn arity(&self) -> usize {
-        match *self {
-            Polygon::Triangle(..) => Triangle::<T>::ARITY,
-            Polygon::Quad(..) => Quad::<T>::ARITY,
-        }
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::with_arity(self, self.arity())
     }
@@ -505,6 +512,13 @@ impl<T, U> Map<U> for Polygon<T> {
 
 impl<T> Topological for Polygon<T> {
     type Vertex = T;
+
+    fn arity(&self) -> usize {
+        match *self {
+            Polygon::Triangle(..) => Triangle::<T>::ARITY,
+            Polygon::Quad(..) => Quad::<T>::ARITY,
+        }
+    }
 }
 
 impl<T> Polygonal for Polygon<T> {}
