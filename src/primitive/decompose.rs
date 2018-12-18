@@ -82,6 +82,11 @@ where
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, _) = self.input.size_hint();
+        (lower, None)
+    }
 }
 
 pub trait IntoVertices: Topological {

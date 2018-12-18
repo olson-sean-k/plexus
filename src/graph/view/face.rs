@@ -660,6 +660,8 @@ where
     }
 }
 
+// TODO: This iterator could provide a size hint of `(3, None)`, but this is
+//       only the case when the underlying mesh is consistent.
 impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
 where
     M: 'a + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
@@ -672,6 +674,8 @@ where
     }
 }
 
+// TODO: This iterator could provide a size hint of `(3, None)`, but this is
+//       only the case when the underlying mesh is consistent.
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
 where
     M: 'a + AsStorage<Edge<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
@@ -750,6 +754,8 @@ where
     }
 }
 
+// TODO: This iterator could provide a size hint of `(3, None)`, but this is
+//       only the case when the underlying mesh is consistent.
 impl<'a, M, G> Iterator for EdgeCirculator<&'a M, G>
 where
     M: 'a + AsStorage<Edge<G>>,
@@ -762,6 +768,8 @@ where
     }
 }
 
+// TODO: This iterator could provide a size hint of `(3, None)`, but this is
+//       only the case when the underlying mesh is consistent.
 impl<'a, M, G> Iterator for EdgeCirculator<&'a mut M, G>
 where
     M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,

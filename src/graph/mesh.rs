@@ -645,6 +645,10 @@ where
             .next()
             .map(|key| (*key, self.storage).into_view().unwrap())
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.input.size_hint()
+    }
 }
 
 pub struct IterMut<'a, I, T, Output>
@@ -689,6 +693,10 @@ where
                 .into_view()
                 .unwrap()
         })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.input.size_hint()
     }
 }
 

@@ -47,6 +47,10 @@ where
             .next()
             .map(|index| (self.f)(self.generator, &self.state, index))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
 }
 
 /// Vertex generating primitive.

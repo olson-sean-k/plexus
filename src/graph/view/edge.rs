@@ -771,6 +771,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| (key, self.storage).into_view())
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (2, Some(2))
+    }
 }
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
@@ -791,6 +795,10 @@ where
             })
                 .into_view()
         })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (2, Some(2))
     }
 }
 
@@ -842,6 +850,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| (key, self.storage).into_view())
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(2))
+    }
 }
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
@@ -862,6 +874,10 @@ where
             })
                 .into_view()
         })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(2))
     }
 }
 

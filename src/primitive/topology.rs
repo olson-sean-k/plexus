@@ -103,6 +103,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|topology| topology.map(&mut self.f))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.input.size_hint()
+    }
 }
 
 struct Iter<'a, T>
@@ -117,22 +121,10 @@ impl<'a, T> Iter<'a, T>
 where
     T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
 {
-    fn with_arity(topology: &'a T, arity: usize) -> Self {
-        Iter {
-            topology,
-            range: 0..arity,
-        }
-    }
-}
-
-impl<'a, T> Iter<'a, T>
-where
-    T: 'a + Arity + Index<usize, Output = <T as Topological>::Vertex> + Topological,
-{
     fn new(topology: &'a T) -> Self {
         Iter {
             topology,
-            range: 0..T::ARITY,
+            range: 0..topology.arity(),
         }
     }
 }
@@ -145,6 +137,10 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.range.next().map(|index| self.topology.index(index))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
     }
 }
 
@@ -447,7 +443,7 @@ pub enum Polygon<T> {
 
 impl<T> Polygon<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::with_arity(self, self.arity())
+        Iter::new(self)
     }
 }
 
