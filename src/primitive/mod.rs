@@ -62,10 +62,6 @@
 //!     .index_vertices(HashIndexer::default());
 //! ```
 
-// TODO: This module used to employ the private-in-public pattern to hide
-//       traits from user code. Consider using `#[doc(hidden)]` or nested
-//       modules to prevent exposing internal traits.
-
 pub mod cube;
 pub mod decompose;
 pub mod generate;
@@ -73,7 +69,4 @@ pub mod index;
 pub mod sphere;
 mod topology;
 
-pub use self::topology::{
-    zip_vertices, Arity, Converged, Edge, Map, MapVertices, Polygon, Polygonal, Quad, Rotate,
-    Topological, Triangle, Zip,
-};
+pub use self::topology::*;

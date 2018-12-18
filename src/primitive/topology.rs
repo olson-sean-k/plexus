@@ -528,13 +528,6 @@ impl<T> Rotate for Polygon<T> {
     }
 }
 
-fn umod<T>(n: T, m: T) -> T
-where
-    T: Copy + Integer,
-{
-    ((n % m) + m) % m
-}
-
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.
 ///
@@ -576,4 +569,11 @@ where
     <OuterZip<T> as Iterator>::Item: Zip,
 {
     OuterZip::from(tuple).map(|item| item.zip())
+}
+
+fn umod<T>(n: T, m: T) -> T
+where
+    T: Copy + Integer,
+{
+    ((n % m) + m) % m
 }
