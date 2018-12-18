@@ -49,8 +49,7 @@ pub mod prelude {
     };
     pub use crate::primitive::generate::{
         IndicesForNormal, IndicesForPosition, PolygonGenerator, PolygonsWithNormal,
-        PolygonsWithPosition, PolygonsWithUvMap, VertexGenerator, VerticesWithNormal,
-        VerticesWithPosition,
+        PolygonsWithPosition, PolygonsWithUvMap, VerticesWithNormal, VerticesWithPosition,
     };
     pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use crate::primitive::{Converged, Map, MapVertices, Zip};

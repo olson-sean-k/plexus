@@ -27,7 +27,7 @@ use std::cmp;
 use crate::geometry::Triplet;
 use crate::primitive::generate::{
     PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
-    PositionVertexGenerator, VertexGenerator,
+    PositionVertexGenerator,
 };
 use crate::primitive::topology::{Polygon, Quad, Triangle};
 
@@ -114,8 +114,6 @@ impl Default for UvSphere {
         UvSphere::new(16, 16)
     }
 }
-
-impl VertexGenerator for UvSphere {}
 
 impl PolygonGenerator for UvSphere {
     fn polygon_count(&self) -> usize {

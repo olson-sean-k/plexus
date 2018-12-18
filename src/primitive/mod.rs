@@ -14,9 +14,9 @@
 //! recommended to import the `prelude`'s contents as seen in the examples.
 //!
 //! Generator traits implemented by primitives expose verbose function names
-//! like `polygons_with_texture` or `vertices_with_position` to avoid
-//! ambiguity.  This is a somewhat unorthodox use of the term "with" in Rust
-//! function names, but the alternatives are much less clear, especially when
+//! like `polygons_with_uv_map` or `vertices_with_position` to avoid ambiguity.
+//! This is a somewhat unorthodox use of the term "with" in Rust function
+//! names, but the alternatives are much less clear, especially when
 //! neighboring other similar function names.
 //!
 //! # Examples

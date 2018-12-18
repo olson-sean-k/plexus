@@ -53,9 +53,6 @@ where
     }
 }
 
-/// Vertex generating primitive.
-pub trait VertexGenerator {}
-
 /// Polygon generating primitive.
 pub trait PolygonGenerator {
     /// Gets the number of unique polygons that comprise a primitive.
@@ -66,7 +63,7 @@ pub trait NormalGenerator {
     type State: Default;
 }
 
-pub trait NormalVertexGenerator: NormalGenerator + VertexGenerator {
+pub trait NormalVertexGenerator: NormalGenerator {
     type Output;
 
     fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
@@ -147,7 +144,7 @@ pub trait PositionGenerator {
     type State: Default;
 }
 
-pub trait PositionVertexGenerator: PositionGenerator + VertexGenerator {
+pub trait PositionVertexGenerator: PositionGenerator {
     type Output;
 
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output;
