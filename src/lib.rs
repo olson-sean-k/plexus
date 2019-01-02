@@ -42,6 +42,7 @@ pub use decorum::{R32, R64};
 //       provided by rustdoc or doxidize for this instead.
 
 pub mod prelude {
+    pub use crate::buffer::{IntoFlatIndex, IntoStructuredIndex};
     pub use crate::geometry::{Duplet, Triplet};
     pub use crate::primitive::decompose::{
         Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices,

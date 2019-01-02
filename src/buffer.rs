@@ -213,6 +213,25 @@ pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 /// Alias for a structured and polygonal `MeshBuffer`.
 pub type MeshBufferN<N, G> = MeshBuffer<StructuredN<N>, G>;
 
+pub trait IntoFlatIndex<A, G>
+where
+    A: NonZero + typenum::Unsigned,
+{
+    type Item: Copy + Integer + NumCast + Unsigned;
+
+    fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G>;
+}
+
+pub trait IntoStructuredIndex<G>
+where
+    Structured<Self::Item>: IndexBuffer,
+    <Self::Item as Topological>::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    type Item: Polygonal;
+
+    fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G>;
+}
+
 /// Linear representation of a mesh.
 ///
 /// A `MeshBuffer` is a linear representation of a mesh that can be consumed by
@@ -360,92 +379,6 @@ where
     }
 }
 
-impl<N, G> MeshBuffer<Flat3<N>, G>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// Converts a flat index buffer into a structured index buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer3;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::Cube;
-    ///
-    /// # fn main() {
-    /// let cube = Cube::new();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
-    ///     cube.indices_for_position().triangulate().vertices(),
-    ///     cube.vertices_with_position(),
-    /// )
-    /// .unwrap();
-    /// let buffer = buffer.into_structured_index();
-    /// for triangle in buffer.as_index_slice() {
-    ///     // ...
-    /// }
-    /// # }
-    /// ```
-    pub fn into_structured_index(self) -> MeshBuffer<Structured3<N>, G> {
-        let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .chunks(Flat3::<N>::ARITY.unwrap())
-                .into_iter()
-                .map(|triangle| <Structured3<N> as IndexBuffer>::Item::from_iter(triangle))
-                .collect(),
-            vertices,
-        }
-    }
-}
-
-impl<N, G> MeshBuffer<Flat4<N>, G>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// Converts a flat index buffer into a structured index buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer4;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::Cube;
-    ///
-    /// # fn main() {
-    /// let cube = Cube::new();
-    /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
-    ///     cube.indices_for_position().vertices(),
-    ///     cube.vertices_with_position(),
-    /// )
-    /// .unwrap();
-    /// let buffer = buffer.into_structured_index();
-    /// for quad in buffer.as_index_slice() {
-    ///     // ...
-    /// }
-    /// # }
-    /// ```
-    pub fn into_structured_index(self) -> MeshBuffer<Structured4<N>, G> {
-        let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .chunks(Flat4::<N>::ARITY.unwrap())
-                .into_iter()
-                .map(|quad| <Structured4<N> as IndexBuffer>::Item::from_iter(quad))
-                .collect(),
-            vertices,
-        }
-    }
-}
-
 impl<P, G> MeshBuffer<Structured<P>, G>
 where
     P: Polygonal,
@@ -536,88 +469,6 @@ where
     }
 }
 
-impl<N, G> MeshBuffer<Structured3<N>, G>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// Converts a structured index buffer into a flat index buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Structured3};
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::Cube;
-    ///
-    /// # fn main() {
-    /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Structured3, _>::from_raw_buffers(
-    ///     cube.indices_for_position().triangulate(),
-    ///     cube.vertices_with_position(),
-    /// )
-    /// .unwrap();
-    /// let buffer = buffer.into_flat_index();
-    /// for index in buffer.as_index_slice() {
-    ///     // ...
-    /// }
-    /// # }
-    /// ```
-    pub fn into_flat_index(self) -> MeshBuffer<Flat3<N>, G> {
-        let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .flat_map(|triangle| triangle.into_vertices())
-                .collect(),
-            vertices,
-        }
-    }
-}
-
-impl<N, G> MeshBuffer<Structured4<N>, G>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// Converts a structured index buffer into a flat index buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Structured4};
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::Cube;
-    ///
-    /// # fn main() {
-    /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Structured4, _>::from_raw_buffers(
-    ///     cube.indices_for_position(),
-    ///     cube.vertices_with_position(),
-    /// )
-    /// .unwrap();
-    /// let buffer = buffer.into_flat_index();
-    /// for index in buffer.as_index_slice() {
-    ///     // ...
-    /// }
-    /// # }
-    /// ```
-    pub fn into_flat_index(self) -> MeshBuffer<Flat4<N>, G> {
-        let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .flat_map(|quad| quad.into_vertices())
-                .collect(),
-            vertices,
-        }
-    }
-}
-
 impl<A, N, P, G> FromIndexer<P, P> for MeshBuffer<Flat<A, N>, G>
 where
     A: NonZero + typenum::Unsigned,
@@ -703,6 +554,207 @@ where
         I: IntoIterator<Item = P>,
     {
         Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
+    }
+}
+
+impl<A, N, G> IntoFlatIndex<A, G> for MeshBuffer<Flat<A, N>, G>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Item = N;
+
+    fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G> {
+        self
+    }
+}
+
+impl<N, G> IntoFlatIndex<U3, G> for MeshBuffer<Structured3<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Item = N;
+
+    /// Converts a structured index buffer into a flat index buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::{MeshBuffer, Structured3};
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::new();
+    /// let buffer = MeshBuffer::<Structured3, _>::from_raw_buffers(
+    ///     cube.indices_for_position().triangulate(),
+    ///     cube.vertices_with_position(),
+    /// )
+    /// .unwrap();
+    /// let buffer = buffer.into_flat_index();
+    /// for index in buffer.as_index_slice() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    fn into_flat_index(self) -> MeshBuffer<Flat<U3, Self::Item>, G> {
+        let MeshBuffer { indices, vertices } = self;
+        MeshBuffer {
+            indices: indices
+                .into_iter()
+                .flat_map(|triangle| triangle.into_vertices())
+                .collect(),
+            vertices,
+        }
+    }
+}
+
+impl<N, G> IntoFlatIndex<U4, G> for MeshBuffer<Structured4<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Item = N;
+
+    /// Converts a structured index buffer into a flat index buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::{MeshBuffer, Structured4};
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::new();
+    /// let buffer = MeshBuffer::<Structured4, _>::from_raw_buffers(
+    ///     cube.indices_for_position(),
+    ///     cube.vertices_with_position(),
+    /// )
+    /// .unwrap();
+    /// let buffer = buffer.into_flat_index();
+    /// for index in buffer.as_index_slice() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    fn into_flat_index(self) -> MeshBuffer<Flat<U4, Self::Item>, G> {
+        let MeshBuffer { indices, vertices } = self;
+        MeshBuffer {
+            indices: indices
+                .into_iter()
+                .flat_map(|quad| quad.into_vertices())
+                .collect(),
+            vertices,
+        }
+    }
+}
+
+impl<P, G> IntoStructuredIndex<G> for MeshBuffer<Structured<P>, G>
+where
+    P: Polygonal,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    Structured<P>: IndexBuffer,
+{
+    type Item = P;
+
+    fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G> {
+        self
+    }
+}
+
+impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat3<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Item = Triangle<N>;
+
+    /// Converts a flat index buffer into a structured index buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::new();
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
+    ///     cube.indices_for_position().triangulate().vertices(),
+    ///     cube.vertices_with_position(),
+    /// )
+    /// .unwrap();
+    /// let buffer = buffer.into_structured_index();
+    /// for triangle in buffer.as_index_slice() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G> {
+        let MeshBuffer { indices, vertices } = self;
+        MeshBuffer {
+            indices: indices
+                .into_iter()
+                .chunks(Flat3::<N>::ARITY.unwrap())
+                .into_iter()
+                .map(|triangle| <Structured<Self::Item> as IndexBuffer>::Item::from_iter(triangle))
+                .collect(),
+            vertices,
+        }
+    }
+}
+
+impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat4<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Item = Quad<N>;
+
+    /// Converts a flat index buffer into a structured index buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer4;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::new();
+    /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
+    ///     cube.indices_for_position().vertices(),
+    ///     cube.vertices_with_position(),
+    /// )
+    /// .unwrap();
+    /// let buffer = buffer.into_structured_index();
+    /// for quad in buffer.as_index_slice() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G> {
+        let MeshBuffer { indices, vertices } = self;
+        MeshBuffer {
+            indices: indices
+                .into_iter()
+                .chunks(Flat4::<N>::ARITY.unwrap())
+                .into_iter()
+                .map(|quad| <Structured<Self::Item> as IndexBuffer>::Item::from_iter(quad))
+                .collect(),
+            vertices,
+        }
     }
 }
 
