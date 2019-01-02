@@ -421,7 +421,7 @@ where
     ///     .triangulate()
     ///     .flat_index_vertices(HashIndexer::default());
     /// // `indices` is a flat buffer with arity 3.
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, positions, 3);
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3);
     /// # }
     /// ```
     fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)

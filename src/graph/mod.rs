@@ -142,8 +142,8 @@
 //! use plexus::prelude::*;
 //!
 //! # fn main() {
-//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
-//!     vec![0, 1, 2, 3],
+//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+//!     vec![0u32, 1, 2, 3],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //!     4,
 //! )

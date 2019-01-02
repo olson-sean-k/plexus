@@ -88,6 +88,7 @@ use crate::primitive::index::{
     FlatIndexVertices, FromIndexer, HashIndexer, IndexVertices, Indexer,
 };
 use crate::primitive::{Arity, Map, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::FromRawBuffers;
 
 pub use typenum::{U3, U4};
 
@@ -303,62 +304,6 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
 {
-    /// Creates a flat `MeshBuffer` from raw index and vertex buffers.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the index data is out of bounds within the vertex
-    /// buffer or if the number of indices disagrees with the arity of the
-    /// index buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use plexus::buffer::MeshBuffer3;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive;
-    /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
-    ///
-    /// # fn main() {
-    /// let cube = Cube::new();
-    /// let (indices, vertices) = primitive::zip_vertices((
-    ///     cube.polygons_with_position(),
-    ///     cube.polygons_with_normal(),
-    ///     cube.polygons_with_uv_map(),
-    /// ))
-    /// .flat_index_vertices(HashIndexer::default());
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
-    /// # }
-    /// ```
-    pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
-    where
-        I: IntoIterator,
-        I::Item: ToPrimitive,
-        J: IntoIterator<Item = G>,
-    {
-        let indices = indices
-            .into_iter()
-            .map(|index| <<Flat<A, N> as IndexBuffer>::Item as NumCast>::from(index).unwrap())
-            .collect::<Vec<_>>();
-        if indices.len() % Flat::<A, N>::ARITY.unwrap() != 0 {
-            Err(BufferError::ArityConflict)
-        }
-        else {
-            let vertices = vertices
-                .into_iter()
-                .map(|vertex| vertex)
-                .collect::<Vec<_>>();
-            let len = N::from(vertices.len()).unwrap();
-            if indices.iter().any(|index| *index >= len) {
-                Err(BufferError::IndexOutOfBounds)
-            }
-            else {
-                Ok(MeshBuffer { indices, vertices })
-            }
-        }
-    }
-
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
     pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
@@ -385,63 +330,6 @@ where
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     Structured<P>: IndexBuffer,
 {
-    /// Creates a structured `MeshBuffer` from raw index and vertex buffers.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the index data is out of bounds within the vertex
-    /// buffer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBufferN;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::sphere::UvSphere;
-    ///
-    /// # fn main() {
-    /// let sphere = UvSphere::new(8, 8);
-    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
-    ///     sphere.indices_for_position(),
-    ///     sphere
-    ///         .vertices_with_position()
-    ///         .map(|position| -> Point3<f32> { position.into() }),
-    /// )
-    /// .unwrap();
-    /// # }
-    /// ```
-    pub fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
-    where
-        I: IntoIterator,
-        I::Item: Into<<Structured<P> as IndexBuffer>::Item>,
-        J: IntoIterator<Item = G>,
-        <Structured<P> as IndexBuffer>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
-    {
-        let indices = indices
-            .into_iter()
-            .map(|topology| topology.into())
-            .collect::<Vec<_>>();
-        let vertices = vertices
-            .into_iter()
-            .map(|geometry| geometry)
-            .collect::<Vec<_>>();
-        let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
-        if indices.iter().any(|polygon| {
-            polygon
-                .into_vertices()
-                .into_iter()
-                .any(|index| index >= len)
-        }) {
-            Err(BufferError::IndexOutOfBounds)
-        }
-        else {
-            Ok(MeshBuffer { indices, vertices })
-        }
-    }
-
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
     pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
@@ -554,6 +442,134 @@ where
         I: IntoIterator<Item = P>,
     {
         Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
+    }
+}
+
+impl<A, N, M, G> FromRawBuffers<M, G> for MeshBuffer<Flat<A, N>, G>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+    M: Copy + Integer + NumCast + Unsigned,
+    <Flat<A, N> as IndexBuffer>::Item: ToPrimitive,
+{
+    type Error = BufferError;
+
+    /// Creates a flat `MeshBuffer` from raw index and vertex buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index data is out of bounds within the vertex
+    /// buffer or if the number of indices disagrees with the arity of the
+    /// index buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::index::HashIndexer;
+    ///
+    /// # fn main() {
+    /// let cube = Cube::new();
+    /// let (indices, vertices) = primitive::zip_vertices((
+    ///     cube.polygons_with_position(),
+    ///     cube.polygons_with_normal(),
+    ///     cube.polygons_with_uv_map(),
+    /// ))
+    /// .flat_index_vertices(HashIndexer::default());
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
+    /// # }
+    /// ```
+    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
+    where
+        I: IntoIterator<Item = M>,
+        J: IntoIterator<Item = G>,
+    {
+        let indices = indices
+            .into_iter()
+            .map(|index| <<Flat<A, N> as IndexBuffer>::Item as NumCast>::from(index).unwrap())
+            .collect::<Vec<_>>();
+        if indices.len() % Flat::<A, N>::ARITY.unwrap() != 0 {
+            Err(BufferError::ArityConflict)
+        }
+        else {
+            let vertices = vertices.into_iter().collect::<Vec<_>>();
+            let len = N::from(vertices.len()).unwrap();
+            if indices.iter().any(|index| *index >= len) {
+                Err(BufferError::IndexOutOfBounds)
+            }
+            else {
+                Ok(MeshBuffer { indices, vertices })
+            }
+        }
+    }
+}
+
+impl<P, Q, G> FromRawBuffers<Q, G> for MeshBuffer<Structured<P>, G>
+where
+    P: Polygonal,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    Q: Into<<Structured<P> as IndexBuffer>::Item>,
+    Structured<P>: IndexBuffer,
+    <Structured<P> as IndexBuffer>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
+{
+    type Error = BufferError;
+
+    /// Creates a structured `MeshBuffer` from raw index and vertex buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the index data is out of bounds within the vertex
+    /// buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBufferN;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    ///
+    /// # fn main() {
+    /// let sphere = UvSphere::new(8, 8);
+    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
+    ///     sphere.indices_for_position(),
+    ///     sphere
+    ///         .vertices_with_position()
+    ///         .map(|position| -> Point3<f32> { position.into() }),
+    /// )
+    /// .unwrap();
+    /// # }
+    /// ```
+    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
+    where
+        I: IntoIterator<Item = Q>,
+        J: IntoIterator<Item = G>,
+    {
+        let indices = indices
+            .into_iter()
+            .map(|topology| topology.into())
+            .collect::<Vec<_>>();
+        let vertices = vertices
+            .into_iter()
+            .map(|geometry| geometry)
+            .collect::<Vec<_>>();
+        let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
+        if indices.iter().any(|polygon| {
+            polygon
+                .into_vertices()
+                .into_iter()
+                .any(|index| index >= len)
+        }) {
+            Err(BufferError::IndexOutOfBounds)
+        }
+        else {
+            Ok(MeshBuffer { indices, vertices })
+        }
     }
 }
 

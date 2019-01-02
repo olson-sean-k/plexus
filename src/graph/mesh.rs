@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use decorum::R64;
 use itertools::Itertools;
-use num::{Integer, NumCast, Unsigned};
+use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -26,6 +26,7 @@ use crate::graph::GraphError;
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
 use crate::primitive::{self, Arity, Map, Quad};
+use crate::{FromRawBuffers, FromRawBuffersWithArity};
 
 /// Half-edge graph representation of a mesh.
 ///
@@ -101,67 +102,6 @@ where
         )
     }
 
-    /// Creates a `MeshGraph` from raw index and vertex buffers. The arity of
-    /// the polygons in the index buffer must be known and constant.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the arity of the index buffer is not constant, any
-    /// index is out of bounds, or there is an error inserting topology into
-    /// the mesh.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::graph::MeshGraph;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::index::LruIndexer;
-    /// use plexus::primitive::sphere::UvSphere;
-    ///
-    /// # fn main() {
-    /// let (indices, positions) = UvSphere::new(16, 16)
-    ///     .polygons_with_position()
-    ///     .triangulate()
-    ///     .flat_index_vertices(LruIndexer::with_capacity(256));
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, positions, 3).unwrap();
-    /// # }
-    /// ```
-    pub fn from_raw_buffers<I, J>(indices: I, vertices: J, arity: usize) -> Result<Self, GraphError>
-    where
-        I: IntoIterator<Item = usize>,
-        J: IntoIterator,
-        J::Item: IntoGeometry<G::Vertex>,
-    {
-        let mut mutation = Mutation::mutate(MeshGraph::new());
-        let vertices = vertices
-            .into_iter()
-            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
-            .collect::<Vec<_>>();
-        for face in &indices.into_iter().chunks(arity) {
-            let face = face.collect::<Vec<_>>();
-            if face.len() != arity {
-                // Index buffer length is not a multiple of arity.
-                return Err(GraphError::ArityConflict {
-                    expected: arity,
-                    actual: face.len(),
-                });
-            }
-            let mut perimeter = Vec::with_capacity(arity);
-            for index in face {
-                perimeter.push(
-                    *vertices
-                        .get(index)
-                        .ok_or_else(|| GraphError::TopologyNotFound)?,
-                );
-            }
-            mutation.insert_face(&perimeter, Default::default())?;
-        }
-        mutation.commit()
-    }
-
     /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
     /// the index buffer must be known and constant.
     ///
@@ -180,11 +120,11 @@ where
     ///
     /// # fn main() {
     /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
-    ///     vec![0, 1, 2, 3],
-    ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    ///     vec![0u64, 1, 2, 3],
+    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f32>>::from_mesh_buffer(buffer).unwrap();
+    /// let mut graph = MeshGraph::<Point2<f64>>::from_mesh_buffer(buffer).unwrap();
     /// # }
     /// ```
     pub fn from_mesh_buffer<A, N, H>(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, GraphError>
@@ -195,13 +135,7 @@ where
     {
         let arity = buffer.arity().unwrap();
         let (indices, vertices) = buffer.into_raw_buffers();
-        MeshGraph::from_raw_buffers(
-            indices
-                .into_iter()
-                .map(|index| NumCast::from(index).unwrap()),
-            vertices.into_iter(),
-            arity,
-        )
+        MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
 
     /// Gets the number of vertices in the mesh.
@@ -490,6 +424,8 @@ where
     }
 }
 
+impl<G> Consistent for MeshGraph<G> where G: Geometry {}
+
 impl<G> Default for MeshGraph<G>
 where
     G: Geometry,
@@ -519,16 +455,6 @@ where
 {
     fn from(core: OwnedCore<G>) -> Self {
         MeshGraph { core }
-    }
-}
-
-impl<G> Into<OwnedCore<G>> for MeshGraph<G>
-where
-    G: Geometry,
-{
-    fn into(self) -> OwnedCore<G> {
-        let MeshGraph { core, .. } = self;
-        core
     }
 }
 
@@ -600,7 +526,93 @@ where
     }
 }
 
-impl<G> Consistent for MeshGraph<G> where G: Geometry {}
+impl<N, G, H> FromRawBuffersWithArity<N, H> for MeshGraph<G>
+where
+    N: Integer + ToPrimitive + Unsigned,
+    G: Geometry,
+    H: IntoGeometry<G::Vertex>,
+{
+    type Error = GraphError;
+
+    /// Creates a `MeshGraph` from raw index and vertex buffers. The arity of
+    /// the polygons in the index buffer must be known and constant.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arity of the index buffer is not constant, any
+    /// index is out of bounds, or there is an error inserting topology into
+    /// the mesh.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// use nalgebra::Point3;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::index::LruIndexer;
+    /// use plexus::primitive::sphere::UvSphere;
+    ///
+    /// # fn main() {
+    /// let (indices, positions) = UvSphere::new(16, 16)
+    ///     .polygons_with_position()
+    ///     .triangulate()
+    ///     .flat_index_vertices(LruIndexer::with_capacity(256));
+    /// let mut graph =
+    ///     MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3).unwrap();
+    /// # }
+    /// ```
+    fn from_raw_buffers_with_arity<I, J>(
+        indices: I,
+        vertices: J,
+        arity: usize,
+    ) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = H>,
+    {
+        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let vertices = vertices
+            .into_iter()
+            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
+            .collect::<Vec<_>>();
+        for face in &indices
+            .into_iter()
+            .map(|index| <usize as NumCast>::from(index).unwrap())
+            .chunks(arity)
+        {
+            let face = face.collect::<Vec<_>>();
+            if face.len() != arity {
+                // Index buffer length is not a multiple of arity.
+                return Err(GraphError::ArityConflict {
+                    expected: arity,
+                    actual: face.len(),
+                });
+            }
+            let mut perimeter = Vec::with_capacity(arity);
+            for index in face {
+                perimeter.push(
+                    *vertices
+                        .get(index)
+                        .ok_or_else(|| GraphError::TopologyNotFound)?,
+                );
+            }
+            mutation.insert_face(&perimeter, Default::default())?;
+        }
+        mutation.commit()
+    }
+}
+
+impl<G> Into<OwnedCore<G>> for MeshGraph<G>
+where
+    G: Geometry,
+{
+    fn into(self) -> OwnedCore<G> {
+        let MeshGraph { core, .. } = self;
+        core
+    }
+}
 
 pub struct Iter<'a, I, T, G, Output>
 where
@@ -714,6 +726,7 @@ mod tests {
     use crate::primitive::decompose::*;
     use crate::primitive::generate::*;
     use crate::primitive::sphere::UvSphere;
+    use crate::*;
 
     #[test]
     fn collect_topology_into_mesh() {
@@ -764,8 +777,8 @@ mod tests {
         // Construct a mesh with a "fan" of three triangles sharing the same
         // edge along the Z-axis. The edge would have three associated faces,
         // which should not be possible.
-        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
-            vec![0, 1, 2, 0, 1, 3, 0, 1, 4],
+        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 0, 1, 3, 0, 1, 4],
             vec![(0, 0, 1), (0, 0, -1), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
             3,
         );
@@ -780,8 +793,8 @@ mod tests {
     fn error_on_singularity_mesh() {
         // Construct a mesh with three non-neighboring triangles sharing a
         // single vertex.
-        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
-            vec![0, 1, 2, 0, 3, 4, 0, 5, 6],
+        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 0, 3, 4, 0, 5, 6],
             vec![
                 (0, 0, 0),
                 (1, -1, 0),
@@ -801,8 +814,8 @@ mod tests {
 
         // Construct a mesh with three triangles forming a rectangle, where one
         // vertex (at the origin) is shared by all three triangles.
-        let graph = MeshGraph::<Point2<i32>>::from_raw_buffers(
-            vec![0, 1, 3, 1, 4, 3, 1, 2, 4],
+        let graph = MeshGraph::<Point2<i32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 3, 1, 4, 3, 1, 2, 4],
             vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
             3,
         )

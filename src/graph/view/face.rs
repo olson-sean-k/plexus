@@ -882,6 +882,7 @@ mod tests {
     use crate::primitive::generate::*;
     use crate::primitive::index::*;
     use crate::primitive::sphere::UvSphere;
+    use crate::*;
 
     #[test]
     fn circulate_over_edges() {
@@ -934,7 +935,8 @@ mod tests {
         let (indices, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices, 4).unwrap();
+        let mut graph =
+            MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(indices, vertices, 4).unwrap();
         graph.triangulate().unwrap();
 
         // There are 8 unique vertices and a vertex is added for each quad,

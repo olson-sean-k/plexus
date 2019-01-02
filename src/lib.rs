@@ -27,6 +27,7 @@ extern crate typenum;
 
 use decorum::Real;
 use num::{One, Zero};
+use std::fmt::Debug;
 use std::ops::Div;
 
 pub mod buffer;
@@ -54,6 +55,29 @@ pub mod prelude {
     };
     pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use crate::primitive::{Converged, Map, MapVertices, Zip};
+    pub use crate::{FromRawBuffers, FromRawBuffersWithArity};
+}
+
+pub trait FromRawBuffers<N, G>: Sized {
+    type Error: Debug;
+
+    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = G>;
+}
+
+pub trait FromRawBuffersWithArity<N, G>: Sized {
+    type Error: Debug;
+
+    fn from_raw_buffers_with_arity<I, J>(
+        indices: I,
+        vertices: J,
+        arity: usize,
+    ) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = G>;
 }
 
 trait Half {

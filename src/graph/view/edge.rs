@@ -83,8 +83,8 @@ where
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
-    ///     vec![0, 1, 2, 3],
+    /// let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+    ///     vec![0u32, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     ///     4,
     /// )
@@ -891,6 +891,7 @@ mod tests {
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::*;
     use crate::primitive::index::*;
+    use crate::*;
 
     fn find_vertex_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: T) -> Option<VertexKey>
     where
@@ -923,8 +924,8 @@ mod tests {
 
     #[test]
     fn extrude_edge() {
-        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
-            vec![0, 1, 2, 3],
+        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
         )
@@ -939,8 +940,8 @@ mod tests {
     #[test]
     fn join_edges() {
         // Construct a mesh with two independent quads.
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(
-            vec![0, 1, 2, 3, 4, 5, 6, 7],
+        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3, 4, 5, 6, 7],
             vec![
                 (-2.0, 0.0, 0.0),
                 (-1.0, 0.0, 0.0), // 1
@@ -968,7 +969,8 @@ mod tests {
         let (indices, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .flat_index_vertices(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices, 4).unwrap();
+        let mut graph =
+            MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(indices, vertices, 4).unwrap();
         let key = graph.edges().nth(0).unwrap().key();
         let vertex = graph.edge_mut(key).unwrap().split().unwrap().into_ref();
 
