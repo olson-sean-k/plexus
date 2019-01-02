@@ -25,7 +25,7 @@ use crate::graph::view::{
 use crate::graph::GraphError;
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
-use crate::primitive::{self, Arity, Map, Quad};
+use crate::primitive::{self, Arity, Map, Polygonal, Quad};
 use crate::{FromRawBuffers, FromRawBuffersWithArity};
 
 /// Half-edge graph representation of a mesh.
@@ -523,6 +523,41 @@ where
         I: IntoIterator<Item = P>,
     {
         Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
+    }
+}
+
+impl<P, G, H> FromRawBuffers<P, H> for MeshGraph<G>
+where
+    P: IntoVertices + Polygonal,
+    P::Vertex: Integer + ToPrimitive + Unsigned,
+    G: Geometry,
+    H: IntoGeometry<G::Vertex>,
+{
+    type Error = GraphError;
+
+    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = P>,
+        J: IntoIterator<Item = H>,
+    {
+        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let vertices = vertices
+            .into_iter()
+            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
+            .collect::<Vec<_>>();
+        for face in indices {
+            let mut perimeter = Vec::with_capacity(face.arity());
+            for index in face.into_vertices() {
+                let index = <usize as NumCast>::from(index).unwrap();
+                perimeter.push(
+                    *vertices
+                        .get(index)
+                        .ok_or_else(|| GraphError::TopologyNotFound)?,
+                );
+            }
+            mutation.insert_face(&perimeter, Default::default())?;
+        }
+        mutation.commit()
     }
 }
 
