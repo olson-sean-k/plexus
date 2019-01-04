@@ -10,7 +10,7 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
-use crate::graph::mutation::edge::{self, EdgeExtrudeCache, EdgeJoinCache, EdgeSplitCache};
+use crate::graph::mutation::edge::{self, EdgeBridgeCache, EdgeExtrudeCache, EdgeSplitCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
@@ -486,14 +486,11 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    // TODO: Rename this to something like "extend". It is very similar to
-    //       `extrude`. Terms like "join" or "merge" are better suited for
-    //       directly joining two adjacent faces over a shared edge.
-    pub fn join(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, GraphError> {
+    pub fn bridge(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, GraphError> {
         let (source, storage) = self.into_keyed_storage();
-        let cache = EdgeJoinCache::snapshot(&storage, source, destination)?;
+        let cache = EdgeBridgeCache::snapshot(&storage, source, destination)?;
         let (storage, edge) = Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::join_with_cache(mutation, cache))
+            .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
             .unwrap();
         Ok((edge, storage).into_view().unwrap())
     }
@@ -943,7 +940,7 @@ mod tests {
     }
 
     #[test]
-    fn join_edges() {
+    fn bridge_edges() {
         // Construct a mesh with two independent quads.
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 4, 5, 6, 7],
@@ -963,7 +960,7 @@ mod tests {
         let source = find_edge_with_geometry(&graph, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
         let destination =
             find_edge_with_geometry(&graph, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
-        graph.edge_mut(source).unwrap().join(destination).unwrap();
+        graph.edge_mut(source).unwrap().bridge(destination).unwrap();
 
         assert_eq!(20, graph.edge_count());
         assert_eq!(3, graph.face_count());

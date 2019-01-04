@@ -278,7 +278,7 @@ where
     }
 }
 
-pub struct EdgeJoinCache<G>
+pub struct EdgeBridgeCache<G>
 where
     G: Geometry,
 {
@@ -288,7 +288,7 @@ where
     face: G::Face,
 }
 
-impl<G> EdgeJoinCache<G>
+impl<G> EdgeBridgeCache<G>
 where
     G: Geometry,
 {
@@ -324,7 +324,7 @@ where
                 return Err(GraphError::TopologyConflict);
             }
         }
-        Ok(EdgeJoinCache {
+        Ok(EdgeBridgeCache {
             source: source.key(),
             destination,
             edge: source.geometry.clone(),
@@ -441,16 +441,16 @@ where
     Ok(m)
 }
 
-pub fn join_with_cache<M, N, G>(
+pub fn bridge_with_cache<M, N, G>(
     mut mutation: N,
-    cache: EdgeJoinCache<G>,
+    cache: EdgeBridgeCache<G>,
 ) -> Result<EdgeKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let EdgeJoinCache {
+    let EdgeBridgeCache {
         source,
         destination,
         edge,
@@ -481,7 +481,7 @@ where
     let c = mutation.insert_vertex(vertices.0);
     let d = mutation.insert_vertex(vertices.1);
     let cd = mutation.insert_edge((c, d), edge)?;
-    let cache = EdgeJoinCache::snapshot(
+    let cache = EdgeBridgeCache::snapshot(
         &Core::empty()
             .bind(mutation.as_vertex_storage())
             .bind(mutation.as_edge_storage())
@@ -489,5 +489,5 @@ where
         ab,
         cd,
     )?;
-    join_with_cache(mutation, cache)
+    bridge_with_cache(mutation, cache)
 }

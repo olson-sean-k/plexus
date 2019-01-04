@@ -8,7 +8,7 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
-use crate::graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
+use crate::graph::mutation::edge::{self, EdgeBridgeCache, EdgeMutation};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
@@ -426,7 +426,7 @@ where
     }
 }
 
-pub struct FaceJoinCache<G>
+pub struct FaceBridgeCache<G>
 where
     G: Geometry,
 {
@@ -435,7 +435,7 @@ where
     cache: (FaceRemoveCache<G>, FaceRemoveCache<G>),
 }
 
-impl<G> FaceJoinCache<G>
+impl<G> FaceBridgeCache<G>
 where
     G: Geometry,
 {
@@ -461,7 +461,7 @@ where
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonConstant);
         }
-        Ok(FaceJoinCache {
+        Ok(FaceBridgeCache {
             sources: source
                 .to_key_topology()
                 .interior_edges()
@@ -558,13 +558,16 @@ where
     Ok(Some(c))
 }
 
-pub fn join_with_cache<M, N, G>(mut mutation: N, cache: FaceJoinCache<G>) -> Result<(), GraphError>
+pub fn bridge_with_cache<M, N, G>(
+    mut mutation: N,
+    cache: FaceBridgeCache<G>,
+) -> Result<(), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let FaceJoinCache {
+    let FaceBridgeCache {
         sources,
         destination,
         cache,
@@ -575,7 +578,7 @@ where
     mutation.as_mut().remove_face_with_cache(cache.1)?;
     // TODO: Is it always correct to reverse the order of the opposite
     //       face's edges?
-    // Re-insert the edges of the faces and join the mutual edges.
+    // Re-insert the edges of the faces and bridge the mutual edges.
     for (source, destination) in sources
         .into_iter()
         .zip(destination.interior_edges().iter().rev())
@@ -584,8 +587,8 @@ where
         let (c, d) = destination.vertices();
         let ab = mutation.as_mut().insert_edge((a, b), source.1.clone())?;
         let cd = mutation.as_mut().insert_edge((c, d), source.1)?;
-        let cache = EdgeJoinCache::snapshot(mutation.as_mut(), ab, cd)?;
-        edge::join_with_cache(mutation.as_mut(), cache)?;
+        let cache = EdgeBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
+        edge::bridge_with_cache(mutation.as_mut(), cache)?;
     }
     // TODO: Is there any reasonable topology this can return?
     Ok(())

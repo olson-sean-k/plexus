@@ -11,7 +11,7 @@ use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::face::{
-    self, FaceExtrudeCache, FaceInsertCache, FaceJoinCache, FaceRemoveCache, FaceTriangulateCache,
+    self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FaceRemoveCache, FaceTriangulateCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
@@ -380,11 +380,11 @@ where
         Ok((face.edge, storage).into_view().expect(""))
     }
 
-    pub fn join(self, destination: FaceKey) -> Result<(), GraphError> {
+    pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (source, storage) = self.into_keyed_storage();
-        let cache = FaceJoinCache::snapshot(&storage, source, destination)?;
+        let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::join_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
             .unwrap();
         Ok(())
     }
