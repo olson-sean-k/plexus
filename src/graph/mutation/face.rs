@@ -66,12 +66,9 @@ where
             .perimeter()
             .map(|ab| {
                 self.get_or_insert_composite_edge(ab, geometry.0.clone())
-                    // TODO: Do not use `unwrap`. In the worst case, unroll the
-                    //       iterator expression.
-                    .unwrap()
-                    .0
+                    .map(|edges| edges.0)
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
         // Insert the face.
         let face = self.storage.insert(Face::new(edges[0], geometry.1));
         // If a singularity was detected, record it and its neighboring faces.
@@ -101,13 +98,13 @@ where
             boundaries,
             ..
         } = cache;
+        let core = Core::empty()
+            .bind(self.as_vertex_storage())
+            .bind(self.as_edge_storage())
+            .bind(self.as_face_storage());
         // Iterate over the set of vertices shared between the face and all of
         // its neighbors. These are potential singularities.
         for vertex in mutuals {
-            let core = Core::empty()
-                .bind(self.as_vertex_storage())
-                .bind(self.as_edge_storage())
-                .bind(self.as_face_storage());
             // Circulate (in order) over the neighboring faces of the potential
             // singularity, ignoring the face to be removed.  Count the number
             // of gaps, where neighboring faces do not share any edges. Because
