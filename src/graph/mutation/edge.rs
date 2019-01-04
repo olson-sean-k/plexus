@@ -14,7 +14,7 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::EdgeView;
-use crate::graph::{GraphError, IteratorExt, ResultExt};
+use crate::graph::{GraphError, IteratorExt};
 
 pub struct EdgeMutation<G>
 where
@@ -35,17 +35,29 @@ where
     ) -> Result<EdgeKey, GraphError> {
         let (a, b) = vertices;
         let ab = (a, b).into();
-        let ba = (b, a).into();
-        // If the edge already exists, then fail. This ensures an important
-        // invariant: edges may only have two adjacent faces. That is, a
-        // half-edge may only have one associated face, at most one preceding
-        // half-edge, at most one following half-edge, and may form at most one
-        // closed loop.
         if self.storage.contains_key(&ab) {
-            return Err(GraphError::TopologyConflict);
+            Err(GraphError::TopologyConflict)
         }
-        if !self.mutation.as_storage().contains_key(&b) {
+        else {
+            self.get_or_insert_edge(vertices, geometry)
+        }
+    }
+
+    pub fn get_or_insert_edge(
+        &mut self,
+        vertices: (VertexKey, VertexKey),
+        geometry: G::Edge,
+    ) -> Result<EdgeKey, GraphError> {
+        let (a, b) = vertices;
+        let ab = (a, b).into();
+        let ba = (b, a).into();
+        if !(self.mutation.as_storage().contains_key(&a)
+            && self.mutation.as_storage().contains_key(&b))
+        {
             return Err(GraphError::TopologyNotFound);
+        }
+        if self.storage.contains_key(&ab) {
+            return Ok(ab);
         }
         let mut edge = Edge::new(b, geometry);
         if let Some(opposite) = self.storage.get_mut(&ba) {
@@ -55,15 +67,6 @@ where
         self.storage.insert_with_key(&ab, edge);
         self.connect_outgoing_edge(a, ab)?;
         Ok(ab)
-    }
-
-    pub fn get_or_insert_edge(
-        &mut self,
-        vertices: (VertexKey, VertexKey),
-        geometry: G::Edge,
-    ) -> Result<EdgeKey, GraphError> {
-        self.insert_edge(vertices, geometry)
-            .or_if_conflict(|| Ok(vertices.into()))
     }
 
     pub fn get_or_insert_composite_edge(
