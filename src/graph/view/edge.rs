@@ -17,7 +17,7 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::{FaceView, OrphanFaceView, OrphanVertexView, RegionView, VertexView};
-use crate::graph::GraphError;
+use crate::graph::{GraphError, OptionExt};
 
 /// Reference to an edge.
 ///
@@ -264,15 +264,15 @@ where
     }
 
     pub fn into_opposite_edge(self) -> Self {
-        self.into_reachable_opposite_edge().unwrap()
+        self.into_reachable_opposite_edge().expect_consistent()
     }
 
     pub fn into_next_edge(self) -> Self {
-        self.into_reachable_next_edge().unwrap()
+        self.into_reachable_next_edge().expect_consistent()
     }
 
     pub fn into_previous_edge(self) -> Self {
-        self.into_reachable_previous_edge().unwrap()
+        self.into_reachable_previous_edge().expect_consistent()
     }
 
     pub fn boundary_edge(&self) -> Option<EdgeView<&M::Target, G>> {
@@ -280,15 +280,15 @@ where
     }
 
     pub fn opposite_edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_opposite_edge().unwrap()
+        self.reachable_opposite_edge().expect_consistent()
     }
 
     pub fn next_edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_next_edge().unwrap()
+        self.reachable_next_edge().expect_consistent()
     }
 
     pub fn previous_edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_previous_edge().unwrap()
+        self.reachable_previous_edge().expect_consistent()
     }
 }
 
@@ -333,19 +333,19 @@ where
     G: Geometry,
 {
     pub fn into_source_vertex(self) -> VertexView<M, G> {
-        self.into_reachable_source_vertex().unwrap()
+        self.into_reachable_source_vertex().expect_consistent()
     }
 
     pub fn into_destination_vertex(self) -> VertexView<M, G> {
-        self.into_reachable_destination_vertex().unwrap()
+        self.into_reachable_destination_vertex().expect_consistent()
     }
 
     pub fn source_vertex(&self) -> VertexView<&M::Target, G> {
-        self.reachable_source_vertex().unwrap()
+        self.reachable_source_vertex().expect_consistent()
     }
 
     pub fn destination_vertex(&self) -> VertexView<&M::Target, G> {
-        self.reachable_destination_vertex().unwrap()
+        self.reachable_destination_vertex().expect_consistent()
     }
 }
 
@@ -492,7 +492,7 @@ where
         let (storage, edge) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
             .unwrap();
-        Ok((edge, storage).into_view().unwrap())
+        Ok((edge, storage).into_view().expect_consistent())
     }
 }
 
@@ -525,7 +525,7 @@ where
         let (storage, vertex) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
             .unwrap();
-        Ok((vertex, storage).into_view().unwrap())
+        Ok((vertex, storage).into_view().expect_consistent())
     }
 }
 
@@ -563,7 +563,7 @@ where
         let (storage, edge) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
             .unwrap();
-        Ok((edge, storage).into_view().unwrap())
+        Ok((edge, storage).into_view().expect_consistent())
     }
 }
 

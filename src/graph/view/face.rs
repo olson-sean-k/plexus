@@ -19,7 +19,7 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::{EdgeKeyTopology, EdgeView, OrphanEdgeView, OrphanVertexView, VertexView};
-use crate::graph::GraphError;
+use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a face.
 ///
@@ -216,15 +216,15 @@ where
     pub fn into_region(self) -> RegionView<M, G> {
         let key = self.edge().key();
         let (_, storage) = self.into_keyed_storage();
-        (key, storage).into_view().expect("")
+        (key, storage).into_view().expect_consistent()
     }
 
     pub fn edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_edge().unwrap()
+        self.reachable_edge().expect_consistent()
     }
 
     pub fn into_edge(self) -> EdgeView<M, G> {
-        self.into_reachable_edge().unwrap()
+        self.into_reachable_edge().expect_consistent()
     }
 
     pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
@@ -377,7 +377,7 @@ where
         let (_, face) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| mutation.remove_face_with_cache(cache))
             .unwrap();
-        Ok((face.edge, storage).into_view().expect(""))
+        Ok((face.edge, storage).into_view().expect_consistent())
     }
 
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
@@ -418,7 +418,7 @@ where
         let (storage, vertex) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::triangulate_with_cache(mutation, cache))
             .unwrap();
-        Ok(vertex.map(|vertex| (vertex, storage).into_view().unwrap()))
+        Ok(vertex.map(|vertex| (vertex, storage).into_view().expect_consistent()))
     }
 }
 
@@ -456,7 +456,7 @@ where
         let (storage, face) = Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .unwrap();
-        Ok((face, storage).into_view().unwrap())
+        Ok((face, storage).into_view().expect_consistent())
     }
 }
 
@@ -758,7 +758,7 @@ where
     {
         if let Some(face) = self.face.clone().take() {
             let (_, _, storage) = self.into_keyed_storage();
-            Ok((face, storage).into_view().expect(""))
+            Ok((face, storage).into_view().expect_consistent())
         }
         else {
             let vertices = self
@@ -770,7 +770,7 @@ where
             let (storage, face) = Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
                 .unwrap();
-            Ok((face, storage).into_view().expect(""))
+            Ok((face, storage).into_view().expect_consistent())
         }
     }
 }

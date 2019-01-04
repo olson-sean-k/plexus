@@ -172,6 +172,8 @@ mod storage;
 mod topology;
 mod view;
 
+use std::fmt::Debug;
+
 use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
@@ -211,6 +213,31 @@ impl From<BufferError> for GraphError {
     fn from(_: BufferError) -> Self {
         // TODO: How should buffer errors be handled? Is this sufficient?
         GraphError::TopologyMalformed
+    }
+}
+
+trait OptionExt<T> {
+    fn expect_consistent(self) -> T;
+}
+
+impl<T> OptionExt<T> for Option<T> {
+    fn expect_consistent(self) -> T {
+        self.expect("graph consistency violated")
+    }
+}
+
+trait ResultExt<T, E> {
+    fn expect_consistent(self) -> T
+    where
+        E: Debug;
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, E> {
+    fn expect_consistent(self) -> T
+    where
+        E: Debug,
+    {
+        self.expect("graph consistency violated")
     }
 }
 

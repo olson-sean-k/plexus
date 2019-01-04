@@ -11,6 +11,7 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
+use crate::graph::OptionExt;
 
 /// Reference to a vertex.
 ///
@@ -186,11 +187,11 @@ where
     G: Geometry,
 {
     pub fn into_outgoing_edge(self) -> EdgeView<M, G> {
-        self.into_reachable_outgoing_edge().unwrap()
+        self.into_reachable_outgoing_edge().expect_consistent()
     }
 
     pub fn outgoing_edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_outgoing_edge().unwrap()
+        self.reachable_outgoing_edge().expect_consistent()
     }
 
     pub fn incoming_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
@@ -253,7 +254,7 @@ where
     G: Geometry,
 {
     pub fn outgoing_orphan_edge(&mut self) -> OrphanEdgeView<G> {
-        self.reachable_outgoing_orphan_edge().unwrap()
+        self.reachable_outgoing_orphan_edge().expect_consistent()
     }
 
     pub fn incoming_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
