@@ -172,8 +172,6 @@ mod storage;
 mod topology;
 mod view;
 
-use failure::Error;
-
 use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
@@ -213,40 +211,6 @@ impl From<BufferError> for GraphError {
     fn from(_: BufferError) -> Self {
         // TODO: How should buffer errors be handled? Is this sufficient?
         GraphError::TopologyMalformed
-    }
-}
-
-trait ResultExt<T>: Sized {
-    /// If the `Result` is an error with the value
-    /// `GraphError::TopologyConflict`, then the given function is executed and
-    /// its `Result` is returned. Otherwise, the original `Result` is returned.
-    ///
-    /// Because this operates on the result of an operation, it does not cancel
-    /// or negate any mutations that may have occurred.
-    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
-    where
-        F: FnOnce() -> Result<T, GraphError>;
-}
-
-impl<T> ResultExt<T> for Result<T, Error> {
-    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
-    where
-        F: FnOnce() -> Result<T, GraphError>,
-    {
-        self.map_err(|error| error.downcast::<GraphError>().unwrap())
-            .or_if_conflict(f)
-    }
-}
-
-impl<T> ResultExt<T> for Result<T, GraphError> {
-    fn or_if_conflict<F>(self, f: F) -> Result<T, GraphError>
-    where
-        F: FnOnce() -> Result<T, GraphError>,
-    {
-        self.or_else(|error| match error {
-            GraphError::TopologyConflict => f(),
-            error => Err(error),
-        })
     }
 }
 
