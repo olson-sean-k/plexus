@@ -16,7 +16,7 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
-use crate::graph::view::{FaceView, OrphanFaceView, OrphanVertexView, VertexView};
+use crate::graph::view::{FaceView, OrphanFaceView, OrphanVertexView, RegionView, VertexView};
 use crate::graph::GraphError;
 
 /// Reference to an edge.
@@ -254,6 +254,11 @@ where
     M::Target: AsStorage<Edge<G>> + Consistent,
     G: Geometry,
 {
+    pub fn into_region(self) -> RegionView<M, G> {
+        let (key, storage) = self.into_keyed_storage();
+        (key, storage).into_view().expect("")
+    }
+
     pub fn into_boundary_edge(self) -> Option<Self> {
         self.into_reachable_boundary_edge()
     }

@@ -17,10 +17,6 @@ impl<G> VertexMutation<G>
 where
     G: Geometry,
 {
-    pub fn as_vertex_storage(&self) -> &Storage<Vertex<G>> {
-        self.as_storage()
-    }
-
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.storage.insert(Vertex::new(geometry))
     }

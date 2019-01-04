@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{EdgeKey, FaceKey, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
@@ -72,16 +73,17 @@ where
             return Err(GraphError::TopologyMalformed);
         }
         // Fail if any vertex is not present.
-        if vertices.iter().any(|vertex| {
-            !AsStorage::<Vertex<G>>::as_storage(storage.reborrow()).contains_key(vertex)
-        }) {
+        if vertices
+            .iter()
+            .any(|vertex| !storage.reborrow().as_vertex_storage().contains_key(vertex))
+        {
             return Err(GraphError::TopologyNotFound);
         }
         let faces = vertices
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| AsStorage::<Edge<G>>::as_storage(storage.reborrow()).get(&ab.into()))
+            .flat_map(|ab| storage.reborrow().as_edge_storage().get(&ab.into()))
             .flat_map(|edge| edge.face)
             .collect::<HashSet<_>>();
         // Fail if the edges refer to more than one face.

@@ -12,6 +12,7 @@ use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::Consistent;
 use crate::graph::mutation::face::FaceMutation;
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::Storage;
 use crate::graph::topology::{Edge, Face, Vertex};

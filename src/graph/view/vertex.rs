@@ -5,6 +5,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
@@ -530,7 +531,11 @@ where
 {
     fn next(&mut self) -> Option<FaceKey> {
         while let Some(edge) = self.input.next() {
-            if let Some(face) = AsStorage::<Edge<G>>::as_storage(&self.input.storage.reborrow())
+            if let Some(face) = self
+                .input
+                .storage
+                .reborrow()
+                .as_edge_storage()
                 .get(&edge)
                 .and_then(|edge| edge.face)
             {

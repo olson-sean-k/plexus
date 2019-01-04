@@ -10,7 +10,9 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
-use crate::graph::mutation::face::{self, FaceExtrudeCache, FaceJoinCache, FaceTriangulateCache};
+use crate::graph::mutation::face::{
+    self, FaceExtrudeCache, FaceInsertCache, FaceJoinCache, FaceTriangulateCache,
+};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
@@ -188,6 +190,10 @@ where
     ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
+
+    pub(in crate::graph) fn reachable_arity(&self) -> usize {
+        self.reachable_interior_edges().count()
+    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -201,24 +207,34 @@ where
     }
 }
 
-/// Reachable API.
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
-    G: Geometry,
-{
-    pub(in crate::graph) fn reachable_arity(&self) -> usize {
-        self.reachable_interior_edges().count()
-    }
-}
-
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
+    pub fn into_region(self) -> RegionView<M, G> {
+        let key = self.edge().key();
+        let (_, storage) = self.into_keyed_storage();
+        (key, storage).into_view().expect("")
+    }
+
+    pub fn edge(&self) -> EdgeView<&M::Target, G> {
+        self.reachable_edge().unwrap()
+    }
+
+    pub fn into_edge(self) -> EdgeView<M, G> {
+        self.into_reachable_edge().unwrap()
+    }
+
+    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+        self.reachable_interior_edges()
+    }
+
+    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+        self.reachable_neighboring_faces()
+    }
+
     pub fn arity(&self) -> usize {
         self.reachable_arity()
     }
@@ -245,38 +261,7 @@ where
                 |intersection, vertices| intersection.intersection(&vertices).cloned().collect(),
             )
     }
-}
 
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
-    G: Geometry,
-{
-    pub fn edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_edge().unwrap()
-    }
-
-    pub fn into_edge(self) -> EdgeView<M, G> {
-        self.into_reachable_edge().unwrap()
-    }
-
-    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
-        self.reachable_interior_edges()
-    }
-
-    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
-        self.reachable_neighboring_faces()
-    }
-}
-
-/// Reachable API.
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
-    G: Geometry,
-{
     pub(in crate::graph) fn reachable_vertices(
         &self,
     ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
@@ -309,6 +294,17 @@ where
     }
 }
 
+impl<M, G> FaceView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Face<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn interior_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
+        self.reachable_interior_orphan_edges()
+    }
+}
+
 /// Reachable API.
 impl<M, G> FaceView<M, G>
 where
@@ -320,17 +316,6 @@ where
         &mut self,
     ) -> impl Iterator<Item = OrphanFaceView<G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow_mut()))
-    }
-}
-
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>> + AsStorage<Face<G>> + Consistent,
-    G: Geometry,
-{
-    pub fn interior_orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
-        self.reachable_interior_orphan_edges()
     }
 }
 
@@ -627,6 +612,172 @@ where
     }
 }
 
+// This is not the same as `Region` found in the `mutation` module. Instead,
+// this view relies on consistent storage and is edge-based, performing no
+// particular validation of a given region. It acts much like a cursor.
+pub struct RegionView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + Consistent,
+    G: Geometry,
+{
+    storage: M,
+    edge: EdgeKey,
+    face: Option<FaceKey>,
+    phantom: PhantomData<G>,
+}
+
+impl<M, G> RegionView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + Consistent,
+    G: Geometry,
+{
+    fn from_keyed_storage(key: EdgeKey, storage: M) -> Option<Self> {
+        // Because the storage is consistent, this code assumes that any and
+        // all edges in the graph will form a loop. Note that this allows
+        // exterior edges of non-enclosed meshes to form a region. For
+        // conceptually flat meshes, this is odd, but is topologically
+        // consistent.
+        if let Some(edge) = storage.reborrow().as_storage().get(&key) {
+            let face = edge.face.clone();
+            Some(RegionView {
+                storage,
+                edge: key,
+                face,
+                phantom: PhantomData,
+            })
+        }
+        else {
+            None
+        }
+    }
+
+    fn from_keyed_storage_unchecked(edge: EdgeKey, face: Option<FaceKey>, storage: M) -> Self {
+        RegionView {
+            storage,
+            edge,
+            face,
+            phantom: PhantomData,
+        }
+    }
+
+    fn into_keyed_storage(self) -> (EdgeKey, Option<FaceKey>, M) {
+        let RegionView {
+            storage,
+            edge,
+            face,
+            ..
+        } = self;
+        (edge, face, storage)
+    }
+
+    pub fn arity(&self) -> usize {
+        self.edges().count()
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+        EdgeCirculator::from(self.interior_reborrow())
+    }
+
+    fn interior_reborrow(&self) -> RegionView<&M::Target, G> {
+        let edge = self.edge;
+        let face = self.face;
+        let storage = self.storage.reborrow();
+        RegionView::from_keyed_storage_unchecked(edge, face, storage)
+    }
+}
+
+impl<M, G> RegionView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+        VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
+    }
+}
+
+impl<M, G> RegionView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn into_face(self) -> Option<FaceView<M, G>> {
+        let (_, face, storage) = self.into_keyed_storage();
+        if let Some(face) = face {
+            Some((face, storage).into_view().expect(""))
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
+        if let Some(face) = self.face {
+            let storage = self.storage.reborrow();
+            Some((face, storage).into_view().expect(""))
+        }
+        else {
+            None
+        }
+    }
+}
+
+impl<'a, M, G> RegionView<&'a mut M, G>
+where
+    M: AsStorage<Vertex<G>>
+        + AsStorage<Edge<G>>
+        + AsStorageMut<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorageMut<Face<G>>
+        + Consistent
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry,
+{
+    pub fn get_or_insert_face(self) -> Result<FaceView<&'a mut M, G>, GraphError> {
+        self.get_or_insert_face_with(|| Default::default())
+    }
+
+    pub fn get_or_insert_face_with<F>(self, f: F) -> Result<FaceView<&'a mut M, G>, GraphError>
+    where
+        F: Fn() -> G::Face,
+    {
+        if let Some(face) = self.face.clone().take() {
+            let (_, _, storage) = self.into_keyed_storage();
+            Ok((face, storage).into_view().expect(""))
+        }
+        else {
+            let vertices = self
+                .vertices()
+                .map(|vertex| vertex.key())
+                .collect::<Vec<_>>();
+            let (_, _, storage) = self.into_keyed_storage();
+            let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
+            let (storage, face) = Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
+                .unwrap();
+            Ok((face, storage).into_view().expect(""))
+        }
+    }
+}
+
+impl<M, G> FromKeyedSource<(EdgeKey, M)> for RegionView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + Consistent,
+    G: Geometry,
+{
+    fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
+        let (key, storage) = source;
+        RegionView::from_keyed_storage(key, storage)
+    }
+}
+
 struct VertexCirculator<M, G>
 where
     M: Reborrow,
@@ -745,6 +896,23 @@ where
     fn from(face: FaceView<M, G>) -> Self {
         let edge = face.edge;
         let (_, storage) = face.into_keyed_storage();
+        EdgeCirculator {
+            storage,
+            edge: Some(edge),
+            breadcrumb: Some(edge),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<M, G> From<RegionView<M, G>> for EdgeCirculator<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>> + Consistent,
+    G: Geometry,
+{
+    fn from(region: RegionView<M, G>) -> Self {
+        let (edge, _, storage) = region.into_keyed_storage();
         EdgeCirculator {
             storage,
             edge: Some(edge),

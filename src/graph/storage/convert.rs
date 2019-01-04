@@ -61,3 +61,109 @@ where
         <U as AsStorageMut<T>>::as_storage_mut(self)
     }
 }
+
+// These aliases are not truly aliases, but thin traits. They are useful when
+// `as_storage` or `as_storage_mut` are ambiguous and allow for a particular
+// topology to be easily isolated.
+pub mod alias {
+    use super::*;
+
+    use crate::geometry::Geometry;
+    use crate::graph::topology::{Edge, Face, Vertex};
+
+    pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>
+    where
+        G: Geometry,
+    {
+        fn as_vertex_storage(&self) -> &Storage<Vertex<G>> {
+            self.as_storage()
+        }
+    }
+
+    impl<T, G> AsVertexStorage<G> for T
+    where
+        T: AsStorage<Vertex<G>>,
+        G: Geometry,
+    {
+    }
+
+    pub trait AsVertexStorageMut<G>: AsStorageMut<Vertex<G>>
+    where
+        G: Geometry,
+    {
+        fn as_vertex_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+            self.as_storage_mut()
+        }
+    }
+
+    impl<T, G> AsVertexStorageMut<G> for T
+    where
+        T: AsStorageMut<Vertex<G>>,
+        G: Geometry,
+    {
+    }
+
+    pub trait AsEdgeStorage<G>: AsStorage<Edge<G>>
+    where
+        G: Geometry,
+    {
+        fn as_edge_storage(&self) -> &Storage<Edge<G>> {
+            self.as_storage()
+        }
+    }
+
+    impl<T, G> AsEdgeStorage<G> for T
+    where
+        T: AsStorage<Edge<G>>,
+        G: Geometry,
+    {
+    }
+
+    pub trait AsEdgeStorageMut<G>: AsStorageMut<Edge<G>>
+    where
+        G: Geometry,
+    {
+        fn as_edge_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+            self.as_storage_mut()
+        }
+    }
+
+    impl<T, G> AsEdgeStorageMut<G> for T
+    where
+        T: AsStorageMut<Edge<G>>,
+        G: Geometry,
+    {
+    }
+
+    pub trait AsFaceStorage<G>: AsStorage<Face<G>>
+    where
+        G: Geometry,
+    {
+        fn as_face_storage(&self) -> &Storage<Face<G>> {
+            self.as_storage()
+        }
+    }
+
+    impl<T, G> AsFaceStorage<G> for T
+    where
+        T: AsStorage<Face<G>>,
+        G: Geometry,
+    {
+    }
+
+    pub trait AsFaceStorageMut<G>: AsStorageMut<Face<G>>
+    where
+        G: Geometry,
+    {
+        fn as_face_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+            self.as_storage_mut()
+        }
+    }
+
+    impl<T, G> AsFaceStorageMut<G> for T
+    where
+        T: AsStorageMut<Face<G>>,
+        G: Geometry,
+    {
+    }
+}

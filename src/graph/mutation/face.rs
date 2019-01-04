@@ -11,6 +11,7 @@ use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::edge::{self, EdgeJoinCache, EdgeMutation};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
@@ -31,10 +32,6 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
-    pub fn as_face_storage(&self) -> &Storage<Face<G>> {
-        self.as_storage()
-    }
-
     pub fn insert_face(
         &mut self,
         vertices: &[VertexKey],
@@ -281,7 +278,7 @@ where
                                 .map(|face| face.key())
                                 .collect(),
                         ) {
-                            if AsStorage::<Face<G>>::as_storage(&core).contains_key(unreachable) {
+                            if core.as_face_storage().contains_key(unreachable) {
                                 // Non-manifold connectivity.
                                 return Err(GraphError::TopologyMalformed);
                             }

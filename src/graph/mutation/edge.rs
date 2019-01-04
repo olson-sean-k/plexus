@@ -8,6 +8,7 @@ use crate::graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
@@ -27,10 +28,6 @@ impl<G> EdgeMutation<G>
 where
     G: Geometry,
 {
-    pub fn as_edge_storage(&self) -> &Storage<Edge<G>> {
-        self.as_storage()
-    }
-
     pub fn insert_edge(
         &mut self,
         vertices: (VertexKey, VertexKey),
