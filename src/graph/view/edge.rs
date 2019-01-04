@@ -489,10 +489,9 @@ where
     pub fn bridge(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, GraphError> {
         let (source, storage) = self.into_keyed_storage();
         let cache = EdgeBridgeCache::snapshot(&storage, source, destination)?;
-        let (storage, edge) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
-            .unwrap();
-        Ok((edge, storage).into_view().expect_consistent())
+            .map(|(storage, edge)| (edge, storage).into_view().expect_consistent())
     }
 }
 
@@ -522,10 +521,9 @@ where
     pub fn split(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
         let (ab, storage) = self.into_keyed_storage();
         let cache = EdgeSplitCache::snapshot(&storage, ab)?;
-        let (storage, vertex) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
-            .unwrap();
-        Ok((vertex, storage).into_view().expect_consistent())
+            .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
     }
 }
 
@@ -560,10 +558,9 @@ where
     {
         let (ab, storage) = self.into_keyed_storage();
         let cache = EdgeExtrudeCache::snapshot(&storage, ab, distance)?;
-        let (storage, edge) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
-            .unwrap();
-        Ok((edge, storage).into_view().expect_consistent())
+            .map(|(storage, edge)| (edge, storage).into_view().expect_consistent())
     }
 }
 

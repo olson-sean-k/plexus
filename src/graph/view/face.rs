@@ -369,15 +369,14 @@ where
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<RegionView<&'a mut M, G>, GraphError> {
         let (source, storage) = self.into_keyed_storage();
         let cache = FaceRemoveCache::snapshot(&storage, source)?;
-        let (_, face) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| mutation.remove_face_with_cache(cache))
-            .unwrap();
-        Ok((face.edge, storage).into_view().expect_consistent())
+            .map(|(storage, face)| (face.edge, storage).into_view().expect_consistent())
     }
 
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
@@ -385,8 +384,7 @@ where
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
-            .unwrap();
-        Ok(())
+            .map(|_| ())
     }
 }
 
@@ -415,10 +413,11 @@ where
     pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
-        let (storage, vertex) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::triangulate_with_cache(mutation, cache))
-            .unwrap();
-        Ok(vertex.map(|vertex| (vertex, storage).into_view().expect_consistent()))
+            .map(|(storage, vertex)| {
+                vertex.map(|vertex| (vertex, storage).into_view().expect_consistent())
+            })
     }
 }
 
@@ -453,10 +452,9 @@ where
     {
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
-        let (storage, face) = Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
-            .unwrap();
-        Ok((face, storage).into_view().expect_consistent())
+            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
     }
 }
 
@@ -767,10 +765,9 @@ where
                 .collect::<Vec<_>>();
             let (_, _, storage) = self.into_keyed_storage();
             let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
-            let (storage, face) = Mutation::replace(storage, Default::default())
+            Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
-                .unwrap();
-            Ok((face, storage).into_view().expect_consistent())
+                .map(|(storage, face)| (face, storage).into_view().expect_consistent())
         }
     }
 }
