@@ -188,11 +188,11 @@ pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView, OrphanFaceView,
-    OrphanVertexView, VertexView,
+    ClosedPath, EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView,
+    OrphanFaceView, OrphanVertexView, VertexView,
 };
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Fail, PartialEq)]
 pub enum GraphError {
     #[fail(display = "required topology not found")]
     TopologyNotFound,

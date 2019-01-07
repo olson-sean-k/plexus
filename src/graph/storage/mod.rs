@@ -10,15 +10,15 @@ use crate::graph::topology::Topological;
 pub mod convert;
 
 pub trait KeySequence: Copy + Default + Sized {
-    fn into_next_key(self) -> Self;
+    fn next_key(self) -> Self;
 }
 
 impl KeySequence for () {
-    fn into_next_key(self) -> Self {}
+    fn next_key(self) -> Self {}
 }
 
 impl KeySequence for u64 {
-    fn into_next_key(self) -> Self {
+    fn next_key(self) -> Self {
         self + 1
     }
 }
@@ -37,9 +37,9 @@ impl FromInnerKey<u64> for VertexKey {
 }
 
 impl KeySequence for VertexKey {
-    fn into_next_key(self) -> Self {
+    fn next_key(self) -> Self {
         let VertexKey(inner) = self;
-        VertexKey(inner.into_next_key())
+        VertexKey(inner.next_key())
     }
 }
 
@@ -51,21 +51,21 @@ impl OpaqueKey for VertexKey {
 pub struct EdgeKey(VertexKey, VertexKey);
 
 impl EdgeKey {
-    // TODO: This may be useful in some existing code that constructs the
-    //       opposite edge key.
-    #[allow(dead_code)]
-    pub(in crate::graph) fn to_opposite_key(&self) -> EdgeKey {
-        EdgeKey(self.1, self.0)
-    }
-
-    pub(in crate::graph) fn to_vertex_keys(&self) -> (VertexKey, VertexKey) {
-        (self.0, self.1)
+    pub(in crate::graph) fn opposite(self) -> EdgeKey {
+        let (a, b) = self.into();
+        (b, a).into()
     }
 }
 
 impl From<(VertexKey, VertexKey)> for EdgeKey {
     fn from(key: (VertexKey, VertexKey)) -> Self {
         EdgeKey(key.0, key.1)
+    }
+}
+
+impl Into<(VertexKey, VertexKey)> for EdgeKey {
+    fn into(self) -> (VertexKey, VertexKey) {
+        (self.0, self.1)
     }
 }
 
@@ -83,9 +83,9 @@ impl FromInnerKey<u64> for FaceKey {
 }
 
 impl KeySequence for FaceKey {
-    fn into_next_key(self) -> Self {
+    fn next_key(self) -> Self {
         let FaceKey(inner) = self;
-        FaceKey(inner.into_next_key())
+        FaceKey(inner.next_key())
     }
 }
 
@@ -207,7 +207,7 @@ where
     pub fn insert(&mut self, item: T) -> T::Key {
         let key = self.sequence;
         self.hash.insert(key, item);
-        self.sequence = self.sequence.into_next_key();
+        self.sequence = self.sequence.next_key();
         key
     }
 }

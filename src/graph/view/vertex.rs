@@ -4,14 +4,17 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
+use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::mutation::vertex::{self, VertexRemoveCache};
+use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::{EdgeView, FaceView, OrphanEdgeView, OrphanFaceView};
-use crate::graph::OptionExt;
+use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a vertex.
 ///
@@ -292,6 +295,26 @@ where
     }
 }
 
+impl<'a, M, G> VertexView<&'a mut M, G>
+where
+    M: AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry,
+{
+    pub fn remove(self) -> Result<(), GraphError> {
+        let (a, storage) = self.into_keyed_storage();
+        let cache = VertexRemoveCache::snapshot(&storage, a)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
+            .map(|_| ())
+    }
+}
+
 impl<M, G> Clone for VertexView<M, G>
 where
     M: Clone + Reborrow,
@@ -440,8 +463,7 @@ where
 {
     fn next(&mut self) -> Option<EdgeKey> {
         self.outgoing
-            .and_then(|outgoing| self.storage.reborrow().as_storage().get(&outgoing))
-            .and_then(|outgoing| outgoing.opposite)
+            .map(|outgoing| outgoing.opposite())
             .and_then(|incoming| {
                 self.storage
                     .reborrow()

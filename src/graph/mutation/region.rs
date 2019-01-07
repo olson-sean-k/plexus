@@ -83,7 +83,7 @@ where
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| storage.reborrow().as_edge_storage().get(&ab.into()))
+            .flat_map(|span| storage.reborrow().as_edge_storage().get(&span.into()))
             .flat_map(|edge| edge.face)
             .collect::<HashSet<_>>();
         // Fail if the edges refer to more than one face.

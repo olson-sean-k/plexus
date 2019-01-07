@@ -7,7 +7,6 @@ pub trait Topological {
     type Attribute: Attribute;
 }
 
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct Vertex<G>
@@ -16,7 +15,7 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Vertex,
-    pub(super) edge: Option<EdgeKey>,
+    pub(in crate::graph) edge: Option<EdgeKey>,
 }
 
 impl<G> Vertex<G>
@@ -53,7 +52,15 @@ where
     type Attribute = G::Vertex;
 }
 
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
+// Unlike other topological structures, the vertex connectivity of `Edge`s is
+// immutable and encoded within the key for each half-edge. A half-edge key
+// consists of its source and destination vertex keys. This provides fast and
+// reliable half-edge lookups, even when a mesh is in an inconsistent state.
+// However, it also complicates basic mutations of vertices and half-edges,
+// requiring rekeying of `Edge`s.
+//
+// For this reason, `Edge` has no fields for storing its destination vertex key
+// or opposite edge key, as these would be redundant.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct Edge<G>
@@ -62,22 +69,18 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Edge,
-    pub(super) vertex: VertexKey,
-    pub(super) opposite: Option<EdgeKey>,
-    pub(super) next: Option<EdgeKey>,
-    pub(super) previous: Option<EdgeKey>,
-    pub(super) face: Option<FaceKey>,
+    pub(in crate::graph) next: Option<EdgeKey>,
+    pub(in crate::graph) previous: Option<EdgeKey>,
+    pub(in crate::graph) face: Option<FaceKey>,
 }
 
 impl<G> Edge<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(vertex: VertexKey, geometry: G::Edge) -> Self {
+    pub(in crate::graph) fn new(geometry: G::Edge) -> Self {
         Edge {
             geometry,
-            vertex,
-            opposite: None,
             next: None,
             previous: None,
             face: None,
@@ -94,8 +97,6 @@ where
     fn from_interior_geometry(edge: Edge<H>) -> Self {
         Edge {
             geometry: edge.geometry.into_geometry(),
-            vertex: edge.vertex,
-            opposite: edge.opposite,
             next: edge.next,
             previous: edge.previous,
             face: edge.face,
@@ -111,7 +112,6 @@ where
     type Attribute = G::Edge;
 }
 
-// TODO: derivative panics on `pub(in graph)`, so this type uses `pub(super)`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct Face<G>
@@ -120,7 +120,7 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Face,
-    pub(super) edge: EdgeKey,
+    pub(in crate::graph) edge: EdgeKey,
 }
 
 impl<G> Face<G>

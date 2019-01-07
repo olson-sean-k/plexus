@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -16,7 +17,7 @@ use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::{EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, VertexView};
+use crate::graph::view::{EdgeView, FaceKeyTopology, FaceView, VertexView};
 use crate::graph::{GraphError, IteratorExt};
 
 pub struct FaceMutation<G>
@@ -32,19 +33,19 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
+    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Edge<G>>, &Storage<Face<G>>> {
+        Core::empty()
+            .bind(self.as_vertex_storage())
+            .bind(self.as_edge_storage())
+            .bind(self.as_face_storage())
+    }
+
     pub fn insert_face(
         &mut self,
         vertices: &[VertexKey],
         geometry: (G::Edge, G::Face),
     ) -> Result<FaceKey, GraphError> {
-        let cache = FaceInsertCache::snapshot(
-            &Core::empty()
-                .bind(self.as_vertex_storage())
-                .bind(self.as_edge_storage())
-                .bind(self.as_face_storage()),
-            vertices,
-            geometry,
-        )?;
+        let cache = FaceInsertCache::snapshot(&self.core(), vertices, geometry)?;
         self.insert_face_with_cache(cache)
     }
 
@@ -64,9 +65,9 @@ where
             .iter()
             .cloned()
             .perimeter()
-            .map(|ab| {
-                self.get_or_insert_composite_edge(ab, geometry.0.clone())
-                    .map(|edges| edges.0)
+            .map(|(a, b)| {
+                self.get_or_insert_composite_edge_with((a, b), || geometry.0.clone())
+                    .map(|(ab, _)| ab)
             })
             .collect::<Result<Vec<_>, _>>()?;
         // Insert the face.
@@ -84,59 +85,6 @@ where
         }
         self.connect_face_interior(&edges, face)?;
         self.connect_face_exterior(&edges, connectivity)?;
-        Ok(face)
-    }
-
-    pub fn remove_face_with_cache(
-        &mut self,
-        cache: FaceRemoveCache<G>,
-    ) -> Result<Face<G>, GraphError> {
-        let FaceRemoveCache {
-            abc,
-            mutuals,
-            edges,
-            ..
-        } = cache;
-        let core = Core::empty()
-            .bind(self.as_vertex_storage())
-            .bind(self.as_edge_storage())
-            .bind(self.as_face_storage());
-        // Iterate over the set of vertices shared between the face and all of
-        // its neighbors. These are potential singularities.
-        for vertex in mutuals {
-            // Circulate (in order) over the neighboring faces of the potential
-            // singularity, ignoring the face to be removed.  Count the number
-            // of gaps, where neighboring faces do not share any edges. Because
-            // a face is being ignored, exactly one gap is expected. If any
-            // additional gaps exist, then removal will create a singularity.
-            let vertex = VertexView::from_keyed_source((vertex, &core))
-                .ok_or_else(|| GraphError::TopologyNotFound)?;
-            let n = vertex
-                .reachable_neighboring_faces()
-                .filter(|face| face.key() != abc)
-                .perimeter()
-                .filter(|&(previous, next)| {
-                    let exterior = previous
-                        .reachable_interior_edges()
-                        .flat_map(|edge| edge.into_reachable_opposite_edge())
-                        .map(|edge| edge.key())
-                        .collect::<HashSet<_>>();
-                    let interior = next
-                        .reachable_interior_edges()
-                        .map(|edge| edge.key())
-                        .collect::<HashSet<_>>();
-                    exterior.intersection(&interior).count() == 0
-                })
-                .count();
-            if n > 1 {
-                return Err(GraphError::TopologyConflict);
-            }
-        }
-        self.disconnect_face_interior(&edges)?;
-        let face = self
-            .storage
-            .remove(&abc)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(face)
     }
 
@@ -175,46 +123,49 @@ where
         connectivity: (Connectivity, Connectivity),
     ) -> Result<(), GraphError> {
         let (incoming, outgoing) = connectivity;
-        for (a, b) in edges.iter().map(|edge| edge.to_vertex_keys()) {
+        for ab in edges {
+            let (a, b) = ab.clone().into();
+            let ba = ab.opposite();
             let neighbors = {
-                let core = Core::empty()
-                    .bind(self.as_vertex_storage())
-                    .bind(self.as_edge_storage());
-                // Only boundary edges must be connected.
-                EdgeView::from_keyed_source(((b, a).into(), &core))
-                    .filter(|edge| edge.is_boundary_edge())
-                    .and_then(|_| {
-                        // The next edge of B-A is the outgoing edge of the
-                        // destination vertex A that is also a boundary
-                        // edge or, if there is no such outgoing edge, the
-                        // next exterior edge of the face. The previous
-                        // edge is similar.
-                        let ax = outgoing[&a]
-                            .iter()
-                            .flat_map(|ax| EdgeView::from_keyed_source((*ax, &core)))
-                            .find(|edge| edge.is_boundary_edge())
-                            .or_else(|| {
-                                EdgeView::from_keyed_source(((a, b).into(), &core))
-                                    .and_then(|edge| edge.into_reachable_previous_edge())
-                                    .and_then(|edge| edge.into_reachable_opposite_edge())
-                            })
-                            .map(|edge| edge.key());
-                        let xb = incoming[&b]
-                            .iter()
-                            .flat_map(|xb| EdgeView::from_keyed_source((*xb, &core)))
-                            .find(|edge| edge.is_boundary_edge())
-                            .or_else(|| {
-                                EdgeView::from_keyed_source(((a, b).into(), &core))
-                                    .and_then(|edge| edge.into_reachable_next_edge())
-                                    .and_then(|edge| edge.into_reachable_opposite_edge())
-                            })
-                            .map(|edge| edge.key());
-                        ax.into_iter().zip(xb.into_iter()).next()
-                    })
+                let core = self.core();
+                if EdgeView::from_keyed_source((ba, &core))
+                    .ok_or_else(|| GraphError::TopologyMalformed)?
+                    .is_boundary_edge()
+                {
+                    // The next edge of B-A is the outgoing edge of the
+                    // destination vertex A that is also a boundary
+                    // edge or, if there is no such outgoing edge, the
+                    // next exterior edge of the face. The previous
+                    // edge is similar.
+                    let ax = outgoing[&a]
+                        .iter()
+                        .flat_map(|ax| EdgeView::from_keyed_source((*ax, &core)))
+                        .find(|next| next.is_boundary_edge())
+                        .or_else(|| {
+                            EdgeView::from_keyed_source((*ab, &core))
+                                .and_then(|edge| edge.into_reachable_previous_edge())
+                                .and_then(|previous| previous.into_reachable_opposite_edge())
+                        })
+                        .map(|next| next.key());
+                    let xb = incoming[&b]
+                        .iter()
+                        .flat_map(|xb| EdgeView::from_keyed_source((*xb, &core)))
+                        .find(|previous| previous.is_boundary_edge())
+                        .or_else(|| {
+                            EdgeView::from_keyed_source((*ab, &core))
+                                .and_then(|edge| edge.into_reachable_next_edge())
+                                .and_then(|next| next.into_reachable_opposite_edge())
+                        })
+                        .map(|previous| previous.key());
+                    ax.into_iter().zip(xb.into_iter()).next()
+                }
+                else {
+                    None
+                }
             };
             if let Some((ax, xb)) = neighbors {
-                self.connect_neighboring_edges((b, a).into(), ax)?;
-                self.connect_neighboring_edges(xb, (b, a).into())?;
+                self.connect_neighboring_edges(ba, ax)?;
+                self.connect_neighboring_edges(xb, ba)?;
             }
         }
         Ok(())
@@ -374,6 +325,71 @@ where
     }
 }
 
+pub struct FaceBisectCache<G>
+where
+    G: Geometry,
+{
+    cache: FaceRemoveCache<G>,
+    left: Vec<VertexKey>,
+    right: Vec<VertexKey>,
+    geometry: G::Face,
+}
+
+impl<G> FaceBisectCache<G>
+where
+    G: Geometry,
+{
+    pub fn snapshot<M>(
+        storage: M,
+        abc: FaceKey,
+        source: VertexKey,
+        destination: VertexKey,
+    ) -> Result<Self, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+    {
+        let storage = storage.reborrow();
+        let face = FaceView::from_keyed_source((abc, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        face.distance(source, destination).and_then(|distance| {
+            if distance <= 1 {
+                Err(GraphError::TopologyMalformed)
+            }
+            else {
+                Ok(())
+            }
+        })?;
+        let perimeter = face
+            .vertices()
+            .map(|vertex| vertex.key())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .cycle();
+        let left = perimeter
+            .clone()
+            .into_iter()
+            .tuple_windows()
+            .skip_while(|(_, b)| *b != source)
+            .take_while(|(a, _)| *a != destination)
+            .map(|(_, b)| b)
+            .collect::<Vec<_>>();
+        let right = perimeter
+            .into_iter()
+            .tuple_windows()
+            .skip_while(|(_, b)| *b != destination)
+            .take_while(|(a, _)| *a != source)
+            .map(|(_, b)| b)
+            .collect::<Vec<_>>();
+        Ok(FaceBisectCache {
+            cache: FaceRemoveCache::snapshot(storage, abc)?,
+            left,
+            right,
+            geometry: face.geometry.clone(),
+        })
+    }
+}
+
 pub struct FaceTriangulateCache<G>
 where
     G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
@@ -394,10 +410,8 @@ where
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let face = match FaceView::from_keyed_source((abc, storage)) {
-            Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound),
-        };
+        let face = FaceView::from_keyed_source((abc, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let vertices = face.vertices().map(|vertex| vertex.key()).collect();
         Ok(FaceTriangulateCache {
             vertices,
@@ -412,7 +426,7 @@ pub struct FaceBridgeCache<G>
 where
     G: Geometry,
 {
-    sources: Vec<(EdgeKeyTopology, G::Edge)>,
+    source: FaceKeyTopology,
     destination: FaceKeyTopology,
     cache: (FaceRemoveCache<G>, FaceRemoveCache<G>),
 }
@@ -436,28 +450,15 @@ where
             FaceRemoveCache::snapshot(storage, destination)?,
         );
         // Ensure that the opposite face exists and has the same arity.
-        let source =
-            FaceView::from_keyed_source((source, storage)).ok_or(GraphError::TopologyNotFound)?;
+        let source = FaceView::from_keyed_source((source, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let destination = FaceView::from_keyed_source((destination, storage))
-            .ok_or(GraphError::TopologyNotFound)?;
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonConstant);
         }
         Ok(FaceBridgeCache {
-            sources: source
-                .to_key_topology()
-                .interior_edges()
-                .iter()
-                .map(|topology| {
-                    (
-                        topology.clone(),
-                        EdgeView::from_keyed_source((topology.key(), storage))
-                            .unwrap()
-                            .geometry
-                            .clone(),
-                    )
-                })
-                .collect::<Vec<_>>(),
+            source: source.to_key_topology(),
             destination: destination.to_key_topology(),
             cache,
         })
@@ -512,6 +513,91 @@ where
     }
 }
 
+pub fn remove_with_cache<M, N, G>(
+    mut mutation: N,
+    cache: FaceRemoveCache<G>,
+) -> Result<Face<G>, GraphError>
+where
+    N: AsMut<Mutation<M, G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    let FaceRemoveCache {
+        abc,
+        mutuals,
+        edges,
+        ..
+    } = cache;
+    let mutation = mutation.as_mut();
+    let core = Core::empty()
+        .bind(mutation.as_vertex_storage())
+        .bind(mutation.as_edge_storage())
+        .bind(mutation.as_face_storage());
+    // Iterate over the set of vertices shared between the face and all of
+    // its neighbors. These are potential singularities.
+    for vertex in mutuals {
+        // Circulate (in order) over the neighboring faces of the potential
+        // singularity, ignoring the face to be removed.  Count the number
+        // of gaps, where neighboring faces do not share any edges. Because
+        // a face is being ignored, exactly one gap is expected. If any
+        // additional gaps exist, then removal will create a singularity.
+        let vertex = VertexView::from_keyed_source((vertex, &core))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let n = vertex
+            .reachable_neighboring_faces()
+            .filter(|face| face.key() != abc)
+            .perimeter()
+            .filter(|&(previous, next)| {
+                let exterior = previous
+                    .reachable_interior_edges()
+                    .flat_map(|edge| edge.into_reachable_opposite_edge())
+                    .map(|edge| edge.key())
+                    .collect::<HashSet<_>>();
+                let interior = next
+                    .reachable_interior_edges()
+                    .map(|edge| edge.key())
+                    .collect::<HashSet<_>>();
+                exterior.intersection(&interior).count() == 0
+            })
+            .count();
+        if n > 1 {
+            return Err(GraphError::TopologyConflict);
+        }
+    }
+    mutation.disconnect_face_interior(&edges)?;
+    let face = mutation
+        .storage
+        .remove(&abc)
+        .ok_or_else(|| GraphError::TopologyNotFound)?;
+    Ok(face)
+}
+
+pub fn bisect_with_cache<M, N, G>(
+    mut mutation: N,
+    cache: FaceBisectCache<G>,
+) -> Result<EdgeKey, GraphError>
+where
+    N: AsMut<Mutation<M, G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    let FaceBisectCache {
+        cache,
+        left,
+        right,
+        geometry,
+        ..
+    } = cache;
+    remove_with_cache(mutation.as_mut(), cache)?;
+    mutation
+        .as_mut()
+        .insert_face(&left, (Default::default(), geometry.clone()))?;
+    mutation
+        .as_mut()
+        .insert_face(&right, (Default::default(), geometry))?;
+    Ok((left[0], right[0]).into())
+}
+
 pub fn triangulate_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceTriangulateCache<G>,
@@ -530,7 +616,7 @@ where
     if vertices.len() <= 3 {
         return Ok(None);
     }
-    mutation.as_mut().remove_face_with_cache(cache)?;
+    remove_with_cache(mutation.as_mut(), cache)?;
     let c = mutation.as_mut().insert_vertex(centroid);
     for (a, b) in vertices.into_iter().perimeter() {
         mutation
@@ -550,25 +636,24 @@ where
     G: Geometry,
 {
     let FaceBridgeCache {
-        sources,
+        source,
         destination,
         cache,
     } = cache;
     // Remove the source and destination faces. Pair the topology with edge
     // geometry for the source face.
-    mutation.as_mut().remove_face_with_cache(cache.0)?;
-    mutation.as_mut().remove_face_with_cache(cache.1)?;
+    remove_with_cache(mutation.as_mut(), cache.0)?;
+    remove_with_cache(mutation.as_mut(), cache.1)?;
     // TODO: Is it always correct to reverse the order of the opposite
     //       face's edges?
     // Re-insert the edges of the faces and bridge the mutual edges.
-    for (source, destination) in sources
-        .into_iter()
+    for (source, destination) in source
+        .interior_edges()
+        .iter()
         .zip(destination.interior_edges().iter().rev())
     {
-        let (a, b) = source.0.vertices();
-        let (c, d) = destination.vertices();
-        let ab = mutation.as_mut().insert_edge((a, b), source.1.clone())?;
-        let cd = mutation.as_mut().insert_edge((c, d), source.1)?;
+        let ab = source.key();
+        let cd = destination.key();
         let cache = EdgeBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
         edge::bridge_with_cache(mutation.as_mut(), cache)?;
     }
@@ -592,16 +677,16 @@ where
         geometry,
         cache,
     } = cache;
-    mutation.as_mut().remove_face_with_cache(cache)?;
+    remove_with_cache(mutation.as_mut(), cache)?;
     let destinations = destinations
         .into_iter()
-        .map(|vertex| mutation.as_mut().insert_vertex(vertex))
+        .map(|a| mutation.as_mut().insert_vertex(a))
         .collect::<Vec<_>>();
     // Use the keys for the existing vertices and the translated geometries
     // to construct the extruded face and its connective faces.
     let extrusion = mutation
         .as_mut()
-        .insert_face(&destinations, (Default::default(), geometry))?;
+        .insert_face(&destinations, (Default::default(), geometry.clone()))?;
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
@@ -610,7 +695,7 @@ where
         // TODO: Split these faces to form triangles.
         mutation
             .as_mut()
-            .insert_face(&[a, b, d, c], Default::default())?;
+            .insert_face(&[a, b, d, c], (Default::default(), geometry.clone()))?;
     }
     Ok(extrusion)
 }

@@ -1,9 +1,13 @@
 use crate::geometry::Geometry;
-use crate::graph::container::{Bind, Core};
-use crate::graph::mutation::Mutate;
+use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::{Bind, Consistent, Core, Reborrow};
+use crate::graph::mutation::edge::{self, CompositeEdgeRemoveCache};
+use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{EdgeKey, Storage, VertexKey};
 use crate::graph::topology::Vertex;
+use crate::graph::view::convert::FromKeyedSource;
+use crate::graph::view::VertexView;
 use crate::graph::GraphError;
 
 pub struct VertexMutation<G>
@@ -22,30 +26,20 @@ where
     }
 
     pub fn connect_outgoing_edge(&mut self, a: VertexKey, ab: EdgeKey) -> Result<(), GraphError> {
-        if a == ab.to_vertex_keys().0 {
-            let vertex = self
-                .storage
-                .get_mut(&a)
-                .ok_or_else(|| GraphError::TopologyNotFound)?;
-            vertex.edge = Some(ab);
-            Ok(())
-        }
-        else {
-            Err(GraphError::TopologyMalformed)
-        }
+        VertexView::from_keyed_source((a, &mut self.storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)
+            .map(|mut vertex| {
+                vertex.edge = Some(ab);
+            })
     }
 
     pub fn disconnect_outgoing_edge(
         &mut self,
         a: VertexKey,
     ) -> Result<Option<EdgeKey>, GraphError> {
-        let edge = self
-            .storage
-            .get_mut(&a)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .edge
-            .take();
-        Ok(edge)
+        VertexView::from_keyed_source((a, &mut self.storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)
+            .map(|mut vertex| vertex.edge.take())
     }
 }
 
@@ -76,4 +70,40 @@ where
         let (vertices, ..) = mutant.into_storage();
         VertexMutation { storage: vertices }
     }
+}
+
+pub struct VertexRemoveCache<G>
+where
+    G: Geometry,
+{
+    cache: Vec<CompositeEdgeRemoveCache<G>>,
+}
+
+impl<G> VertexRemoveCache<G>
+where
+    G: Geometry,
+{
+    pub fn snapshot<M>(storage: M, a: VertexKey) -> Result<Self, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Vertex<G>> + Consistent,
+    {
+        unimplemented!()
+    }
+}
+
+pub fn remove_with_cache<M, N, G>(
+    mut mutation: N,
+    cache: VertexRemoveCache<G>,
+) -> Result<Vertex<G>, GraphError>
+where
+    N: AsMut<Mutation<M, G>>,
+    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
+    let VertexRemoveCache { cache } = cache;
+    for cache in cache {
+        edge::remove_composite_with_cache(mutation.as_mut(), cache)?;
+    }
+    unimplemented!()
 }

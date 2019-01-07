@@ -10,7 +10,9 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
-use crate::graph::mutation::edge::{self, EdgeBridgeCache, EdgeExtrudeCache, EdgeSplitCache};
+use crate::graph::mutation::edge::{
+    self, CompositeEdgeRemoveCache, CompositeEdgeSplitCache, EdgeBridgeCache, EdgeExtrudeCache,
+};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
@@ -123,10 +125,6 @@ where
         self.key
     }
 
-    pub fn to_key_topology(&self) -> EdgeKeyTopology {
-        EdgeKeyTopology::from(self.interior_reborrow())
-    }
-
     pub fn is_boundary_edge(&self) -> bool {
         self.face.is_none()
     }
@@ -165,9 +163,6 @@ where
     M::Target: AsStorage<Edge<G>>,
     G: Geometry,
 {
-    // TODO: This is basic infrastructure and it is reasonably likely this will
-    //       be used in the future.
-    #[allow(dead_code)]
     fn interior_reborrow_mut(&mut self) -> EdgeView<&mut M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow_mut();
@@ -193,11 +188,8 @@ where
     }
 
     pub(in crate::graph) fn into_reachable_opposite_edge(self) -> Option<Self> {
-        let key = self.opposite;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_storage();
-            (key, storage).into_view()
-        })
+        let (key, storage) = self.into_keyed_storage();
+        (key.opposite(), storage).into_view()
     }
 
     pub(in crate::graph) fn into_reachable_next_edge(self) -> Option<Self> {
@@ -227,10 +219,9 @@ where
     }
 
     pub(in crate::graph) fn reachable_opposite_edge(&self) -> Option<EdgeView<&M::Target, G>> {
-        self.opposite.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        let ba = self.key.opposite();
+        let storage = self.storage.reborrow();
+        (ba, storage).into_view()
     }
 
     pub(in crate::graph) fn reachable_next_edge(&self) -> Option<EdgeView<&M::Target, G>> {
@@ -290,6 +281,10 @@ where
     pub fn previous_edge(&self) -> EdgeView<&M::Target, G> {
         self.reachable_previous_edge().expect_consistent()
     }
+
+    pub fn is_disjoint_edge(&self) -> bool {
+        self.is_boundary_edge() && self.opposite_edge().is_boundary_edge()
+    }
 }
 
 /// Reachable API.
@@ -300,29 +295,29 @@ where
     G: Geometry,
 {
     pub(in crate::graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
-        let (key, _) = self.key.to_vertex_keys();
+        let (a, _) = self.key.into();
         let (_, storage) = self.into_keyed_storage();
-        (key, storage).into_view()
+        (a, storage).into_view()
     }
 
     pub(in crate::graph) fn into_reachable_destination_vertex(self) -> Option<VertexView<M, G>> {
-        let key = self.vertex;
+        let (_, b) = self.key.into();
         let (_, storage) = self.into_keyed_storage();
-        (key, storage).into_view()
+        (b, storage).into_view()
     }
 
     pub(in crate::graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M::Target, G>> {
-        let (key, _) = self.key.to_vertex_keys();
+        let (a, _) = self.key.into();
         let storage = self.storage.reborrow();
-        (key, storage).into_view()
+        (a, storage).into_view()
     }
 
     pub(in crate::graph) fn reachable_destination_vertex(
         &self,
     ) -> Option<VertexView<&M::Target, G>> {
-        let key = self.vertex;
+        let (_, b) = self.key.into();
         let storage = self.storage.reborrow();
-        (key, storage).into_view()
+        (b, storage).into_view()
     }
 }
 
@@ -332,6 +327,10 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
+    pub fn to_key_topology(&self) -> EdgeKeyTopology {
+        EdgeKeyTopology::from(self.interior_reborrow())
+    }
+
     pub fn into_source_vertex(self) -> VertexView<M, G> {
         self.into_reachable_source_vertex().expect_consistent()
     }
@@ -397,9 +396,7 @@ where
     pub(in crate::graph) fn reachable_vertices(
         &self,
     ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
-        let (a, b) = self.key.to_vertex_keys();
-        let storage = self.storage.reborrow();
-        VertexCirculator::from_keyed_source((ArrayVec::from([b, a]), storage)).unwrap()
+        VertexCirculator::from(self.interior_reborrow())
     }
 }
 
@@ -424,9 +421,7 @@ where
     pub(in crate::graph) fn reachable_orphan_vertices(
         &mut self,
     ) -> impl Iterator<Item = OrphanVertexView<G>> {
-        let (a, b) = self.key.to_vertex_keys();
-        let storage = self.storage.reborrow_mut();
-        VertexCirculator::from_keyed_source((ArrayVec::from([b, a]), storage)).unwrap()
+        VertexCirculator::from(self.interior_reborrow_mut())
     }
 }
 
@@ -451,16 +446,7 @@ where
     pub(in crate::graph) fn reachable_faces(
         &self,
     ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
-        let keys = self
-            .face
-            .into_iter()
-            .chain(
-                self.reachable_opposite_edge()
-                    .and_then(|opposite| opposite.face),
-            )
-            .collect();
-        let storage = self.storage.reborrow();
-        FaceCirculator::from_keyed_source((keys, storage)).unwrap()
+        FaceCirculator::from(self.interior_reborrow())
     }
 }
 
@@ -475,6 +461,31 @@ where
     }
 }
 
+/// Reachable API.
+impl<M, G> EdgeView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    G: Geometry,
+{
+    pub(in crate::graph) fn reachable_orphan_faces(
+        &mut self,
+    ) -> impl Iterator<Item = OrphanFaceView<G>> {
+        FaceCirculator::from(self.interior_reborrow_mut())
+    }
+}
+
+impl<M, G> EdgeView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Consistent,
+    G: Geometry,
+{
+    pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
+        self.reachable_orphan_faces()
+    }
+}
+
 impl<'a, M, G> EdgeView<&'a mut M, G>
 where
     M: AsStorage<Edge<G>>
@@ -486,12 +497,20 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn bridge(self, destination: EdgeKey) -> Result<EdgeView<&'a mut M, G>, GraphError> {
+    pub fn remove(self) -> Result<(G::Edge, G::Edge), GraphError> {
+        let (ab, storage) = self.into_keyed_storage();
+        let cache = CompositeEdgeRemoveCache::snapshot(&storage, ab)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::remove_composite_with_cache(mutation, cache))
+            .map(|(_, (edge, opposite))| (edge.geometry, opposite.geometry))
+    }
+
+    pub fn bridge(self, destination: EdgeKey) -> Result<FaceView<&'a mut M, G>, GraphError> {
         let (source, storage) = self.into_keyed_storage();
         let cache = EdgeBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
-            .map(|(storage, edge)| (edge, storage).into_view().expect_consistent())
+            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
     }
 }
 
@@ -520,9 +539,9 @@ where
 {
     pub fn split(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
         let (ab, storage) = self.into_keyed_storage();
-        let cache = EdgeSplitCache::snapshot(&storage, ab)?;
+        let cache = CompositeEdgeSplitCache::snapshot(&storage, ab)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
+            .commit_with(move |mutation| edge::split_composite_with_cache(mutation, cache))
             .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
     }
 }
@@ -711,13 +730,15 @@ impl EdgeKeyTopology {
 impl<M, G> From<EdgeView<M, G>> for EdgeKeyTopology
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     fn from(edge: EdgeView<M, G>) -> Self {
+        let a = edge.source_vertex().key();
+        let b = edge.destination_vertex().key();
         EdgeKeyTopology {
             key: edge.key,
-            vertices: edge.key.to_vertex_keys(),
+            vertices: (a, b),
         }
     }
 }
@@ -744,19 +765,20 @@ where
     }
 }
 
-impl<M, G> FromKeyedSource<(ArrayVec<[VertexKey; 2]>, M)> for VertexCirculator<M, G>
+impl<M, G> From<EdgeView<M, G>> for VertexCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (ArrayVec<[VertexKey; 2]>, M)) -> Option<Self> {
-        let (input, storage) = source;
-        Some(VertexCirculator {
+    fn from(edge: EdgeView<M, G>) -> Self {
+        let (a, b) = edge.key().into();
+        let (_, storage) = edge.into_keyed_storage();
+        VertexCirculator {
             storage,
-            input: input.into_iter(),
+            input: ArrayVec::<_>::from([a, b]).into_iter(),
             phantom: PhantomData,
-        })
+        }
     }
 }
 
@@ -772,7 +794,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (2, Some(2))
+        (0, Some(2))
     }
 }
 
@@ -797,7 +819,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (2, Some(2))
+        (0, Some(2))
     }
 }
 
@@ -823,19 +845,29 @@ where
     }
 }
 
-impl<M, G> FromKeyedSource<(ArrayVec<[FaceKey; 2]>, M)> for FaceCirculator<M, G>
+impl<M, G> From<EdgeView<M, G>> for FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    fn from_keyed_source(source: (ArrayVec<[FaceKey; 2]>, M)) -> Option<Self> {
-        let (input, storage) = source;
-        Some(FaceCirculator {
+    fn from(edge: EdgeView<M, G>) -> Self {
+        let input = edge
+            .face
+            .into_iter()
+            .chain(
+                edge.reachable_opposite_edge()
+                    .and_then(|opposite| opposite.face)
+                    .into_iter(),
+            )
+            .collect::<ArrayVec<_>>()
+            .into_iter();
+        let (_, storage) = edge.into_keyed_storage();
+        FaceCirculator {
             storage,
-            input: input.into_iter(),
+            input,
             phantom: PhantomData,
-        })
+        }
     }
 }
 
@@ -892,33 +924,37 @@ mod tests {
     use crate::primitive::index::*;
     use crate::*;
 
-    fn find_vertex_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: T) -> Option<VertexKey>
-    where
-        G: Geometry,
-        G::Vertex: PartialEq,
-        T: IntoGeometry<G::Vertex>,
-    {
-        let geometry = geometry.into_geometry();
-        graph
-            .vertices()
-            .find(|vertex| vertex.geometry == geometry)
-            .map(|vertex| vertex.key())
-    }
-
     fn find_edge_with_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<EdgeKey>
     where
         G: Geometry,
         G::Vertex: PartialEq,
         T: IntoGeometry<G::Vertex>,
     {
-        let (source, destination) = geometry;
-        match (
-            find_vertex_with_geometry(graph, source),
-            find_vertex_with_geometry(graph, destination),
-        ) {
-            (Some(source), Some(destination)) => Some((source, destination).into()),
-            _ => None,
+        fn find_vertex_with_geometry<G, T>(
+            graph: &MeshGraph<G>,
+            geometry: T,
+        ) -> Option<VertexView<&MeshGraph<G>, G>>
+        where
+            G: Geometry,
+            G::Vertex: PartialEq,
+            T: IntoGeometry<G::Vertex>,
+        {
+            let geometry = geometry.into_geometry();
+            graph.vertices().find(|vertex| vertex.geometry == geometry)
         }
+
+        let (source, destination) = geometry;
+        find_vertex_with_geometry(graph, source)
+            .and_then(|source| {
+                find_vertex_with_geometry(graph, destination)
+                    .map(move |destination| (source, destination))
+            })
+            .and_then(|(source, destination)| {
+                destination
+                    .incoming_edges()
+                    .find(|edge| edge.source_vertex().key() == source.key())
+                    .map(|edge| edge.key())
+            })
     }
 
     #[test]

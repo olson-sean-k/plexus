@@ -1,4 +1,6 @@
+use arrayvec::ArrayVec;
 use fool::prelude::*;
+use std::cmp;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
@@ -11,7 +13,8 @@ use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::face::{
-    self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FaceRemoveCache, FaceTriangulateCache,
+    self, FaceBisectCache, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FaceRemoveCache,
+    FaceTriangulateCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
@@ -199,17 +202,6 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
-    G: Geometry,
-{
-    pub fn to_key_topology(&self) -> FaceKeyTopology {
-        FaceKeyTopology::from(self.interior_reborrow())
-    }
-}
-
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
@@ -275,6 +267,16 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
+    pub fn to_key_topology(&self) -> FaceKeyTopology {
+        FaceKeyTopology::from(self.interior_reborrow())
+    }
+
+    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
+        self.interior_reborrow()
+            .into_closed_path()
+            .distance(source, destination)
+    }
+
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
@@ -371,12 +373,29 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn remove(self) -> Result<ClosedPath<&'a mut M, G>, GraphError> {
+    pub fn remove(self) -> Result<(G::Face, ClosedPath<&'a mut M, G>), GraphError> {
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceRemoveCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| mutation.remove_face_with_cache(cache))
-            .map(|(storage, face)| (face.edge, storage).into_view().expect_consistent())
+            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
+            .map(|(storage, face)| {
+                (
+                    face.geometry,
+                    (face.edge, storage).into_view().expect_consistent(),
+                )
+            })
+    }
+
+    pub fn bisect(
+        self,
+        source: VertexKey,
+        destination: VertexKey,
+    ) -> Result<EdgeView<&'a mut M, G>, GraphError> {
+        let (abc, storage) = self.into_keyed_storage();
+        let cache = FaceBisectCache::snapshot(&storage, abc, source, destination)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::bisect_with_cache(mutation, cache))
+            .map(|(storage, edge)| (edge, storage).into_view().expect_consistent())
     }
 
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
@@ -605,7 +624,7 @@ impl FaceKeyTopology {
 impl<M, G> From<FaceView<M, G>> for FaceKeyTopology
 where
     M: Reborrow,
-    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     fn from(face: FaceView<M, G>) -> Self {
@@ -619,9 +638,6 @@ where
     }
 }
 
-// This is not the same as `Region` found in the `mutation` module. Instead,
-// this view relies on consistent storage and is edge-based, performing no
-// particular validation of a given region. It acts much like a cursor.
 pub struct ClosedPath<M, G>
 where
     M: Reborrow,
@@ -701,6 +717,35 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
+    pub fn into_edge(self) -> EdgeView<M, G> {
+        let (edge, _, storage) = self.into_keyed_storage();
+        (edge, storage).into_view().expect_consistent()
+    }
+
+    pub fn edge(&self) -> EdgeView<&M::Target, G> {
+        let edge = self.edge;
+        let storage = self.storage.reborrow();
+        (edge, storage).into_view().expect_consistent()
+    }
+
+    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
+        let indices = self
+            .vertices()
+            .map(|vertex| vertex.key())
+            .enumerate()
+            .filter(|(_, key)| *key == source || *key == destination)
+            .map(|(index, _)| index as isize)
+            .collect::<ArrayVec<[isize; 2]>>();
+        match indices.len() {
+            1 => Ok(0),
+            2 => {
+                let difference = (indices[0] - indices[1]).abs() as usize;
+                Ok(cmp::min(difference, self.arity() - difference))
+            }
+            _ => Err(GraphError::TopologyNotFound),
+        }
+    }
+
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
@@ -712,11 +757,6 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
-    pub fn into_edge(self) -> EdgeView<M, G> {
-        let (edge, _, storage) = self.into_keyed_storage();
-        (edge, storage).into_view().expect_consistent()
-    }
-
     pub fn into_face(self) -> Option<FaceView<M, G>> {
         let (_, face, storage) = self.into_keyed_storage();
         if let Some(face) = face {
@@ -725,12 +765,6 @@ where
         else {
             None
         }
-    }
-
-    pub fn edge(&self) -> EdgeView<&M::Target, G> {
-        let edge = self.edge;
-        let storage = self.storage.reborrow();
-        (edge, storage).into_view().expect_consistent()
     }
 
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
@@ -811,9 +845,11 @@ where
     G: Geometry,
 {
     fn next(&mut self) -> Option<VertexKey> {
-        let edge = self.input.next();
-        edge.and_then(|edge| self.input.storage.reborrow().as_storage().get(&edge))
-            .map(|edge| edge.vertex)
+        let ab = self.input.next();
+        ab.map(|ab| {
+            let (_, b) = ab.into();
+            b
+        })
     }
 }
 
@@ -992,17 +1028,16 @@ where
     G: Geometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(edge) = self
-            .input
-            .next()
-            .and_then(|edge| self.input.storage.reborrow().as_storage().get(&edge))
-        {
-            if let Some(face) = edge
-                .opposite
-                .and_then(|opposite| self.input.storage.reborrow().as_storage().get(&opposite))
+        while let Some(ba) = self.input.next().map(|ab| ab.opposite()) {
+            if let Some(abc) = self
+                .input
+                .storage
+                .reborrow()
+                .as_storage()
+                .get(&ba)
                 .and_then(|opposite| opposite.face)
             {
-                return Some(face);
+                return Some(abc);
             }
             else {
                 // Skip edges with no opposing face. This can occur within
@@ -1060,7 +1095,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nalgebra::Point3;
+    use nalgebra::{Point2, Point3};
 
     use crate::graph::*;
     use crate::primitive::cube::Cube;
@@ -1092,13 +1127,46 @@ mod tests {
     }
 
     #[test]
+    fn bisect_face() {
+        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3],
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            4,
+        )
+        .unwrap();
+        let abc = graph.faces().nth(0).unwrap().key();
+        let (p, q) = {
+            let face = graph.face(abc).unwrap();
+            let mut vertices = face.vertices().map(|vertex| vertex.key()).step_by(2);
+            (vertices.next().unwrap(), vertices.next().unwrap())
+        };
+        let edge = graph
+            .face_mut(abc)
+            .unwrap()
+            .bisect(p, q)
+            .unwrap()
+            .into_ref();
+
+        assert!(edge.face().is_some());
+        assert!(edge.opposite_edge().face().is_some());
+        assert_eq!(4, graph.vertex_count());
+        assert_eq!(10, graph.edge_count());
+        assert_eq!(2, graph.face_count());
+    }
+
+    #[test]
     fn extrude_face() {
         let mut graph = UvSphere::new(3, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         {
             let key = graph.faces().nth(0).unwrap().key();
-            let face = graph.face_mut(key).unwrap().extrude(1.0).unwrap();
+            let face = graph
+                .face_mut(key)
+                .unwrap()
+                .extrude(1.0)
+                .unwrap()
+                .into_ref();
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.
@@ -1129,5 +1197,23 @@ mod tests {
         assert_eq!(72, graph.edge_count());
         // Each quad becomes a tetrahedron, so 6 quads become 24 triangles.
         assert_eq!(24, graph.face_count());
+    }
+
+    #[test]
+    fn closed_path_distance() {
+        let graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3],
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            4,
+        )
+        .unwrap();
+        let face = graph.faces().nth(0).unwrap();
+        let keys = face
+            .vertices()
+            .map(|vertex| vertex.key())
+            .collect::<Vec<_>>();
+        assert_eq!(2, face.distance(keys[0], keys[2]).unwrap());
+        assert_eq!(1, face.distance(keys[0], keys[3]).unwrap());
+        assert_eq!(0, face.distance(keys[0], keys[0]).unwrap());
     }
 }

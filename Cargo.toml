@@ -41,8 +41,8 @@ geometry-nalgebra = ["nalgebra"]
 
 [dependencies]
 arrayvec = "0.4.*"
-decorum = "~0.1.1"
-derivative = "1.0.*"
+decorum = "^0.1.1"
+derivative = "^1.0.2"
 failure = "0.1.*"
 fnv = "1.0.*"
 fool = "0.0.1"

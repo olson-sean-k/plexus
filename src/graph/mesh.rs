@@ -755,7 +755,7 @@ mod tests {
 
     use crate::buffer::U3;
     use crate::geometry::*;
-    use crate::graph::mutation::face::FaceRemoveCache;
+    use crate::graph::mutation::face::{self, FaceRemoveCache};
     use crate::graph::mutation::{Mutate, Mutation};
     use crate::graph::*;
     use crate::primitive::decompose::*;
@@ -818,10 +818,7 @@ mod tests {
             3,
         );
 
-        assert!(match graph.err().unwrap() {
-            GraphError::TopologyConflict => true,
-            _ => false,
-        });
+        assert_eq!(graph.err().unwrap(), GraphError::TopologyConflict);
     }
 
     #[test]
@@ -842,10 +839,7 @@ mod tests {
             3,
         );
 
-        assert!(match graph.err().unwrap() {
-            GraphError::TopologyMalformed => true,
-            _ => false,
-        });
+        assert_eq!(graph.err().unwrap(), GraphError::TopologyMalformed);
 
         // Construct a mesh with three triangles forming a rectangle, where one
         // vertex (at the origin) is shared by all three triangles.
@@ -878,11 +872,9 @@ mod tests {
             .key();
         let cache = FaceRemoveCache::snapshot(&graph, key).unwrap();
         let mut mutation = Mutation::mutate(graph);
-        assert!(
-            match mutation.remove_face_with_cache(cache).err().unwrap() {
-                GraphError::TopologyConflict => true,
-                _ => false,
-            }
+        assert_eq!(
+            face::remove_with_cache(mutation, cache).err().unwrap(),
+            GraphError::TopologyConflict,
         );
     }
 
