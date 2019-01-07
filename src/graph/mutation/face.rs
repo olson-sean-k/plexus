@@ -367,10 +367,8 @@ where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
-        let face = match FaceView::from_keyed_source((abc, storage)) {
-            Some(face) => face,
-            _ => return Err(GraphError::TopologyNotFound),
-        };
+        let face = FaceView::from_keyed_source((abc, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let edges = face.interior_edges().map(|edge| edge.key()).collect();
         let boundaries = face
             .interior_edges()

@@ -213,7 +213,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
-    pub fn into_region(self) -> RegionView<M, G> {
+    pub fn into_closed_path(self) -> ClosedPath<M, G> {
         let key = self.edge().key();
         let (_, storage) = self.into_keyed_storage();
         (key, storage).into_view().expect_consistent()
@@ -371,9 +371,9 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn remove(self) -> Result<RegionView<&'a mut M, G>, GraphError> {
-        let (source, storage) = self.into_keyed_storage();
-        let cache = FaceRemoveCache::snapshot(&storage, source)?;
+    pub fn remove(self) -> Result<ClosedPath<&'a mut M, G>, GraphError> {
+        let (abc, storage) = self.into_keyed_storage();
+        let cache = FaceRemoveCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| mutation.remove_face_with_cache(cache))
             .map(|(storage, face)| (face.edge, storage).into_view().expect_consistent())
@@ -622,7 +622,7 @@ where
 // This is not the same as `Region` found in the `mutation` module. Instead,
 // this view relies on consistent storage and is edge-based, performing no
 // particular validation of a given region. It acts much like a cursor.
-pub struct RegionView<M, G>
+pub struct ClosedPath<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + Consistent,
@@ -634,7 +634,7 @@ where
     phantom: PhantomData<G>,
 }
 
-impl<M, G> RegionView<M, G>
+impl<M, G> ClosedPath<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + Consistent,
@@ -648,7 +648,7 @@ where
         // consistent.
         if let Some(edge) = storage.reborrow().as_storage().get(&key) {
             let face = edge.face.clone();
-            Some(RegionView {
+            Some(ClosedPath {
                 storage,
                 edge: key,
                 face,
@@ -661,7 +661,7 @@ where
     }
 
     fn from_keyed_storage_unchecked(edge: EdgeKey, face: Option<FaceKey>, storage: M) -> Self {
-        RegionView {
+        ClosedPath {
             storage,
             edge,
             face,
@@ -670,7 +670,7 @@ where
     }
 
     fn into_keyed_storage(self) -> (EdgeKey, Option<FaceKey>, M) {
-        let RegionView {
+        let ClosedPath {
             storage,
             edge,
             face,
@@ -687,15 +687,15 @@ where
         EdgeCirculator::from(self.interior_reborrow())
     }
 
-    fn interior_reborrow(&self) -> RegionView<&M::Target, G> {
+    fn interior_reborrow(&self) -> ClosedPath<&M::Target, G> {
         let edge = self.edge;
         let face = self.face;
         let storage = self.storage.reborrow();
-        RegionView::from_keyed_storage_unchecked(edge, face, storage)
+        ClosedPath::from_keyed_storage_unchecked(edge, face, storage)
     }
 }
 
-impl<M, G> RegionView<M, G>
+impl<M, G> ClosedPath<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -706,26 +706,37 @@ where
     }
 }
 
-impl<M, G> RegionView<M, G>
+impl<M, G> ClosedPath<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
+    pub fn into_edge(self) -> EdgeView<M, G> {
+        let (edge, _, storage) = self.into_keyed_storage();
+        (edge, storage).into_view().expect_consistent()
+    }
+
     pub fn into_face(self) -> Option<FaceView<M, G>> {
         let (_, face, storage) = self.into_keyed_storage();
         if let Some(face) = face {
-            Some((face, storage).into_view().expect(""))
+            Some((face, storage).into_view().expect_consistent())
         }
         else {
             None
         }
     }
 
+    pub fn edge(&self) -> EdgeView<&M::Target, G> {
+        let edge = self.edge;
+        let storage = self.storage.reborrow();
+        (edge, storage).into_view().expect_consistent()
+    }
+
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
         if let Some(face) = self.face {
             let storage = self.storage.reborrow();
-            Some((face, storage).into_view().expect(""))
+            Some((face, storage).into_view().expect_consistent())
         }
         else {
             None
@@ -733,7 +744,7 @@ where
     }
 }
 
-impl<'a, M, G> RegionView<&'a mut M, G>
+impl<'a, M, G> ClosedPath<&'a mut M, G>
 where
     M: AsStorage<Vertex<G>>
         + AsStorage<Edge<G>>
@@ -772,7 +783,7 @@ where
     }
 }
 
-impl<M, G> FromKeyedSource<(EdgeKey, M)> for RegionView<M, G>
+impl<M, G> FromKeyedSource<(EdgeKey, M)> for ClosedPath<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + Consistent,
@@ -780,7 +791,7 @@ where
 {
     fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        RegionView::from_keyed_storage(key, storage)
+        ClosedPath::from_keyed_storage(key, storage)
     }
 }
 
@@ -911,13 +922,13 @@ where
     }
 }
 
-impl<M, G> From<RegionView<M, G>> for EdgeCirculator<M, G>
+impl<M, G> From<ClosedPath<M, G>> for EdgeCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>> + Consistent,
     G: Geometry,
 {
-    fn from(region: RegionView<M, G>) -> Self {
+    fn from(region: ClosedPath<M, G>) -> Self {
         let (edge, _, storage) = region.into_keyed_storage();
         EdgeCirculator {
             storage,
