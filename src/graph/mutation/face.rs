@@ -95,7 +95,6 @@ where
             abc,
             mutuals,
             edges,
-            boundaries,
             ..
         } = cache;
         let core = Core::empty()
@@ -134,9 +133,6 @@ where
             }
         }
         self.disconnect_face_interior(&edges)?;
-        for ab in boundaries {
-            self.remove_composite_edge(ab)?;
-        }
         let face = self
             .storage
             .remove(&abc)
@@ -354,7 +350,6 @@ where
     abc: FaceKey,
     mutuals: Vec<VertexKey>,
     edges: Vec<EdgeKey>,
-    boundaries: Vec<EdgeKey>,
     phantom: PhantomData<G>,
 }
 
@@ -370,18 +365,10 @@ where
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let edges = face.interior_edges().map(|edge| edge.key()).collect();
-        let boundaries = face
-            .interior_edges()
-            .flat_map(|edge| edge.into_boundary_edge())
-            .map(|edge| edge.key())
-            .collect();
         Ok(FaceRemoveCache {
             abc,
             mutuals: face.reachable_mutuals().into_iter().collect(),
             edges,
-            // Find any boundary edges. Once this face is removed, such edges
-            // will have no face on either side.
-            boundaries,
             phantom: PhantomData,
         })
     }
