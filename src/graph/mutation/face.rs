@@ -352,14 +352,15 @@ where
         let storage = storage.reborrow();
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        face.distance(source, destination).and_then(|distance| {
-            if distance <= 1 {
-                Err(GraphError::TopologyMalformed)
-            }
-            else {
-                Ok(())
-            }
-        })?;
+        face.interior_path_distance(source, destination)
+            .and_then(|distance| {
+                if distance <= 1 {
+                    Err(GraphError::TopologyMalformed)
+                }
+                else {
+                    Ok(())
+                }
+            })?;
         let perimeter = face
             .vertices()
             .map(|vertex| vertex.key())

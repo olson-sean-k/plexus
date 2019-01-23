@@ -211,12 +211,18 @@ where
         (key, storage).into_view().expect_consistent()
     }
 
-    pub fn edge(&self) -> EdgeView<&M::Target, G> {
-        self.reachable_edge().expect_consistent()
-    }
-
     pub fn into_edge(self) -> EdgeView<M, G> {
         self.into_reachable_edge().expect_consistent()
+    }
+
+    pub fn closed_path(&self) -> ClosedPath<&M::Target, G> {
+        let key = self.edge().key();
+        let storage = self.storage.reborrow();
+        (key, storage).into_view().expect_consistent()
+    }
+
+    pub fn edge(&self) -> EdgeView<&M::Target, G> {
+        self.reachable_edge().expect_consistent()
     }
 
     pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
@@ -271,10 +277,14 @@ where
         FaceKeyTopology::from(self.interior_reborrow())
     }
 
-    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
+    pub fn interior_path_distance(
+        &self,
+        source: VertexKey,
+        destination: VertexKey,
+    ) -> Result<usize, GraphError> {
         self.interior_reborrow()
             .into_closed_path()
-            .distance(source, destination)
+            .interior_path_distance(source, destination)
     }
 
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
@@ -728,7 +738,11 @@ where
         (edge, storage).into_view().expect_consistent()
     }
 
-    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
+    pub fn interior_path_distance(
+        &self,
+        source: VertexKey,
+        destination: VertexKey,
+    ) -> Result<usize, GraphError> {
         let indices = self
             .vertices()
             .map(|vertex| vertex.key())
@@ -1200,7 +1214,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_path_distance() {
+    fn interior_path_distance() {
         let graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -1212,8 +1226,8 @@ mod tests {
             .vertices()
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
-        assert_eq!(2, face.distance(keys[0], keys[2]).unwrap());
-        assert_eq!(1, face.distance(keys[0], keys[3]).unwrap());
-        assert_eq!(0, face.distance(keys[0], keys[0]).unwrap());
+        assert_eq!(2, face.interior_path_distance(keys[0], keys[2]).unwrap());
+        assert_eq!(1, face.interior_path_distance(keys[0], keys[3]).unwrap());
+        assert_eq!(0, face.interior_path_distance(keys[0], keys[0]).unwrap());
     }
 }

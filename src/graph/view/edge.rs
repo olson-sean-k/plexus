@@ -247,7 +247,7 @@ where
 {
     pub fn into_closed_path(self) -> ClosedPath<M, G> {
         let (key, storage) = self.into_keyed_storage();
-        (key, storage).into_view().expect("")
+        (key, storage).into_view().expect_consistent()
     }
 
     pub fn into_boundary_edge(self) -> Option<Self> {
@@ -264,6 +264,12 @@ where
 
     pub fn into_previous_edge(self) -> Self {
         self.into_reachable_previous_edge().expect_consistent()
+    }
+
+    pub fn closed_path(&self) -> ClosedPath<&M::Target, G> {
+        let key = self.key;
+        let storage = self.storage.reborrow();
+        (key, storage).into_view().expect_consistent()
     }
 
     pub fn boundary_edge(&self) -> Option<EdgeView<&M::Target, G>> {
