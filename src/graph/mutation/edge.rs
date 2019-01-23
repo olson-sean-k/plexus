@@ -580,7 +580,6 @@ where
     let cd = mutation
         .get_or_insert_composite_edge_with((c, d), || edge.clone())
         .map(|(cd, _)| cd)?;
-    println!("CACHING BRIDGE");
     let cache = EdgeBridgeCache::snapshot(
         &Core::empty()
             .bind(mutation.as_vertex_storage())
@@ -589,6 +588,5 @@ where
         ab,
         cd,
     )?;
-    println!("CACHED");
     bridge_with_cache(mutation, cache).map(|_| cd)
 }
