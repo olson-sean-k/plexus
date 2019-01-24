@@ -23,6 +23,10 @@ rustdoc-args = [
 travis-ci = { repository = "olson-sean-k/plexus" }
 
 [[example]]
+name = "subdivide"
+path = "examples/subdivide.rs"
+
+[[example]]
 name = "viewer"
 path = "examples/viewer/main.rs"
 
