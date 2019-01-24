@@ -165,7 +165,7 @@
 //! ```
 
 mod container;
-mod geometry;
+pub mod geometry;
 mod mesh;
 mod mutation;
 mod storage;

@@ -1,8 +1,25 @@
 //! Higher order geometric traits.
 //!
-//! This module defines higher order traits for operations on a mesh. It also
+//! This module defines higher order traits for operations on a graph. It also
 //! provides aliases for geometric types to improve readability of type
-//! constraints.
+//! constraints. These traits can be used as contraints to prove to the
+//! compiler that certain operations are supported without specifying
+//! complicated relationships.
+//!
+//! The traits in this module have blanket implementations that apply when
+//! certain geometric and operational traits are implemented. For example, if a
+//! type implements `AsPosition` and the `Output` type of that implementation
+//! also implements `Cross` and `Normalize`, then a `Geometry` using that type
+//! as its `Vertex` attribute will likely implement the `FaceNormal` trait in
+//! this module.
+//!
+//! # Examples
+//!
+//! A function that subdivides triangular faces in a mesh:
+//!
+//! ```rust
+//! use plexus::prelude::*;
+//! ```
 
 use std::ops::{Add, Sub};
 
