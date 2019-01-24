@@ -749,14 +749,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nalgebra::{Point2, Point3, Vector3};
+    use nalgebra::{Point3, Vector3};
     use num::Zero;
-    use std::collections::HashSet;
 
     use crate::buffer::U3;
     use crate::geometry::*;
-    use crate::graph::mutation::face::{self, FaceRemoveCache};
-    use crate::graph::mutation::{Mutate, Mutation};
     use crate::graph::*;
     use crate::primitive::decompose::*;
     use crate::primitive::generate::*;
@@ -819,63 +816,6 @@ mod tests {
         );
 
         assert_eq!(graph.err().unwrap(), GraphError::TopologyConflict);
-    }
-
-    #[test]
-    fn error_on_singularity_mesh() {
-        // Construct a mesh with three non-neighboring triangles sharing a
-        // single vertex.
-        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers_with_arity(
-            vec![0u32, 1, 2, 0, 3, 4, 0, 5, 6],
-            vec![
-                (0, 0, 0),
-                (1, -1, 0),
-                (-1, -1, 0),
-                (-3, 1, 0),
-                (-2, 1, 0),
-                (2, 1, 0),
-                (3, 1, 0),
-            ],
-            3,
-        );
-
-        assert_eq!(graph.err().unwrap(), GraphError::TopologyMalformed);
-
-        // Construct a mesh with three triangles forming a rectangle, where one
-        // vertex (at the origin) is shared by all three triangles.
-        let graph = MeshGraph::<Point2<i32>>::from_raw_buffers_with_arity(
-            vec![0u32, 1, 3, 1, 4, 3, 1, 2, 4],
-            vec![(-1, 0), (0, 0), (1, 0), (-1, 1), (1, 1)],
-            3,
-        )
-        .unwrap();
-        // TODO: Create a shared testing geometry that allows topology to be
-        //       marked and more easily located. Finding very specific geometry
-        //       like this is cumbersome.
-        // Find the "center" triangle and use a mutation to remove it. This
-        // creates a singularity, with the two remaining triangles sharing no
-        // edges but having a single common vertex.
-        let geometry = &[(0, 0), (1, 1), (-1, 1)]
-            .iter()
-            .cloned()
-            .collect::<HashSet<_>>();
-        let key = graph
-            .faces()
-            .find(|face| {
-                face.vertices()
-                    .map(|vertex| vertex.geometry.clone())
-                    .map(|position| (position.x, position.y))
-                    .collect::<HashSet<_>>()
-                    == *geometry
-            })
-            .unwrap()
-            .key();
-        let cache = FaceRemoveCache::snapshot(&graph, key).unwrap();
-        let mut mutation = Mutation::mutate(graph);
-        assert_eq!(
-            face::remove_with_cache(mutation, cache).err().unwrap(),
-            GraphError::TopologyConflict,
-        );
     }
 
     // This test is a sanity check for mesh iterators, topological views, and

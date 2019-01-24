@@ -207,11 +207,11 @@ where
         mutation.commit().and_then(move |core| {
             let (vertices, edges, ..) = core.into_storage();
             {
+                // TODO: Rejection of pinwheel connectivity has been removed.
+                //       Determine if this check is related in a way that is
+                //       inconsistent. If so, this should probably be removed.
                 let core = Core::empty().bind(&vertices).bind(&edges).bind(&faces);
                 for (vertex, faces) in singularities {
-                    // TODO: This will not detect exactly two faces joined by a single
-                    //       vertex. This is technically supported, but perhaps should
-                    //       be detected and rejected.
                     // Determine if any unreachable faces exist in the mesh. This
                     // cannot happen if the mesh is ultimately a manifold and edge
                     // connectivity heals.
@@ -278,8 +278,9 @@ where
         M: Reborrow,
         M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
-        // Verify that the region is not already occupied by a face and collect
-        // the incoming and outgoing edges for each vertex in the region.
+        // Verify that the minimal closed path is not already occupied by a
+        // face and collect the incoming and outgoing edges for each vertex in
+        // the region.
         let region = Region::from_keyed_storage(vertices, storage)?;
         if region.face().is_some() {
             return Err(GraphError::TopologyConflict);
@@ -299,7 +300,6 @@ where
     G: Geometry,
 {
     abc: FaceKey,
-    mutuals: Vec<VertexKey>,
     edges: Vec<EdgeKey>,
     phantom: PhantomData<G>,
 }
@@ -308,6 +308,7 @@ impl<G> FaceRemoveCache<G>
 where
     G: Geometry,
 {
+    // TODO: Should this require consistency?
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
@@ -318,7 +319,6 @@ where
         let edges = face.interior_edges().map(|edge| edge.key()).collect();
         Ok(FaceRemoveCache {
             abc,
-            mutuals: face.reachable_mutuals().into_iter().collect(),
             edges,
             phantom: PhantomData,
         })
@@ -514,6 +514,7 @@ where
     }
 }
 
+// TODO: Does this require a cache (or consistency)?
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceRemoveCache<G>,
@@ -523,50 +524,10 @@ where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let FaceRemoveCache {
-        abc,
-        mutuals,
-        edges,
-        ..
-    } = cache;
-    let mutation = mutation.as_mut();
-    let core = Core::empty()
-        .bind(mutation.as_vertex_storage())
-        .bind(mutation.as_edge_storage())
-        .bind(mutation.as_face_storage());
-    // Iterate over the set of vertices shared between the face and all of
-    // its neighbors. These are potential singularities.
-    for vertex in mutuals {
-        // Circulate (in order) over the neighboring faces of the potential
-        // singularity, ignoring the face to be removed.  Count the number
-        // of gaps, where neighboring faces do not share any edges. Because
-        // a face is being ignored, exactly one gap is expected. If any
-        // additional gaps exist, then removal will create a singularity.
-        let vertex = VertexView::from_keyed_source((vertex, &core))
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let n = vertex
-            .reachable_neighboring_faces()
-            .filter(|face| face.key() != abc)
-            .perimeter()
-            .filter(|&(previous, next)| {
-                let exterior = previous
-                    .reachable_interior_edges()
-                    .flat_map(|edge| edge.into_reachable_opposite_edge())
-                    .map(|edge| edge.key())
-                    .collect::<HashSet<_>>();
-                let interior = next
-                    .reachable_interior_edges()
-                    .map(|edge| edge.key())
-                    .collect::<HashSet<_>>();
-                exterior.intersection(&interior).count() == 0
-            })
-            .count();
-        if n > 1 {
-            return Err(GraphError::TopologyConflict);
-        }
-    }
-    mutation.disconnect_face_interior(&edges)?;
+    let FaceRemoveCache { abc, edges, .. } = cache;
+    mutation.as_mut().disconnect_face_interior(&edges)?;
     let face = mutation
+        .as_mut()
         .storage
         .remove(&abc)
         .ok_or_else(|| GraphError::TopologyNotFound)?;

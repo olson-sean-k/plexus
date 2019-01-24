@@ -149,12 +149,16 @@ where
             })
             .collect::<HashMap<_, _>>();
         // If only one vertex has any outgoing edges, then this face shares
-        // exactly one vertex with other faces and is therefore non-manifold.
+        // exactly one vertex with other faces. The vertex is a singularity and
+        // forms a pinwheel.
         //
-        // This kind of non-manifold is not supported, but sometimes occurs
-        // during a batch mutation. Details of the singularity vertex are
-        // emitted and handled by calling code, either raising an error or
-        // waiting to validate after a batch mutation is complete.
+        // TODO: Half-edge graphs can support pinwheels and this topology is
+        //       common. If possible, remove this detection mechanism. If this
+        //       data is used to reject pinwheel formations, remove that as
+        //       well.
+        //
+        //       Note that this data is still used when `FaceMutation`s are
+        //       committed to detect and reject unreachable faces.
         let singularity = {
             let mut outgoing = outgoing.iter().filter(|&(_, edges)| !edges.is_empty());
             if let Some((&vertex, _)) = outgoing.next() {

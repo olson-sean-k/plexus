@@ -1,7 +1,6 @@
 use arrayvec::ArrayVec;
 use fool::prelude::*;
 use std::cmp;
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -245,21 +244,6 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_mutuals(&self) -> HashSet<VertexKey> {
-        self.reachable_neighboring_faces()
-            .map(|face| {
-                face.reachable_vertices()
-                    .map(|vertex| vertex.key())
-                    .collect::<HashSet<_>>()
-            })
-            .fold(
-                self.reachable_vertices()
-                    .map(|vertex| vertex.key())
-                    .collect::<HashSet<_>>(),
-                |intersection, vertices| intersection.intersection(&vertices).cloned().collect(),
-            )
-    }
-
     pub(in crate::graph) fn reachable_vertices(
         &self,
     ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
