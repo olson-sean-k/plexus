@@ -9,42 +9,32 @@ use plexus::geometry::convert::AsPosition;
 use plexus::geometry::Geometry;
 use plexus::graph::geometry::alias::VertexPosition;
 use plexus::graph::geometry::EdgeMidpoint;
-use plexus::graph::{EdgeView, FaceView, GraphError, MeshGraph};
+use plexus::graph::{FaceView, GraphError, MeshGraph};
 use plexus::prelude::*;
 
-pub fn subdivide_triangular_face<G>(face: FaceView<&mut MeshGraph<G>, G>) -> Result<(), GraphError>
+pub fn subdivide<G>(
+    face: FaceView<&mut MeshGraph<G>, G>,
+) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
 where
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    // Bail if the face is not triangular.
-    let arity = face.arity();
-    if arity != 3 {
-        return Err(GraphError::ArityConflict {
-            expected: 3,
-            actual: arity,
-        });
-    }
     // Split each edge, stashing the vertex key and moving to the next edge.
-    let split = |edge: EdgeView<_, G>| -> Result<_, GraphError> {
+    let arity = face.arity();
+    let mut edge = face.into_edge();
+    let mut splits = Vec::with_capacity(arity);
+    for _ in 0..arity {
         let vertex = edge.split()?;
-        let x = vertex.key();
-        Ok((x, vertex.into_outgoing_edge().into_next_edge()))
-    };
-    let (a, edge) = split(face.into_edge())?;
-    let (b, edge) = split(edge)?;
-    let (c, edge) = split(edge)?;
+        splits.push(vertex.key());
+        edge = vertex.into_outgoing_edge().into_next_edge();
+    }
     // Bisect along the vertices from each edge split.
-    edge.into_face()
-        .unwrap()
-        .bisect(a, b)?
-        .into_face()
-        .unwrap()
-        .bisect(b, c)?
-        .into_face()
-        .unwrap()
-        .bisect(c, a)
-        .map(|_| ())
+    let mut face = edge.into_face().unwrap();
+    for (a, b) in splits.into_iter().perimeter() {
+        face = face.bisect(a, b)?.into_face().unwrap();
+    }
+    // Return the central face of the subdivision.
+    Ok(face)
 }
 
 fn main() {
@@ -58,5 +48,5 @@ fn main() {
     // Get the key of the singular face.
     let abc = graph.faces().nth(0).unwrap().key();
     // Subdivide the face.
-    subdivide_triangular_face(graph.face_mut(abc).unwrap()).unwrap();
+    subdivide(graph.face_mut(abc).unwrap()).unwrap();
 }
