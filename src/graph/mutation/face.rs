@@ -18,7 +18,8 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::{EdgeView, FaceKeyTopology, FaceView, VertexView};
-use crate::graph::{GraphError, IteratorExt};
+use crate::graph::GraphError;
+use crate::IteratorExt;
 
 pub struct FaceMutation<G>
 where

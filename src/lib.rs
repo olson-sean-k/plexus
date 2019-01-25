@@ -55,6 +55,7 @@ pub mod prelude {
     };
     pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
     pub use crate::primitive::{Converged, Map, MapVertices, Zip};
+    pub use crate::IteratorExt;
     pub use crate::{FromRawBuffers, FromRawBuffersWithArity};
 }
 
@@ -78,6 +79,79 @@ pub trait FromRawBuffersWithArity<N, G>: Sized {
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = G>;
+}
+
+/// Extension methods for types implementing `Iterator`.
+pub trait IteratorExt: Iterator + Sized {
+    /// Provides an iterator over a window of duplets that includes the first
+    /// value in the sequence at the beginning and end of the iteration.
+    ///
+    /// Given a collection with ordered elements `a`, `b`, and `c`, this
+    /// iterator yeilds the ordered items `(a, b)`, `(b, c)`, `(c, a)`.
+    fn perimeter(self) -> Perimeter<Self>
+    where
+        Self::Item: Clone;
+}
+
+impl<I> IteratorExt for I
+where
+    I: Iterator,
+{
+    fn perimeter(self) -> Perimeter<I>
+    where
+        I::Item: Clone,
+    {
+        Perimeter::new(self)
+    }
+}
+
+pub struct Perimeter<I>
+where
+    I: Iterator,
+    I::Item: Clone,
+{
+    input: I,
+    first: Option<I::Item>,
+    previous: Option<I::Item>,
+}
+
+impl<I> Perimeter<I>
+where
+    I: Iterator,
+    I::Item: Clone,
+{
+    fn new(mut input: I) -> Self {
+        let first = input.next();
+        let previous = first.clone();
+        Perimeter {
+            input,
+            first,
+            previous,
+        }
+    }
+}
+
+impl<I> Iterator for Perimeter<I>
+where
+    I: Iterator,
+    I::Item: Clone,
+{
+    type Item = (I::Item, I::Item);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.input.next();
+        match (self.previous.clone(), next.or_else(|| self.first.take())) {
+            (Some(a), Some(b)) => {
+                self.previous = Some(b.clone());
+                Some((a, b))
+            }
+            _ => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.input.size_hint()
+    }
 }
 
 trait Half {

@@ -15,7 +15,8 @@ use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::EdgeView;
-use crate::graph::{GraphError, IteratorExt};
+use crate::graph::GraphError;
+use crate::IteratorExt;
 
 pub struct EdgeMutation<G>
 where

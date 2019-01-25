@@ -10,7 +10,8 @@ use crate::graph::storage::{EdgeKey, FaceKey, VertexKey};
 use crate::graph::topology::{Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
-use crate::graph::{GraphError, IteratorExt};
+use crate::graph::GraphError;
+use crate::IteratorExt;
 
 // TODO: This type needs some serious refactoring. Here are a few important
 //       points to keep in mind:
