@@ -23,6 +23,7 @@ extern crate mint;
 #[cfg(feature = "geometry-nalgebra")]
 extern crate nalgebra;
 extern crate num;
+extern crate smallvec;
 extern crate typenum;
 
 use decorum::Real;

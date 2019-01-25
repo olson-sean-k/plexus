@@ -2,6 +2,7 @@ use arrayvec::ArrayVec;
 use decorum::R64;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -546,7 +547,7 @@ where
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
-            let mut perimeter = Vec::with_capacity(face.arity());
+            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity());
             for index in face.into_vertices() {
                 let index = <usize as NumCast>::from(index).unwrap();
                 perimeter.push(
@@ -625,7 +626,7 @@ where
                     actual: face.len(),
                 });
             }
-            let mut perimeter = Vec::with_capacity(arity);
+            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(arity);
             for index in face {
                 perimeter.push(
                     *vertices

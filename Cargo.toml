@@ -52,6 +52,7 @@ fnv = "1.0.*"
 fool = "0.0.1"
 itertools = "0.6.*"
 num = "0.2.*"
+smallvec = "^0.6.0"
 typenum = "1.10.*"
 
 cgmath = { version = "0.16.*", optional = true }

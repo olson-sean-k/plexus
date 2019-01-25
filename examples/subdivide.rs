@@ -11,6 +11,7 @@ use plexus::graph::geometry::alias::VertexPosition;
 use plexus::graph::geometry::EdgeMidpoint;
 use plexus::graph::{FaceView, GraphError, MeshGraph};
 use plexus::prelude::*;
+use smallvec::SmallVec;
 
 pub fn subdivide<G>(
     face: FaceView<&mut MeshGraph<G>, G>,
@@ -22,7 +23,7 @@ where
     // Split each edge, stashing the vertex key and moving to the next edge.
     let arity = face.arity();
     let mut edge = face.into_edge();
-    let mut splits = Vec::with_capacity(arity);
+    let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
     for _ in 0..arity {
         let vertex = edge.split()?;
         splits.push(vertex.key());
