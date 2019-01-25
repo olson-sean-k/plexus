@@ -394,6 +394,26 @@ where
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
             .map(|_| ())
     }
+
+    pub fn join(self, destination: FaceKey) -> Result<Self, GraphError> {
+        let ab = {
+            self.interior_edges()
+                .find(|edge| match edge.opposite_edge().face() {
+                    Some(face) => face.key() == destination,
+                    _ => false,
+                })
+                .map(|edge| edge.key())
+                .ok_or_else(|| GraphError::TopologyNotFound)?
+        };
+        let geometry = self.geometry.clone();
+        let (_, storage) = self.into_keyed_storage();
+        EdgeView::from_keyed_source((ab, storage))
+            .expect_consistent()
+            .remove()?
+            .into_outgoing_edge()
+            .into_closed_path()
+            .get_or_insert_face_with(|| geometry)
+    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -786,9 +806,7 @@ impl<'a, M, G> ClosedPath<&'a mut M, G>
 where
     M: AsStorage<Vertex<G>>
         + AsStorage<Edge<G>>
-        + AsStorageMut<Edge<G>>
         + AsStorage<Face<G>>
-        + AsStorageMut<Face<G>>
         + Consistent
         + Default
         + From<OwnedCore<G>>
@@ -801,7 +819,7 @@ where
 
     pub fn get_or_insert_face_with<F>(self, f: F) -> Result<FaceView<&'a mut M, G>, GraphError>
     where
-        F: Fn() -> G::Face,
+        F: FnOnce() -> G::Face,
     {
         if let Some(face) = self.face.clone().take() {
             let (_, _, storage) = self.into_keyed_storage();
@@ -1208,6 +1226,36 @@ mod tests {
         // extruded face remains, in addition to three connective faces, each
         // of which is constructed from quads.
         assert_eq!(9, graph.face_count());
+    }
+
+    #[test]
+    fn join_faces() {
+        // Construct a graph with two connected quads.
+        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3, 0, 3, 4, 5],
+            vec![
+                (0.0, 0.0),  // 0
+                (1.0, 0.0),  // 1
+                (1.0, 1.0),  // 2
+                (0.0, 1.0),  // 3
+                (-1.0, 1.0), // 4
+                (-1.0, 0.0), // 5
+            ],
+            4,
+        )
+        .unwrap();
+
+        // The graph should begin with 2 faces.
+        assert_eq!(2, graph.face_count());
+
+        // Get the keys for the two faces and join them.
+        let abc = graph.faces().nth(0).unwrap().key();
+        let def = graph.faces().nth(1).unwrap().key();
+        graph.face_mut(abc).unwrap().join(def).unwrap();
+
+        // After the removal, the graph should have 1 face.
+        assert_eq!(1, graph.face_count());
+        assert_eq!(6, graph.faces().nth(0).unwrap().arity());
     }
 
     #[test]
