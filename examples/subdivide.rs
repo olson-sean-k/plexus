@@ -18,18 +18,22 @@ where
     G::Vertex: AsPosition,
 {
     // Bail if the face is not triangular.
-    if face.arity() != 3 {
-        return Err(GraphError::TopologyMalformed);
+    let arity = face.arity();
+    if arity != 3 {
+        return Err(GraphError::ArityConflict {
+            expected: 3,
+            actual: arity,
+        });
     }
     // Split each edge, stashing the vertex key and moving to the next edge.
-    let split_forward = |edge: EdgeView<_, G>| -> Result<_, GraphError> {
+    let split = |edge: EdgeView<_, G>| -> Result<_, GraphError> {
         let vertex = edge.split()?;
         let x = vertex.key();
         Ok((x, vertex.into_outgoing_edge().into_next_edge()))
     };
-    let (a, edge) = split_forward(face.into_edge())?;
-    let (b, edge) = split_forward(edge)?;
-    let (c, edge) = split_forward(edge)?;
+    let (a, edge) = split(face.into_edge())?;
+    let (b, edge) = split(edge)?;
+    let (c, edge) = split(edge)?;
     // Bisect along the vertices from each edge split.
     edge.into_face()
         .unwrap()
