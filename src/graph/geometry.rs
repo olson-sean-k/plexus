@@ -15,10 +15,38 @@
 //!
 //! # Examples
 //!
-//! A function that subdivides triangular faces in a mesh:
+//! A function that subdivides faces in a graph by splitting edges:
 //!
 //! ```rust
+//! use plexus::geometry::convert::AsPosition;
+//! use plexus::geometry::Geometry;
+//! use plexus::graph::geometry::alias::VertexPosition;
+//! use plexus::graph::geometry::EdgeMidpoint;
+//! use plexus::graph::{FaceView, GraphError, MeshGraph};
 //! use plexus::prelude::*;
+//!
+//! // Requires `EdgeMidpoint` to split edges.
+//! pub fn subdivide<G>(
+//!     face: FaceView<&mut MeshGraph<G>, G>,
+//! ) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
+//! where
+//!     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
+//!     G::Vertex: AsPosition,
+//! {
+//!     let arity = face.arity();
+//!     let mut edge = face.into_edge();
+//!     let mut splits = Vec::with_capacity(arity);
+//!     for _ in 0..arity {
+//!         let vertex = edge.split()?;
+//!         splits.push(vertex.key());
+//!         edge = vertex.into_outgoing_edge().into_next_edge();
+//!     }
+//!     let mut face = edge.into_face().unwrap();
+//!     for (a, b) in splits.into_iter().perimeter() {
+//!         face = face.bisect(a, b)?.into_face().unwrap();
+//!     }
+//!     Ok(face)
+//! }
 //! ```
 
 use std::ops::{Add, Sub};
