@@ -3,11 +3,11 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
+use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::edge::{self, EdgeBridgeCache, EdgeMutation};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};

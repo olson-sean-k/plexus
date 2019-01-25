@@ -165,7 +165,9 @@
 //! ```
 
 mod container;
-pub mod geometry;
+// The `graph::geometry` module uses private members of its parent module. It
+// is implemented here and re-exported in the `geometry::compose` module.
+pub(in crate) mod geometry;
 mod mesh;
 mod mutation;
 mod storage;

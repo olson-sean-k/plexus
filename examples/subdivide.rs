@@ -5,10 +5,10 @@ extern crate plexus;
 
 use decorum::R64;
 use nalgebra::Point2;
+use plexus::geometry::alias::VertexPosition;
+use plexus::geometry::compose::EdgeMidpoint;
 use plexus::geometry::convert::AsPosition;
 use plexus::geometry::Geometry;
-use plexus::graph::geometry::alias::VertexPosition;
-use plexus::graph::geometry::EdgeMidpoint;
 use plexus::graph::{FaceView, GraphError, MeshGraph};
 use plexus::prelude::*;
 use smallvec::SmallVec;

@@ -5,11 +5,11 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
+use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
-use crate::graph::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::face::{
     self, FaceBisectCache, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FaceRemoveCache,

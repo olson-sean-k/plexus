@@ -11,6 +11,7 @@
 use decorum::R64;
 use num::{self, Num, NumCast, One, Zero};
 
+pub mod compose;
 pub mod convert;
 pub mod ops;
 
@@ -173,6 +174,18 @@ where
     let af = <R64 as NumCast>::from(a).unwrap() * (R64::one() - f);
     let bf = <R64 as NumCast>::from(b).unwrap() * f;
     <T as NumCast>::from(af + bf).unwrap()
+}
+
+pub mod alias {
+    use std::ops::Mul;
+
+    use crate::geometry::compose::*;
+    use crate::geometry::convert::*;
+    use crate::geometry::*;
+
+    pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
+    pub type ScaledFaceNormal<G, T> = <<G as FaceNormal>::Normal as Mul<T>>::Output;
+    pub type ScaledEdgeLateral<G, T> = <<G as EdgeLateral>::Lateral as Mul<T>>::Output;
 }
 
 #[cfg(feature = "geometry-cgmath")]

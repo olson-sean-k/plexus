@@ -4,11 +4,11 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
+use crate::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
-use crate::graph::geometry::alias::{ScaledEdgeLateral, VertexPosition};
 use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
 use crate::graph::mutation::edge::{
     self, CompositeEdgeRemoveCache, CompositeEdgeSplitCache, EdgeBridgeCache, EdgeExtrudeCache,
