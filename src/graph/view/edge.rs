@@ -503,12 +503,13 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn remove(self) -> Result<(G::Edge, G::Edge), GraphError> {
+    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
+        let a = self.source_vertex().key();
         let (ab, storage) = self.into_keyed_storage();
         let cache = CompositeEdgeRemoveCache::snapshot(&storage, ab)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::remove_composite_with_cache(mutation, cache))
-            .map(|(_, (edge, opposite))| (edge.geometry, opposite.geometry))
+            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
     }
 
     pub fn bridge(self, destination: EdgeKey) -> Result<FaceView<&'a mut M, G>, GraphError> {
@@ -961,6 +962,40 @@ mod tests {
                     .find(|edge| edge.source_vertex().key() == source.key())
                     .map(|edge| edge.key())
             })
+    }
+
+    #[test]
+    fn remove_edge() {
+        // Construct a graph with two connected quads.
+        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+            vec![0u32, 1, 2, 3, 0, 3, 4, 5],
+            vec![
+                (0.0, 0.0),  // 0
+                (1.0, 0.0),  // 1
+                (1.0, 1.0),  // 2
+                (0.0, 1.0),  // 3
+                (-1.0, 1.0), // 4
+                (-1.0, 0.0), // 5
+            ],
+            4,
+        )
+        .unwrap();
+
+        // The graph should begin with 2 faces.
+        assert_eq!(2, graph.face_count());
+
+        // Remove the edge joining the quads from the graph.
+        let ab = find_edge_with_geometry(&graph, ((0.0, 0.0), (0.0, 1.0))).unwrap();
+        {
+            let edge = graph.edge_mut(ab).unwrap();
+            let vertex = edge.remove().unwrap().into_ref();
+
+            // The path should be formed from 6 edges.
+            assert_eq!(6, vertex.into_outgoing_edge().into_closed_path().arity());
+        }
+
+        // After the removal, the graph should have no faces.
+        assert_eq!(0, graph.face_count());
     }
 
     #[test]

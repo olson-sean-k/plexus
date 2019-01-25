@@ -367,17 +367,12 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn remove(self) -> Result<(G::Face, ClosedPath<&'a mut M, G>), GraphError> {
+    pub fn remove(self) -> Result<ClosedPath<&'a mut M, G>, GraphError> {
         let (abc, storage) = self.into_keyed_storage();
         let cache = FaceRemoveCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
-            .map(|(storage, face)| {
-                (
-                    face.geometry,
-                    (face.edge, storage).into_view().expect_consistent(),
-                )
-            })
+            .map(|(storage, face)| (face.edge, storage).into_view().expect_consistent())
     }
 
     pub fn bisect(
@@ -644,6 +639,17 @@ where
     phantom: PhantomData<G>,
 }
 
+impl<'a, M, G> ClosedPath<&'a mut M, G>
+where
+    M: AsStorage<Edge<G>> + Consistent,
+    G: 'a + Geometry,
+{
+    pub fn into_ref(self) -> ClosedPath<&'a M, G> {
+        let (edge, face, storage) = self.into_keyed_storage();
+        ClosedPath::from_keyed_storage_unchecked(edge, face, &*storage)
+    }
+}
+
 impl<M, G> ClosedPath<M, G>
 where
     M: Reborrow,
@@ -690,10 +696,10 @@ where
     }
 
     pub fn arity(&self) -> usize {
-        self.edges().count()
+        self.interior_edges().count()
     }
 
-    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 
@@ -1122,6 +1128,29 @@ mod tests {
 
         // No matter which face is selected, it should have three neighbors.
         assert_eq!(3, face.neighboring_faces().count());
+    }
+
+    #[test]
+    fn remove_face() {
+        let mut graph = UvSphere::new(3, 2)
+            .polygons_with_position() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<Point3<f32>>>();
+
+        // The graph should begin with 6 faces.
+        assert_eq!(6, graph.face_count());
+
+        // Remove a face from the graph.
+        let abc = graph.faces().nth(0).unwrap().key();
+        {
+            let face = graph.face_mut(abc).unwrap();
+            assert_eq!(3, face.arity()); // The face should be triangular.
+
+            let path = face.remove().unwrap().into_ref();
+            assert_eq!(3, path.arity()); // The path should also be triangular.
+        }
+
+        // After the removal, the graph should have only 5 faces.
+        assert_eq!(5, graph.face_count());
     }
 
     #[test]

@@ -209,9 +209,43 @@ where
     G: Geometry,
 {
     ab: EdgeKey,
-    xa: EdgeKey,
-    bx: EdgeKey,
+    xa: Option<EdgeKey>,
+    bx: Option<EdgeKey>,
     cache: Option<FaceRemoveCache<G>>,
+}
+
+impl<G> EdgeRemoveCache<G>
+where
+    G: Geometry,
+{
+    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+    {
+        let storage = storage.reborrow();
+        let edge = EdgeView::from_keyed_source((ab, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        // If the composite edge has no neighbors, then `xa` and `bx` will
+        // refer to the opposite edge of `ab`. In this case, the vertices `a`
+        // and `b` should have no leading edges after the removal. The cache
+        // will have its `xa` and `bx` fields set to `None` in this case.
+        let ba = edge.opposite_edge().key();
+        let xa = edge.previous_edge().key();
+        let bx = edge.next_edge().key();
+        let cache = if let Some(face) = edge.face() {
+            Some(FaceRemoveCache::snapshot(storage, face.key())?)
+        }
+        else {
+            None
+        };
+        Ok(EdgeRemoveCache {
+            ab,
+            xa: if xa != ba { Some(xa) } else { None },
+            bx: if bx != ba { Some(bx) } else { None },
+            cache,
+        })
+    }
 }
 
 pub struct CompositeEdgeRemoveCache<G>
@@ -228,12 +262,23 @@ impl<G> CompositeEdgeRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(_storage: M, _ab: EdgeKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
+        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
-        unimplemented!()
+        let storage = storage.reborrow();
+        let edge = EdgeView::from_keyed_source((ab, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let a = edge.source_vertex().key();
+        let b = edge.destination_vertex().key();
+        let ba = edge.opposite_edge().key();
+        Ok(CompositeEdgeRemoveCache {
+            a,
+            b,
+            edge: EdgeRemoveCache::snapshot(storage, ab)?,
+            opposite: EdgeRemoveCache::snapshot(storage, ba)?,
+        })
     }
 }
 
@@ -439,15 +484,19 @@ where
         ..
     } = cache;
     // Connect each vertex to a remaining outgoing edge.
-    mutation.as_mut().connect_outgoing_edge(a, opposite.bx)?;
-    mutation.as_mut().connect_outgoing_edge(b, edge.bx)?;
+    if let Some(ax) = opposite.bx {
+        mutation.as_mut().connect_outgoing_edge(a, ax)?;
+    }
+    if let Some(bx) = edge.bx {
+        mutation.as_mut().connect_outgoing_edge(b, bx)?;
+    }
     // Connect previous and next edges across the composite edge to be removed.
-    mutation
-        .as_mut()
-        .connect_neighboring_edges(edge.xa, opposite.bx)?;
-    mutation
-        .as_mut()
-        .connect_neighboring_edges(opposite.xa, edge.bx)?;
+    if let (Some(xa), Some(ax)) = (edge.xa, opposite.bx) {
+        mutation.as_mut().connect_neighboring_edges(xa, ax)?;
+    }
+    if let (Some(xb), Some(bx)) = (opposite.xa, edge.bx) {
+        mutation.as_mut().connect_neighboring_edges(xb, bx)?;
+    }
     Ok((
         remove(mutation.as_mut(), edge)?,
         remove(mutation.as_mut(), opposite)?,
