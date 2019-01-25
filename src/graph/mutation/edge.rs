@@ -43,7 +43,7 @@ where
         f: F,
     ) -> Result<(EdgeKey, EdgeKey), GraphError>
     where
-        F: Copy + Fn() -> G::Edge,
+        F: Clone + FnOnce() -> G::Edge,
     {
         fn get_or_insert_edge_with<G, F>(
             mutation: &mut EdgeMutation<G>,
@@ -52,7 +52,7 @@ where
         ) -> EdgeKey
         where
             G: Geometry,
-            F: Fn() -> G::Edge,
+            F: FnOnce() -> G::Edge,
         {
             let (a, _) = span;
             let ab = span.into();
@@ -68,7 +68,7 @@ where
 
         let (a, b) = span;
         Ok((
-            get_or_insert_edge_with(self, (a, b), f),
+            get_or_insert_edge_with(self, (a, b), f.clone()),
             get_or_insert_edge_with(self, (b, a), f),
         ))
     }
@@ -543,26 +543,32 @@ where
         G: Geometry,
     {
         // Remove the edge and insert two truncated edges in its place.
-        let edge = remove(mutation.as_mut(), ab)?;
+        let Edge {
+            next,
+            previous,
+            face,
+            geometry,
+            ..
+        } = remove(mutation.as_mut(), ab)?;
         let am = mutation
             .as_mut()
-            .get_or_insert_composite_edge_with((a, m), || edge.geometry.clone())
+            .get_or_insert_composite_edge_with((a, m), || geometry.clone())
             .map(|(am, _)| am)?;
         let mb = mutation
             .as_mut()
-            .get_or_insert_composite_edge_with((m, b), || edge.geometry.clone())
+            .get_or_insert_composite_edge_with((m, b), move || geometry)
             .map(|(mb, _)| mb)?;
         // Connect the new edges to each other and their leading edges.
         mutation.as_mut().connect_neighboring_edges(am, mb)?;
-        if let Some(xa) = edge.previous {
+        if let Some(xa) = previous {
             mutation.as_mut().connect_neighboring_edges(xa, am)?;
         }
-        if let Some(bx) = edge.next {
+        if let Some(bx) = next {
             mutation.as_mut().connect_neighboring_edges(mb, bx)?;
         }
         // Update the associated face, if any, because it may refer to the
         // removed edge.
-        if let Some(abc) = edge.face {
+        if let Some(abc) = face {
             mutation.as_mut().connect_face_to_edge(am, abc)?;
             mutation.as_mut().connect_edge_to_face(am, abc)?;
             mutation.as_mut().connect_edge_to_face(mb, abc)?;
@@ -628,7 +634,7 @@ where
     // TODO: If this edge already exists, then this should probably return an
     //       error.
     let cd = mutation
-        .get_or_insert_composite_edge_with((c, d), || edge.clone())
+        .get_or_insert_composite_edge_with((c, d), move || edge)
         .map(|(cd, _)| cd)?;
     let cache = EdgeBridgeCache::snapshot(
         &Core::empty()
