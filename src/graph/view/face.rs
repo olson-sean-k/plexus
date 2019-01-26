@@ -183,13 +183,13 @@ where
 
     pub(in crate::graph) fn reachable_interior_edges(
         &self,
-    ) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = EdgeView<&M::Target, G>> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 
     pub(in crate::graph) fn reachable_neighboring_faces(
         &self,
-    ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 
@@ -224,11 +224,11 @@ where
         self.reachable_edge().expect_consistent()
     }
 
-    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    pub fn interior_edges(&self) -> impl Clone + Iterator<Item = EdgeView<&M::Target, G>> {
         self.reachable_interior_edges()
     }
 
-    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
     }
 
@@ -246,7 +246,7 @@ where
 {
     pub(in crate::graph) fn reachable_vertices(
         &self,
-    ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -271,7 +271,7 @@ where
             .interior_path_distance(source, destination)
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
 }
@@ -719,7 +719,7 @@ where
         self.interior_edges().count()
     }
 
-    pub fn interior_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    pub fn interior_edges(&self) -> impl Clone + Iterator<Item = EdgeView<&M::Target, G>> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 
@@ -770,7 +770,7 @@ where
         }
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -875,6 +875,19 @@ where
     }
 }
 
+impl<M, G> Clone for VertexCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        VertexCirculator {
+            input: self.input.clone(),
+        }
+    }
+}
+
 impl<M, G> From<EdgeCirculator<M, G>> for VertexCirculator<M, G>
 where
     M: Reborrow,
@@ -959,6 +972,22 @@ where
                 edge
             })
         })
+    }
+}
+
+impl<M, G> Clone for EdgeCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        EdgeCirculator {
+            storage: self.storage.clone(),
+            edge: self.edge,
+            breadcrumb: self.breadcrumb,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -1068,6 +1097,19 @@ where
             }
         }
         None
+    }
+}
+
+impl<M, G> Clone for FaceCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        FaceCirculator {
+            input: self.input.clone(),
+        }
     }
 }
 

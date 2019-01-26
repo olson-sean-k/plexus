@@ -166,7 +166,7 @@ where
         self.hash.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&T::Key, &T)> {
+    pub fn iter(&self) -> impl Clone + Iterator<Item = (&T::Key, &T)> {
         self.hash.iter()
     }
 
@@ -174,7 +174,7 @@ where
         self.hash.iter_mut()
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = &T::Key> {
+    pub fn keys(&self) -> impl Clone + Iterator<Item = &T::Key> {
         self.hash.keys()
     }
 

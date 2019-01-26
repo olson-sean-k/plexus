@@ -401,7 +401,7 @@ where
 {
     pub(in crate::graph) fn reachable_vertices(
         &self,
-    ) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(self.interior_reborrow())
     }
 }
@@ -412,7 +412,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
 }
@@ -451,7 +451,7 @@ where
 {
     pub(in crate::graph) fn reachable_faces(
         &self,
-    ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(self.interior_reborrow())
     }
 }
@@ -462,7 +462,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
-    pub fn faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_faces()
     }
 }
@@ -789,6 +789,21 @@ where
     }
 }
 
+impl<M, G> Clone for VertexCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Vertex<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        VertexCirculator {
+            storage: self.storage.clone(),
+            input: self.input.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
 where
     M: 'a + AsStorage<Vertex<G>>,
@@ -849,6 +864,21 @@ where
 {
     fn next(&mut self) -> Option<FaceKey> {
         self.input.next()
+    }
+}
+
+impl<M, G> Clone for FaceCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Face<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        FaceCirculator {
+            storage: self.storage.clone(),
+            input: self.input.clone(),
+            phantom: PhantomData,
+        }
     }
 }
 

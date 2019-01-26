@@ -155,7 +155,7 @@ where
     }
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
+    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&Self, G>> {
         Iter::<_, Vertex<G>, _, _>::from((self.as_storage::<Vertex<G>>().keys(), self))
     }
 
@@ -184,7 +184,7 @@ where
     }
 
     /// Gets an iterator of immutable views over the edges in the mesh.
-    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self, G>> {
+    pub fn edges(&self) -> impl Clone + Iterator<Item = EdgeView<&Self, G>> {
         Iter::<_, Edge<G>, _, _>::from((self.as_storage::<Edge<G>>().keys(), self))
     }
 
@@ -213,7 +213,7 @@ where
     }
 
     /// Gets an iterator of immutable views over the faces in the mesh.
-    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self, G>> {
+    pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&Self, G>> {
         Iter::<_, Face<G>, _, _>::from((self.as_storage::<Face<G>>().keys(), self))
     }
 
@@ -660,6 +660,22 @@ where
     input: I,
     storage: &'a MeshGraph<G>,
     phantom: PhantomData<(T, Output)>,
+}
+
+impl<'a, I, T, G, Output> Clone for Iter<'a, I, T, G, Output>
+where
+    I: 'a + Clone + Iterator<Item = &'a T::Key>,
+    T: 'a + Topological,
+    G: 'a + Geometry,
+    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
+{
+    fn clone(&self) -> Self {
+        Iter {
+            input: self.input.clone(),
+            storage: self.storage,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<'a, I, T, G, Output> From<(I, &'a MeshGraph<G>)> for Iter<'a, I, T, G, Output>

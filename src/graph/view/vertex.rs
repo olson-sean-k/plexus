@@ -178,7 +178,7 @@ where
 
     pub(in crate::graph) fn reachable_incoming_edges(
         &self,
-    ) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = EdgeView<&M::Target, G>> {
         EdgeCirculator::from(self.interior_reborrow())
     }
 }
@@ -197,7 +197,7 @@ where
         self.reachable_outgoing_edge().expect_consistent()
     }
 
-    pub fn incoming_edges(&self) -> impl Iterator<Item = EdgeView<&M::Target, G>> {
+    pub fn incoming_edges(&self) -> impl Clone + Iterator<Item = EdgeView<&M::Target, G>> {
         self.reachable_incoming_edges()
     }
 }
@@ -211,7 +211,7 @@ where
 {
     pub(in crate::graph) fn reachable_neighboring_faces(
         &self,
-    ) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(EdgeCirculator::from(self.interior_reborrow()))
     }
 }
@@ -222,7 +222,7 @@ where
     M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn neighboring_faces(&self) -> impl Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
     }
 }
@@ -486,6 +486,22 @@ where
     }
 }
 
+impl<M, G> Clone for EdgeCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        EdgeCirculator {
+            storage: self.storage.clone(),
+            outgoing: self.outgoing,
+            breadcrumb: self.breadcrumb,
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<M, G> From<VertexView<M, G>> for EdgeCirculator<M, G>
 where
     M: Reborrow,
@@ -571,6 +587,19 @@ where
             }
         }
         None
+    }
+}
+
+impl<M, G> Clone for FaceCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>>,
+    G: Geometry,
+{
+    fn clone(&self) -> Self {
+        FaceCirculator {
+            input: self.input.clone(),
+        }
     }
 }
 
