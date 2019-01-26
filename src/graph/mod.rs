@@ -79,7 +79,7 @@
 //!
 //! Immutable and mutable views are both represented by view types, such as
 //! `FaceView`. Orphan views are represented by an oprhan view type, such as
-//! `OrphanFace`.
+//! `OrphanFaceView`.
 //!
 //! # Circulators
 //!
@@ -190,7 +190,7 @@ pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    ClosedPath, EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView,
+    ClosedPathView, EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView,
     OrphanFaceView, OrphanVertexView, VertexView,
 };
 
