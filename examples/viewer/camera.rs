@@ -28,6 +28,6 @@ where
     }
 
     pub fn transform(&self) -> Matrix4<T> {
-        self.projection.unwrap() * self.view.to_homogeneous()
+        self.projection.into_inner() * self.view.to_homogeneous()
     }
 }
