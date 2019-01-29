@@ -17,11 +17,11 @@ use crate::graph::container::{Bind, Consistent, Core};
 use crate::graph::geometry::FaceCentroid;
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Edge, Face, Topological, Vertex};
+use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
+use crate::graph::topology::{Face, Half, Topological, Vertex};
 use crate::graph::view::convert::IntoView;
 use crate::graph::view::{
-    EdgeView, FaceView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
+    FaceView, HalfView, OrphanFaceView, OrphanHalfView, OrphanVertexView, VertexView,
 };
 use crate::graph::GraphError;
 use crate::primitive::decompose::IntoVertices;
@@ -85,7 +85,7 @@ where
         MeshGraph::from(
             Core::empty()
                 .bind(Storage::<Vertex<G>>::new())
-                .bind(Storage::<Edge<G>>::new())
+                .bind(Storage::<Half<G>>::new())
                 .bind(Storage::<Face<G>>::new()),
         )
     }
@@ -98,7 +98,7 @@ where
         MeshGraph::from(
             Core::empty()
                 .bind(Storage::<Vertex<G>>::empty())
-                .bind(Storage::<Edge<G>>::empty())
+                .bind(Storage::<Half<G>>::empty())
                 .bind(Storage::<Face<G>>::empty()),
         )
     }
@@ -168,24 +168,24 @@ where
         IterMut::from(self.as_storage_mut::<Vertex<G>>().iter_mut())
     }
 
-    /// Gets the number of edges in the mesh.
-    pub fn edge_count(&self) -> usize {
-        self.as_storage::<Edge<G>>().len()
+    /// Gets the number of half-edges in the mesh.
+    pub fn half_count(&self) -> usize {
+        self.as_storage::<Half<G>>().len()
     }
 
-    /// Gets an immutable view of the edge with the given key.
-    pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self, G>> {
+    /// Gets an immutable view of the half-edge with the given key.
+    pub fn half(&self, key: HalfKey) -> Option<HalfView<&Self, G>> {
         (key, self).into_view()
     }
 
-    /// Gets a mutable view of the edge with the given key.
-    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self, G>> {
+    /// Gets a mutable view of the half-edge with the given key.
+    pub fn half_mut(&mut self, key: HalfKey) -> Option<HalfView<&mut Self, G>> {
         (key, self).into_view()
     }
 
-    /// Gets an iterator of immutable views over the edges in the mesh.
-    pub fn edges(&self) -> impl Clone + Iterator<Item = EdgeView<&Self, G>> {
-        Iter::<_, Edge<G>, _, _>::from((self.as_storage::<Edge<G>>().keys(), self))
+    /// Gets an iterator of immutable views over the half-edges in the mesh.
+    pub fn halves(&self) -> impl Clone + Iterator<Item = HalfView<&Self, G>> {
+        Iter::<_, Half<G>, _, _>::from((self.as_storage::<Half<G>>().keys(), self))
     }
 
     /// Gets an iterator of orphan views over the edges in the mesh.
@@ -193,8 +193,8 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
-    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
-        IterMut::from(self.as_storage_mut::<Edge<G>>().iter_mut())
+    pub fn orphan_halves(&mut self) -> impl Iterator<Item = OrphanHalfView<G>> {
+        IterMut::from(self.as_storage_mut::<Half<G>>().iter_mut())
     }
 
     /// Gets the number of faces in the mesh.
@@ -380,12 +380,12 @@ where
     }
 }
 
-impl<G> AsStorage<Edge<G>> for MeshGraph<G>
+impl<G> AsStorage<Half<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
-        self.core.as_storage::<Edge<G>>()
+    fn as_storage(&self) -> &Storage<Half<G>> {
+        self.core.as_storage::<Half<G>>()
     }
 }
 
@@ -407,12 +407,12 @@ where
     }
 }
 
-impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
+impl<G> AsStorageMut<Half<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
-        self.core.as_storage_mut::<Edge<G>>()
+    fn as_storage_mut(&mut self) -> &mut Storage<Half<G>> {
+        self.core.as_storage_mut::<Half<G>>()
     }
 }
 
@@ -463,16 +463,16 @@ impl<G, H> FromInteriorGeometry<MeshGraph<H>> for MeshGraph<G>
 where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
-    G::Edge: FromGeometry<H::Edge>,
+    G::Half: FromGeometry<H::Half>,
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
     fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
         let MeshGraph { core, .. } = graph;
-        let (vertices, edges, faces) = core.into_storage();
+        let (vertices, halves, faces) = core.into_storage();
         let core = Core::empty()
             .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
-            .bind(edges.map_values_into(|edge| Edge::<G>::from_interior_geometry(edge)))
+            .bind(halves.map_values_into(|half| Half::<G>::from_interior_geometry(half)))
             .bind(faces.map_values_into(|face| Face::<G>::from_interior_geometry(face)));
         MeshGraph::from(core)
     }
@@ -784,7 +784,7 @@ mod tests {
             .collect::<MeshGraph<Point3<f32>>>();
 
         assert_eq!(5, graph.vertex_count());
-        assert_eq!(18, graph.edge_count());
+        assert_eq!(18, graph.half_count());
         assert_eq!(6, graph.face_count());
     }
 
@@ -795,12 +795,12 @@ mod tests {
             .collect::<MeshGraph<Point3<f32>>>();
 
         assert_eq!(6, graph.vertices().count());
-        assert_eq!(24, graph.edges().count());
+        assert_eq!(24, graph.halves().count());
         assert_eq!(8, graph.faces().count());
         for vertex in graph.vertices() {
             // Every vertex is connected to 4 triangles with 4 (incoming)
-            // edges. Traversal of topology should be possible.
-            assert_eq!(4, vertex.incoming_edges().count());
+            // half-edges. Traversal of topology should be possible.
+            assert_eq!(4, vertex.incoming_halves().count());
         }
         for mut vertex in graph.orphan_vertices() {
             // Geometry should be mutable.
@@ -824,8 +824,8 @@ mod tests {
     #[test]
     fn error_on_non_manifold_mesh() {
         // Construct a mesh with a "fan" of three triangles sharing the same
-        // edge along the Z-axis. The edge would have three associated faces,
-        // which should not be possible.
+        // half-edge along the Z-axis. The edge would have three associated
+        // faces, which should not be possible.
         let graph = MeshGraph::<Point3<i32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 0, 1, 3, 0, 1, 4],
             vec![(0, 0, 1), (0, 0, -1), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
@@ -845,7 +845,7 @@ mod tests {
 
         impl Geometry for ValueGeometry {
             type Vertex = Point3<f32>;
-            type Edge = ();
+            type Half = ();
             type Face = f32;
         }
 

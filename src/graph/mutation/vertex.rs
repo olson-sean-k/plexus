@@ -1,10 +1,10 @@
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::mutation::edge::{self, CompositeEdgeRemoveCache};
+use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{EdgeKey, Storage, VertexKey};
+use crate::graph::storage::{HalfKey, Storage, VertexKey};
 use crate::graph::topology::Vertex;
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
@@ -25,21 +25,21 @@ where
         self.storage.insert(Vertex::new(geometry))
     }
 
-    pub fn connect_outgoing_edge(&mut self, a: VertexKey, ab: EdgeKey) -> Result<(), GraphError> {
+    pub fn connect_outgoing_half(&mut self, a: VertexKey, ab: HalfKey) -> Result<(), GraphError> {
         VertexView::from_keyed_source((a, &mut self.storage))
             .ok_or_else(|| GraphError::TopologyNotFound)
             .map(|mut vertex| {
-                vertex.edge = Some(ab);
+                vertex.half = Some(ab);
             })
     }
 
-    pub fn disconnect_outgoing_edge(
+    pub fn disconnect_outgoing_half(
         &mut self,
         a: VertexKey,
-    ) -> Result<Option<EdgeKey>, GraphError> {
+    ) -> Result<Option<HalfKey>, GraphError> {
         VertexView::from_keyed_source((a, &mut self.storage))
             .ok_or_else(|| GraphError::TopologyNotFound)
-            .map(|mut vertex| vertex.edge.take())
+            .map(|mut vertex| vertex.half.take())
     }
 }
 
@@ -76,7 +76,7 @@ pub struct VertexRemoveCache<G>
 where
     G: Geometry,
 {
-    cache: Vec<CompositeEdgeRemoveCache<G>>,
+    cache: Vec<EdgeRemoveCache<G>>,
 }
 
 impl<G> VertexRemoveCache<G>
@@ -103,7 +103,7 @@ where
 {
     let VertexRemoveCache { cache } = cache;
     for cache in cache {
-        edge::remove_composite_with_cache(mutation.as_mut(), cache)?;
+        edge::remove_with_cache(mutation.as_mut(), cache)?;
     }
     unimplemented!()
 }

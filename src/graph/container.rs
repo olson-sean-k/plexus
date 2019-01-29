@@ -1,7 +1,7 @@
 use crate::geometry::Geometry;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::Storage;
-use crate::graph::topology::{Edge, Face, Topological, Vertex};
+use crate::graph::topology::{Face, Half, Topological, Vertex};
 
 /// Marker trait for containers that promise to be in a consistent state.
 ///
@@ -125,12 +125,12 @@ where
     }
 }
 
-impl<V, E, F, G> AsStorage<Edge<G>> for Core<V, E, F>
+impl<V, E, F, G> AsStorage<Half<G>> for Core<V, E, F>
 where
-    E: AsStorage<Edge<G>>,
+    E: AsStorage<Half<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &Storage<Half<G>> {
         self.edges.as_storage()
     }
 }
@@ -155,12 +155,12 @@ where
     }
 }
 
-impl<V, E, F, G> AsStorageMut<Edge<G>> for Core<V, E, F>
+impl<V, E, F, G> AsStorageMut<Half<G>> for Core<V, E, F>
 where
-    E: AsStorageMut<Edge<G>>,
+    E: AsStorageMut<Half<G>>,
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Half<G>> {
         self.edges.as_storage_mut()
     }
 }
@@ -192,9 +192,9 @@ where
     }
 }
 
-impl<V, E, F, G> Bind<Edge<G>, E> for Core<V, (), F>
+impl<V, E, F, G> Bind<Half<G>, E> for Core<V, (), F>
 where
-    E: AsStorage<Edge<G>>,
+    E: AsStorage<Half<G>>,
     G: Geometry,
 {
     type Output = Core<V, E, F>;
@@ -234,7 +234,7 @@ pub mod alias {
     use super::*;
 
     use crate::graph::storage::Storage;
-    use crate::graph::topology::{Edge, Face, Vertex};
+    use crate::graph::topology::{Face, Half, Vertex};
 
-    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
+    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Half<G>>, Storage<Face<G>>>;
 }

@@ -9,15 +9,15 @@ use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
-use crate::graph::mutation::edge::{self, EdgeBridgeCache, EdgeMutation};
+use crate::graph::mutation::edge::{self, EdgeMutation, HalfBridgeCache};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
+use crate::graph::topology::{Face, Half, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::{EdgeView, FaceKeyTopology, FaceView, VertexView};
+use crate::graph::view::{FaceKeyTopology, FaceView, HalfView, VertexView};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
@@ -34,17 +34,17 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
-    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Edge<G>>, &Storage<Face<G>>> {
+    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Half<G>>, &Storage<Face<G>>> {
         Core::empty()
             .bind(self.as_vertex_storage())
-            .bind(self.as_edge_storage())
+            .bind(self.as_half_storage())
             .bind(self.as_face_storage())
     }
 
     pub fn insert_face(
         &mut self,
         vertices: &[VertexKey],
-        geometry: (G::Edge, G::Face),
+        geometry: (G::Half, G::Face),
     ) -> Result<FaceKey, GraphError> {
         let cache = FaceInsertCache::snapshot(&self.core(), vertices, geometry)?;
         self.insert_face_with_cache(cache)
@@ -67,7 +67,7 @@ where
             .cloned()
             .perimeter()
             .map(|(a, b)| {
-                self.get_or_insert_composite_edge_with((a, b), || geometry.0.clone())
+                self.get_or_insert_edge_with((a, b), || geometry.0.clone())
                     .map(|(ab, _)| ab)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -91,36 +91,36 @@ where
 
     // TODO: Should there be a distinction between `connect_face_to_edge` and
     //       `connect_edge_to_face`?
-    pub fn connect_face_to_edge(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), GraphError> {
+    pub fn connect_face_to_half(&mut self, ab: HalfKey, abc: FaceKey) -> Result<(), GraphError> {
         self.storage
             .get_mut(&abc)
             .ok_or_else(|| GraphError::TopologyNotFound)?
-            .edge = ab;
+            .half = ab;
         Ok(())
     }
 
     fn connect_face_interior(
         &mut self,
-        edges: &[EdgeKey],
+        edges: &[HalfKey],
         face: FaceKey,
     ) -> Result<(), GraphError> {
         for (ab, bc) in edges.iter().cloned().perimeter() {
-            self.connect_neighboring_edges(ab, bc)?;
-            self.connect_edge_to_face(ab, face)?;
+            self.connect_neighboring_halves(ab, bc)?;
+            self.connect_half_to_face(ab, face)?;
         }
         Ok(())
     }
 
-    fn disconnect_face_interior(&mut self, edges: &[EdgeKey]) -> Result<(), GraphError> {
+    fn disconnect_face_interior(&mut self, edges: &[HalfKey]) -> Result<(), GraphError> {
         for ab in edges {
-            self.disconnect_edge_from_face(*ab)?;
+            self.disconnect_half_from_face(*ab)?;
         }
         Ok(())
     }
 
     fn connect_face_exterior(
         &mut self,
-        edges: &[EdgeKey],
+        edges: &[HalfKey],
         connectivity: (Connectivity, Connectivity),
     ) -> Result<(), GraphError> {
         let (incoming, outgoing) = connectivity;
@@ -129,9 +129,9 @@ where
             let ba = ab.opposite();
             let neighbors = {
                 let core = self.core();
-                if EdgeView::from_keyed_source((ba, &core))
+                if HalfView::from_keyed_source((ba, &core))
                     .ok_or_else(|| GraphError::TopologyMalformed)?
-                    .is_boundary_edge()
+                    .is_boundary_half()
                 {
                     // The next edge of B-A is the outgoing edge of the
                     // destination vertex A that is also a boundary
@@ -140,22 +140,22 @@ where
                     // edge is similar.
                     let ax = outgoing[&a]
                         .iter()
-                        .flat_map(|ax| EdgeView::from_keyed_source((*ax, &core)))
-                        .find(|next| next.is_boundary_edge())
+                        .flat_map(|ax| HalfView::from_keyed_source((*ax, &core)))
+                        .find(|next| next.is_boundary_half())
                         .or_else(|| {
-                            EdgeView::from_keyed_source((*ab, &core))
-                                .and_then(|edge| edge.into_reachable_previous_edge())
-                                .and_then(|previous| previous.into_reachable_opposite_edge())
+                            HalfView::from_keyed_source((*ab, &core))
+                                .and_then(|edge| edge.into_reachable_previous_half())
+                                .and_then(|previous| previous.into_reachable_opposite_half())
                         })
                         .map(|next| next.key());
                     let xb = incoming[&b]
                         .iter()
-                        .flat_map(|xb| EdgeView::from_keyed_source((*xb, &core)))
-                        .find(|previous| previous.is_boundary_edge())
+                        .flat_map(|xb| HalfView::from_keyed_source((*xb, &core)))
+                        .find(|previous| previous.is_boundary_half())
                         .or_else(|| {
-                            EdgeView::from_keyed_source((*ab, &core))
-                                .and_then(|edge| edge.into_reachable_next_edge())
-                                .and_then(|next| next.into_reachable_opposite_edge())
+                            HalfView::from_keyed_source((*ab, &core))
+                                .and_then(|edge| edge.into_reachable_next_half())
+                                .and_then(|next| next.into_reachable_opposite_half())
                         })
                         .map(|previous| previous.key());
                     ax.into_iter().zip(xb.into_iter()).next()
@@ -165,8 +165,8 @@ where
                 }
             };
             if let Some((ax, xb)) = neighbors {
-                self.connect_neighboring_edges(ba, ax)?;
-                self.connect_neighboring_edges(xb, ba)?;
+                self.connect_neighboring_halves(ba, ax)?;
+                self.connect_neighboring_halves(xb, ba)?;
             }
         }
         Ok(())
@@ -263,7 +263,7 @@ where
     vertices: &'a [VertexKey],
     connectivity: (Connectivity, Connectivity),
     singularity: Option<Singularity>,
-    geometry: (G::Edge, G::Face),
+    geometry: (G::Half, G::Face),
 }
 
 impl<'a, G> FaceInsertCache<'a, G>
@@ -273,11 +273,11 @@ where
     pub fn snapshot<M>(
         storage: M,
         vertices: &'a [VertexKey],
-        geometry: (G::Edge, G::Face),
+        geometry: (G::Half, G::Face),
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
         // Verify that the minimal closed path is not already occupied by a
         // face and collect the incoming and outgoing edges for each vertex in
@@ -301,7 +301,7 @@ where
     G: Geometry,
 {
     abc: FaceKey,
-    edges: Vec<EdgeKey>,
+    edges: Vec<HalfKey>,
     phantom: PhantomData<G>,
 }
 
@@ -313,11 +313,11 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let edges = face.interior_edges().map(|edge| edge.key()).collect();
+        let edges = face.interior_halves().map(|edge| edge.key()).collect();
         Ok(FaceRemoveCache {
             abc,
             edges,
@@ -348,7 +348,7 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
         let face = FaceView::from_keyed_source((abc, storage))
@@ -409,7 +409,7 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
         let face = FaceView::from_keyed_source((abc, storage))
@@ -444,7 +444,7 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
         let cache = (
@@ -486,7 +486,7 @@ where
     pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
@@ -538,7 +538,7 @@ where
 pub fn bisect_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceBisectCache<G>,
-) -> Result<EdgeKey, GraphError>
+) -> Result<HalfKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -611,13 +611,13 @@ where
     //       face's edges?
     // Re-insert the edges of the faces and bridge the mutual edges.
     for (source, destination) in source
-        .interior_edges()
+        .interior_halves()
         .iter()
-        .zip(destination.interior_edges().iter().rev())
+        .zip(destination.interior_halves().iter().rev())
     {
         let ab = source.key();
         let cd = destination.key();
-        let cache = EdgeBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
+        let cache = HalfBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
         edge::bridge_with_cache(mutation.as_mut(), cache)?;
     }
     // TODO: Is there any reasonable topology this can return?

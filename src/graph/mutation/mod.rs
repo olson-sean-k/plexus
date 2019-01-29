@@ -15,7 +15,7 @@ use crate::graph::mutation::face::FaceMutation;
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::Storage;
-use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::topology::{Face, Half, Vertex};
 use crate::graph::GraphError;
 
 pub trait Mutate: Sized {
@@ -205,13 +205,13 @@ where
     }
 }
 
-impl<M, G> AsStorage<Edge<G>> for Mutation<M, G>
+impl<M, G> AsStorage<Half<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
-        self.mutation.as_edge_storage()
+    fn as_storage(&self) -> &Storage<Half<G>> {
+        self.mutation.as_half_storage()
     }
 }
 

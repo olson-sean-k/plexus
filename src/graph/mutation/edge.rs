@@ -11,10 +11,10 @@ use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Edge, Face, Vertex};
+use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
+use crate::graph::topology::{Face, Half, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::EdgeView;
+use crate::graph::view::HalfView;
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
@@ -23,36 +23,36 @@ where
     G: Geometry,
 {
     mutation: VertexMutation<G>,
-    storage: Storage<Edge<G>>,
+    storage: Storage<Half<G>>,
 }
 
 impl<G> EdgeMutation<G>
 where
     G: Geometry,
 {
-    pub fn get_or_insert_composite_edge(
+    pub fn get_or_insert_edge(
         &mut self,
         span: (VertexKey, VertexKey),
-    ) -> Result<(EdgeKey, EdgeKey), GraphError> {
-        self.get_or_insert_composite_edge_with(span, || Default::default())
+    ) -> Result<(HalfKey, HalfKey), GraphError> {
+        self.get_or_insert_edge_with(span, || Default::default())
     }
 
-    pub fn get_or_insert_composite_edge_with<F>(
+    pub fn get_or_insert_edge_with<F>(
         &mut self,
         span: (VertexKey, VertexKey),
         f: F,
-    ) -> Result<(EdgeKey, EdgeKey), GraphError>
+    ) -> Result<(HalfKey, HalfKey), GraphError>
     where
-        F: Clone + FnOnce() -> G::Edge,
+        F: Clone + FnOnce() -> G::Half,
     {
-        fn get_or_insert_edge_with<G, F>(
+        fn get_or_insert_half_with<G, F>(
             mutation: &mut EdgeMutation<G>,
             span: (VertexKey, VertexKey),
             f: F,
-        ) -> EdgeKey
+        ) -> HalfKey
         where
             G: Geometry,
-            F: FnOnce() -> G::Edge,
+            F: FnOnce() -> G::Half,
         {
             let (a, _) = span;
             let ab = span.into();
@@ -60,23 +60,23 @@ where
                 ab
             }
             else {
-                mutation.storage.insert_with_key(&ab, Edge::new(f()));
-                let _ = mutation.connect_outgoing_edge(a, ab);
+                mutation.storage.insert_with_key(&ab, Half::new(f()));
+                let _ = mutation.connect_outgoing_half(a, ab);
                 ab
             }
         }
 
         let (a, b) = span;
         Ok((
-            get_or_insert_edge_with(self, (a, b), f.clone()),
-            get_or_insert_edge_with(self, (b, a), f),
+            get_or_insert_half_with(self, (a, b), f.clone()),
+            get_or_insert_half_with(self, (b, a), f),
         ))
     }
 
-    pub fn connect_neighboring_edges(
+    pub fn connect_neighboring_halves(
         &mut self,
-        ab: EdgeKey,
-        bc: EdgeKey,
+        ab: HalfKey,
+        bc: HalfKey,
     ) -> Result<(), GraphError> {
         self.storage
             .get_mut(&ab)
@@ -89,7 +89,7 @@ where
         Ok(())
     }
 
-    pub fn disconnect_next_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, GraphError> {
+    pub fn disconnect_next_half(&mut self, ab: HalfKey) -> Result<Option<HalfKey>, GraphError> {
         let bx = {
             self.storage
                 .get_mut(&ab)
@@ -107,7 +107,7 @@ where
         Ok(bx)
     }
 
-    pub fn disconnect_previous_edge(&mut self, ab: EdgeKey) -> Result<Option<EdgeKey>, GraphError> {
+    pub fn disconnect_previous_half(&mut self, ab: HalfKey) -> Result<Option<HalfKey>, GraphError> {
         let xa = {
             self.storage
                 .get_mut(&ab)
@@ -125,7 +125,7 @@ where
         Ok(xa)
     }
 
-    pub fn connect_edge_to_face(&mut self, ab: EdgeKey, abc: FaceKey) -> Result<(), GraphError> {
+    pub fn connect_half_to_face(&mut self, ab: HalfKey, abc: FaceKey) -> Result<(), GraphError> {
         self.storage
             .get_mut(&ab)
             .ok_or_else(|| GraphError::TopologyNotFound)?
@@ -133,9 +133,9 @@ where
         Ok(())
     }
 
-    pub fn disconnect_edge_from_face(
+    pub fn disconnect_half_from_face(
         &mut self,
-        ab: EdgeKey,
+        ab: HalfKey,
     ) -> Result<Option<FaceKey>, GraphError> {
         let face = self
             .storage
@@ -147,11 +147,11 @@ where
     }
 }
 
-impl<G> AsStorage<Edge<G>> for EdgeMutation<G>
+impl<G> AsStorage<Half<G>> for EdgeMutation<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &Storage<Half<G>> {
         &self.storage
     }
 }
@@ -160,26 +160,26 @@ impl<G> Mutate for EdgeMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Edge<G>>, ()>;
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Half<G>>, ()>;
     type Error = GraphError;
 
     fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, edges, ..) = mutant.into_storage();
+        let (vertices, halves, ..) = mutant.into_storage();
         EdgeMutation {
             mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
-            storage: edges,
+            storage: halves,
         }
     }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let EdgeMutation {
             mutation,
-            storage: edges,
+            storage: halves,
             ..
         } = self;
         mutation.commit().and_then(move |core| {
             let (vertices, ..) = core.into_storage();
-            Ok(Core::empty().bind(vertices).bind(edges))
+            Ok(Core::empty().bind(vertices).bind(halves))
         })
     }
 }
@@ -204,42 +204,42 @@ where
     }
 }
 
-struct EdgeRemoveCache<G>
+struct HalfRemoveCache<G>
 where
     G: Geometry,
 {
-    ab: EdgeKey,
-    xa: Option<EdgeKey>,
-    bx: Option<EdgeKey>,
+    ab: HalfKey,
+    xa: Option<HalfKey>,
+    bx: Option<HalfKey>,
     cache: Option<FaceRemoveCache<G>>,
 }
 
-impl<G> EdgeRemoveCache<G>
+impl<G> HalfRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: HalfKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let edge = EdgeView::from_keyed_source((ab, storage))
+        let half = HalfView::from_keyed_source((ab, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        // If the composite edge has no neighbors, then `xa` and `bx` will
-        // refer to the opposite edge of `ab`. In this case, the vertices `a`
-        // and `b` should have no leading edges after the removal. The cache
-        // will have its `xa` and `bx` fields set to `None` in this case.
-        let ba = edge.opposite_edge().key();
-        let xa = edge.previous_edge().key();
-        let bx = edge.next_edge().key();
-        let cache = if let Some(face) = edge.face() {
+        // If the composite-edge has no neighbors, then `xa` and `bx` will
+        // refer to the opposite half-edge of `ab`. In this case, the vertices
+        // `a` and `b` should have no leading half-edges after the removal. The
+        // cache will have its `xa` and `bx` fields set to `None` in this case.
+        let ba = half.opposite_half().key();
+        let xa = half.previous_half().key();
+        let bx = half.next_half().key();
+        let cache = if let Some(face) = half.face() {
             Some(FaceRemoveCache::snapshot(storage, face.key())?)
         }
         else {
             None
         };
-        Ok(EdgeRemoveCache {
+        Ok(HalfRemoveCache {
             ab,
             xa: if xa != ba { Some(xa) } else { None },
             bx: if bx != ba { Some(bx) } else { None },
@@ -248,76 +248,76 @@ where
     }
 }
 
-pub struct CompositeEdgeRemoveCache<G>
+pub struct EdgeRemoveCache<G>
 where
     G: Geometry,
 {
     a: VertexKey,
     b: VertexKey,
-    edge: EdgeRemoveCache<G>,
-    opposite: EdgeRemoveCache<G>,
+    half: HalfRemoveCache<G>,
+    opposite: HalfRemoveCache<G>,
 }
 
-impl<G> CompositeEdgeRemoveCache<G>
+impl<G> EdgeRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: HalfKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let edge = EdgeView::from_keyed_source((ab, storage))
+        let half = HalfView::from_keyed_source((ab, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let a = edge.source_vertex().key();
-        let b = edge.destination_vertex().key();
-        let ba = edge.opposite_edge().key();
-        Ok(CompositeEdgeRemoveCache {
+        let a = half.source_vertex().key();
+        let b = half.destination_vertex().key();
+        let ba = half.opposite_half().key();
+        Ok(EdgeRemoveCache {
             a,
             b,
-            edge: EdgeRemoveCache::snapshot(storage, ab)?,
-            opposite: EdgeRemoveCache::snapshot(storage, ba)?,
+            half: HalfRemoveCache::snapshot(storage, ab)?,
+            opposite: HalfRemoveCache::snapshot(storage, ba)?,
         })
     }
 }
 
-pub struct CompositeEdgeSplitCache<G>
+pub struct EdgeSplitCache<G>
 where
     G: Geometry,
 {
     a: VertexKey,
     b: VertexKey,
-    ab: EdgeKey,
-    ba: EdgeKey,
+    ab: HalfKey,
+    ba: HalfKey,
     midpoint: G::Vertex,
 }
 
-impl<G> CompositeEdgeSplitCache<G>
+impl<G> EdgeSplitCache<G>
 where
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn snapshot<M>(storage: M, ab: EdgeKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: HalfKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+        M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
-        let edge = EdgeView::from_keyed_source((ab, storage))
+        let half = HalfView::from_keyed_source((ab, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let opposite = edge
-            .reachable_opposite_edge()
+        let opposite = half
+            .reachable_opposite_half()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
         let source = opposite
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
-        let destination = edge
+        let destination = half
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
         let mut midpoint = source.geometry.clone();
-        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(edge)?;
-        Ok(CompositeEdgeSplitCache {
+        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(half)?;
+        Ok(EdgeSplitCache {
             a: source.key(),
             b: destination.key(),
             ab,
@@ -327,7 +327,7 @@ where
     }
 }
 
-pub struct EdgeBridgeCache<G>
+pub struct HalfBridgeCache<G>
 where
     G: Geometry,
 {
@@ -335,27 +335,27 @@ where
     b: VertexKey,
     c: VertexKey,
     d: VertexKey,
-    edge: G::Edge,
+    half: G::Half,
     face: G::Face,
 }
 
-impl<G> EdgeBridgeCache<G>
+impl<G> HalfBridgeCache<G>
 where
     G: Geometry,
 {
     pub fn snapshot<M>(
         storage: M,
-        source: EdgeKey,
-        destination: EdgeKey,
+        source: HalfKey,
+        destination: HalfKey,
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
-        let source = EdgeView::from_keyed_source((source, storage))
+        let source = HalfView::from_keyed_source((source, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination = EdgeView::from_keyed_source((destination, storage))
+        let destination = HalfView::from_keyed_source((destination, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = source
             .reachable_source_vertex()
@@ -373,27 +373,27 @@ where
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
-        // At this point, we can assume the points a, b, c, and d exist in the
-        // mesh. Before mutating the mesh, ensure that existing interior edges
-        // are boundaries.
-        for edge in [a, b, c, d]
+        // At this point, we can assume the vertices a, b, c, and d exist in
+        // the mesh. Before mutating the mesh, ensure that existing interior
+        // half-edges are boundaries.
+        for half in [a, b, c, d]
             .into_iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| EdgeView::from_keyed_source((ab.into(), storage)))
+            .flat_map(|ab| HalfView::from_keyed_source((ab.into(), storage)))
         {
-            if !edge.is_boundary_edge() {
+            if !half.is_boundary_half() {
                 return Err(GraphError::TopologyConflict);
             }
         }
-        Ok(EdgeBridgeCache {
+        Ok(HalfBridgeCache {
             a,
             b,
             c,
             d,
-            edge: source.geometry.clone(),
+            half: source.geometry.clone(),
             face: source
-                .reachable_opposite_edge()
+                .reachable_opposite_half()
                 .and_then(|opposite| opposite.into_reachable_face())
                 .map(|face| face.geometry.clone())
                 .unwrap_or_else(Default::default),
@@ -401,23 +401,23 @@ where
     }
 }
 
-pub struct EdgeExtrudeCache<G>
+pub struct HalfExtrudeCache<G>
 where
     G: Geometry,
 {
-    ab: EdgeKey,
+    ab: HalfKey,
     vertices: (G::Vertex, G::Vertex),
-    edge: G::Edge,
+    half: G::Half,
 }
 
-impl<G> EdgeExtrudeCache<G>
+impl<G> HalfExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M, T>(storage: M, ab: EdgeKey, distance: T) -> Result<Self, GraphError>
+    pub fn snapshot<M, T>(storage: M, ab: HalfKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
         G: Geometry + EdgeLateral,
         G::Lateral: Mul<T>,
         G::Vertex: AsPosition,
@@ -425,47 +425,47 @@ where
         VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
         // Get the extruded geometry.
-        let (vertices, edge) = {
-            let edge = EdgeView::from_keyed_source((ab, storage))
+        let (vertices, half) = {
+            let half = HalfView::from_keyed_source((ab, storage))
                 .ok_or_else(|| GraphError::TopologyNotFound)?;
-            if !edge.is_boundary_edge() {
+            if !half.is_boundary_half() {
                 return Err(GraphError::TopologyConflict.into());
             }
             let mut vertices = (
-                edge.reachable_destination_vertex()
+                half.reachable_destination_vertex()
                     .ok_or_else(|| GraphError::TopologyConflict)?
                     .geometry
                     .clone(),
-                edge.reachable_source_vertex()
+                half.reachable_source_vertex()
                     .ok_or_else(|| GraphError::TopologyConflict)?
                     .geometry
                     .clone(),
             );
-            let translation = edge.lateral()? * distance;
+            let translation = half.lateral()? * distance;
             *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
             *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
-            (vertices, edge.geometry.clone())
+            (vertices, half.geometry.clone())
         };
-        Ok(EdgeExtrudeCache { ab, vertices, edge })
+        Ok(HalfExtrudeCache { ab, vertices, half })
     }
 }
 
-pub fn remove_composite_with_cache<M, N, G>(
+pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
-    cache: CompositeEdgeRemoveCache<G>,
-) -> Result<(Edge<G>, Edge<G>), GraphError>
+    cache: EdgeRemoveCache<G>,
+) -> Result<(Half<G>, Half<G>), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn remove<M, N, G>(mut mutation: N, cache: EdgeRemoveCache<G>) -> Result<Edge<G>, GraphError>
+    fn remove<M, N, G>(mut mutation: N, cache: HalfRemoveCache<G>) -> Result<Half<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: Geometry,
     {
-        let EdgeRemoveCache { ab, cache, .. } = cache;
+        let HalfRemoveCache { ab, cache, .. } = cache;
         if let Some(cache) = cache {
             face::remove_with_cache(mutation.as_mut(), cache)?;
         }
@@ -476,58 +476,58 @@ where
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
 
-    let CompositeEdgeRemoveCache {
+    let EdgeRemoveCache {
         a,
         b,
-        edge,
+        half,
         opposite,
         ..
     } = cache;
     // Connect each vertex to a remaining outgoing edge.
     if let Some(ax) = opposite.bx {
-        mutation.as_mut().connect_outgoing_edge(a, ax)?;
+        mutation.as_mut().connect_outgoing_half(a, ax)?;
     }
-    if let Some(bx) = edge.bx {
-        mutation.as_mut().connect_outgoing_edge(b, bx)?;
+    if let Some(bx) = half.bx {
+        mutation.as_mut().connect_outgoing_half(b, bx)?;
     }
     // Connect previous and next edges across the composite edge to be removed.
-    if let (Some(xa), Some(ax)) = (edge.xa, opposite.bx) {
-        mutation.as_mut().connect_neighboring_edges(xa, ax)?;
+    if let (Some(xa), Some(ax)) = (half.xa, opposite.bx) {
+        mutation.as_mut().connect_neighboring_halves(xa, ax)?;
     }
-    if let (Some(xb), Some(bx)) = (opposite.xa, edge.bx) {
-        mutation.as_mut().connect_neighboring_edges(xb, bx)?;
+    if let (Some(xb), Some(bx)) = (opposite.xa, half.bx) {
+        mutation.as_mut().connect_neighboring_halves(xb, bx)?;
     }
     Ok((
-        remove(mutation.as_mut(), edge)?,
+        remove(mutation.as_mut(), half)?,
         remove(mutation.as_mut(), opposite)?,
     ))
 }
 
-pub fn split_composite_with_cache<M, N, G>(
+pub fn split_with_cache<M, N, G>(
     mut mutation: N,
-    cache: CompositeEdgeSplitCache<G>,
+    cache: EdgeSplitCache<G>,
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn remove<M, N, G>(mut mutation: N, ab: EdgeKey) -> Result<Edge<G>, GraphError>
+    fn remove<M, N, G>(mut mutation: N, ab: HalfKey) -> Result<Half<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: Geometry,
     {
         let (a, _) = ab.into();
-        mutation.as_mut().disconnect_outgoing_edge(a)?;
-        let xa = mutation.as_mut().disconnect_previous_edge(ab)?;
-        let bx = mutation.as_mut().disconnect_next_edge(ab)?;
-        let mut edge = mutation.as_mut().storage.remove(&ab).unwrap();
+        mutation.as_mut().disconnect_outgoing_half(a)?;
+        let xa = mutation.as_mut().disconnect_previous_half(ab)?;
+        let bx = mutation.as_mut().disconnect_next_half(ab)?;
+        let mut half = mutation.as_mut().storage.remove(&ab).unwrap();
         // Restore the connectivity of the edge. The mutations will clear this
         // data, because it is still a part of the mesh at that point.
-        edge.previous = xa;
-        edge.next = bx;
-        Ok(edge)
+        half.previous = xa;
+        half.next = bx;
+        Ok(half)
     }
 
     fn split_at_vertex<M, N, G>(
@@ -535,15 +535,15 @@ where
         a: VertexKey,
         b: VertexKey,
         m: VertexKey,
-        ab: EdgeKey,
-    ) -> Result<(EdgeKey, EdgeKey), GraphError>
+        ab: HalfKey,
+    ) -> Result<(HalfKey, HalfKey), GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
         G: Geometry,
     {
-        // Remove the edge and insert two truncated edges in its place.
-        let Edge {
+        // Remove the half-edge and insert two truncated edges in its place.
+        let Half {
             next,
             previous,
             face,
@@ -552,31 +552,32 @@ where
         } = remove(mutation.as_mut(), ab)?;
         let am = mutation
             .as_mut()
-            .get_or_insert_composite_edge_with((a, m), || geometry.clone())
+            .get_or_insert_edge_with((a, m), || geometry.clone())
             .map(|(am, _)| am)?;
         let mb = mutation
             .as_mut()
-            .get_or_insert_composite_edge_with((m, b), move || geometry)
+            .get_or_insert_edge_with((m, b), move || geometry)
             .map(|(mb, _)| mb)?;
-        // Connect the new edges to each other and their leading edges.
-        mutation.as_mut().connect_neighboring_edges(am, mb)?;
+        // Connect the new half-edges to each other and their leading
+        // half-edges.
+        mutation.as_mut().connect_neighboring_halves(am, mb)?;
         if let Some(xa) = previous {
-            mutation.as_mut().connect_neighboring_edges(xa, am)?;
+            mutation.as_mut().connect_neighboring_halves(xa, am)?;
         }
         if let Some(bx) = next {
-            mutation.as_mut().connect_neighboring_edges(mb, bx)?;
+            mutation.as_mut().connect_neighboring_halves(mb, bx)?;
         }
         // Update the associated face, if any, because it may refer to the
-        // removed edge.
+        // removed half-edge.
         if let Some(abc) = face {
-            mutation.as_mut().connect_face_to_edge(am, abc)?;
-            mutation.as_mut().connect_edge_to_face(am, abc)?;
-            mutation.as_mut().connect_edge_to_face(mb, abc)?;
+            mutation.as_mut().connect_face_to_half(am, abc)?;
+            mutation.as_mut().connect_half_to_face(am, abc)?;
+            mutation.as_mut().connect_half_to_face(mb, abc)?;
         }
         Ok((am, mb))
     }
 
-    let CompositeEdgeSplitCache {
+    let EdgeSplitCache {
         a,
         b,
         ab,
@@ -593,29 +594,29 @@ where
 
 pub fn bridge_with_cache<M, N, G>(
     mut mutation: N,
-    cache: EdgeBridgeCache<G>,
+    cache: HalfBridgeCache<G>,
 ) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let EdgeBridgeCache {
+    let HalfBridgeCache {
         a,
         b,
         c,
         d,
-        edge,
+        half,
         face,
         ..
     } = cache;
-    mutation.as_mut().insert_face(&[a, b, c, d], (edge, face))
+    mutation.as_mut().insert_face(&[a, b, c, d], (half, face))
 }
 
 pub fn extrude_with_cache<M, N, G, T>(
     mut mutation: N,
-    cache: EdgeExtrudeCache<G>,
-) -> Result<EdgeKey, GraphError>
+    cache: HalfExtrudeCache<G>,
+) -> Result<HalfKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -625,21 +626,21 @@ where
     ScaledEdgeLateral<G, T>: Clone,
     VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
 {
-    let EdgeExtrudeCache {
-        ab, vertices, edge, ..
+    let HalfExtrudeCache {
+        ab, vertices, half, ..
     } = cache;
     let mutation = mutation.as_mut();
     let c = mutation.insert_vertex(vertices.0);
     let d = mutation.insert_vertex(vertices.1);
-    // TODO: If this edge already exists, then this should probably return an
-    //       error.
+    // TODO: If this half-edge already exists, then this should probably return
+    //       an error.
     let cd = mutation
-        .get_or_insert_composite_edge_with((c, d), move || edge)
+        .get_or_insert_edge_with((c, d), move || half)
         .map(|(cd, _)| cd)?;
-    let cache = EdgeBridgeCache::snapshot(
+    let cache = HalfBridgeCache::snapshot(
         &Core::empty()
             .bind(mutation.as_vertex_storage())
-            .bind(mutation.as_edge_storage())
+            .bind(mutation.as_half_storage())
             .bind(mutation.as_face_storage()),
         ab,
         cd,

@@ -2,11 +2,10 @@
 //!
 //! This module provides unit primitives that can be used to form complex
 //! iterator expressions to generate meshes via a stream of topology and
-//! geometry. This data can be collected into simple buffers for rendering or a
-//! graph (half-edge) for further manipulation.
+//! geometry. This data can be collected into linear buffers or graphs.
 //!
 //! Iterator expressions begin with a unit primitive and manipulate its
-//! components like vertices, lines, and polygons. Generation and decomposition
+//! components like vertices, edges, and polygons. Generation and decomposition
 //! operations are exposed via traits.
 //!
 //! Most functionality and operations in this module are exposed via traits.

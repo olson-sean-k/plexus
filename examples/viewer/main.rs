@@ -35,7 +35,7 @@ struct FaceColorGeometry;
 
 impl Geometry for FaceColorGeometry {
     type Vertex = Point3<f32>;
-    type Edge = ();
+    type Half = ();
     type Face = Color4<f32>;
 }
 

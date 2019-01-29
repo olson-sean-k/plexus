@@ -1,6 +1,6 @@
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::{Attribute, Geometry};
-use crate::graph::storage::{EdgeKey, FaceKey, OpaqueKey, VertexKey};
+use crate::graph::storage::{FaceKey, HalfKey, OpaqueKey, VertexKey};
 
 pub trait Topological {
     type Key: OpaqueKey;
@@ -15,7 +15,7 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Vertex,
-    pub(in crate::graph) edge: Option<EdgeKey>,
+    pub(in crate::graph) half: Option<HalfKey>,
 }
 
 impl<G> Vertex<G>
@@ -25,7 +25,7 @@ where
     pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
         Vertex {
             geometry,
-            edge: None,
+            half: None,
         }
     }
 }
@@ -39,7 +39,7 @@ where
     fn from_interior_geometry(vertex: Vertex<H>) -> Self {
         Vertex {
             geometry: vertex.geometry.into_geometry(),
-            edge: vertex.edge,
+            half: vertex.half,
         }
     }
 }
@@ -52,34 +52,34 @@ where
     type Attribute = G::Vertex;
 }
 
-// Unlike other topological structures, the vertex connectivity of `Edge`s is
+// Unlike other topological structures, the vertex connectivity of `Half`s is
 // immutable and encoded within the key for each half-edge. A half-edge key
 // consists of its source and destination vertex keys. This provides fast and
 // reliable half-edge lookups, even when a mesh is in an inconsistent state.
 // However, it also complicates basic mutations of vertices and half-edges,
-// requiring rekeying of `Edge`s.
+// requiring rekeying of `Half`s.
 //
-// For this reason, `Edge` has no fields for storing its destination vertex key
-// or opposite edge key, as these would be redundant.
+// For this reason, `Half` has no fields for storing its destination vertex key
+// or opposite half-edge key, as these would be redundant.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Edge<G>
+pub struct Half<G>
 where
     G: Geometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Edge,
-    pub(in crate::graph) next: Option<EdgeKey>,
-    pub(in crate::graph) previous: Option<EdgeKey>,
+    pub geometry: G::Half,
+    pub(in crate::graph) next: Option<HalfKey>,
+    pub(in crate::graph) previous: Option<HalfKey>,
     pub(in crate::graph) face: Option<FaceKey>,
 }
 
-impl<G> Edge<G>
+impl<G> Half<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(geometry: G::Edge) -> Self {
-        Edge {
+    pub(in crate::graph) fn new(geometry: G::Half) -> Self {
+        Half {
             geometry,
             next: None,
             previous: None,
@@ -88,28 +88,28 @@ where
     }
 }
 
-impl<G, H> FromInteriorGeometry<Edge<H>> for Edge<G>
+impl<G, H> FromInteriorGeometry<Half<H>> for Half<G>
 where
     G: Geometry,
-    G::Edge: FromGeometry<H::Edge>,
+    G::Half: FromGeometry<H::Half>,
     H: Geometry,
 {
-    fn from_interior_geometry(edge: Edge<H>) -> Self {
-        Edge {
-            geometry: edge.geometry.into_geometry(),
-            next: edge.next,
-            previous: edge.previous,
-            face: edge.face,
+    fn from_interior_geometry(half: Half<H>) -> Self {
+        Half {
+            geometry: half.geometry.into_geometry(),
+            next: half.next,
+            previous: half.previous,
+            face: half.face,
         }
     }
 }
 
-impl<G> Topological for Edge<G>
+impl<G> Topological for Half<G>
 where
     G: Geometry,
 {
-    type Key = EdgeKey;
-    type Attribute = G::Edge;
+    type Key = HalfKey;
+    type Attribute = G::Half;
 }
 
 #[derivative(Debug, Hash)]
@@ -120,15 +120,15 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Face,
-    pub(in crate::graph) edge: EdgeKey,
+    pub(in crate::graph) half: HalfKey,
 }
 
 impl<G> Face<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(edge: EdgeKey, geometry: G::Face) -> Self {
-        Face { geometry, edge }
+    pub(in crate::graph) fn new(half: HalfKey, geometry: G::Face) -> Self {
+        Face { geometry, half }
     }
 }
 
@@ -141,7 +141,7 @@ where
     fn from_interior_geometry(face: Face<H>) -> Self {
         Face {
             geometry: face.geometry.into_geometry(),
-            edge: face.edge,
+            half: face.half,
         }
     }
 }

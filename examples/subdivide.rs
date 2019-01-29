@@ -20,17 +20,18 @@ where
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    // Split each edge, stashing the vertex key and moving to the next edge.
+    // Split each edge, stashing the vertex key and moving to the next
+    // half-edge.
     let arity = face.arity();
-    let mut edge = face.into_edge();
+    let mut half = face.into_half();
     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
     for _ in 0..arity {
-        let vertex = edge.split()?;
+        let vertex = half.split()?;
         splits.push(vertex.key());
-        edge = vertex.into_outgoing_edge().into_next_edge();
+        half = vertex.into_outgoing_half().into_next_half();
     }
     // Bisect along the vertices from each edge split.
-    let mut face = edge.into_face().unwrap();
+    let mut face = half.into_face().unwrap();
     for (a, b) in splits.into_iter().perimeter() {
         face = face.bisect(a, b)?.into_face().unwrap();
     }

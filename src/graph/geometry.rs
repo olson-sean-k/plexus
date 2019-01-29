@@ -11,8 +11,8 @@ use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::topology::{Edge, Face, Vertex};
-use crate::graph::view::{EdgeView, FaceView};
+use crate::graph::topology::{Face, Half, Vertex};
+use crate::graph::view::{FaceView, HalfView};
 use crate::graph::GraphError;
 
 pub trait FaceNormal: Geometry {
@@ -21,7 +21,7 @@ pub trait FaceNormal: Geometry {
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<Half<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> FaceNormal for G
@@ -37,7 +37,7 @@ where
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<Half<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
     {
         let positions = face
             .reachable_vertices()
@@ -57,7 +57,7 @@ pub trait FaceCentroid: Geometry {
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<Half<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> FaceCentroid for G
@@ -70,7 +70,7 @@ where
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<Half<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
     {
         Ok(G::Vertex::average(
             face.reachable_vertices()
@@ -82,10 +82,10 @@ where
 pub trait EdgeMidpoint: Geometry {
     type Midpoint;
 
-    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<M>(edge: HalfView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<Half<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -96,10 +96,10 @@ where
 {
     type Midpoint = <VertexPosition<G> as Interpolate>::Output;
 
-    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<M>(edge: HalfView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<Half<Self>> + AsStorage<Vertex<Self>>,
     {
         let a = edge
             .reachable_source_vertex()
@@ -120,10 +120,10 @@ where
 pub trait EdgeLateral: Geometry {
     type Lateral;
 
-    fn lateral<M>(edge: EdgeView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn lateral<M>(edge: HalfView<M, Self>) -> Result<Self::Lateral, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<Half<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> EdgeLateral for G
@@ -139,10 +139,10 @@ where
 {
     type Lateral = <VertexPosition<G> as Sub>::Output;
 
-    fn lateral<M>(edge: EdgeView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn lateral<M>(edge: HalfView<M, Self>) -> Result<Self::Lateral, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<Half<Self>> + AsStorage<Vertex<Self>>,
     {
         let a = edge
             .reachable_source_vertex()
@@ -157,9 +157,9 @@ where
             .as_position()
             .clone();
         let c = edge
-            .reachable_opposite_edge()
+            .reachable_opposite_half()
             .ok_or_else(|| GraphError::TopologyNotFound)?
-            .reachable_previous_edge()
+            .reachable_previous_half()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyNotFound)?

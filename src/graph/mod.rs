@@ -29,15 +29,16 @@
 //! direction. Given a half-edge from a vertex **A** to a vertex **B**, that
 //! half-edge will have an opposite half-edge from **B** to **A**. Such edges
 //! are typically labeled **AB** and **BA**. Together, these half-edges form a
-//! _composite edge_. When the term "edge" is used alone, it generally refers
-//! to a half-edge.
+//! _composite edge_. Half-edges are typically referred to simply as "halves"
+//! or "half", while composite edges are referred to as "edges" or "edge".
 //!
 //! Half-edges are connected to their neighbors, known as _next_ and _previous
 //! half-edges_. When a face is present in the contiguous region formed by a
 //! perimeter of vertices and their half-edges, the half-edges will refer to
 //! that face and the face will refer to exactly one of the half-edges in the
 //! interior. A half-edge with no associated face is known as a _boundary
-//! half-edge_.
+//! half-edge_. If both of a composite edge's half-edges are boundary
+//! half-edges, then that composite edge is a _disjoint edge_.
 //!
 //! Together with vertices and faces, the connectivity of half-edges allows for
 //! effecient traversals of topology. For example, it becomes trivial to find
@@ -53,7 +54,7 @@
 //! # Topological Views
 //!
 //! `MeshGraph`s expose _views_ over their topological structures (vertices,
-//! edges, and faces). Views are accessed via keys or iteration and behave
+//! half-edges, and faces). Views are accessed via keys or iteration and behave
 //! similarly to references. They provide the primary API for interacting with
 //! a `MeshGraph`'s topology and geometry. There are three types summarized
 //! below:
@@ -69,10 +70,10 @@
 //! such views at the same time. Mutable views are exclusive, but allow for
 //! mutations.
 //!
-//! _Orphan views_ are similar to mutable views, but they only have access to the
-//! geometry of a single topological structure in a mesh. Because they do not
-//! know about other vertices, edges, or faces, an orphan view cannot traverse
-//! the topology of a mesh in any way. These views are most useful for
+//! _Orphan views_ are similar to mutable views, but they only have access to
+//! the geometry of a single topological structure in a mesh. Because they do
+//! not know about other vertices, half-edges, or faces, an orphan view cannot
+//! traverse the topology of a mesh in any way. These views are most useful for
 //! modifying the geometry of a mesh and, unlike mutable views, multiple orphan
 //! views can be obtained at the same time. Orphan views are mostly used by
 //! _circulators_ (iterators).
@@ -150,13 +151,14 @@
 //! .unwrap();
 //! graph.triangulate().unwrap();
 //!
-//! // Traverse an edge and use a circulator to get the faces of a nearby vertex.
-//! let key = graph.edges().nth(0).unwrap().key();
+//! // Traverse a half-edge and use a circulator to get the faces of a nearby
+//! // vertex.
+//! let key = graph.halves().nth(0).unwrap().key();
 //! let mut vertex = graph
-//!     .edge_mut(key)
+//!     .half_mut(key)
 //!     .unwrap()
-//!     .into_opposite_edge()
-//!     .into_next_edge()
+//!     .into_opposite_half()
+//!     .into_next_half()
 //!     .into_destination_vertex();
 //! for mut face in vertex.neighboring_orphan_faces() {
 //!     // `face.geometry` is mutable here.
@@ -179,7 +181,7 @@ use std::fmt::Debug;
 use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
-pub use self::storage::{EdgeKey, FaceKey, VertexKey};
+pub use self::storage::{FaceKey, HalfKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
 //       for mutable, immutable, and orphan views over a `MeshGraph` would be
 //       simpler and help insulate users from the complexity of views, but it
@@ -190,8 +192,8 @@ pub use self::storage::{EdgeKey, FaceKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    ClosedPathView, EdgeKeyTopology, EdgeView, FaceKeyTopology, FaceView, OrphanEdgeView,
-    OrphanFaceView, OrphanVertexView, VertexView,
+    ClosedPathView, EdgeKeyTopology, FaceKeyTopology, FaceView, HalfView, OrphanFaceView,
+    OrphanHalfView, OrphanVertexView, VertexView,
 };
 
 #[derive(Debug, Fail, PartialEq)]

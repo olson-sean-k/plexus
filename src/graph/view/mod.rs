@@ -17,6 +17,6 @@ mod edge;
 mod face;
 mod vertex;
 
-pub use self::edge::{EdgeKeyTopology, EdgeView, OrphanEdgeView};
+pub use self::edge::{EdgeKeyTopology, HalfView, OrphanHalfView};
 pub use self::face::{ClosedPathView, FaceKeyTopology, FaceView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
