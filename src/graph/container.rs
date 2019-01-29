@@ -1,7 +1,7 @@
 use crate::geometry::Geometry;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::Storage;
-use crate::graph::topology::{Face, Half, Topological, Vertex};
+use crate::graph::topology::{Edge, Face, Half, Topological, Vertex};
 
 /// Marker trait for containers that promise to be in a consistent state.
 ///
@@ -64,15 +64,17 @@ where
 /// Topological storage container.
 ///
 /// A core may or may not own its storage and may or may not provide storage
-/// for all topologies (vertices, edges, and faces). When a core does not own
-/// its storage, it is ephemeral. A core that owns storage for all topologies
-/// is known as an owned core. See the `OwnedCore` type alias.
+/// for all topologies (vertices, half-edges, composite edges, and faces). When
+/// a core does not own its storage, it is _ephemeral_. A core that owns
+/// storage for all topologies is known as an _owned core_. See the `OwnedCore`
+/// type alias.
 ///
 /// Unlike `MeshGraph`, `Core` does not implement the `Consistent` trait.
 /// `MeshGraph` contains an owned core, but does not mutate it outside of the
 /// mutation API, which maintains consistency.
-pub struct Core<V = (), E = (), F = ()> {
+pub struct Core<V = (), H = (), E = (), F = ()> {
     vertices: V,
+    halves: H,
     edges: E,
     faces: F,
 }
@@ -81,41 +83,27 @@ impl Core {
     pub fn empty() -> Self {
         Core {
             vertices: (),
+            halves: (),
             edges: (),
             faces: (),
         }
     }
 }
 
-impl<V, E, F> Core<V, E, F> {
-    pub fn into_storage(self) -> (V, E, F) {
+impl<V, H, E, F> Core<V, H, E, F> {
+    pub fn into_storage(self) -> (V, H, E, F) {
         let Core {
             vertices,
+            halves,
             edges,
             faces,
             ..
         } = self;
-        (vertices, edges, faces)
-    }
-
-    pub fn as_storage<T>(&self) -> &Storage<T>
-    where
-        Self: AsStorage<T>,
-        T: Topological,
-    {
-        AsStorage::<T>::as_storage(self)
-    }
-
-    pub fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
-    where
-        Self: AsStorageMut<T>,
-        T: Topological,
-    {
-        AsStorageMut::<T>::as_storage_mut(self)
+        (vertices, halves, edges, faces)
     }
 }
 
-impl<V, E, F, G> AsStorage<Vertex<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorage<Vertex<G>> for Core<V, H, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: Geometry,
@@ -125,17 +113,27 @@ where
     }
 }
 
-impl<V, E, F, G> AsStorage<Half<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorage<Half<G>> for Core<V, H, E, F>
 where
-    E: AsStorage<Half<G>>,
+    H: AsStorage<Half<G>>,
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Half<G>> {
+        self.halves.as_storage()
+    }
+}
+
+impl<V, H, E, F, G> AsStorage<Edge<G>> for Core<V, H, E, F>
+where
+    E: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    fn as_storage(&self) -> &Storage<Edge<G>> {
         self.edges.as_storage()
     }
 }
 
-impl<V, E, F, G> AsStorage<Face<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorage<Face<G>> for Core<V, H, E, F>
 where
     F: AsStorage<Face<G>>,
     G: Geometry,
@@ -145,7 +143,7 @@ where
     }
 }
 
-impl<V, E, F, G> AsStorageMut<Vertex<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorageMut<Vertex<G>> for Core<V, H, E, F>
 where
     V: AsStorageMut<Vertex<G>>,
     G: Geometry,
@@ -155,17 +153,27 @@ where
     }
 }
 
-impl<V, E, F, G> AsStorageMut<Half<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorageMut<Half<G>> for Core<V, H, E, F>
 where
-    E: AsStorageMut<Half<G>>,
+    H: AsStorageMut<Half<G>>,
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Half<G>> {
+        self.halves.as_storage_mut()
+    }
+}
+
+impl<V, H, E, F, G> AsStorageMut<Edge<G>> for Core<V, H, E, F>
+where
+    E: AsStorageMut<Edge<G>>,
+    G: Geometry,
+{
+    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.edges.as_storage_mut()
     }
 }
 
-impl<V, E, F, G> AsStorageMut<Face<G>> for Core<V, E, F>
+impl<V, H, E, F, G> AsStorageMut<Face<G>> for Core<V, H, E, F>
 where
     F: AsStorageMut<Face<G>>,
     G: Geometry,
@@ -175,55 +183,92 @@ where
     }
 }
 
-impl<V, E, F, G> Bind<Vertex<G>, V> for Core<(), E, F>
+impl<V, H, E, F, G> Bind<Vertex<G>, V> for Core<(), H, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    type Output = Core<V, E, F>;
+    type Output = Core<V, H, E, F>;
 
     fn bind(self, vertices: V) -> Self::Output {
-        let Core { edges, faces, .. } = self;
-        Core {
-            vertices,
+        let Core {
+            halves,
             edges,
             faces,
-        }
-    }
-}
-
-impl<V, E, F, G> Bind<Half<G>, E> for Core<V, (), F>
-where
-    E: AsStorage<Half<G>>,
-    G: Geometry,
-{
-    type Output = Core<V, E, F>;
-
-    fn bind(self, edges: E) -> Self::Output {
-        let Core {
-            vertices, faces, ..
+            ..
         } = self;
         Core {
             vertices,
+            halves,
             edges,
             faces,
         }
     }
 }
 
-impl<V, E, F, G> Bind<Face<G>, F> for Core<V, E, ()>
+impl<V, H, E, F, G> Bind<Half<G>, H> for Core<V, (), E, F>
+where
+    H: AsStorage<Half<G>>,
+    G: Geometry,
+{
+    type Output = Core<V, H, E, F>;
+
+    fn bind(self, halves: H) -> Self::Output {
+        let Core {
+            vertices,
+            edges,
+            faces,
+            ..
+        } = self;
+        Core {
+            vertices,
+            halves,
+            edges,
+            faces,
+        }
+    }
+}
+
+impl<V, H, E, F, G> Bind<Edge<G>, E> for Core<V, H, (), F>
+where
+    E: AsStorage<Edge<G>>,
+    G: Geometry,
+{
+    type Output = Core<V, H, E, F>;
+
+    fn bind(self, edges: E) -> Self::Output {
+        let Core {
+            vertices,
+            halves,
+            faces,
+            ..
+        } = self;
+        Core {
+            vertices,
+            halves,
+            edges,
+            faces,
+        }
+    }
+}
+
+impl<V, H, E, F, G> Bind<Face<G>, F> for Core<V, H, E, ()>
 where
     F: AsStorage<Face<G>>,
     G: Geometry,
 {
-    type Output = Core<V, E, F>;
+    type Output = Core<V, H, E, F>;
 
     fn bind(self, faces: F) -> Self::Output {
         let Core {
-            vertices, edges, ..
+            vertices,
+            halves,
+            edges,
+            ..
         } = self;
         Core {
             vertices,
+            halves,
             edges,
             faces,
         }
@@ -236,5 +281,6 @@ pub mod alias {
     use crate::graph::storage::Storage;
     use crate::graph::topology::{Face, Half, Vertex};
 
-    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Half<G>>, Storage<Face<G>>>;
+    // TODO: Include composite edges.
+    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Half<G>>, (), Storage<Face<G>>>;
 }

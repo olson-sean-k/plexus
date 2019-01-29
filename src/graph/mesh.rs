@@ -16,6 +16,7 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core};
 use crate::graph::geometry::FaceCentroid;
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
 use crate::graph::topology::{Face, Half, Topological, Vertex};
@@ -44,28 +45,6 @@ where
     G: Geometry,
 {
     core: OwnedCore<G>,
-}
-
-/// Storage.
-impl<G> MeshGraph<G>
-where
-    G: Geometry,
-{
-    fn as_storage<T>(&self) -> &Storage<T>
-    where
-        Self: AsStorage<T>,
-        T: Topological,
-    {
-        AsStorage::<T>::as_storage(self)
-    }
-
-    fn as_storage_mut<T>(&mut self) -> &mut Storage<T>
-    where
-        Self: AsStorageMut<T>,
-        T: Topological,
-    {
-        AsStorageMut::<T>::as_storage_mut(self)
-    }
 }
 
 impl<G> MeshGraph<G>
@@ -141,7 +120,7 @@ where
 
     /// Gets the number of vertices in the mesh.
     pub fn vertex_count(&self) -> usize {
-        self.as_storage::<Vertex<G>>().len()
+        self.as_vertex_storage().len()
     }
 
     /// Gets an immutable view of the vertex with the given key.
@@ -156,7 +135,7 @@ where
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&Self, G>> {
-        Iter::<_, Vertex<G>, _, _>::from((self.as_storage::<Vertex<G>>().keys(), self))
+        Iter::<_, Vertex<G>, _, _>::from((self.as_vertex_storage().keys(), self))
     }
 
     /// Gets an iterator of orphan views over the vertices in the mesh.
@@ -165,12 +144,12 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
-        IterMut::from(self.as_storage_mut::<Vertex<G>>().iter_mut())
+        IterMut::from(self.as_vertex_storage_mut().iter_mut())
     }
 
     /// Gets the number of half-edges in the mesh.
     pub fn half_count(&self) -> usize {
-        self.as_storage::<Half<G>>().len()
+        self.as_half_storage().len()
     }
 
     /// Gets an immutable view of the half-edge with the given key.
@@ -185,7 +164,7 @@ where
 
     /// Gets an iterator of immutable views over the half-edges in the mesh.
     pub fn halves(&self) -> impl Clone + Iterator<Item = HalfView<&Self, G>> {
-        Iter::<_, Half<G>, _, _>::from((self.as_storage::<Half<G>>().keys(), self))
+        Iter::<_, Half<G>, _, _>::from((self.as_half_storage().keys(), self))
     }
 
     /// Gets an iterator of orphan views over the edges in the mesh.
@@ -194,12 +173,12 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
     pub fn orphan_halves(&mut self) -> impl Iterator<Item = OrphanHalfView<G>> {
-        IterMut::from(self.as_storage_mut::<Half<G>>().iter_mut())
+        IterMut::from(self.as_half_storage_mut().iter_mut())
     }
 
     /// Gets the number of faces in the mesh.
     pub fn face_count(&self) -> usize {
-        self.as_storage::<Face<G>>().len()
+        self.as_face_storage().len()
     }
 
     /// Gets an immutable view of the face with the given key.
@@ -214,7 +193,7 @@ where
 
     /// Gets an iterator of immutable views over the faces in the mesh.
     pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&Self, G>> {
-        Iter::<_, Face<G>, _, _>::from((self.as_storage::<Face<G>>().keys(), self))
+        Iter::<_, Face<G>, _, _>::from((self.as_face_storage().keys(), self))
     }
 
     /// Gets an iterator of orphan views over the faces in the mesh.
@@ -223,7 +202,7 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        IterMut::from(self.as_storage_mut::<Face<G>>().iter_mut())
+        IterMut::from(self.as_face_storage_mut().iter_mut())
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
@@ -231,10 +210,7 @@ where
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
     {
-        let faces = <Self as AsStorage<Face<G>>>::as_storage(self)
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>();
+        let faces = self.as_face_storage().keys().cloned().collect::<Vec<_>>();
         for face in faces {
             self.face_mut(face).unwrap().triangulate()?;
         }
@@ -376,7 +352,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
-        self.core.as_storage::<Vertex<G>>()
+        self.core.as_vertex_storage()
     }
 }
 
@@ -385,7 +361,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Half<G>> {
-        self.core.as_storage::<Half<G>>()
+        self.core.as_half_storage()
     }
 }
 
@@ -394,7 +370,7 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
-        self.core.as_storage::<Face<G>>()
+        self.core.as_face_storage()
     }
 }
 
@@ -403,7 +379,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
-        self.core.as_storage_mut::<Vertex<G>>()
+        self.core.as_vertex_storage_mut()
     }
 }
 
@@ -412,7 +388,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Half<G>> {
-        self.core.as_storage_mut::<Half<G>>()
+        self.core.as_half_storage_mut()
     }
 }
 
@@ -421,7 +397,7 @@ where
     G: Geometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
-        self.core.as_storage_mut::<Face<G>>()
+        self.core.as_face_storage_mut()
     }
 }
 
@@ -469,7 +445,8 @@ where
 {
     fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
         let MeshGraph { core, .. } = graph;
-        let (vertices, halves, faces) = core.into_storage();
+        // TODO: Include composite edges.
+        let (vertices, halves, _, faces) = core.into_storage();
         let core = Core::empty()
             .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
             .bind(halves.map_values_into(|half| Half::<G>::from_interior_geometry(half)))
@@ -846,6 +823,7 @@ mod tests {
         impl Geometry for ValueGeometry {
             type Vertex = Point3<f32>;
             type Half = ();
+            type Edge = ();
             type Face = f32;
         }
 

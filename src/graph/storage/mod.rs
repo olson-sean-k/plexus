@@ -74,6 +74,26 @@ impl OpaqueKey for HalfKey {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct EdgeKey(u64);
+
+impl FromInnerKey<u64> for EdgeKey {
+    fn from_inner_key(inner: u64) -> Self {
+        EdgeKey(inner)
+    }
+}
+
+impl KeySequence for EdgeKey {
+    fn next_key(self) -> Self {
+        let EdgeKey(inner) = self;
+        EdgeKey(inner.next_key())
+    }
+}
+
+impl OpaqueKey for EdgeKey {
+    type Sequence = Self;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(u64);
 
 impl FromInnerKey<u64> for FaceKey {

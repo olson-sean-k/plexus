@@ -34,7 +34,8 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
-    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Half<G>>, &Storage<Face<G>>> {
+    // TODO: Include composite edges.
+    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Half<G>>, (), &Storage<Face<G>>> {
         Core::empty()
             .bind(self.as_vertex_storage())
             .bind(self.as_half_storage())
@@ -190,11 +191,12 @@ where
     type Error = GraphError;
 
     fn mutate(core: Self::Mutant) -> Self {
-        let (vertices, edges, faces) = core.into_storage();
+        // TODO: Include composite edges.
+        let (vertices, halves, _, faces) = core.into_storage();
         FaceMutation {
             singularities: Default::default(),
             storage: faces,
-            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(edges)),
+            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(halves)),
         }
     }
 
@@ -206,12 +208,12 @@ where
             ..
         } = self;
         mutation.commit().and_then(move |core| {
-            let (vertices, edges, ..) = core.into_storage();
+            let (vertices, halves, ..) = core.into_storage();
             {
                 // TODO: Rejection of pinwheel connectivity has been removed.
                 //       Determine if this check is related in a way that is
                 //       inconsistent. If so, this should probably be removed.
-                let core = Core::empty().bind(&vertices).bind(&edges).bind(&faces);
+                let core = Core::empty().bind(&vertices).bind(&halves).bind(&faces);
                 for (vertex, faces) in singularities {
                     // Determine if any unreachable faces exist in the mesh. This
                     // cannot happen if the mesh is ultimately a manifold and edge
@@ -231,7 +233,8 @@ where
                     }
                 }
             }
-            Ok(Core::empty().bind(vertices).bind(edges).bind(faces))
+            // TODO: Include composite edges.
+            Ok(Core::empty().bind(vertices).bind(halves).bind(faces))
         })
     }
 }

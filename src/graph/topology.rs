@@ -1,6 +1,6 @@
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::{Attribute, Geometry};
-use crate::graph::storage::{FaceKey, HalfKey, OpaqueKey, VertexKey};
+use crate::graph::storage::{EdgeKey, FaceKey, HalfKey, OpaqueKey, VertexKey};
 
 pub trait Topological {
     type Key: OpaqueKey;
@@ -110,6 +110,48 @@ where
 {
     type Key = HalfKey;
     type Attribute = G::Half;
+}
+
+#[derivative(Debug, Hash)]
+#[derive(Clone, Derivative)]
+pub struct Edge<G>
+where
+    G: Geometry,
+{
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Edge,
+    pub(in crate::graph) half: HalfKey,
+}
+
+impl<G> Edge<G>
+where
+    G: Geometry,
+{
+    pub(in crate::graph) fn new(half: HalfKey, geometry: G::Edge) -> Self {
+        Edge { geometry, half }
+    }
+}
+
+impl<G, H> FromInteriorGeometry<Edge<H>> for Edge<G>
+where
+    G: Geometry,
+    G::Edge: FromGeometry<H::Edge>,
+    H: Geometry,
+{
+    fn from_interior_geometry(edge: Edge<H>) -> Self {
+        Edge {
+            geometry: edge.geometry.into_geometry(),
+            half: edge.half,
+        }
+    }
+}
+
+impl<G> Topological for Edge<G>
+where
+    G: Geometry,
+{
+    type Key = EdgeKey;
+    type Attribute = G::Edge;
 }
 
 #[derivative(Debug, Hash)]

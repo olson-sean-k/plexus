@@ -56,6 +56,7 @@ pub trait Attribute: Clone {}
 /// impl Geometry for VertexGeometry {
 ///     type Vertex = Self;
 ///     type Half = ();
+///     type Edge = ();
 ///     type Face = ();
 /// }
 ///
@@ -85,6 +86,7 @@ pub trait Attribute: Clone {}
 pub trait Geometry: Sized {
     type Vertex: Attribute;
     type Half: Attribute + Default;
+    type Edge: Attribute + Default;
     type Face: Attribute + Default;
 }
 
@@ -93,6 +95,7 @@ impl Attribute for () {}
 impl Geometry for () {
     type Vertex = ();
     type Half = ();
+    type Edge = ();
     type Face = ();
 }
 
@@ -128,6 +131,7 @@ where
 {
     type Vertex = Self;
     type Half = ();
+    type Edge = ();
     type Face = ();
 }
 
@@ -163,6 +167,7 @@ where
 {
     type Vertex = Self;
     type Half = ();
+    type Edge = ();
     type Face = ();
 }
 
@@ -301,6 +306,7 @@ mod feature_geometry_cgmath {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 
@@ -310,6 +316,7 @@ mod feature_geometry_cgmath {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 }
@@ -433,6 +440,7 @@ mod feature_geometry_mint {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 
@@ -442,6 +450,7 @@ mod feature_geometry_mint {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 }
@@ -559,6 +568,7 @@ mod feature_geometry_nalgebra {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 
@@ -568,6 +578,7 @@ mod feature_geometry_nalgebra {
     {
         type Vertex = Self;
         type Half = ();
+        type Edge = ();
         type Face = ();
     }
 }

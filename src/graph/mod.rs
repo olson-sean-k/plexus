@@ -181,7 +181,7 @@ use std::fmt::Debug;
 use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
-pub use self::storage::{FaceKey, HalfKey, VertexKey};
+pub use self::storage::{EdgeKey, FaceKey, HalfKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
 //       for mutable, immutable, and orphan views over a `MeshGraph` would be
 //       simpler and help insulate users from the complexity of views, but it
