@@ -192,7 +192,7 @@ pub use self::storage::{EdgeKey, FaceKey, HalfKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    ClosedPathView, EdgeKeyTopology, FaceKeyTopology, FaceView, HalfView, OrphanFaceView,
+    ClosedPathView, FaceNeighborhood, FaceView, HalfNeighborhood, HalfView, OrphanFaceView,
     OrphanHalfView, OrphanVertexView, VertexView,
 };
 

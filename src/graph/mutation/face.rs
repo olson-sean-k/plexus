@@ -17,7 +17,7 @@ use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
 use crate::graph::topology::{Face, Half, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::{FaceKeyTopology, FaceView, HalfView, VertexView};
+use crate::graph::view::{FaceNeighborhood, FaceView, HalfView, VertexView};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
@@ -431,8 +431,8 @@ pub struct FaceBridgeCache<G>
 where
     G: Geometry,
 {
-    source: FaceKeyTopology,
-    destination: FaceKeyTopology,
+    source: FaceNeighborhood,
+    destination: FaceNeighborhood,
     cache: (FaceRemoveCache<G>, FaceRemoveCache<G>),
 }
 
@@ -463,8 +463,8 @@ where
             return Err(GraphError::ArityNonConstant);
         }
         Ok(FaceBridgeCache {
-            source: source.to_key_topology(),
-            destination: destination.to_key_topology(),
+            source: source.neighborhood(),
+            destination: destination.neighborhood(),
             cache,
         })
     }

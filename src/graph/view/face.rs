@@ -20,7 +20,9 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
 use crate::graph::topology::{Face, Half, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
-use crate::graph::view::{EdgeKeyTopology, HalfView, OrphanHalfView, OrphanVertexView, VertexView};
+use crate::graph::view::{
+    HalfNeighborhood, HalfView, OrphanHalfView, OrphanVertexView, VertexView,
+};
 use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a face.
@@ -257,8 +259,8 @@ where
     M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn to_key_topology(&self) -> FaceKeyTopology {
-        FaceKeyTopology::from(self.interior_reborrow())
+    pub fn neighborhood(&self) -> FaceNeighborhood {
+        FaceNeighborhood::from(self.interior_reborrow())
     }
 
     pub fn interior_path_distance(
@@ -615,33 +617,33 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct FaceKeyTopology {
+pub struct FaceNeighborhood {
     key: FaceKey,
-    halves: Vec<EdgeKeyTopology>,
+    halves: Vec<HalfNeighborhood>,
 }
 
-impl FaceKeyTopology {
+impl FaceNeighborhood {
     pub fn key(&self) -> FaceKey {
         self.key
     }
 
-    pub fn interior_halves(&self) -> &[EdgeKeyTopology] {
+    pub fn interior_halves(&self) -> &[HalfNeighborhood] {
         self.halves.as_slice()
     }
 }
 
-impl<M, G> From<FaceView<M, G>> for FaceKeyTopology
+impl<M, G> From<FaceView<M, G>> for FaceNeighborhood
 where
     M: Reborrow,
     M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     fn from(face: FaceView<M, G>) -> Self {
-        FaceKeyTopology {
+        FaceNeighborhood {
             key: face.key,
             halves: face
                 .reachable_interior_halves()
-                .map(|half| half.to_key_topology())
+                .map(|half| half.neighborhood())
                 .collect(),
         }
     }

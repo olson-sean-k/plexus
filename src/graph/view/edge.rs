@@ -335,8 +335,8 @@ where
     M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn to_key_topology(&self) -> EdgeKeyTopology {
-        EdgeKeyTopology::from(self.interior_reborrow())
+    pub fn neighborhood(&self) -> HalfNeighborhood {
+        HalfNeighborhood::from(self.interior_reborrow())
     }
 
     pub fn into_source_vertex(self) -> VertexView<M, G> {
@@ -722,12 +722,12 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct EdgeKeyTopology {
+pub struct HalfNeighborhood {
     key: HalfKey,
     vertices: (VertexKey, VertexKey),
 }
 
-impl EdgeKeyTopology {
+impl HalfNeighborhood {
     pub fn key(&self) -> HalfKey {
         self.key
     }
@@ -737,7 +737,7 @@ impl EdgeKeyTopology {
     }
 }
 
-impl<M, G> From<HalfView<M, G>> for EdgeKeyTopology
+impl<M, G> From<HalfView<M, G>> for HalfNeighborhood
 where
     M: Reborrow,
     M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -746,7 +746,7 @@ where
     fn from(half: HalfView<M, G>) -> Self {
         let a = half.source_vertex().key();
         let b = half.destination_vertex().key();
-        EdgeKeyTopology {
+        HalfNeighborhood {
             key: half.key,
             vertices: (a, b),
         }
