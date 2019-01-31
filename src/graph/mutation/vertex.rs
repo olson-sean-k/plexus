@@ -4,7 +4,7 @@ use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{HalfKey, Storage, VertexKey};
+use crate::graph::storage::{ArcKey, Storage, VertexKey};
 use crate::graph::topology::Vertex;
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
@@ -25,21 +25,18 @@ where
         self.storage.insert(Vertex::new(geometry))
     }
 
-    pub fn connect_outgoing_half(&mut self, a: VertexKey, ab: HalfKey) -> Result<(), GraphError> {
+    pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
         VertexView::from_keyed_source((a, &mut self.storage))
             .ok_or_else(|| GraphError::TopologyNotFound)
             .map(|mut vertex| {
-                vertex.half = Some(ab);
+                vertex.arc = Some(ab);
             })
     }
 
-    pub fn disconnect_outgoing_half(
-        &mut self,
-        a: VertexKey,
-    ) -> Result<Option<HalfKey>, GraphError> {
+    pub fn disconnect_outgoing_arc(&mut self, a: VertexKey) -> Result<Option<ArcKey>, GraphError> {
         VertexView::from_keyed_source((a, &mut self.storage))
             .ok_or_else(|| GraphError::TopologyNotFound)
-            .map(|mut vertex| vertex.half.take())
+            .map(|mut vertex| vertex.arc.take())
     }
 }
 

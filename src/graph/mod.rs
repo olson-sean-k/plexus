@@ -1,46 +1,44 @@
 //! Half-edge graph representation of meshes.
 //!
 //! This module provides a flexible representation of meshes as a [half-edge
-//! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list). Meshes
-//! can store arbitrary geometric data associated with any topological
-//! structure (vertices, half-edges, and faces).
+//! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list).
+//! _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
+//! respectively.  Meshes can store arbitrary geometric data associated with
+//! any topological structure (vertices, arcs, edges, and faces).
 //!
 //! Geometry is vertex-based, meaning that geometric operations depend on
 //! vertices exposing some notion of positional data. See the `geometry` module
 //! and `AsPosition` trait. If geometry does not have this property, then most
-//! useful spatial operations will not be available.
+//! spatial operations will not be available.
 //!
 //! # Representation
 //!
-//! A `MeshGraph` is conceptually composed of _vertices_, _half-edges_, and
+//! A `MeshGraph` is conceptually composed of _vertices_, _arcs_, _edges_, and
 //! _faces_. The figure below summarizes the connectivity in a `MeshGraph`.
 //!
 //! ![Half-Edge Graph Figure](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/heg.svg?sanitize=true)
 //!
-//! Half-edges are directed and connect vertices. A half-edge that is directed
-//! toward a vertex **A** is an _incoming half-edge_ with respect to **A**.
-//! Similarly, a half-edge directed away from such a vertex is an _outgoing
-//! half-edge_. Every vertex is associated with exactly one _leading
-//! half-edge_, which is always an outgoing half-edge. The vertex toward which
-//! a half-edge is directed is the half-edge's _destination vertex_ and the
-//! other is its _source vertex_.
+//! Arcs are directed and connect vertices. An arc that is directed toward a
+//! vertex **A** is an _incoming arc_ with respect to **A**.  Similarly, an arc
+//! directed away from such a vertex is an _outgoing arc_. Every vertex is
+//! associated with exactly one _leading arc_, which is always an outgoing arc.
+//! The vertex toward which an arc is directed is the arc's _destination
+//! vertex_ and the other is its _source vertex_.
 //!
-//! Every half-edge is paired with an _opposite half-edge_ with the opposite
-//! direction. Given a half-edge from a vertex **A** to a vertex **B**, that
-//! half-edge will have an opposite half-edge from **B** to **A**. Such edges
-//! are typically labeled **AB** and **BA**. Together, these half-edges form a
-//! _composite edge_. Half-edges are typically referred to simply as "halves"
-//! or "half", while composite edges are referred to as "edges" or "edge".
+//! Every arc is paired with an _opposite arc_ with an opposing direction.
+//! Given an arc from a vertex **A** to a vertex **B**, that arc will have an
+//! opposite arc from **B** to **A**. Such arcs are typically labeled **AB**
+//! and **BA**. Together, these arcs form an _edge_, which is not directed.
+//! Occassionally, the term "edge" may refer to either an arc or an edge.
 //!
-//! Half-edges are connected to their neighbors, known as _next_ and _previous
-//! half-edges_. When a face is present in the contiguous region formed by a
-//! perimeter of vertices and their half-edges, the half-edges will refer to
-//! that face and the face will refer to exactly one of the half-edges in the
-//! interior. A half-edge with no associated face is known as a _boundary
-//! half-edge_. If both of a composite edge's half-edges are boundary
-//! half-edges, then that composite edge is a _disjoint edge_.
+//! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
+//! When a face is present in the contiguous region formed by a perimeter of
+//! vertices and their arcs, the arcs will refer to that face and the face will
+//! refer to exactly one of the arcs in the interior. An arc with no associated
+//! face is known as a _boundary arc_. If both of an edge's arcs are boundary
+//! arcs, then that edge is a _disjoint edge_.
 //!
-//! Together with vertices and faces, the connectivity of half-edges allows for
+//! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find
 //! neighboring topologies, such as the faces that share a given vertex or the
 //! neighboring faces of a given face.
@@ -54,10 +52,10 @@
 //! # Topological Views
 //!
 //! `MeshGraph`s expose _views_ over their topological structures (vertices,
-//! half-edges, and faces). Views are accessed via keys or iteration and behave
-//! similarly to references. They provide the primary API for interacting with
-//! a `MeshGraph`'s topology and geometry. There are three types summarized
-//! below:
+//! arcs, edges, and faces). Views are accessed via keys or iteration and
+//! behave similarly to references. They provide the primary API for
+//! interacting with a `MeshGraph`'s topology and geometry. There are three
+//! types summarized below:
 //!
 //! | Type      | Traversal | Exclusive | Geometry  | Topology  |
 //! |-----------|-----------|-----------|-----------|-----------|
@@ -72,11 +70,11 @@
 //!
 //! _Orphan views_ are similar to mutable views, but they only have access to
 //! the geometry of a single topological structure in a mesh. Because they do
-//! not know about other vertices, half-edges, or faces, an orphan view cannot
-//! traverse the topology of a mesh in any way. These views are most useful for
+//! not know about other vertices, arcs, etc., an orphan view cannot traverse
+//! the topology of a mesh in any way. These views are most useful for
 //! modifying the geometry of a mesh and, unlike mutable views, multiple orphan
 //! views can be obtained at the same time. Orphan views are mostly used by
-//! _circulators_ (iterators).
+//! mutable _circulators_ (iterators).
 //!
 //! Immutable and mutable views are both represented by view types, such as
 //! `FaceView`. Orphan views are represented by an oprhan view type, such as
@@ -151,14 +149,13 @@
 //! .unwrap();
 //! graph.triangulate().unwrap();
 //!
-//! // Traverse a half-edge and use a circulator to get the faces of a nearby
-//! // vertex.
-//! let key = graph.halves().nth(0).unwrap().key();
+//! // Traverse an arc and use a circulator to get the faces of a nearby vertex.
+//! let key = graph.arcs().nth(0).unwrap().key();
 //! let mut vertex = graph
-//!     .half_mut(key)
+//!     .arc_mut(key)
 //!     .unwrap()
-//!     .into_opposite_half()
-//!     .into_next_half()
+//!     .into_opposite_arc()
+//!     .into_next_arc()
 //!     .into_destination_vertex();
 //! for mut face in vertex.neighboring_orphan_faces() {
 //!     // `face.geometry` is mutable here.
@@ -181,7 +178,7 @@ use std::fmt::Debug;
 use crate::buffer::BufferError;
 
 pub use self::mesh::MeshGraph;
-pub use self::storage::{EdgeKey, FaceKey, HalfKey, VertexKey};
+pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
 //       for mutable, immutable, and orphan views over a `MeshGraph` would be
 //       simpler and help insulate users from the complexity of views, but it
@@ -192,8 +189,8 @@ pub use self::storage::{EdgeKey, FaceKey, HalfKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    ClosedPathView, FaceNeighborhood, FaceView, HalfNeighborhood, HalfView, OrphanFaceView,
-    OrphanHalfView, OrphanVertexView, VertexView,
+    ArcNeighborhood, ArcView, ClosedPathView, FaceNeighborhood, FaceView, OrphanArcView,
+    OrphanFaceView, OrphanVertexView, VertexView,
 };
 
 #[derive(Debug, Fail, PartialEq)]

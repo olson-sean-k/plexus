@@ -6,8 +6,8 @@ use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{FaceKey, HalfKey, VertexKey};
-use crate::graph::topology::{Face, Half, Vertex};
+use crate::graph::storage::{ArcKey, FaceKey, VertexKey};
+use crate::graph::topology::{Arc, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
 use crate::graph::GraphError;
@@ -29,10 +29,10 @@ use crate::IteratorExt;
 
 /// Vertex-bounded region connectivity.
 ///
-/// Describes the per-vertex half-edge connectivity of a region bounded by a
-/// set of vertices. This is primarily used to connect exterior half-edges when
-/// a face is inserted into a mesh.
-pub type Connectivity = HashMap<VertexKey, Vec<HalfKey>>;
+/// Describes the per-vertex arc connectivity of a region bounded by a set of
+/// vertices. This is primarily used to connect exterior arcs when a face is
+/// inserted into a mesh.
+pub type Connectivity = HashMap<VertexKey, Vec<ArcKey>>;
 
 pub type Singularity = (VertexKey, Vec<FaceKey>);
 
@@ -44,7 +44,7 @@ pub type Singularity = (VertexKey, Vec<FaceKey>);
 pub struct Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     storage: M,
@@ -56,7 +56,7 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, GraphError> {
@@ -84,10 +84,10 @@ where
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|span| storage.reborrow().as_half_storage().get(&span.into()))
-            .flat_map(|half| half.face)
+            .flat_map(|span| storage.reborrow().as_arc_storage().get(&span.into()))
+            .flat_map(|arc| arc.face)
             .collect::<HashSet<_>>();
-        // Fail if the half-edges refer to more than one face.
+        // Fail if the arcs refer to more than one face.
         if faces.len() > 1 {
             // Non-closed region.
             return Err(GraphError::TopologyMalformed);
@@ -112,11 +112,11 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub fn reachable_connectivity(&self) -> ((Connectivity, Connectivity), Option<Singularity>) {
-        // Get the outgoing and incoming edges of the vertices forming the
+        // Get the outgoing and incoming arcs of the vertices forming the
         // perimeter.
         let outgoing = self
             .vertices
@@ -127,9 +127,9 @@ where
                     key,
                     VertexView::from_keyed_source((key, self.storage.reborrow()))
                         .unwrap()
-                        .reachable_incoming_halves()
-                        .flat_map(|half| half.into_reachable_opposite_half())
-                        .map(|half| half.key())
+                        .reachable_incoming_arcs()
+                        .flat_map(|arc| arc.into_reachable_opposite_arc())
+                        .map(|arc| arc.key())
                         .collect::<Vec<_>>(),
                 )
             })
@@ -143,15 +143,15 @@ where
                     key,
                     VertexView::from_keyed_source((key, self.storage.reborrow()))
                         .unwrap()
-                        .reachable_incoming_halves()
-                        .map(|half| half.key())
+                        .reachable_incoming_arcs()
+                        .map(|arc| arc.key())
                         .collect::<Vec<_>>(),
                 )
             })
             .collect::<HashMap<_, _>>();
-        // If only one vertex has any outgoing half-edges, then this face
-        // shares exactly one vertex with other faces. The vertex is a
-        // singularity and forms a pinwheel.
+        // If only one vertex has any outgoing arcs, then this face shares
+        // exactly one vertex with other faces. The vertex is a singularity and
+        // forms a pinwheel.
         //
         // TODO: Half-edge graphs can support pinwheels and this topology is
         //       common. If possible, remove this detection mechanism. If this
@@ -161,7 +161,7 @@ where
         //       Note that this data is still used when `FaceMutation`s are
         //       committed to detect and reject unreachable faces.
         let singularity = {
-            let mut outgoing = outgoing.iter().filter(|&(_, halves)| !halves.is_empty());
+            let mut outgoing = outgoing.iter().filter(|&(_, arcs)| !arcs.is_empty());
             if let Some((&vertex, _)) = outgoing.next() {
                 outgoing.next().map_or_else(
                     || {

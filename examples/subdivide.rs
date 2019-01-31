@@ -21,17 +21,17 @@ where
     G::Vertex: AsPosition,
 {
     // Split each edge, stashing the vertex key and moving to the next
-    // half-edge.
+    // arc-edge.
     let arity = face.arity();
-    let mut half = face.into_half();
+    let mut arc = face.into_arc();
     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
     for _ in 0..arity {
-        let vertex = half.split()?;
+        let vertex = arc.split()?;
         splits.push(vertex.key());
-        half = vertex.into_outgoing_half().into_next_half();
+        arc = vertex.into_outgoing_arc().into_next_arc();
     }
     // Bisect along the vertices from each edge split.
-    let mut face = half.into_face().unwrap();
+    let mut face = arc.into_face().unwrap();
     for (a, b) in splits.into_iter().perimeter() {
         face = face.bisect(a, b)?.into_face().unwrap();
     }

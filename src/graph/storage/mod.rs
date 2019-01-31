@@ -48,28 +48,28 @@ impl OpaqueKey for VertexKey {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct HalfKey(VertexKey, VertexKey);
+pub struct ArcKey(VertexKey, VertexKey);
 
-impl HalfKey {
-    pub(in crate::graph) fn opposite(self) -> HalfKey {
+impl ArcKey {
+    pub(in crate::graph) fn opposite(self) -> ArcKey {
         let (a, b) = self.into();
         (b, a).into()
     }
 }
 
-impl From<(VertexKey, VertexKey)> for HalfKey {
+impl From<(VertexKey, VertexKey)> for ArcKey {
     fn from(key: (VertexKey, VertexKey)) -> Self {
-        HalfKey(key.0, key.1)
+        ArcKey(key.0, key.1)
     }
 }
 
-impl Into<(VertexKey, VertexKey)> for HalfKey {
+impl Into<(VertexKey, VertexKey)> for ArcKey {
     fn into(self) -> (VertexKey, VertexKey) {
         (self.0, self.1)
     }
 }
 
-impl OpaqueKey for HalfKey {
+impl OpaqueKey for ArcKey {
     type Sequence = ();
 }
 
@@ -116,7 +116,7 @@ impl OpaqueKey for FaceKey {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Key {
     Vertex(VertexKey),
-    Edge(HalfKey),
+    Edge(ArcKey),
     Face(FaceKey),
 }
 
@@ -126,8 +126,8 @@ impl From<VertexKey> for Key {
     }
 }
 
-impl From<HalfKey> for Key {
-    fn from(key: HalfKey) -> Self {
+impl From<ArcKey> for Key {
+    fn from(key: ArcKey) -> Self {
         Key::Edge(key)
     }
 }

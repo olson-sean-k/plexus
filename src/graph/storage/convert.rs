@@ -69,7 +69,7 @@ pub mod alias {
     use super::*;
 
     use crate::geometry::Geometry;
-    use crate::graph::topology::{Edge, Face, Half, Vertex};
+    use crate::graph::topology::{Arc, Edge, Face, Vertex};
 
     pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>
     where
@@ -103,34 +103,34 @@ pub mod alias {
     {
     }
 
-    pub trait AsHalfStorage<G>: AsStorage<Half<G>>
+    pub trait AsArcStorage<G>: AsStorage<Arc<G>>
     where
         G: Geometry,
     {
-        fn as_half_storage(&self) -> &Storage<Half<G>> {
+        fn as_arc_storage(&self) -> &Storage<Arc<G>> {
             self.as_storage()
         }
     }
 
-    impl<T, G> AsHalfStorage<G> for T
+    impl<T, G> AsArcStorage<G> for T
     where
-        T: AsStorage<Half<G>>,
+        T: AsStorage<Arc<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsHalfStorageMut<G>: AsStorageMut<Half<G>>
+    pub trait AsArcStorageMut<G>: AsStorageMut<Arc<G>>
     where
         G: Geometry,
     {
-        fn as_half_storage_mut(&mut self) -> &mut Storage<Half<G>> {
+        fn as_arc_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
             self.as_storage_mut()
         }
     }
 
-    impl<T, G> AsHalfStorageMut<G> for T
+    impl<T, G> AsArcStorageMut<G> for T
     where
-        T: AsStorageMut<Half<G>>,
+        T: AsStorageMut<Arc<G>>,
         G: Geometry,
     {
     }
@@ -139,7 +139,7 @@ pub mod alias {
     where
         G: Geometry,
     {
-        fn as_half_storage(&self) -> &Storage<Edge<G>> {
+        fn as_arc_storage(&self) -> &Storage<Edge<G>> {
             self.as_storage()
         }
     }
@@ -155,7 +155,7 @@ pub mod alias {
     where
         G: Geometry,
     {
-        fn as_half_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+        fn as_arc_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
             self.as_storage_mut()
         }
     }

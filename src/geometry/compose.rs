@@ -15,7 +15,7 @@
 //!
 //! # Examples
 //!
-//! A function that subdivides faces in a graph by splitting half-edges:
+//! A function that subdivides faces in a graph by splitting edges:
 //!
 //! ```rust
 //! use plexus::geometry::alias::VertexPosition;
@@ -25,7 +25,7 @@
 //! use plexus::graph::{FaceView, GraphError, MeshGraph};
 //! use plexus::prelude::*;
 //!
-//! // Requires `EdgeMidpoint` to split half-edges.
+//! // Requires `EdgeMidpoint` to split edges.
 //! pub fn subdivide<G>(
 //!     face: FaceView<&mut MeshGraph<G>, G>,
 //! ) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
@@ -34,14 +34,14 @@
 //!     G::Vertex: AsPosition,
 //! {
 //!     let arity = face.arity();
-//!     let mut half = face.into_half();
+//!     let mut arc = face.into_arc();
 //!     let mut splits = Vec::with_capacity(arity);
 //!     for _ in 0..arity {
-//!         let vertex = half.split()?;
+//!         let vertex = arc.split()?;
 //!         splits.push(vertex.key());
-//!         half = vertex.into_outgoing_half().into_next_half();
+//!         arc = vertex.into_outgoing_arc().into_next_arc();
 //!     }
-//!     let mut face = half.into_face().unwrap();
+//!     let mut face = arc.into_face().unwrap();
 //!     for (a, b) in splits.into_iter().perimeter() {
 //!         face = face.bisect(a, b)?.into_face().unwrap();
 //!     }

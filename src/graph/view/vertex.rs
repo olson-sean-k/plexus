@@ -10,10 +10,10 @@ use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{FaceKey, HalfKey, Storage, VertexKey};
-use crate::graph::topology::{Face, Half, Topological, Vertex};
+use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Arc, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoView};
-use crate::graph::view::{FaceView, HalfView, OrphanFaceView, OrphanHalfView};
+use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView};
 use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a vertex.
@@ -84,14 +84,14 @@ where
     /// let mut graph = Cube::new()
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Point3<f32>>>();
-    /// let key = graph.halves().nth(0).unwrap().key();
-    /// let vertex = graph.half_mut(key).unwrap().split().unwrap().into_ref();
+    /// let key = graph.arcs().nth(0).unwrap().key();
+    /// let vertex = graph.arc_mut(key).unwrap().split().unwrap().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
-    /// let _ = vertex.into_outgoing_half().into_face().unwrap();
+    /// let _ = vertex.into_outgoing_arc().into_face().unwrap();
     /// let _ = vertex
-    ///     .into_outgoing_half()
-    ///     .into_opposite_half()
+    ///     .into_outgoing_arc()
+    ///     .into_opposite_arc()
     ///     .into_face()
     ///     .unwrap();
     /// # }
@@ -158,47 +158,47 @@ where
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn into_reachable_outgoing_half(self) -> Option<HalfView<M, G>> {
-        let key = self.half;
+    pub(in crate::graph) fn into_reachable_outgoing_arc(self) -> Option<ArcView<M, G>> {
+        let key = self.arc;
         key.and_then(move |key| {
             let (_, storage) = self.into_keyed_storage();
             (key, storage).into_view()
         })
     }
 
-    pub(in crate::graph) fn reachable_outgoing_half(&self) -> Option<HalfView<&M::Target, G>> {
-        self.half.and_then(|key| {
+    pub(in crate::graph) fn reachable_outgoing_arc(&self) -> Option<ArcView<&M::Target, G>> {
+        self.arc.and_then(|key| {
             let storage = self.storage.reborrow();
             (key, storage).into_view()
         })
     }
 
-    pub(in crate::graph) fn reachable_incoming_halves(
+    pub(in crate::graph) fn reachable_incoming_arcs(
         &self,
-    ) -> impl Clone + Iterator<Item = HalfView<&M::Target, G>> {
-        HalfCirculator::from(self.interior_reborrow())
+    ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        ArcCirculator::from(self.interior_reborrow())
     }
 }
 
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn into_outgoing_half(self) -> HalfView<M, G> {
-        self.into_reachable_outgoing_half().expect_consistent()
+    pub fn into_outgoing_arc(self) -> ArcView<M, G> {
+        self.into_reachable_outgoing_arc().expect_consistent()
     }
 
-    pub fn outgoing_half(&self) -> HalfView<&M::Target, G> {
-        self.reachable_outgoing_half().expect_consistent()
+    pub fn outgoing_arc(&self) -> ArcView<&M::Target, G> {
+        self.reachable_outgoing_arc().expect_consistent()
     }
 
-    pub fn incoming_halves(&self) -> impl Clone + Iterator<Item = HalfView<&M::Target, G>> {
-        self.reachable_incoming_halves()
+    pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        self.reachable_incoming_arcs()
     }
 }
 
@@ -206,20 +206,20 @@ where
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub(in crate::graph) fn reachable_neighboring_faces(
         &self,
     ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(HalfCirculator::from(self.interior_reborrow()))
+        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow()))
     }
 }
 
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
@@ -231,11 +231,11 @@ where
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Half<G>> + AsStorageMut<Half<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorageMut<Arc<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_outgoing_orphan_half(&mut self) -> Option<OrphanHalfView<G>> {
-        if let Some(key) = self.half {
+    pub(in crate::graph) fn reachable_outgoing_orphan_arc(&mut self) -> Option<OrphanArcView<G>> {
+        if let Some(key) = self.arc {
             (key, self.storage.reborrow_mut()).into_view()
         }
         else {
@@ -243,25 +243,25 @@ where
         }
     }
 
-    pub(in crate::graph) fn reachable_incoming_orphan_halves(
+    pub(in crate::graph) fn reachable_incoming_orphan_arcs(
         &mut self,
-    ) -> impl Iterator<Item = OrphanHalfView<G>> {
-        HalfCirculator::from(self.interior_reborrow_mut())
+    ) -> impl Iterator<Item = OrphanArcView<G>> {
+        ArcCirculator::from(self.interior_reborrow_mut())
     }
 }
 
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Half<G>> + AsStorageMut<Half<G>> + AsStorage<Vertex<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorageMut<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: Geometry,
 {
-    pub fn outgoing_orphan_half(&mut self) -> OrphanHalfView<G> {
-        self.reachable_outgoing_orphan_half().expect_consistent()
+    pub fn outgoing_orphan_arc(&mut self) -> OrphanArcView<G> {
+        self.reachable_outgoing_orphan_arc().expect_consistent()
     }
 
-    pub fn incoming_orphan_halves(&mut self) -> impl Iterator<Item = OrphanHalfView<G>> {
-        self.reachable_incoming_orphan_halves()
+    pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
+        self.reachable_incoming_orphan_arcs()
     }
 }
 
@@ -270,20 +270,20 @@ impl<M, G> VertexView<M, G>
 where
     M: Reborrow + ReborrowMut,
     M::Target:
-        AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + AsStorage<Vertex<G>>,
+        AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     pub(in crate::graph) fn reachable_neighboring_orphan_faces(
         &mut self,
     ) -> impl Iterator<Item = OrphanFaceView<G>> {
-        FaceCirculator::from(HalfCirculator::from(self.interior_reborrow_mut()))
+        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 }
 
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Half<G>>
+    M::Target: AsStorage<Arc<G>>
         + AsStorage<Face<G>>
         + AsStorageMut<Face<G>>
         + AsStorage<Vertex<G>>
@@ -297,7 +297,7 @@ where
 
 impl<'a, M, G> VertexView<&'a mut M, G>
 where
-    M: AsStorage<Half<G>>
+    M: AsStorage<Arc<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Consistent
@@ -443,25 +443,25 @@ where
     }
 }
 
-struct HalfCirculator<M, G>
+struct ArcCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>>,
+    M::Target: AsStorage<Arc<G>>,
     G: Geometry,
 {
     storage: M,
-    outgoing: Option<HalfKey>,
-    breadcrumb: Option<HalfKey>,
+    outgoing: Option<ArcKey>,
+    breadcrumb: Option<ArcKey>,
     phantom: PhantomData<G>,
 }
 
-impl<M, G> HalfCirculator<M, G>
+impl<M, G> ArcCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>>,
+    M::Target: AsStorage<Arc<G>>,
     G: Geometry,
 {
-    fn next(&mut self) -> Option<HalfKey> {
+    fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
             .map(|outgoing| outgoing.opposite())
             .and_then(|incoming| {
@@ -486,14 +486,14 @@ where
     }
 }
 
-impl<M, G> Clone for HalfCirculator<M, G>
+impl<M, G> Clone for ArcCirculator<M, G>
 where
     M: Clone + Reborrow,
-    M::Target: AsStorage<Half<G>>,
+    M::Target: AsStorage<Arc<G>>,
     G: Geometry,
 {
     fn clone(&self) -> Self {
-        HalfCirculator {
+        ArcCirculator {
             storage: self.storage.clone(),
             outgoing: self.outgoing,
             breadcrumb: self.breadcrumb,
@@ -502,16 +502,16 @@ where
     }
 }
 
-impl<M, G> From<VertexView<M, G>> for HalfCirculator<M, G>
+impl<M, G> From<VertexView<M, G>> for ArcCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
     G: Geometry,
 {
     fn from(vertex: VertexView<M, G>) -> Self {
-        let key = vertex.half;
+        let key = vertex.arc;
         let (_, storage) = vertex.into_keyed_storage();
-        HalfCirculator {
+        ArcCirculator {
             storage,
             outgoing: key,
             breadcrumb: key,
@@ -520,31 +520,31 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for HalfCirculator<&'a M, G>
+impl<'a, M, G> Iterator for ArcCirculator<&'a M, G>
 where
-    M: 'a + AsStorage<Half<G>>,
+    M: 'a + AsStorage<Arc<G>>,
     G: 'a + Geometry,
 {
-    type Item = HalfView<&'a M, G>;
+    type Item = ArcView<&'a M, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        HalfCirculator::next(self).and_then(|key| (key, self.storage).into_view())
+        ArcCirculator::next(self).and_then(|key| (key, self.storage).into_view())
     }
 }
 
-impl<'a, M, G> Iterator for HalfCirculator<&'a mut M, G>
+impl<'a, M, G> Iterator for ArcCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Half<G>> + AsStorageMut<Half<G>>,
+    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Arc<G>>,
     G: 'a + Geometry,
 {
-    type Item = OrphanHalfView<'a, G>;
+    type Item = OrphanArcView<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        HalfCirculator::next(self).and_then(|key| {
+        ArcCirculator::next(self).and_then(|key| {
             (key, unsafe {
                 // Apply `'a` to the autoref from `reborrow_mut`,
                 // `as_storage_mut`, and `get_mut`.
-                mem::transmute::<&'_ mut Storage<Half<G>>, &'a mut Storage<Half<G>>>(
+                mem::transmute::<&'_ mut Storage<Arc<G>>, &'a mut Storage<Arc<G>>>(
                     self.storage.as_storage_mut(),
                 )
             })
@@ -556,32 +556,32 @@ where
 struct FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    input: HalfCirculator<M, G>,
+    input: ArcCirculator<M, G>,
 }
 
 impl<M, G> FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(half) = self.input.next() {
+        while let Some(arc) = self.input.next() {
             if let Some(face) = self
                 .input
                 .storage
                 .reborrow()
-                .as_half_storage()
-                .get(&half)
-                .and_then(|half| half.face)
+                .as_arc_storage()
+                .get(&arc)
+                .and_then(|arc| arc.face)
             {
                 return Some(face);
             }
             else {
-                // Skip half-edges with no face. This can occur within non
+                // Skip arcs with no face. This can occur within non
                 // -enclosed meshes.
                 continue;
             }
@@ -593,7 +593,7 @@ where
 impl<M, G> Clone for FaceCirculator<M, G>
 where
     M: Clone + Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
     fn clone(&self) -> Self {
@@ -603,20 +603,20 @@ where
     }
 }
 
-impl<M, G> From<HalfCirculator<M, G>> for FaceCirculator<M, G>
+impl<M, G> From<ArcCirculator<M, G>> for FaceCirculator<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Half<G>> + AsStorage<Face<G>>,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>>,
     G: Geometry,
 {
-    fn from(input: HalfCirculator<M, G>) -> Self {
+    fn from(input: ArcCirculator<M, G>) -> Self {
         FaceCirculator { input }
     }
 }
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a M, G>
 where
-    M: 'a + AsStorage<Half<G>> + AsStorage<Face<G>>,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>>,
     G: 'a + Geometry,
 {
     type Item = FaceView<&'a M, G>;
@@ -628,7 +628,7 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Half<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
     G: 'a + Geometry,
 {
     type Item = OrphanFaceView<'a, G>;
@@ -656,15 +656,15 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
 
     #[test]
-    fn circulate_over_halves() {
+    fn circulate_over_arcs() {
         let graph = UvSphere::new(4, 2)
             .polygons_with_position() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
 
         // All faces should be triangles and all vertices should have 4
-        // (incoming) half-edges.
+        // (incoming) arcs.
         for vertex in graph.vertices() {
-            assert_eq!(4, vertex.incoming_halves().count());
+            assert_eq!(4, vertex.incoming_arcs().count());
         }
     }
 }

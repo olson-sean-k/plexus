@@ -1,6 +1,6 @@
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::{Attribute, Geometry};
-use crate::graph::storage::{EdgeKey, FaceKey, HalfKey, OpaqueKey, VertexKey};
+use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 
 pub trait Topological {
     type Key: OpaqueKey;
@@ -15,7 +15,7 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Vertex,
-    pub(in crate::graph) half: Option<HalfKey>,
+    pub(in crate::graph) arc: Option<ArcKey>,
 }
 
 impl<G> Vertex<G>
@@ -25,7 +25,7 @@ where
     pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
         Vertex {
             geometry,
-            half: None,
+            arc: None,
         }
     }
 }
@@ -39,7 +39,7 @@ where
     fn from_interior_geometry(vertex: Vertex<H>) -> Self {
         Vertex {
             geometry: vertex.geometry.into_geometry(),
-            half: vertex.half,
+            arc: vertex.arc,
         }
     }
 }
@@ -52,34 +52,34 @@ where
     type Attribute = G::Vertex;
 }
 
-// Unlike other topological structures, the vertex connectivity of `Half`s is
-// immutable and encoded within the key for each half-edge. A half-edge key
+// Unlike other topological structures, the vertex connectivity of `Arc`s is
+// immutable and encoded within the key for each arc. A arc key
 // consists of its source and destination vertex keys. This provides fast and
-// reliable half-edge lookups, even when a mesh is in an inconsistent state.
-// However, it also complicates basic mutations of vertices and half-edges,
-// requiring rekeying of `Half`s.
+// reliable arc lookups, even when a mesh is in an inconsistent state.
+// However, it also complicates basic mutations of vertices and arcs,
+// requiring rekeying of `Arc`s.
 //
-// For this reason, `Half` has no fields for storing its destination vertex key
-// or opposite half-edge key, as these would be redundant.
+// For this reason, `Arc` has no fields for storing its destination vertex key
+// or opposite arc key, as these would be redundant.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Half<G>
+pub struct Arc<G>
 where
     G: Geometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Half,
-    pub(in crate::graph) next: Option<HalfKey>,
-    pub(in crate::graph) previous: Option<HalfKey>,
+    pub geometry: G::Arc,
+    pub(in crate::graph) next: Option<ArcKey>,
+    pub(in crate::graph) previous: Option<ArcKey>,
     pub(in crate::graph) face: Option<FaceKey>,
 }
 
-impl<G> Half<G>
+impl<G> Arc<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(geometry: G::Half) -> Self {
-        Half {
+    pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
+        Arc {
             geometry,
             next: None,
             previous: None,
@@ -88,28 +88,28 @@ where
     }
 }
 
-impl<G, H> FromInteriorGeometry<Half<H>> for Half<G>
+impl<G, H> FromInteriorGeometry<Arc<H>> for Arc<G>
 where
     G: Geometry,
-    G::Half: FromGeometry<H::Half>,
+    G::Arc: FromGeometry<H::Arc>,
     H: Geometry,
 {
-    fn from_interior_geometry(half: Half<H>) -> Self {
-        Half {
-            geometry: half.geometry.into_geometry(),
-            next: half.next,
-            previous: half.previous,
-            face: half.face,
+    fn from_interior_geometry(arc: Arc<H>) -> Self {
+        Arc {
+            geometry: arc.geometry.into_geometry(),
+            next: arc.next,
+            previous: arc.previous,
+            face: arc.face,
         }
     }
 }
 
-impl<G> Topological for Half<G>
+impl<G> Topological for Arc<G>
 where
     G: Geometry,
 {
-    type Key = HalfKey;
-    type Attribute = G::Half;
+    type Key = ArcKey;
+    type Attribute = G::Arc;
 }
 
 #[derivative(Debug, Hash)]
@@ -120,15 +120,15 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Edge,
-    pub(in crate::graph) half: HalfKey,
+    pub(in crate::graph) arc: ArcKey,
 }
 
 impl<G> Edge<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(half: HalfKey, geometry: G::Edge) -> Self {
-        Edge { geometry, half }
+    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
+        Edge { geometry, arc }
     }
 }
 
@@ -141,7 +141,7 @@ where
     fn from_interior_geometry(edge: Edge<H>) -> Self {
         Edge {
             geometry: edge.geometry.into_geometry(),
-            half: edge.half,
+            arc: edge.arc,
         }
     }
 }
@@ -162,15 +162,15 @@ where
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Face,
-    pub(in crate::graph) half: HalfKey,
+    pub(in crate::graph) arc: ArcKey,
 }
 
 impl<G> Face<G>
 where
     G: Geometry,
 {
-    pub(in crate::graph) fn new(half: HalfKey, geometry: G::Face) -> Self {
-        Face { geometry, half }
+    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
+        Face { geometry, arc }
     }
 }
 
@@ -183,7 +183,7 @@ where
     fn from_interior_geometry(face: Face<H>) -> Self {
         Face {
             geometry: face.geometry.into_geometry(),
-            half: face.half,
+            arc: face.arc,
         }
     }
 }

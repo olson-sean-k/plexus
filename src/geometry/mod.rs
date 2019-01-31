@@ -20,7 +20,7 @@ pub trait Attribute: Clone {}
 
 /// Graph geometry.
 ///
-/// Specifies the types used to represent geometry for vertices, half-edges,
+/// Specifies the types used to represent geometry for vertices, arcs, edges,
 /// and faces in a graph. Arbitrary types can be used, including `()` for no
 /// geometry at all.
 ///
@@ -55,7 +55,7 @@ pub trait Attribute: Clone {}
 ///
 /// impl Geometry for VertexGeometry {
 ///     type Vertex = Self;
-///     type Half = ();
+///     type Arc = ();
 ///     type Edge = ();
 ///     type Face = ();
 /// }
@@ -85,7 +85,7 @@ pub trait Attribute: Clone {}
 /// ```
 pub trait Geometry: Sized {
     type Vertex: Attribute;
-    type Half: Attribute + Default;
+    type Arc: Attribute + Default;
     type Edge: Attribute + Default;
     type Face: Attribute + Default;
 }
@@ -94,7 +94,7 @@ impl Attribute for () {}
 
 impl Geometry for () {
     type Vertex = ();
-    type Half = ();
+    type Arc = ();
     type Edge = ();
     type Face = ();
 }
@@ -130,7 +130,7 @@ where
     T: Clone,
 {
     type Vertex = Self;
-    type Half = ();
+    type Arc = ();
     type Edge = ();
     type Face = ();
 }
@@ -166,7 +166,7 @@ where
     T: Clone,
 {
     type Vertex = Self;
-    type Half = ();
+    type Arc = ();
     type Edge = ();
     type Face = ();
 }
@@ -305,7 +305,7 @@ mod feature_geometry_cgmath {
         T: Clone,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }
@@ -315,7 +315,7 @@ mod feature_geometry_cgmath {
         T: Clone,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }
@@ -439,7 +439,7 @@ mod feature_geometry_mint {
         T: Clone,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }
@@ -449,7 +449,7 @@ mod feature_geometry_mint {
         T: Clone,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }
@@ -567,7 +567,7 @@ mod feature_geometry_nalgebra {
         T: Scalar,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }
@@ -577,7 +577,7 @@ mod feature_geometry_nalgebra {
         T: Scalar,
     {
         type Vertex = Self;
-        type Half = ();
+        type Arc = ();
         type Edge = ();
         type Face = ();
     }

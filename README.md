@@ -42,10 +42,9 @@ example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 Primitives produce an ephemeral stream of topology and vertex geometry. A
 `MeshGraph`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
-arbitrary geometry for vertices, half-edges, composite edges, and faces. The
-graph can also be traversed and manipulated in ways that iterator expressions
-and simple buffers cannot, such as circulation, extrusion, merging, and
-joining.
+arbitrary geometry for vertices, arcs (half-edges), edges, and faces. The graph
+can also be traversed and manipulated in ways that iterator expressions and
+simple buffers cannot, such as circulation, extrusion, merging, and joining.
 
 ```rust
 use nalgebra::Point3;
@@ -72,10 +71,10 @@ operations like extrusion and joining.
 
 ## Geometric Traits
 
-Meshes support arbitrary geometry for vertices, half-edges, composite edges,
-and faces (including no geometry at all) via optional traits. Implementing
-these traits enables more operations and features, but only two basic traits
-are required: `Geometry` and `Attribute`.
+Meshes support arbitrary geometry for vertices, arcs, edges, and faces
+(including no geometry at all) via optional traits. Implementing these traits
+enables more operations and features, but only two basic traits are required:
+`Geometry` and `Attribute`.
 
 ```rust
 use decorum::R64;
@@ -93,7 +92,7 @@ impl Attribute for VertexGeometry {}
 
 impl Geometry for VertexGeometry {
     type Vertex = Self;
-    type Half = ();
+    type Arc = ();
     type Edge = ();
     type Face = ();
 }
