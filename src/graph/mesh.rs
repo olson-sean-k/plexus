@@ -6,7 +6,6 @@ use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::marker::PhantomData;
 use typenum::{self, NonZero};
 
 use crate::buffer::{Flat, IndexBuffer, MeshBuffer};
@@ -19,7 +18,7 @@ use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Face, Topological, Vertex};
+use crate::graph::topology::{Arc, Face, Vertex};
 use crate::graph::view::convert::IntoView;
 use crate::graph::view::{
     ArcView, FaceView, OrphanArcView, OrphanFaceView, OrphanVertexView, VertexView,
@@ -135,7 +134,9 @@ where
 
     /// Gets an iterator of immutable views over the vertices in the mesh.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&Self, G>> {
-        Iter::<_, Vertex<G>, _, _>::from((self.as_vertex_storage().keys(), self))
+        self.as_vertex_storage()
+            .keys()
+            .map(move |key| (*key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the vertices in the mesh.
@@ -144,7 +145,9 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
-        IterMut::from(self.as_vertex_storage_mut().iter_mut())
+        self.as_vertex_storage_mut()
+            .iter_mut()
+            .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
     /// Gets the number of arcs in the mesh.
@@ -164,7 +167,9 @@ where
 
     /// Gets an iterator of immutable views over the arcs in the mesh.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&Self, G>> {
-        Iter::<_, Arc<G>, _, _>::from((self.as_arc_storage().keys(), self))
+        self.as_arc_storage()
+            .keys()
+            .map(move |key| (*key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the arcs in the mesh.
@@ -173,7 +178,9 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `arc_mut` instead.
     pub fn orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
-        IterMut::from(self.as_arc_storage_mut().iter_mut())
+        self.as_arc_storage_mut()
+            .iter_mut()
+            .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
     /// Gets the number of faces in the mesh.
@@ -193,7 +200,9 @@ where
 
     /// Gets an iterator of immutable views over the faces in the mesh.
     pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&Self, G>> {
-        Iter::<_, Face<G>, _, _>::from((self.as_face_storage().keys(), self))
+        self.as_face_storage()
+            .keys()
+            .map(move |key| (*key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the faces in the mesh.
@@ -202,7 +211,9 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        IterMut::from(self.as_face_storage_mut().iter_mut())
+        self.as_face_storage_mut()
+            .iter_mut()
+            .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
@@ -624,120 +635,6 @@ where
     fn into(self) -> OwnedCore<G> {
         let MeshGraph { core, .. } = self;
         core
-    }
-}
-
-pub struct Iter<'a, I, T, G, Output>
-where
-    I: 'a + Iterator<Item = &'a T::Key>,
-    T: 'a + Topological,
-    G: 'a + Geometry,
-    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
-{
-    input: I,
-    storage: &'a MeshGraph<G>,
-    phantom: PhantomData<(T, Output)>,
-}
-
-impl<'a, I, T, G, Output> Clone for Iter<'a, I, T, G, Output>
-where
-    I: 'a + Clone + Iterator<Item = &'a T::Key>,
-    T: 'a + Topological,
-    G: 'a + Geometry,
-    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
-{
-    fn clone(&self) -> Self {
-        Iter {
-            input: self.input.clone(),
-            storage: self.storage,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, I, T, G, Output> From<(I, &'a MeshGraph<G>)> for Iter<'a, I, T, G, Output>
-where
-    I: 'a + Iterator<Item = &'a T::Key>,
-    T: 'a + Topological,
-    G: 'a + Geometry,
-    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
-{
-    fn from(source: (I, &'a MeshGraph<G>)) -> Self {
-        let (input, storage) = source;
-        Iter {
-            input,
-            storage,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, I, T, G, Output> Iterator for Iter<'a, I, T, G, Output>
-where
-    I: 'a + Iterator<Item = &'a T::Key>,
-    T: 'a + Topological,
-    G: 'a + Geometry,
-    (T::Key, &'a MeshGraph<G>): IntoView<Output>,
-{
-    type Item = Output;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.input
-            .next()
-            .map(|key| (*key, self.storage).into_view().unwrap())
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.input.size_hint()
-    }
-}
-
-pub struct IterMut<'a, I, T, Output>
-where
-    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
-    T: 'a + Topological,
-    (T::Key, &'a mut T): IntoView<Output>,
-{
-    input: I,
-    phantom: PhantomData<(T, Output)>,
-}
-
-impl<'a, I, T, Output> From<I> for IterMut<'a, I, T, Output>
-where
-    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
-    T: 'a + Topological,
-    (T::Key, &'a mut T): IntoView<Output>,
-{
-    fn from(input: I) -> Self {
-        IterMut {
-            input,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, I, T, Output> Iterator for IterMut<'a, I, T, Output>
-where
-    I: 'a + Iterator<Item = (&'a T::Key, &'a mut T)>,
-    T: 'a + Topological,
-    (T::Key, &'a mut T): IntoView<Output>,
-{
-    type Item = Output;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.input.next().map(|entry| {
-            (*entry.0, unsafe {
-                use std::mem;
-
-                mem::transmute::<&'_ mut T, &'a mut T>(entry.1)
-            })
-                .into_view()
-                .unwrap()
-        })
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.input.size_hint()
     }
 }
 
