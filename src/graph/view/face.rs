@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use either::Either;
 use fool::prelude::*;
 use std::cmp;
 use std::marker::PhantomData;
@@ -107,6 +108,22 @@ where
     pub fn into_ref(self) -> FaceView<&'a M, G> {
         let (key, storage) = self.into_keyed_storage();
         (key, &*storage).into_view().unwrap()
+    }
+
+    pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
+    where
+        T: FromKeyedSource<(K, &'a mut M)>,
+        F: FnOnce(FaceView<&M, G>) -> Option<K>,
+    {
+        if let Some(key) = f(self.interior_reborrow()) {
+            let (_, storage) = self.into_keyed_storage();
+            Either::Left(
+                T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
+            )
+        }
+        else {
+            Either::Right(self)
+        }
     }
 }
 
@@ -667,6 +684,22 @@ where
     pub fn into_ref(self) -> ClosedPathView<&'a M, G> {
         let (arc, face, storage) = self.into_keyed_storage();
         ClosedPathView::from_keyed_storage_unchecked(arc, face, &*storage)
+    }
+
+    pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
+    where
+        T: FromKeyedSource<(K, &'a mut M)>,
+        F: FnOnce(ClosedPathView<&M, G>) -> Option<K>,
+    {
+        if let Some(key) = f(self.interior_reborrow()) {
+            let (_, _, storage) = self.into_keyed_storage();
+            Either::Left(
+                T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
+            )
+        }
+        else {
+            Either::Right(self)
+        }
     }
 }
 

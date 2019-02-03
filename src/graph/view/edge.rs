@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use either::Either;
 use fool::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
@@ -107,6 +108,22 @@ where
     pub fn into_ref(self) -> ArcView<&'a M, G> {
         let (key, storage) = self.into_keyed_storage();
         ArcView::from_keyed_storage_unchecked(key, &*storage)
+    }
+
+    pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
+    where
+        T: FromKeyedSource<(K, &'a mut M)>,
+        F: FnOnce(ArcView<&M, G>) -> Option<K>,
+    {
+        if let Some(key) = f(self.interior_reborrow()) {
+            let (_, storage) = self.into_keyed_storage();
+            Either::Left(
+                T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
+            )
+        }
+        else {
+            Either::Right(self)
+        }
     }
 }
 

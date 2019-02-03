@@ -12,6 +12,7 @@ extern crate cgmath;
 extern crate decorum;
 #[macro_use]
 extern crate derivative;
+extern crate either;
 #[macro_use]
 extern crate failure;
 extern crate fnv;
