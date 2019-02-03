@@ -18,5 +18,5 @@ mod face;
 mod vertex;
 
 pub use self::edge::{ArcNeighborhood, ArcView, OrphanArcView};
-pub use self::face::{ClosedPathView, FaceNeighborhood, FaceView, OrphanFaceView};
+pub use self::face::{FaceNeighborhood, FaceView, InteriorPathView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};

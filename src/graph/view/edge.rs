@@ -19,7 +19,9 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
-use crate::graph::view::{ClosedPathView, FaceView, OrphanFaceView, OrphanVertexView, VertexView};
+use crate::graph::view::{
+    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, VertexView,
+};
 use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a arc.
@@ -246,7 +248,7 @@ where
     M::Target: AsStorage<Arc<G>> + Consistent,
     G: Geometry,
 {
-    pub fn into_closed_path(self) -> ClosedPathView<M, G> {
+    pub fn into_interior_path(self) -> InteriorPathView<M, G> {
         let (key, storage) = self.into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
@@ -267,7 +269,7 @@ where
         self.into_reachable_previous_arc().expect_consistent()
     }
 
-    pub fn closed_path(&self) -> ClosedPathView<&M::Target, G> {
+    pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow();
         (key, storage).into_view().expect_consistent()
@@ -849,8 +851,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.storage.as_storage_mut(),
                 )
@@ -953,8 +953,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.storage.as_storage_mut(),
                 )
@@ -1040,7 +1038,7 @@ mod tests {
             let vertex = edge.remove().unwrap().into_ref();
 
             // The path should be formed from 6 edges.
-            assert_eq!(6, vertex.into_outgoing_arc().into_closed_path().arity());
+            assert_eq!(6, vertex.into_outgoing_arc().into_interior_path().arity());
         }
 
         // After the removal, the graph should have no faces.

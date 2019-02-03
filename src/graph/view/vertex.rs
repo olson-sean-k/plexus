@@ -563,8 +563,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Arc<G>>, &'a mut Storage<Arc<G>>>(
                     self.storage.as_storage_mut(),
                 )
@@ -657,8 +655,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.input.storage.as_storage_mut(),
                 )

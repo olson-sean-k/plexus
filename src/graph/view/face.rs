@@ -209,7 +209,7 @@ where
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
     G: Geometry,
 {
-    pub fn into_closed_path(self) -> ClosedPathView<M, G> {
+    pub fn into_interior_path(self) -> InteriorPathView<M, G> {
         let key = self.arc().key();
         let (_, storage) = self.into_keyed_source();
         (key, storage).into_view().expect_consistent()
@@ -219,7 +219,7 @@ where
         self.into_reachable_arc().expect_consistent()
     }
 
-    pub fn closed_path(&self) -> ClosedPathView<&M::Target, G> {
+    pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
         let key = self.arc().key();
         let storage = self.storage.reborrow();
         (key, storage).into_view().expect_consistent()
@@ -264,16 +264,6 @@ where
 {
     pub fn neighborhood(&self) -> FaceNeighborhood {
         FaceNeighborhood::from(self.interior_reborrow())
-    }
-
-    pub fn interior_path_distance(
-        &self,
-        source: VertexKey,
-        destination: VertexKey,
-    ) -> Result<usize, GraphError> {
-        self.interior_reborrow()
-            .into_closed_path()
-            .interior_path_distance(source, destination)
     }
 
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
@@ -372,7 +362,7 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + Geometry,
 {
-    pub fn remove(self) -> Result<ClosedPathView<&'a mut M, G>, GraphError> {
+    pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
         let (abc, storage) = self.into_keyed_source();
         let cache = FaceRemoveCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
@@ -416,7 +406,7 @@ where
             .expect_consistent()
             .remove()?
             .into_outgoing_arc()
-            .into_closed_path()
+            .into_interior_path()
             .get_or_insert_face_with(|| geometry)
     }
 }
@@ -668,7 +658,7 @@ where
     }
 }
 
-pub struct ClosedPathView<M, G>
+pub struct InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
@@ -680,20 +670,20 @@ where
     phantom: PhantomData<G>,
 }
 
-impl<'a, M, G> ClosedPathView<&'a mut M, G>
+impl<'a, M, G> InteriorPathView<&'a mut M, G>
 where
     M: AsStorage<Arc<G>> + Consistent,
     G: 'a + Geometry,
 {
-    pub fn into_ref(self) -> ClosedPathView<&'a M, G> {
+    pub fn into_ref(self) -> InteriorPathView<&'a M, G> {
         let (arc, face, storage) = self.into_keyed_source();
-        ClosedPathView::from_keyed_source_unchecked((arc, face, &*storage))
+        InteriorPathView::from_keyed_source_unchecked((arc, face, &*storage))
     }
 
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
     where
         T: FromKeyedSource<(K, &'a mut M)>,
-        F: FnOnce(ClosedPathView<&M, G>) -> Option<K>,
+        F: FnOnce(InteriorPathView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
             let (_, _, storage) = self.into_keyed_source();
@@ -707,7 +697,7 @@ where
     }
 }
 
-impl<M, G> ClosedPathView<M, G>
+impl<M, G> InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
@@ -715,7 +705,7 @@ where
 {
     fn from_keyed_source_unchecked(source: (ArcKey, Option<FaceKey>, M)) -> Self {
         let (arc, face, storage) = source;
-        ClosedPathView {
+        InteriorPathView {
             storage,
             arc,
             face,
@@ -731,15 +721,15 @@ where
         ArcCirculator::from(self.interior_reborrow())
     }
 
-    fn interior_reborrow(&self) -> ClosedPathView<&M::Target, G> {
+    fn interior_reborrow(&self) -> InteriorPathView<&M::Target, G> {
         let arc = self.arc;
         let face = self.face;
         let storage = self.storage.reborrow();
-        ClosedPathView::from_keyed_source_unchecked((arc, face, storage))
+        InteriorPathView::from_keyed_source_unchecked((arc, face, storage))
     }
 }
 
-impl<M, G> ClosedPathView<M, G>
+impl<M, G> InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
@@ -756,11 +746,7 @@ where
         (arc, storage).into_view().expect_consistent()
     }
 
-    pub fn interior_path_distance(
-        &self,
-        source: VertexKey,
-        destination: VertexKey,
-    ) -> Result<usize, GraphError> {
+    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
         let indices = self
             .vertices()
             .map(|vertex| vertex.key())
@@ -769,7 +755,7 @@ where
             .map(|(index, _)| index as isize)
             .collect::<ArrayVec<[isize; 2]>>();
         match indices.len() {
-            1 => Ok(0),
+            1 if source == destination => Ok(0),
             2 => {
                 let difference = (indices[0] - indices[1]).abs() as usize;
                 Ok(cmp::min(difference, self.arity() - difference))
@@ -783,7 +769,7 @@ where
     }
 }
 
-impl<M, G> ClosedPathView<M, G>
+impl<M, G> InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
@@ -810,7 +796,7 @@ where
     }
 }
 
-impl<'a, M, G> ClosedPathView<&'a mut M, G>
+impl<'a, M, G> InteriorPathView<&'a mut M, G>
 where
     M: AsStorage<Vertex<G>>
         + AsStorage<Arc<G>>
@@ -847,7 +833,7 @@ where
     }
 }
 
-impl<M, G> FromKeyedSource<(ArcKey, M)> for ClosedPathView<M, G>
+impl<M, G> FromKeyedSource<(ArcKey, M)> for InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
@@ -862,7 +848,7 @@ where
         let (key, storage) = source;
         if let Some(arc) = storage.reborrow().as_storage().get(&key) {
             let face = arc.face.clone();
-            Some(ClosedPathView {
+            Some(InteriorPathView {
                 storage,
                 arc: key,
                 face,
@@ -875,14 +861,14 @@ where
     }
 }
 
-impl<M, G> IntoKeyedSource<(ArcKey, Option<FaceKey>, M)> for ClosedPathView<M, G>
+impl<M, G> IntoKeyedSource<(ArcKey, Option<FaceKey>, M)> for InteriorPathView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
     G: Geometry,
 {
     fn into_keyed_source(self) -> (ArcKey, Option<FaceKey>, M) {
-        let ClosedPathView {
+        let InteriorPathView {
             storage, arc, face, ..
         } = self;
         (arc, face, storage)
@@ -963,8 +949,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.input.storage.as_storage_mut(),
                 )
@@ -1047,13 +1031,13 @@ where
     }
 }
 
-impl<M, G> From<ClosedPathView<M, G>> for ArcCirculator<M, G>
+impl<M, G> From<InteriorPathView<M, G>> for ArcCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
     G: Geometry,
 {
-    fn from(path: ClosedPathView<M, G>) -> Self {
+    fn from(path: InteriorPathView<M, G>) -> Self {
         let (arc, _, storage) = path.into_keyed_source();
         ArcCirculator {
             storage,
@@ -1090,8 +1074,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Arc<G>>, &'a mut Storage<Arc<G>>>(
                     self.storage.as_storage_mut(),
                 )
@@ -1184,8 +1166,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                // Apply `'a` to the autoref from `reborrow_mut`,
-                // `as_storage_mut`, and `get_mut`.
                 mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.input.storage.as_storage_mut(),
                 )
@@ -1368,8 +1348,9 @@ mod tests {
             .vertices()
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
-        assert_eq!(2, face.interior_path_distance(keys[0], keys[2]).unwrap());
-        assert_eq!(1, face.interior_path_distance(keys[0], keys[3]).unwrap());
-        assert_eq!(0, face.interior_path_distance(keys[0], keys[0]).unwrap());
+        let path = face.into_interior_path();
+        assert_eq!(2, path.distance(keys[0], keys[2]).unwrap());
+        assert_eq!(1, path.distance(keys[0], keys[3]).unwrap());
+        assert_eq!(0, path.distance(keys[0], keys[0]).unwrap());
     }
 }
