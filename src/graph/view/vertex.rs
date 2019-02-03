@@ -13,7 +13,7 @@ use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Face, Topological, Vertex};
-use crate::graph::view::convert::{FromKeyedSource, IntoView};
+use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView};
 use crate::graph::{GraphError, OptionExt};
 
@@ -50,8 +50,8 @@ where
         <M::Output as Reborrow>::Target: AsStorage<Vertex<G>>,
         N: AsStorage<T>,
     {
-        let (key, origin) = self.into_keyed_storage();
-        VertexView::from_keyed_storage_unchecked(key, origin.bind(storage))
+        let (key, origin) = self.into_keyed_source();
+        VertexView::from_keyed_source_unchecked((key, origin.bind(storage)))
     }
 }
 
@@ -62,7 +62,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanVertexView<'a, G> {
-        let (key, storage) = self.into_keyed_storage();
+        let (key, storage) = self.into_keyed_source();
         (key, storage).into_view().unwrap()
     }
 
@@ -98,7 +98,7 @@ where
     /// # }
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M, G> {
-        let (key, storage) = self.into_keyed_storage();
+        let (key, storage) = self.into_keyed_source();
         (key, &*storage).into_view().unwrap()
     }
 
@@ -108,7 +108,7 @@ where
         F: FnOnce(VertexView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_storage();
+            let (_, storage) = self.into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -130,15 +130,8 @@ where
         self.key
     }
 
-    fn from_keyed_storage(key: VertexKey, storage: M) -> Option<Self> {
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(VertexView::from_keyed_storage_unchecked(key, storage))
-    }
-
-    fn from_keyed_storage_unchecked(key: VertexKey, storage: M) -> Self {
+    fn from_keyed_source_unchecked(source: (VertexKey, M)) -> Self {
+        let (key, storage) = source;
         VertexView {
             key,
             storage,
@@ -146,15 +139,10 @@ where
         }
     }
 
-    fn into_keyed_storage(self) -> (VertexKey, M) {
-        let VertexView { key, storage, .. } = self;
-        (key, storage)
-    }
-
     fn interior_reborrow(&self) -> VertexView<&M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow();
-        VertexView::from_keyed_storage_unchecked(key, storage)
+        VertexView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -167,7 +155,7 @@ where
     fn interior_reborrow_mut(&mut self) -> VertexView<&mut M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow_mut();
-        VertexView::from_keyed_storage_unchecked(key, storage)
+        VertexView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -181,7 +169,7 @@ where
     pub(in crate::graph) fn into_reachable_outgoing_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
         key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_storage();
+            let (_, storage) = self.into_keyed_source();
             (key, storage).into_view()
         })
     }
@@ -324,7 +312,7 @@ where
     G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<(), GraphError> {
-        let (a, storage) = self.into_keyed_storage();
+        let (a, storage) = self.into_keyed_source();
         let cache = VertexRemoveCache::snapshot(&storage, a)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
@@ -391,7 +379,23 @@ where
 {
     fn from_keyed_source(source: (VertexKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        VertexView::from_keyed_storage(key, storage)
+        storage
+            .reborrow()
+            .as_storage()
+            .contains_key(&key)
+            .some(VertexView::from_keyed_source_unchecked((key, storage)))
+    }
+}
+
+impl<M, G> IntoKeyedSource<(VertexKey, M)> for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Vertex<G>>,
+    G: Geometry,
+{
+    fn into_keyed_source(self) -> (VertexKey, M) {
+        let VertexView { key, storage, .. } = self;
+        (key, storage)
     }
 }
 
@@ -527,7 +531,7 @@ where
 {
     fn from(vertex: VertexView<M, G>) -> Self {
         let key = vertex.arc;
-        let (_, storage) = vertex.into_keyed_storage();
+        let (_, storage) = vertex.into_keyed_source();
         ArcCirculator {
             storage,
             outgoing: key,

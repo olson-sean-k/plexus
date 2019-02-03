@@ -1,3 +1,7 @@
+pub trait IntoKeyedSource<T>: Sized {
+    fn into_keyed_source(self) -> T;
+}
+
 pub trait FromKeyedSource<T>: Sized {
     fn from_keyed_source(source: T) -> Option<Self>;
 }

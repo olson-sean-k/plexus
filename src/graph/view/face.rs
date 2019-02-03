@@ -20,7 +20,7 @@ use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Face, Topological, Vertex};
-use crate::graph::view::convert::{FromKeyedSource, IntoView};
+use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, VertexView};
 use crate::graph::{GraphError, OptionExt};
 
@@ -57,8 +57,8 @@ where
         <M::Output as Reborrow>::Target: AsStorage<Face<G>>,
         N: AsStorage<T>,
     {
-        let (key, origin) = self.into_keyed_storage();
-        FaceView::from_keyed_storage_unchecked(key, origin.bind(storage))
+        let (key, origin) = self.into_keyed_source();
+        FaceView::from_keyed_source_unchecked((key, origin.bind(storage)))
     }
 }
 
@@ -69,7 +69,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanFaceView<'a, G> {
-        let (key, storage) = self.into_keyed_storage();
+        let (key, storage) = self.into_keyed_source();
         (key, storage).into_view().unwrap()
     }
 
@@ -106,7 +106,7 @@ where
     /// # }
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M, G> {
-        let (key, storage) = self.into_keyed_storage();
+        let (key, storage) = self.into_keyed_source();
         (key, &*storage).into_view().unwrap()
     }
 
@@ -116,7 +116,7 @@ where
         F: FnOnce(FaceView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_storage();
+            let (_, storage) = self.into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -138,15 +138,8 @@ where
         self.key
     }
 
-    fn from_keyed_storage(key: FaceKey, storage: M) -> Option<Self> {
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(FaceView::from_keyed_storage_unchecked(key, storage))
-    }
-
-    fn from_keyed_storage_unchecked(key: FaceKey, storage: M) -> Self {
+    fn from_keyed_source_unchecked(source: (FaceKey, M)) -> Self {
+        let (key, storage) = source;
         FaceView {
             key,
             storage,
@@ -154,15 +147,10 @@ where
         }
     }
 
-    fn into_keyed_storage(self) -> (FaceKey, M) {
-        let FaceView { key, storage, .. } = self;
-        (key, storage)
-    }
-
     fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow();
-        FaceView::from_keyed_storage_unchecked(key, storage)
+        FaceView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -175,7 +163,7 @@ where
     fn interior_reborrow_mut(&mut self) -> FaceView<&mut M::Target, G> {
         let key = self.key;
         let storage = self.storage.reborrow_mut();
-        FaceView::from_keyed_storage_unchecked(key, storage)
+        FaceView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -194,7 +182,7 @@ where
 
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
-        let (_, storage) = self.into_keyed_storage();
+        let (_, storage) = self.into_keyed_source();
         (key, storage).into_view()
     }
 
@@ -223,7 +211,7 @@ where
 {
     pub fn into_closed_path(self) -> ClosedPathView<M, G> {
         let key = self.arc().key();
-        let (_, storage) = self.into_keyed_storage();
+        let (_, storage) = self.into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
 
@@ -385,7 +373,7 @@ where
     G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<ClosedPathView<&'a mut M, G>, GraphError> {
-        let (abc, storage) = self.into_keyed_storage();
+        let (abc, storage) = self.into_keyed_source();
         let cache = FaceRemoveCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
@@ -397,7 +385,7 @@ where
         source: VertexKey,
         destination: VertexKey,
     ) -> Result<ArcView<&'a mut M, G>, GraphError> {
-        let (abc, storage) = self.into_keyed_storage();
+        let (abc, storage) = self.into_keyed_source();
         let cache = FaceBisectCache::snapshot(&storage, abc, source, destination)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bisect_with_cache(mutation, cache))
@@ -405,7 +393,7 @@ where
     }
 
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
-        let (source, storage) = self.into_keyed_storage();
+        let (source, storage) = self.into_keyed_source();
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
@@ -423,7 +411,7 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)?
         };
         let geometry = self.geometry.clone();
-        let (_, storage) = self.into_keyed_storage();
+        let (_, storage) = self.into_keyed_source();
         ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
             .remove()?
@@ -456,7 +444,7 @@ where
     G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
     pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
-        let (abc, storage) = self.into_keyed_storage();
+        let (abc, storage) = self.into_keyed_source();
         let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::triangulate_with_cache(mutation, cache))
@@ -495,7 +483,7 @@ where
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
-        let (abc, storage) = self.into_keyed_storage();
+        let (abc, storage) = self.into_keyed_source();
         let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
@@ -562,7 +550,23 @@ where
 {
     fn from_keyed_source(source: (FaceKey, M)) -> Option<Self> {
         let (key, storage) = source;
-        FaceView::from_keyed_storage(key, storage)
+        storage
+            .reborrow()
+            .as_storage()
+            .contains_key(&key)
+            .some(FaceView::from_keyed_source_unchecked((key, storage)))
+    }
+}
+
+impl<M, G> IntoKeyedSource<(FaceKey, M)> for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Face<G>>,
+    G: Geometry,
+{
+    fn into_keyed_source(self) -> (FaceKey, M) {
+        let FaceView { key, storage, .. } = self;
+        (key, storage)
     }
 }
 
@@ -682,8 +686,8 @@ where
     G: 'a + Geometry,
 {
     pub fn into_ref(self) -> ClosedPathView<&'a M, G> {
-        let (arc, face, storage) = self.into_keyed_storage();
-        ClosedPathView::from_keyed_storage_unchecked(arc, face, &*storage)
+        let (arc, face, storage) = self.into_keyed_source();
+        ClosedPathView::from_keyed_source_unchecked((arc, face, &*storage))
     }
 
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
@@ -692,7 +696,7 @@ where
         F: FnOnce(ClosedPathView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, _, storage) = self.into_keyed_storage();
+            let (_, _, storage) = self.into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -709,40 +713,14 @@ where
     M::Target: AsStorage<Arc<G>> + Consistent,
     G: Geometry,
 {
-    fn from_keyed_storage(key: ArcKey, storage: M) -> Option<Self> {
-        // Because the storage is consistent, this code assumes that any and
-        // all arcs in the graph will form a loop. Note that this allows
-        // exterior arcs of non-enclosed meshes to form a region. For
-        // conceptually flat meshes, this is odd, but is topologically
-        // consistent.
-        if let Some(arc) = storage.reborrow().as_storage().get(&key) {
-            let face = arc.face.clone();
-            Some(ClosedPathView {
-                storage,
-                arc: key,
-                face,
-                phantom: PhantomData,
-            })
-        }
-        else {
-            None
-        }
-    }
-
-    fn from_keyed_storage_unchecked(arc: ArcKey, face: Option<FaceKey>, storage: M) -> Self {
+    fn from_keyed_source_unchecked(source: (ArcKey, Option<FaceKey>, M)) -> Self {
+        let (arc, face, storage) = source;
         ClosedPathView {
             storage,
             arc,
             face,
             phantom: PhantomData,
         }
-    }
-
-    fn into_keyed_storage(self) -> (ArcKey, Option<FaceKey>, M) {
-        let ClosedPathView {
-            storage, arc, face, ..
-        } = self;
-        (arc, face, storage)
     }
 
     pub fn arity(&self) -> usize {
@@ -757,7 +735,7 @@ where
         let arc = self.arc;
         let face = self.face;
         let storage = self.storage.reborrow();
-        ClosedPathView::from_keyed_storage_unchecked(arc, face, storage)
+        ClosedPathView::from_keyed_source_unchecked((arc, face, storage))
     }
 }
 
@@ -768,7 +746,7 @@ where
     G: Geometry,
 {
     pub fn into_arc(self) -> ArcView<M, G> {
-        let (arc, _, storage) = self.into_keyed_storage();
+        let (arc, _, storage) = self.into_keyed_source();
         (arc, storage).into_view().expect_consistent()
     }
 
@@ -812,7 +790,7 @@ where
     G: Geometry,
 {
     pub fn into_face(self) -> Option<FaceView<M, G>> {
-        let (_, face, storage) = self.into_keyed_storage();
+        let (_, face, storage) = self.into_keyed_source();
         if let Some(face) = face {
             Some((face, storage).into_view().expect_consistent())
         }
@@ -852,7 +830,7 @@ where
         F: FnOnce() -> G::Face,
     {
         if let Some(face) = self.face.clone().take() {
-            let (_, _, storage) = self.into_keyed_storage();
+            let (_, _, storage) = self.into_keyed_source();
             Ok((face, storage).into_view().expect_consistent())
         }
         else {
@@ -860,7 +838,7 @@ where
                 .vertices()
                 .map(|vertex| vertex.key())
                 .collect::<Vec<_>>();
-            let (_, _, storage) = self.into_keyed_storage();
+            let (_, _, storage) = self.into_keyed_source();
             let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
@@ -876,8 +854,38 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
+        // Because the storage is consistent, this code assumes that any and
+        // all arcs in the graph will form a loop. Note that this allows
+        // exterior arcs of non-enclosed meshes to form a region. For
+        // conceptually flat meshes, this is odd, but is topologically
+        // consistent.
         let (key, storage) = source;
-        ClosedPathView::from_keyed_storage(key, storage)
+        if let Some(arc) = storage.reborrow().as_storage().get(&key) {
+            let face = arc.face.clone();
+            Some(ClosedPathView {
+                storage,
+                arc: key,
+                face,
+                phantom: PhantomData,
+            })
+        }
+        else {
+            None
+        }
+    }
+}
+
+impl<M, G> IntoKeyedSource<(ArcKey, Option<FaceKey>, M)> for ClosedPathView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>> + Consistent,
+    G: Geometry,
+{
+    fn into_keyed_source(self) -> (ArcKey, Option<FaceKey>, M) {
+        let ClosedPathView {
+            storage, arc, face, ..
+        } = self;
+        (arc, face, storage)
     }
 }
 
@@ -1029,7 +1037,7 @@ where
 {
     fn from(face: FaceView<M, G>) -> Self {
         let arc = face.arc;
-        let (_, storage) = face.into_keyed_storage();
+        let (_, storage) = face.into_keyed_source();
         ArcCirculator {
             storage,
             arc: Some(arc),
@@ -1045,8 +1053,8 @@ where
     M::Target: AsStorage<Arc<G>> + Consistent,
     G: Geometry,
 {
-    fn from(region: ClosedPathView<M, G>) -> Self {
-        let (arc, _, storage) = region.into_keyed_storage();
+    fn from(path: ClosedPathView<M, G>) -> Self {
+        let (arc, _, storage) = path.into_keyed_source();
         ArcCirculator {
             storage,
             arc: Some(arc),
