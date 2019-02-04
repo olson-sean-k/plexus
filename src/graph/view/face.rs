@@ -734,10 +734,10 @@ where
     }
 
     pub fn arity(&self) -> usize {
-        self.interior_arcs().count()
+        self.arcs().count()
     }
 
-    pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+    pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         ArcCirculator::from(self.interior_reborrow())
     }
 

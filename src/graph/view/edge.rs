@@ -522,7 +522,7 @@ where
     ) -> Result<FaceView<&'a mut M, G>, GraphError> {
         let destination = destination.key_or_else(|index| {
             self.interior_path()
-                .interior_arcs()
+                .arcs()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
