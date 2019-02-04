@@ -353,7 +353,7 @@ where
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         face.interior_path()
-            .distance(source, destination)
+            .distance(source.into(), destination.into())
             .and_then(|distance| {
                 if distance <= 1 {
                     Err(GraphError::TopologyMalformed)

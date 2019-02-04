@@ -377,13 +377,13 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<ArcView<&'a mut M, G>, GraphError> {
-        let source = source.key_or_index_with(|index| {
+        let source = source.key_or_else(|index| {
             self.vertices()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
         })?;
-        let destination = destination.key_or_index_with(|index| {
+        let destination = destination.key_or_else(|index| {
             self.vertices()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
@@ -405,7 +405,7 @@ where
     }
 
     pub fn join(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
-        let destination = destination.key_or_index_with(|index| {
+        let destination = destination.key_or_else(|index| {
             self.neighboring_faces()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
@@ -766,22 +766,35 @@ where
         (arc, storage).into_view().expect_consistent()
     }
 
-    pub fn distance(&self, source: VertexKey, destination: VertexKey) -> Result<usize, GraphError> {
-        let indices = self
-            .vertices()
-            .map(|vertex| vertex.key())
-            .enumerate()
-            .filter(|(_, key)| *key == source || *key == destination)
-            .map(|(index, _)| index as isize)
-            .collect::<ArrayVec<[isize; 2]>>();
-        match indices.len() {
-            1 if source == destination => Ok(0),
-            2 => {
-                let difference = (indices[0] - indices[1]).abs() as usize;
-                Ok(cmp::min(difference, self.arity() - difference))
-            }
-            _ => Err(GraphError::TopologyNotFound),
-        }
+    pub fn distance(
+        &self,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
+    ) -> Result<usize, GraphError> {
+        let arity = self.arity();
+        let select = |selector: Selector<_>| {
+            selector
+                .index_or_else(|key| {
+                    self.vertices()
+                        .map(|vertex| vertex.key())
+                        .enumerate()
+                        .find(|(_, a)| *a == key)
+                        .map(|(index, _)| index)
+                        .ok_or_else(|| GraphError::TopologyNotFound)
+                })
+                .and_then(|index| {
+                    if index >= arity {
+                        Err(GraphError::TopologyNotFound)
+                    }
+                    else {
+                        Ok(index)
+                    }
+                })
+        };
+        let source = select(source)? as isize;
+        let destination = select(destination)? as isize;
+        let difference = (source - destination).abs() as usize;
+        Ok(cmp::min(difference, arity - difference))
     }
 
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
@@ -1369,8 +1382,8 @@ mod tests {
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
         let path = face.into_interior_path();
-        assert_eq!(2, path.distance(keys[0], keys[2]).unwrap());
-        assert_eq!(1, path.distance(keys[0], keys[3]).unwrap());
-        assert_eq!(0, path.distance(keys[0], keys[0]).unwrap());
+        assert_eq!(2, path.distance(keys[0].into(), keys[2].into()).unwrap());
+        assert_eq!(1, path.distance(keys[0].into(), keys[3].into()).unwrap());
+        assert_eq!(0, path.distance(keys[0].into(), keys[0].into()).unwrap());
     }
 }

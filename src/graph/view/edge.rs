@@ -520,7 +520,7 @@ where
         self,
         destination: Selector<ArcKey>,
     ) -> Result<FaceView<&'a mut M, G>, GraphError> {
-        let destination = destination.key_or_index_with(|index| {
+        let destination = destination.key_or_else(|index| {
             self.interior_path()
                 .interior_arcs()
                 .nth(index)

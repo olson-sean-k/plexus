@@ -17,7 +17,7 @@ pub enum Selector<K> {
 }
 
 impl<K> Selector<K> {
-    pub fn key_or_index_with<E, F>(self, f: F) -> Result<K, GraphError>
+    pub fn key_or_else<E, F>(self, f: F) -> Result<K, GraphError>
     where
         E: Into<GraphError>,
         F: Fn(usize) -> Result<K, E>,
@@ -25,6 +25,17 @@ impl<K> Selector<K> {
         match self {
             Selector::ByKey(key) => Ok(key),
             Selector::ByIndex(index) => f(index).map_err(|error| error.into()),
+        }
+    }
+
+    pub fn index_or_else<E, F>(self, f: F) -> Result<usize, GraphError>
+    where
+        E: Into<GraphError>,
+        F: Fn(K) -> Result<usize, E>,
+    {
+        match self {
+            Selector::ByKey(key) => f(key).map_err(|error| error.into()),
+            Selector::ByIndex(index) => Ok(index),
         }
     }
 }
