@@ -1,22 +1,45 @@
-// This code assumes that any keys for topological structures in the mesh are
-// valid (hence the `unwrap` calls), which is very important for `Deref`.
-// Topological mutations using views are dangerous if they do not consume
-// `self`. If these views can be used to mutate that data, then they can also
-// invalidate these constraints and cause panics. Any mutating functions should
-// consume the view.
-//
-// Similarly, toplogical mutations could invalidate views used to reach other
-// views. This means that it is unsafe for a mutable view to yield another
-// mutable view, because the second view may cause mutations that invalidate
-// the first. Circulators effectively map from a mutable view to orphan views,
-// for example. While `into` and immutable accessor functions are okay, mutable
-// accessor functions MUST yield orphans (or not exist at all).
-
 pub mod convert;
 mod edge;
 mod face;
 mod vertex;
 
+use crate::graph::storage::OpaqueKey;
+use crate::graph::GraphError;
+
 pub use self::edge::{ArcNeighborhood, ArcView, OrphanArcView};
 pub use self::face::{FaceNeighborhood, FaceView, InteriorPathView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Selector<K> {
+    ByKey(K),
+    ByIndex(usize),
+}
+
+impl<K> Selector<K> {
+    pub fn key_or_index_with<E, F>(self, f: F) -> Result<K, GraphError>
+    where
+        E: Into<GraphError>,
+        F: Fn(usize) -> Result<K, E>,
+    {
+        match self {
+            Selector::ByKey(key) => Ok(key),
+            Selector::ByIndex(index) => f(index).map_err(|error| error.into()),
+        }
+    }
+}
+
+impl<K> From<K> for Selector<K>
+where
+    K: OpaqueKey,
+{
+    fn from(key: K) -> Self {
+        Selector::ByKey(key)
+    }
+}
+
+impl<K> From<usize> for Selector<K> {
+    fn from(index: usize) -> Self {
+        Selector::ByIndex(index)
+    }
+}

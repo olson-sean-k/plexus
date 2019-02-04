@@ -47,6 +47,7 @@ pub use decorum::{R32, R64};
 pub mod prelude {
     pub use crate::buffer::{IntoFlatIndex, IntoStructuredIndex};
     pub use crate::geometry::{Duplet, Triplet};
+    pub use crate::graph::Selector;
     pub use crate::primitive::decompose::{
         Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices,
         Subdivide, Tetrahedrons, Triangulate, Vertices,
@@ -59,6 +60,9 @@ pub mod prelude {
     pub use crate::primitive::{Converged, Map, MapVertices, Zip};
     pub use crate::IteratorExt;
     pub use crate::{FromRawBuffers, FromRawBuffersWithArity};
+
+    pub use Selector::ByIndex;
+    pub use Selector::ByKey;
 }
 
 pub trait FromRawBuffers<N, G>: Sized {

@@ -20,7 +20,7 @@ use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{
-    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, VertexView,
+    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, Selector, VertexView,
 };
 use crate::graph::{GraphError, OptionExt};
 
@@ -516,7 +516,17 @@ where
             .map(|(storage, _)| (a, storage).into_view().expect_consistent())
     }
 
-    pub fn bridge(self, destination: ArcKey) -> Result<FaceView<&'a mut M, G>, GraphError> {
+    pub fn bridge(
+        self,
+        destination: Selector<ArcKey>,
+    ) -> Result<FaceView<&'a mut M, G>, GraphError> {
+        let destination = destination.key_or_index_with(|index| {
+            self.interior_path()
+                .interior_arcs()
+                .nth(index)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+                .map(|arc| arc.key())
+        })?;
         let (source, storage) = self.into_keyed_source();
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
@@ -1081,7 +1091,11 @@ mod tests {
         let source = find_arc_with_geometry(&graph, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
         let destination =
             find_arc_with_geometry(&graph, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
-        graph.arc_mut(source).unwrap().bridge(destination).unwrap();
+        graph
+            .arc_mut(source)
+            .unwrap()
+            .bridge(ByKey(destination))
+            .unwrap();
 
         assert_eq!(20, graph.arc_count());
         assert_eq!(3, graph.face_count());

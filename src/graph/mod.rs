@@ -190,8 +190,11 @@ pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 //       necessary. For now, use them directly.
 pub use self::view::{
     ArcNeighborhood, ArcView, FaceNeighborhood, FaceView, InteriorPathView, OrphanArcView,
-    OrphanFaceView, OrphanVertexView, VertexView,
+    OrphanFaceView, OrphanVertexView, Selector, VertexView,
 };
+
+pub use Selector::ByIndex;
+pub use Selector::ByKey;
 
 #[derive(Debug, Fail, PartialEq)]
 pub enum GraphError {

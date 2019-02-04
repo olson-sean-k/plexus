@@ -21,7 +21,9 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
-use crate::graph::view::{ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, VertexView};
+use crate::graph::view::{
+    ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, Selector, VertexView,
+};
 use crate::graph::{GraphError, OptionExt};
 
 /// Reference to a face.
@@ -372,9 +374,21 @@ where
 
     pub fn bisect(
         self,
-        source: VertexKey,
-        destination: VertexKey,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
     ) -> Result<ArcView<&'a mut M, G>, GraphError> {
+        let source = source.key_or_index_with(|index| {
+            self.vertices()
+                .nth(index)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+                .map(|vertex| vertex.key())
+        })?;
+        let destination = destination.key_or_index_with(|index| {
+            self.vertices()
+                .nth(index)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+                .map(|vertex| vertex.key())
+        })?;
         let (abc, storage) = self.into_keyed_source();
         let cache = FaceBisectCache::snapshot(&storage, abc, source, destination)?;
         Mutation::replace(storage, Default::default())
@@ -390,7 +404,13 @@ where
             .map(|_| ())
     }
 
-    pub fn join(self, destination: FaceKey) -> Result<Self, GraphError> {
+    pub fn join(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
+        let destination = destination.key_or_index_with(|index| {
+            self.neighboring_faces()
+                .nth(index)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+                .map(|face| face.key())
+        })?;
         let ab = {
             self.interior_arcs()
                 .find(|arc| match arc.opposite_arc().face() {
@@ -1248,7 +1268,7 @@ mod tests {
         let arc = graph
             .face_mut(abc)
             .unwrap()
-            .bisect(p, q)
+            .bisect(ByKey(p), ByKey(q))
             .unwrap()
             .into_ref();
 
@@ -1312,7 +1332,7 @@ mod tests {
         // Get the keys for the two faces and join them.
         let abc = graph.faces().nth(0).unwrap().key();
         let def = graph.faces().nth(1).unwrap().key();
-        graph.face_mut(abc).unwrap().join(def).unwrap();
+        graph.face_mut(abc).unwrap().join(ByKey(def)).unwrap();
 
         // After the removal, the graph should have 1 face.
         assert_eq!(1, graph.face_count());
