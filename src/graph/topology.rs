@@ -71,6 +71,7 @@ where
     pub geometry: G::Arc,
     pub(in crate::graph) next: Option<ArcKey>,
     pub(in crate::graph) previous: Option<ArcKey>,
+    pub(in crate::graph) edge: Option<EdgeKey>,
     pub(in crate::graph) face: Option<FaceKey>,
 }
 
@@ -83,6 +84,7 @@ where
             geometry,
             next: None,
             previous: None,
+            edge: None,
             face: None,
         }
     }
@@ -99,6 +101,7 @@ where
             geometry: arc.geometry.into_geometry(),
             next: arc.next,
             previous: arc.previous,
+            edge: arc.edge,
             face: arc.face,
         }
     }

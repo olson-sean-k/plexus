@@ -15,7 +15,8 @@
 //!
 //! # Examples
 //!
-//! A function that subdivides faces in a graph by splitting edges:
+//! A function that subdivides faces in a graph by splitting edges at their
+//! midpoints:
 //!
 //! ```rust
 //! use plexus::geometry::alias::VertexPosition;
@@ -37,7 +38,7 @@
 //!     let mut arc = face.into_arc();
 //!     let mut splits = Vec::with_capacity(arity);
 //!     for _ in 0..arity {
-//!         let vertex = arc.split()?;
+//!         let vertex = arc.split_at_midpoint()?;
 //!         splits.push(vertex.key());
 //!         arc = vertex.into_outgoing_arc().into_next_arc();
 //!     }

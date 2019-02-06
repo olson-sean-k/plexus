@@ -85,8 +85,13 @@ where
     /// let mut graph = Cube::new()
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Point3<f32>>>();
-    /// let key = graph.arcs().nth(0).unwrap().key();
-    /// let vertex = graph.arc_mut(key).unwrap().split().unwrap().into_ref();
+    /// let key = graph.edges().nth(0).unwrap().key();
+    /// let vertex = graph
+    ///     .edge_mut(key)
+    ///     .unwrap()
+    ///     .split_at_midpoint()
+    ///     .unwrap()
+    ///     .into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = vertex.into_outgoing_arc().into_face().unwrap();
@@ -400,9 +405,6 @@ where
 }
 
 /// Orphan reference to a vertex.
-///
-/// Consider using `OrphanVertex` instead. See this issue:
-/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,

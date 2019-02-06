@@ -139,7 +139,7 @@ pub mod alias {
     where
         G: Geometry,
     {
-        fn as_arc_storage(&self) -> &Storage<Edge<G>> {
+        fn as_edge_storage(&self) -> &Storage<Edge<G>> {
             self.as_storage()
         }
     }
@@ -155,7 +155,7 @@ pub mod alias {
     where
         G: Geometry,
     {
-        fn as_arc_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+        fn as_edge_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
             self.as_storage_mut()
         }
     }

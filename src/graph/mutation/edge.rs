@@ -1,20 +1,20 @@
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use crate::geometry::alias::{ScaledEdgeLateral, VertexPosition};
+use crate::geometry::alias::{ScaledArcLateral, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::{EdgeLateral, EdgeMidpoint};
+use crate::graph::geometry::{ArcLateral, EdgeMidpoint};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Face, Vertex};
+use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::ArcView;
+use crate::graph::view::{ArcView, EdgeView};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
@@ -23,7 +23,7 @@ where
     G: Geometry,
 {
     mutation: VertexMutation<G>,
-    storage: Storage<Arc<G>>,
+    storage: (Storage<Arc<G>>, Storage<Edge<G>>),
 }
 
 impl<G> EdgeMutation<G>
@@ -33,7 +33,7 @@ where
     pub fn get_or_insert_edge(
         &mut self,
         span: (VertexKey, VertexKey),
-    ) -> Result<(ArcKey, ArcKey), GraphError> {
+    ) -> Result<(EdgeKey, (ArcKey, ArcKey)), GraphError> {
         self.get_or_insert_edge_with(span, || Default::default())
     }
 
@@ -41,7 +41,7 @@ where
         &mut self,
         span: (VertexKey, VertexKey),
         f: F,
-    ) -> Result<(ArcKey, ArcKey), GraphError>
+    ) -> Result<(EdgeKey, (ArcKey, ArcKey)), GraphError>
     where
         F: Clone + FnOnce() -> G::Arc,
     {
@@ -49,94 +49,87 @@ where
             mutation: &mut EdgeMutation<G>,
             span: (VertexKey, VertexKey),
             f: F,
-        ) -> ArcKey
+        ) -> (Option<EdgeKey>, ArcKey)
         where
             G: Geometry,
             F: FnOnce() -> G::Arc,
         {
             let (a, _) = span;
             let ab = span.into();
-            if mutation.storage.contains_key(&ab) {
-                ab
+            if let Some(arc) = mutation.storage.0.get(&ab) {
+                (arc.edge, ab)
             }
             else {
-                mutation.storage.insert_with_key(&ab, Arc::new(f()));
+                mutation.storage.0.insert_with_key(&ab, Arc::new(f()));
                 let _ = mutation.connect_outgoing_arc(a, ab);
-                ab
+                (None, ab)
             }
         }
 
         let (a, b) = span;
-        Ok((
-            get_or_insert_arc_with(self, (a, b), f.clone()),
-            get_or_insert_arc_with(self, (b, a), f),
-        ))
+        let (e1, ab) = get_or_insert_arc_with(self, (a, b), f.clone());
+        let (e2, ba) = get_or_insert_arc_with(self, (b, a), f);
+        match (e1, e2) {
+            (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
+            (None, None) => {
+                let ab_ba = self.storage.1.insert(Edge::new(ab, Default::default()));
+                self.connect_arc_to_edge(ab, ab_ba)?;
+                self.connect_arc_to_edge(ba, ab_ba)?;
+                Ok((ab_ba, (ab, ba)))
+            }
+            // It should not be possible to insert or remove individual arcs
+            // and mutations should not allow arcs to be assigned to edges
+            // independently of their opposite arcs.
+            _ => Err(GraphError::TopologyMalformed),
+        }
     }
 
     pub fn connect_neighboring_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
-        self.storage
-            .get_mut(&ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .next = Some(bc);
-        self.storage
-            .get_mut(&bc)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .previous = Some(ab);
+        self.with_arc_mut(ab, |arc| arc.next = Some(bc))?;
+        self.with_arc_mut(bc, |arc| arc.previous = Some(ab))?;
         Ok(())
     }
 
     pub fn disconnect_next_arc(&mut self, ab: ArcKey) -> Result<Option<ArcKey>, GraphError> {
-        let bx = {
-            self.storage
-                .get_mut(&ab)
-                .ok_or_else(|| GraphError::TopologyNotFound)?
-                .next
-                .take()
-        };
+        let bx = self.with_arc_mut(ab, |arc| arc.next.take())?;
         if let Some(bx) = bx.as_ref() {
-            self.storage
-                .get_mut(bx)
-                .ok_or_else(|| GraphError::TopologyMalformed)?
-                .previous
-                .take();
+            self.with_arc_mut(*bx, |arc| arc.previous.take())
+                .map_err(|_| GraphError::TopologyMalformed)?;
         }
         Ok(bx)
     }
 
     pub fn disconnect_previous_arc(&mut self, ab: ArcKey) -> Result<Option<ArcKey>, GraphError> {
-        let xa = {
-            self.storage
-                .get_mut(&ab)
-                .ok_or_else(|| GraphError::TopologyNotFound)?
-                .previous
-                .take()
-        };
+        let xa = self.with_arc_mut(ab, |arc| arc.previous.take())?;
         if let Some(xa) = xa.as_ref() {
-            self.storage
-                .get_mut(xa)
-                .ok_or_else(|| GraphError::TopologyMalformed)?
-                .next
-                .take();
+            self.with_arc_mut(*xa, |arc| arc.next.take())
+                .map_err(|_| GraphError::TopologyMalformed)?;
         }
         Ok(xa)
     }
 
+    pub fn connect_arc_to_edge(&mut self, ab: ArcKey, ab_ba: EdgeKey) -> Result<(), GraphError> {
+        self.with_arc_mut(ab, |arc| arc.edge = Some(ab_ba))
+    }
+
     pub fn connect_arc_to_face(&mut self, ab: ArcKey, abc: FaceKey) -> Result<(), GraphError> {
-        self.storage
-            .get_mut(&ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .face = Some(abc);
-        Ok(())
+        self.with_arc_mut(ab, |arc| arc.face = Some(abc))
     }
 
     pub fn disconnect_arc_from_face(&mut self, ab: ArcKey) -> Result<Option<FaceKey>, GraphError> {
-        let face = self
+        self.with_arc_mut(ab, |arc| arc.face.take())
+    }
+
+    fn with_arc_mut<T, F>(&mut self, ab: ArcKey, mut f: F) -> Result<T, GraphError>
+    where
+        F: FnMut(&mut Arc<G>) -> T,
+    {
+        let arc = self
             .storage
+            .0
             .get_mut(&ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .face
-            .take();
-        Ok(face)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        Ok(f(arc))
     }
 }
 
@@ -145,7 +138,16 @@ where
     G: Geometry,
 {
     fn as_storage(&self) -> &Storage<Arc<G>> {
-        &self.storage
+        &self.storage.0
+    }
+}
+
+impl<G> AsStorage<Edge<G>> for EdgeMutation<G>
+where
+    G: Geometry,
+{
+    fn as_storage(&self) -> &Storage<Edge<G>> {
+        &self.storage.1
     }
 }
 
@@ -153,26 +155,26 @@ impl<G> Mutate for EdgeMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Arc<G>>, ()>;
+    type Mutant = Core<Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
     type Error = GraphError;
 
     fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, arcs, ..) = mutant.into_storage();
+        let (vertices, arcs, edges, ..) = mutant.into_storage();
         EdgeMutation {
             mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
-            storage: arcs,
+            storage: (arcs, edges),
         }
     }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let EdgeMutation {
             mutation,
-            storage: arcs,
+            storage: (arcs, edges),
             ..
         } = self;
         mutation.commit().and_then(move |core| {
             let (vertices, ..) = core.into_storage();
-            Ok(Core::empty().bind(vertices).bind(arcs))
+            Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
         })
     }
 }
@@ -247,6 +249,7 @@ where
 {
     a: VertexKey,
     b: VertexKey,
+    ab_ba: EdgeKey,
     arc: ArcRemoveCache<G>,
     opposite: ArcRemoveCache<G>,
 }
@@ -255,20 +258,27 @@ impl<G> EdgeRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab_ba: EdgeKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Edge<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent,
     {
         let storage = storage.reborrow();
-        let arc = ArcView::from_keyed_source((ab, storage))
+        let edge = EdgeView::from_keyed_source((ab_ba, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let arc = edge.arc();
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
+        let ab = arc.key();
         let ba = arc.opposite_arc().key();
         Ok(EdgeRemoveCache {
             a,
             b,
+            ab_ba,
             arc: ArcRemoveCache::snapshot(storage, ab)?,
             opposite: ArcRemoveCache::snapshot(storage, ba)?,
         })
@@ -283,6 +293,7 @@ where
     b: VertexKey,
     ab: ArcKey,
     ba: ArcKey,
+    ab_ba: EdgeKey,
     midpoint: G::Vertex,
 }
 
@@ -294,7 +305,7 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
+        M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
         let arc = ArcView::from_keyed_source((ab, storage))
@@ -308,13 +319,17 @@ where
         let destination = arc
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
+        let edge = arc
+            .reachable_edge()
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let mut midpoint = source.geometry.clone();
-        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(arc)?;
+        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(edge)?;
         Ok(EdgeSplitCache {
             a: source.key(),
             b: destination.key(),
-            ab,
+            ab: arc.key(),
             ba: opposite.key(),
+            ab_ba: edge.key(),
             midpoint,
         })
     }
@@ -407,11 +422,11 @@ where
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
-        G: Geometry + EdgeLateral,
+        G: Geometry + ArcLateral,
         G::Lateral: Mul<T>,
         G::Vertex: AsPosition,
-        ScaledEdgeLateral<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
+        ScaledArcLateral<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledArcLateral<G, T>, Output = VertexPosition<G>> + Clone,
     {
         // Get the extruded geometry.
         let (vertices, arc) = {
@@ -442,13 +457,16 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeRemoveCache<G>,
-) -> Result<(Arc<G>, Arc<G>), GraphError>
+) -> Result<(Edge<G>, (Arc<G>, Arc<G>)), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn remove<M, N, G>(mut mutation: N, cache: ArcRemoveCache<G>) -> Result<Arc<G>, GraphError>
+    fn remove_arc_with_cache<M, N, G>(
+        mut mutation: N,
+        cache: ArcRemoveCache<G>,
+    ) -> Result<Arc<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -461,6 +479,7 @@ where
         mutation
             .as_mut()
             .storage
+            .0
             .remove(&ab)
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
@@ -468,6 +487,7 @@ where
     let EdgeRemoveCache {
         a,
         b,
+        ab_ba,
         arc,
         opposite,
         ..
@@ -486,9 +506,18 @@ where
     if let (Some(xb), Some(bx)) = (opposite.xa, arc.bx) {
         mutation.as_mut().connect_neighboring_arcs(xb, bx)?;
     }
+    let edge = mutation
+        .as_mut()
+        .storage
+        .1
+        .remove(&ab_ba)
+        .ok_or_else(|| GraphError::TopologyNotFound)?;
     Ok((
-        remove(mutation.as_mut(), arc)?,
-        remove(mutation.as_mut(), opposite)?,
+        edge,
+        (
+            remove_arc_with_cache(mutation.as_mut(), arc)?,
+            remove_arc_with_cache(mutation.as_mut(), opposite)?,
+        ),
     ))
 }
 
@@ -511,7 +540,7 @@ where
         mutation.as_mut().disconnect_outgoing_arc(a)?;
         let xa = mutation.as_mut().disconnect_previous_arc(ab)?;
         let bx = mutation.as_mut().disconnect_next_arc(ab)?;
-        let mut arc = mutation.as_mut().storage.remove(&ab).unwrap();
+        let mut arc = mutation.as_mut().storage.0.remove(&ab).unwrap();
         // Restore the connectivity of the arc. The mutations will clear this
         // data, because it is still a part of the mesh at that point.
         arc.previous = xa;
@@ -542,11 +571,11 @@ where
         let am = mutation
             .as_mut()
             .get_or_insert_edge_with((a, m), || geometry.clone())
-            .map(|(am, _)| am)?;
+            .map(|(_, (am, _))| am)?;
         let mb = mutation
             .as_mut()
             .get_or_insert_edge_with((m, b), move || geometry)
-            .map(|(mb, _)| mb)?;
+            .map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
         mutation.as_mut().connect_neighboring_arcs(am, mb)?;
         if let Some(xa) = previous {
@@ -570,10 +599,18 @@ where
         b,
         ab,
         ba,
+        ab_ba,
         midpoint,
         ..
     } = cache;
     let m = mutation.as_mut().insert_vertex(midpoint);
+    // Remove the edge.
+    let _ = mutation
+        .as_mut()
+        .storage
+        .1
+        .remove(&ab_ba)
+        .ok_or_else(|| GraphError::TopologyMalformed)?;
     // Split the arcs.
     split_at_vertex(mutation.as_mut(), a, b, m, ab)?;
     split_at_vertex(mutation.as_mut(), b, a, m, ba)?;
@@ -608,11 +645,11 @@ pub fn extrude_with_cache<M, N, G, T>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry + EdgeLateral,
+    G: Geometry + ArcLateral,
     G::Lateral: Mul<T>,
     G::Vertex: AsPosition,
-    ScaledEdgeLateral<G, T>: Clone,
-    VertexPosition<G>: Add<ScaledEdgeLateral<G, T>, Output = VertexPosition<G>> + Clone,
+    ScaledArcLateral<G, T>: Clone,
+    VertexPosition<G>: Add<ScaledArcLateral<G, T>, Output = VertexPosition<G>> + Clone,
 {
     let ArcExtrudeCache {
         ab, vertices, arc, ..
@@ -624,7 +661,7 @@ where
     //       error.
     let cd = mutation
         .get_or_insert_edge_with((c, d), move || arc)
-        .map(|(cd, _)| cd)?;
+        .map(|(_, (cd, _))| cd)?;
     let cache = ArcBridgeCache::snapshot(
         &Core::empty()
             .bind(mutation.as_vertex_storage())

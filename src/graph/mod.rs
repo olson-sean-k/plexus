@@ -189,8 +189,8 @@ pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 //       mutation APIs, and exposing the underlying view types would then be
 //       necessary. For now, use them directly.
 pub use self::view::{
-    ArcNeighborhood, ArcView, FaceNeighborhood, FaceView, InteriorPathView, OrphanArcView,
-    OrphanFaceView, OrphanVertexView, Selector, VertexView,
+    ArcNeighborhood, ArcView, EdgeView, FaceNeighborhood, FaceView, InteriorPathView,
+    OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, Selector, VertexView,
 };
 
 pub use Selector::ByIndex;

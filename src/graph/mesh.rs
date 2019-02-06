@@ -17,11 +17,12 @@ use crate::graph::geometry::FaceCentroid;
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Face, Vertex};
+use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::IntoView;
 use crate::graph::view::{
-    ArcView, FaceView, OrphanArcView, OrphanFaceView, OrphanVertexView, VertexView,
+    ArcView, EdgeView, FaceView, OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView,
+    VertexView,
 };
 use crate::graph::GraphError;
 use crate::primitive::decompose::IntoVertices;
@@ -64,6 +65,7 @@ where
             Core::empty()
                 .bind(Storage::<Vertex<G>>::new())
                 .bind(Storage::<Arc<G>>::new())
+                .bind(Storage::<Edge<G>>::new())
                 .bind(Storage::<Face<G>>::new()),
         )
     }
@@ -77,6 +79,7 @@ where
             Core::empty()
                 .bind(Storage::<Vertex<G>>::empty())
                 .bind(Storage::<Arc<G>>::empty())
+                .bind(Storage::<Edge<G>>::empty())
                 .bind(Storage::<Face<G>>::empty()),
         )
     }
@@ -179,6 +182,39 @@ where
     /// `arc_mut` instead.
     pub fn orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.as_arc_storage_mut()
+            .iter_mut()
+            .map(|(key, source)| (*key, source).into_view().unwrap())
+    }
+
+    /// Gets the number of edges in the mesh.
+    pub fn edge_count(&self) -> usize {
+        self.as_edge_storage().len()
+    }
+
+    /// Gets an immutable view of the edge with the given key.
+    pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self, G>> {
+        (key, self).into_view()
+    }
+
+    /// Gets a mutable view of the edge with the given key.
+    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self, G>> {
+        (key, self).into_view()
+    }
+
+    /// Gets an iterator of immutable views over the edges in the mesh.
+    pub fn edges(&self) -> impl Clone + Iterator<Item = EdgeView<&Self, G>> {
+        self.as_edge_storage()
+            .keys()
+            .map(move |key| (*key, self).into_view().unwrap())
+    }
+
+    /// Gets an iterator of orphan views over the edges in the mesh.
+    ///
+    /// Because this only yields orphan views, only geometry can be mutated.
+    /// For topological mutations, collect the necessary keys and use
+    /// `edge_mut` instead.
+    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
+        self.as_edge_storage_mut()
             .iter_mut()
             .map(|(key, source)| (*key, source).into_view().unwrap())
     }
@@ -376,6 +412,15 @@ where
     }
 }
 
+impl<G> AsStorage<Edge<G>> for MeshGraph<G>
+where
+    G: Geometry,
+{
+    fn as_storage(&self) -> &Storage<Edge<G>> {
+        self.core.as_edge_storage()
+    }
+}
+
 impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: Geometry,
@@ -400,6 +445,15 @@ where
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.core.as_arc_storage_mut()
+    }
+}
+
+impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
+where
+    G: Geometry,
+{
+    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+        self.core.as_edge_storage_mut()
     }
 }
 
@@ -451,16 +505,17 @@ where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
     G::Arc: FromGeometry<H::Arc>,
+    G::Edge: FromGeometry<H::Edge>,
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
     fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
         let MeshGraph { core, .. } = graph;
-        // TODO: Include composite edges.
-        let (vertices, arcs, _, faces) = core.into_storage();
+        let (vertices, arcs, edges, faces) = core.into_storage();
         let core = Core::empty()
             .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
             .bind(arcs.map_values_into(|arc| Arc::<G>::from_interior_geometry(arc)))
+            .bind(edges.map_values_into(|edge| Edge::<G>::from_interior_geometry(edge)))
             .bind(faces.map_values_into(|face| Face::<G>::from_interior_geometry(face)));
         MeshGraph::from(core)
     }

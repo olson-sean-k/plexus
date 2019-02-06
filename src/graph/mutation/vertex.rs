@@ -53,7 +53,7 @@ impl<G> Mutate for VertexMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, (), ()>;
+    type Mutant = Core<Storage<Vertex<G>>, (), (), ()>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {

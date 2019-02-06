@@ -6,7 +6,7 @@ mod vertex;
 use crate::graph::storage::OpaqueKey;
 use crate::graph::GraphError;
 
-pub use self::edge::{ArcNeighborhood, ArcView, OrphanArcView};
+pub use self::edge::{ArcNeighborhood, ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
 pub use self::face::{FaceNeighborhood, FaceView, InteriorPathView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
 

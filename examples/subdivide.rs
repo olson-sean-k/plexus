@@ -26,7 +26,7 @@ where
     let mut arc = face.into_arc();
     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
     for _ in 0..arity {
-        let vertex = arc.split()?;
+        let vertex = arc.split_at_midpoint()?;
         splits.push(vertex.key());
         arc = vertex.into_outgoing_arc().into_next_arc();
     }

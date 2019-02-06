@@ -15,7 +15,7 @@ use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Face, Vertex};
+use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::{ArcView, FaceNeighborhood, FaceView, VertexView};
 use crate::graph::GraphError;
@@ -34,11 +34,13 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
-    // TODO: Include edges.
-    fn core(&self) -> Core<&Storage<Vertex<G>>, &Storage<Arc<G>>, (), &Storage<Face<G>>> {
+    fn core(
+        &self,
+    ) -> Core<&Storage<Vertex<G>>, &Storage<Arc<G>>, &Storage<Edge<G>>, &Storage<Face<G>>> {
         Core::empty()
             .bind(self.as_vertex_storage())
             .bind(self.as_arc_storage())
+            .bind(self.as_edge_storage())
             .bind(self.as_face_storage())
     }
 
@@ -69,7 +71,7 @@ where
             .perimeter()
             .map(|(a, b)| {
                 self.get_or_insert_edge_with((a, b), || geometry.0.clone())
-                    .map(|(ab, _)| ab)
+                    .map(|(_, (ab, _))| ab)
             })
             .collect::<Result<Vec<_>, _>>()?;
         // Insert the face.
@@ -188,11 +190,11 @@ where
 
     fn mutate(core: Self::Mutant) -> Self {
         // TODO: Include edges.
-        let (vertices, arcs, _, faces) = core.into_storage();
+        let (vertices, arcs, edges, faces) = core.into_storage();
         FaceMutation {
             singularities: Default::default(),
             storage: faces,
-            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs)),
+            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs).bind(edges)),
         }
     }
 
@@ -204,7 +206,7 @@ where
             ..
         } = self;
         mutation.commit().and_then(move |core| {
-            let (vertices, arcs, ..) = core.into_storage();
+            let (vertices, arcs, edges, ..) = core.into_storage();
             {
                 // TODO: Rejection of pinwheel connectivity has been removed.
                 //       Determine if this check is related in a way that is
@@ -230,7 +232,11 @@ where
                 }
             }
             // TODO: Include edges.
-            Ok(Core::empty().bind(vertices).bind(arcs).bind(faces))
+            Ok(Core::empty()
+                .bind(vertices)
+                .bind(arcs)
+                .bind(edges)
+                .bind(faces))
         })
     }
 }

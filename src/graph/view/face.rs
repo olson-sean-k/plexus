@@ -1,4 +1,3 @@
-use arrayvec::ArrayVec;
 use either::Either;
 use fool::prelude::*;
 use std::cmp;
@@ -19,10 +18,10 @@ use crate::graph::mutation::face::{
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Face, Topological, Vertex};
+use crate::graph::topology::{Arc, Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{
-    ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, Selector, VertexView,
+    ArcNeighborhood, ArcView, EdgeView, OrphanArcView, OrphanVertexView, Selector, VertexView,
 };
 use crate::graph::{GraphError, OptionExt};
 
@@ -371,7 +370,20 @@ where
             .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
             .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
     }
+}
 
+impl<'a, M, G> FaceView<&'a mut M, G>
+where
+    M: AsStorage<Arc<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry,
+{
     pub fn bisect(
         self,
         source: Selector<VertexKey>,
@@ -411,18 +423,18 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|face| face.key())
         })?;
-        let ab = {
+        let ab_ba = {
             self.interior_arcs()
                 .find(|arc| match arc.opposite_arc().face() {
                     Some(face) => face.key() == destination,
                     _ => false,
                 })
-                .map(|arc| arc.key())
+                .map(|arc| arc.edge().key())
                 .ok_or_else(|| GraphError::TopologyNotFound)?
         };
         let geometry = self.geometry.clone();
         let (_, storage) = self.into_keyed_source();
-        ArcView::from_keyed_source((ab, storage))
+        EdgeView::from_keyed_source((ab_ba, storage))
             .expect_consistent()
             .remove()?
             .into_outgoing_arc()
@@ -581,9 +593,6 @@ where
 }
 
 /// Orphan reference to a face.
-///
-/// Consider using `OrphanFace` instead. See this issue:
-/// <https://github.com/rust-lang/rust/issues/39437>
 pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,

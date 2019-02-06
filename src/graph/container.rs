@@ -277,6 +277,6 @@ pub mod alias {
     use crate::graph::storage::Storage;
     use crate::graph::topology::{Arc, Face, Vertex};
 
-    // TODO: Include composite edges.
-    pub type OwnedCore<G> = Core<Storage<Vertex<G>>, Storage<Arc<G>>, (), Storage<Face<G>>>;
+    pub type OwnedCore<G> =
+        Core<Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 }

@@ -11,8 +11,8 @@ use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::topology::{Arc, Face, Vertex};
-use crate::graph::view::{ArcView, FaceView};
+use crate::graph::topology::{Arc, Edge, Face, Vertex};
+use crate::graph::view::{ArcView, EdgeView, FaceView};
 use crate::graph::GraphError;
 
 // TODO: Some traits should operate directly on arcs instead of edges (and vice
@@ -85,10 +85,10 @@ where
 pub trait EdgeMidpoint: Geometry {
     type Midpoint;
 
-    fn midpoint<M>(edge: ArcView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -99,37 +99,41 @@ where
 {
     type Midpoint = <VertexPosition<G> as Interpolate>::Output;
 
-    fn midpoint<M>(edge: ArcView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
     {
         let a = edge
-            .reachable_source_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry
-            .as_position()
-            .clone();
+            .reachable_arc()
+            .ok_or_else(|| GraphError::TopologyNotFound)
+            .and_then(|arc| {
+                arc.reachable_source_vertex()
+                    .ok_or_else(|| GraphError::TopologyNotFound)
+                    .map(|vertex| vertex.geometry.as_position().clone())
+            })?;
         let b = edge
-            .reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry
-            .as_position()
-            .clone();
+            .reachable_arc()
+            .ok_or_else(|| GraphError::TopologyNotFound)
+            .and_then(|arc| {
+                arc.reachable_destination_vertex()
+                    .ok_or_else(|| GraphError::TopologyNotFound)
+                    .map(|vertex| vertex.geometry.as_position().clone())
+            })?;
         Ok(a.midpoint(b))
     }
 }
 
-pub trait EdgeLateral: Geometry {
+pub trait ArcLateral: Geometry {
     type Lateral;
 
-    fn lateral<M>(edge: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn lateral<M>(arc: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>;
 }
 
-impl<G> EdgeLateral for G
+impl<G> ArcLateral for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
@@ -142,24 +146,24 @@ where
 {
     type Lateral = <VertexPosition<G> as Sub>::Output;
 
-    fn lateral<M>(edge: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn lateral<M>(arc: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>,
     {
-        let a = edge
+        let a = arc
             .reachable_source_vertex()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry
             .as_position()
             .clone();
-        let b = edge
+        let b = arc
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry
             .as_position()
             .clone();
-        let c = edge
+        let c = arc
             .reachable_opposite_arc()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .reachable_previous_arc()
