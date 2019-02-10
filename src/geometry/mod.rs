@@ -190,7 +190,7 @@ pub mod alias {
 
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
     pub type ScaledFaceNormal<G, T> = <<G as FaceNormal>::Normal as Mul<T>>::Output;
-    pub type ScaledArcLateral<G, T> = <<G as ArcLateral>::Lateral as Mul<T>>::Output;
+    pub type ScaledArcNormal<G, T> = <<G as ArcNormal>::Normal as Mul<T>>::Output;
 }
 
 #[cfg(feature = "geometry-cgmath")]

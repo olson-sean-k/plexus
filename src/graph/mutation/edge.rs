@@ -1,11 +1,11 @@
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use crate::geometry::alias::{ScaledArcLateral, VertexPosition};
+use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::{ArcLateral, EdgeMidpoint};
+use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
@@ -422,11 +422,11 @@ where
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
-        G: Geometry + ArcLateral,
-        G::Lateral: Mul<T>,
+        G: Geometry + ArcNormal,
+        G::Normal: Mul<T>,
         G::Vertex: AsPosition,
-        ScaledArcLateral<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledArcLateral<G, T>, Output = VertexPosition<G>> + Clone,
+        ScaledArcNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
         // Get the extruded geometry.
         let (vertices, arc) = {
@@ -445,7 +445,7 @@ where
                     .geometry
                     .clone(),
             );
-            let translation = arc.lateral()? * distance;
+            let translation = arc.normal()? * distance;
             *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
             *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
             (vertices, arc.geometry.clone())
@@ -645,11 +645,11 @@ pub fn extrude_with_cache<M, N, G, T>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry + ArcLateral,
-    G::Lateral: Mul<T>,
+    G: Geometry + ArcNormal,
+    G::Normal: Mul<T>,
     G::Vertex: AsPosition,
-    ScaledArcLateral<G, T>: Clone,
-    VertexPosition<G>: Add<ScaledArcLateral<G, T>, Output = VertexPosition<G>> + Clone,
+    ScaledArcNormal<G, T>: Clone,
+    VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
 {
     let ArcExtrudeCache {
         ab, vertices, arc, ..

@@ -124,16 +124,16 @@ where
     }
 }
 
-pub trait ArcLateral: Geometry {
-    type Lateral;
+pub trait ArcNormal: Geometry {
+    type Normal;
 
-    fn lateral<M>(arc: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>;
 }
 
-impl<G> ArcLateral for G
+impl<G> ArcNormal for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
@@ -144,9 +144,9 @@ where
         > + Sub,
     <VertexPosition<G> as Sub>::Output: Normalize + Project,
 {
-    type Lateral = <VertexPosition<G> as Sub>::Output;
+    type Normal = <VertexPosition<G> as Sub>::Output;
 
-    fn lateral<M>(arc: ArcView<M, Self>) -> Result<Self::Lateral, GraphError>
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>,

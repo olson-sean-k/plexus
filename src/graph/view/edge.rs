@@ -5,12 +5,12 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Mul};
 
-use crate::geometry::alias::{ScaledArcLateral, VertexPosition};
+use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
-use crate::graph::geometry::{ArcLateral, EdgeMidpoint};
+use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
@@ -594,10 +594,10 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
-    G: Geometry + ArcLateral,
+    G: Geometry + ArcNormal,
 {
-    pub fn lateral(&self) -> Result<G::Lateral, GraphError> {
-        G::lateral(self.interior_reborrow())
+    pub fn normal(&self) -> Result<G::Normal, GraphError> {
+        G::normal(self.interior_reborrow())
     }
 }
 
@@ -610,14 +610,14 @@ where
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
-    G: 'a + ArcLateral + Geometry,
+    G: 'a + ArcNormal + Geometry,
     G::Vertex: AsPosition,
 {
     pub fn extrude<T>(self, distance: T) -> Result<ArcView<&'a mut M, G>, GraphError>
     where
-        G::Lateral: Mul<T>,
-        ScaledArcLateral<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledArcLateral<G, T>, Output = VertexPosition<G>> + Clone,
+        G::Normal: Mul<T>,
+        ScaledArcNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
     {
         let (ab, storage) = self.into_keyed_source();
         let cache = ArcExtrudeCache::snapshot(&storage, ab, distance)?;
