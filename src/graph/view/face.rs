@@ -418,22 +418,21 @@ where
             .map(|_| ())
     }
 
-    pub fn join(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
+    pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
         let destination = destination.key_or_else(|index| {
             self.neighboring_faces()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|face| face.key())
         })?;
-        let ab_ba = {
-            self.interior_arcs()
-                .find(|arc| match arc.opposite_arc().face() {
-                    Some(face) => face.key() == destination,
-                    _ => false,
-                })
-                .map(|arc| arc.edge().key())
-                .ok_or_else(|| GraphError::TopologyNotFound)?
-        };
+        let ab_ba = self
+            .interior_arcs()
+            .find(|arc| match arc.opposite_arc().face() {
+                Some(face) => face.key() == destination,
+                _ => false,
+            })
+            .map(|arc| arc.edge().key())
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry.clone();
         let (_, storage) = self.into_keyed_source();
         EdgeView::from_keyed_source((ab_ba, storage))
@@ -446,10 +445,11 @@ where
 
     pub fn triangulate(self) -> Result<Self, GraphError> {
         let mut face = self;
-        let mut arity = face.arity();
-        while arity > 3 {
-            face = face.bisect(ByIndex(0), ByIndex(2))?.into_face().unwrap();
-            arity = face.arity();
+        while face.arity() > 3 {
+            face = face
+                .bisect(ByIndex(0), ByIndex(2))?
+                .into_face()
+                .expect("bisection resulted in no face");
         }
         Ok(face)
     }
@@ -1366,7 +1366,7 @@ mod tests {
         // Get the keys for the two faces and join them.
         let abc = graph.faces().nth(0).unwrap().key();
         let def = graph.faces().nth(1).unwrap().key();
-        graph.face_mut(abc).unwrap().join(ByKey(def)).unwrap();
+        graph.face_mut(abc).unwrap().merge(ByKey(def)).unwrap();
 
         // After the removal, the graph should have 1 face.
         assert_eq!(1, graph.face_count());
