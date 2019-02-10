@@ -25,6 +25,8 @@ use crate::graph::view::{
 };
 use crate::graph::{GraphError, OptionExt};
 
+use Selector::ByIndex;
+
 /// Reference to a face.
 ///
 /// Provides traversals, queries, and mutations related to faces in a mesh. See
@@ -441,6 +443,16 @@ where
             .into_interior_path()
             .get_or_insert_face_with(|| geometry)
     }
+
+    pub fn triangulate(self) -> Result<Self, GraphError> {
+        let mut face = self;
+        let mut arity = face.arity();
+        while arity > 3 {
+            face = face.bisect(ByIndex(0), ByIndex(2))?.into_face().unwrap();
+            arity = face.arity();
+        }
+        Ok(face)
+    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -465,7 +477,7 @@ where
         + Into<OwnedCore<G>>,
     G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
 {
-    pub fn triangulate(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
+    pub fn triangulate_at_centroid(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
         let (abc, storage) = self.into_keyed_source();
         let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
         Mutation::replace(storage, Default::default())
@@ -1369,12 +1381,11 @@ mod tests {
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate().unwrap();
 
-        // There are 8 unique vertices and a vertex is added for each quad,
-        // yielding `8 + 6` vertices.
-        assert_eq!(14, graph.vertex_count());
-        assert_eq!(72, graph.arc_count());
-        // Each quad becomes a tetrahedron, so 6 quads become 24 triangles.
-        assert_eq!(24, graph.face_count());
+        assert_eq!(8, graph.vertex_count());
+        assert_eq!(36, graph.arc_count());
+        assert_eq!(18, graph.edge_count());
+        // Each quad becomes 2 triangles, so 6 quads become 12 triangles.
+        assert_eq!(12, graph.face_count());
     }
 
     #[test]

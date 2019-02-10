@@ -13,7 +13,6 @@ use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry}
 use crate::geometry::{Geometry, Triplet};
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core};
-use crate::graph::geometry::FaceCentroid;
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
@@ -253,10 +252,7 @@ where
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
-    pub fn triangulate(&mut self) -> Result<(), GraphError>
-    where
-        G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
-    {
+    pub fn triangulate(&mut self) -> Result<(), GraphError> {
         let faces = self.as_face_storage().keys().cloned().collect::<Vec<_>>();
         for face in faces {
             self.face_mut(face).unwrap().triangulate()?;
