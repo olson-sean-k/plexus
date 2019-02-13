@@ -21,7 +21,7 @@ use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Edge, Face, Topological, Vertex};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{
-    ArcNeighborhood, ArcView, EdgeView, OrphanArcView, OrphanVertexView, Selector, VertexView,
+    ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, Selector, VertexView,
 };
 use crate::graph::{GraphError, OptionExt};
 
@@ -425,17 +425,17 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|face| face.key())
         })?;
-        let ab_ba = self
+        let ab = self
             .interior_arcs()
             .find(|arc| match arc.opposite_arc().face() {
                 Some(face) => face.key() == destination,
                 _ => false,
             })
-            .map(|arc| arc.edge().key())
+            .map(|arc| arc.key())
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry.clone();
         let (_, storage) = self.into_keyed_source();
-        EdgeView::from_keyed_source((ab_ba, storage))
+        ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
             .remove()?
             .into_outgoing_arc()

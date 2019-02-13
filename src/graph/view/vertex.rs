@@ -85,9 +85,9 @@ where
     /// let mut graph = Cube::new()
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Point3<f32>>>();
-    /// let key = graph.edges().nth(0).unwrap().key();
+    /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph
-    ///     .edge_mut(key)
+    ///     .arc_mut(key)
     ///     .unwrap()
     ///     .split_at_midpoint()
     ///     .unwrap()

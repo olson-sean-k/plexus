@@ -627,6 +627,28 @@ where
     }
 }
 
+impl<'a, M, G> ArcView<&'a mut M, G>
+where
+    M: AsStorage<Arc<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Default
+        + From<OwnedCore<G>>
+        + Into<OwnedCore<G>>,
+    G: 'a + Geometry,
+{
+    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
+        let a = self.source_vertex().key();
+        let (ab, storage) = self.into_keyed_source();
+        let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
+            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
+    }
+}
+
 impl<M, G> Clone for ArcView<M, G>
 where
     M: Clone + Reborrow,
@@ -919,28 +941,6 @@ where
     }
 }
 
-impl<'a, M, G> EdgeView<&'a mut M, G>
-where
-    M: AsStorage<Arc<G>>
-        + AsStorage<Edge<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Consistent
-        + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
-    G: 'a + Geometry,
-{
-    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
-        let a = self.arc().source_vertex().key();
-        let (ab_ba, storage) = self.into_keyed_source();
-        let cache = EdgeRemoveCache::snapshot(&storage, ab_ba)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
-    }
-}
-
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
@@ -953,24 +953,6 @@ where
 {
     pub fn midpoint(&self) -> Result<G::Midpoint, GraphError> {
         G::midpoint(self.interior_reborrow())
-    }
-}
-
-impl<'a, M, G> EdgeView<&'a mut M, G>
-where
-    M: AsStorage<Arc<G>>
-        + AsStorage<Edge<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Consistent
-        + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
-    G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
-    G::Vertex: AsPosition,
-{
-    pub fn split_at_midpoint(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
-        self.into_arc().split_at_midpoint()
     }
 }
 
@@ -1440,9 +1422,9 @@ mod tests {
             .polygons_with_position() // 6 quads, 24 vertices.
             .index_vertices(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
-        let key = graph.edges().nth(0).unwrap().key();
+        let key = graph.arcs().nth(0).unwrap().key();
         let vertex = graph
-            .edge_mut(key)
+            .arc_mut(key)
             .unwrap()
             .split_at_midpoint()
             .unwrap()
@@ -1483,8 +1465,7 @@ mod tests {
         // Remove the edge joining the quads from the graph.
         let ab = find_arc_with_vertex_geometry(&graph, ((0.0, 0.0), (0.0, 1.0))).unwrap();
         {
-            let edge = graph.arc_mut(ab).unwrap().into_edge();
-            let vertex = edge.remove().unwrap().into_ref();
+            let vertex = graph.arc_mut(ab).unwrap().remove().unwrap().into_ref();
 
             // The path should be formed from 6 edges.
             assert_eq!(6, vertex.into_outgoing_arc().into_interior_path().arity());

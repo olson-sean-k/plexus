@@ -14,7 +14,7 @@ use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::{ArcView, EdgeView};
+use crate::graph::view::ArcView;
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
@@ -258,7 +258,7 @@ impl<G> EdgeRemoveCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab_ba: EdgeKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>>
@@ -268,13 +268,12 @@ where
             + Consistent,
     {
         let storage = storage.reborrow();
-        let edge = EdgeView::from_keyed_source((ab_ba, storage))
+        let arc = ArcView::from_keyed_source((ab, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let arc = edge.arc();
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
-        let ab = arc.key();
         let ba = arc.opposite_arc().key();
+        let ab_ba = arc.edge().key();
         Ok(EdgeRemoveCache {
             a,
             b,
