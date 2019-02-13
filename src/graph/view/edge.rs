@@ -290,11 +290,6 @@ where
     pub fn previous_arc(&self) -> ArcView<&M::Target, G> {
         self.reachable_previous_arc().expect_consistent()
     }
-
-    // TODO: Move this into a composite-edge type.
-    pub fn is_disjoint_arc(&self) -> bool {
-        self.is_boundary_arc() && self.opposite_arc().is_boundary_arc()
-    }
 }
 
 /// Reachable API.
@@ -938,6 +933,11 @@ where
 
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         self.reachable_arc().expect_consistent()
+    }
+
+    pub fn is_disjoint_edge(&self) -> bool {
+        let arc = self.arc();
+        arc.is_boundary_arc() && arc.opposite_arc().is_boundary_arc()
     }
 }
 
