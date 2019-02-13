@@ -5,7 +5,7 @@ use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
+use crate::graph::geometry::ArcNormal;
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
@@ -293,15 +293,14 @@ where
     ab: ArcKey,
     ba: ArcKey,
     ab_ba: EdgeKey,
-    midpoint: G::Vertex,
+    geometry: G::Vertex,
 }
 
 impl<G> EdgeSplitCache<G>
 where
-    G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
-    G::Vertex: AsPosition,
+    G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: ArcKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
@@ -321,15 +320,13 @@ where
         let edge = arc
             .reachable_edge()
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let mut midpoint = source.geometry.clone();
-        *midpoint.as_position_mut() = EdgeMidpoint::midpoint(edge)?;
         Ok(EdgeSplitCache {
             a: source.key(),
             b: destination.key(),
             ab: arc.key(),
             ba: opposite.key(),
             ab_ba: edge.key(),
-            midpoint,
+            geometry,
         })
     }
 }
@@ -599,10 +596,10 @@ where
         ab,
         ba,
         ab_ba,
-        midpoint,
+        geometry,
         ..
     } = cache;
-    let m = mutation.as_mut().insert_vertex(midpoint);
+    let m = mutation.as_mut().insert_vertex(geometry);
     // Remove the edge.
     let _ = mutation
         .as_mut()

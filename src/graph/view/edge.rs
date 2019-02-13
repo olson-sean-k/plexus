@@ -569,19 +569,37 @@ where
         + Default
         + From<OwnedCore<G>>
         + Into<OwnedCore<G>>,
-    G: 'a + EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
-    G::Vertex: AsPosition,
+    G: 'a + Geometry,
 {
-    // Conceptually, this should not be possible from an arc alone, but instead
-    // from an edge. However, it is very useful for splits to have an
-    // associated direction, because this ensures that the leading arc of the
-    // resulting vertex lies within the same interior path.
-    pub fn split_at_midpoint(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
+    pub fn split_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        F: FnOnce() -> G::Vertex,
+    {
         let (ab, storage) = self.into_keyed_source();
-        let cache = EdgeSplitCache::snapshot(&storage, ab)?;
+        let cache = EdgeSplitCache::snapshot(&storage, ab, f())?;
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
             .map(|(storage, m)| (m, storage).into_view().expect_consistent())
+    }
+
+    pub fn split(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        G::Vertex: Default,
+    {
+        self.split_with(|| Default::default())
+    }
+
+    pub fn split_at_midpoint(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
+        G::Vertex: AsPosition,
+    {
+        let mut geometry = self.source_vertex().geometry.clone();
+        let midpoint = EdgeMidpoint::midpoint(self.edge())?;
+        self.split_with(move || {
+            *geometry.as_position_mut() = midpoint;
+            geometry
+        })
     }
 }
 
