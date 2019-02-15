@@ -12,8 +12,8 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::face::{
-    self, FaceBisectCache, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FaceRemoveCache,
-    FaceTriangulateCache,
+    self, FaceBisectCache, FaceBridgeCache, FaceDivergeCache, FaceExtrudeCache, FaceInsertCache,
+    FaceRemoveCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
@@ -453,6 +453,47 @@ where
         }
         Ok(face)
     }
+
+    pub fn diverge_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        F: FnOnce() -> G::Vertex,
+    {
+        let (abc, storage) = self.into_keyed_source();
+        let cache = FaceDivergeCache::snapshot(&storage, abc, f())?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::diverge_with_cache(mutation, cache))
+            .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
+    }
+
+    pub fn diverge(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        G::Vertex: Default,
+    {
+        self.diverge_with(|| Default::default())
+    }
+
+    pub fn diverge_at_centroid(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    where
+        G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
+    {
+        let centroid = self.centroid()?;
+        self.diverge_with(move || centroid)
+    }
+
+    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, GraphError>
+    where
+        G: FaceNormal,
+        G::Normal: Mul<T>,
+        G::Vertex: AsPosition,
+        ScaledFaceNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
+    {
+        let (abc, storage) = self.into_keyed_source();
+        let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
+            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -466,28 +507,6 @@ where
     }
 }
 
-impl<'a, M, G> FaceView<&'a mut M, G>
-where
-    M: AsStorage<Arc<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Consistent
-        + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
-    G: 'a + FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
-{
-    pub fn triangulate_at_centroid(self) -> Result<Option<VertexView<&'a mut M, G>>, GraphError> {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceTriangulateCache::snapshot(&storage, abc)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::triangulate_with_cache(mutation, cache))
-            .map(|(storage, vertex)| {
-                vertex.map(|vertex| (vertex, storage).into_view().expect_consistent())
-            })
-    }
-}
-
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
@@ -496,32 +515,6 @@ where
 {
     pub fn normal(&self) -> Result<G::Normal, GraphError> {
         G::normal(self.interior_reborrow())
-    }
-}
-
-impl<'a, M, G> FaceView<&'a mut M, G>
-where
-    M: AsStorage<Arc<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + Consistent
-        + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
-    G: 'a + FaceNormal + Geometry,
-    G::Vertex: AsPosition,
-{
-    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, GraphError>
-    where
-        G::Normal: Mul<T>,
-        ScaledFaceNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
-    {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
-            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
     }
 }
 
@@ -1371,6 +1364,28 @@ mod tests {
         // After the removal, the graph should have 1 face.
         assert_eq!(1, graph.face_count());
         assert_eq!(6, graph.faces().nth(0).unwrap().arity());
+    }
+
+    #[test]
+    fn diverge_face() {
+        let mut graph = Cube::new()
+            .polygons_with_position() // 6 quads, 24 vertices.
+            .collect::<MeshGraph<Point3<f32>>>();
+        let key = graph.faces().nth(0).unwrap().key();
+        let vertex = graph.face_mut(key).unwrap().diverge_at_centroid().unwrap();
+
+        // Diverging a quad yields a tetrahedron.
+        assert_eq!(4, vertex.neighboring_faces().count());
+
+        // Traverse to one of the triangles in the tetrahedron.
+        let face = vertex.into_outgoing_arc().into_face().unwrap();
+
+        assert_eq!(3, face.arity());
+
+        // Diverge the triangle.
+        let vertex = face.diverge_at_centroid().unwrap();
+
+        assert_eq!(3, vertex.neighboring_faces().count());
     }
 
     #[test]

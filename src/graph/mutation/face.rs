@@ -8,7 +8,7 @@ use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::{FaceCentroid, FaceNormal};
+use crate::graph::geometry::FaceNormal;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
@@ -398,33 +398,33 @@ where
     }
 }
 
-pub struct FaceTriangulateCache<G>
+pub struct FaceDivergeCache<G>
 where
-    G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+    G: Geometry,
 {
     vertices: Vec<VertexKey>,
-    centroid: <G as FaceCentroid>::Centroid,
-    geometry: G::Face,
+    geometry: G::Vertex,
     cache: FaceRemoveCache<G>,
 }
 
-impl<G> FaceTriangulateCache<G>
+impl<G> FaceDivergeCache<G>
 where
-    G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+    G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, abc: FaceKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let face = FaceView::from_keyed_source((abc, storage))
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let vertices = face.vertices().map(|vertex| vertex.key()).collect();
-        Ok(FaceTriangulateCache {
+        let vertices = FaceView::from_keyed_source((abc, storage))
+            .ok_or_else(|| GraphError::TopologyNotFound)?
+            .vertices()
+            .map(|vertex| vertex.key())
+            .collect();
+        Ok(FaceDivergeCache {
             vertices,
-            centroid: face.centroid()?,
-            geometry: face.geometry.clone(),
+            geometry,
             cache: FaceRemoveCache::snapshot(storage, abc)?,
         })
     }
@@ -567,32 +567,28 @@ where
     Ok((left[0], right[0]).into())
 }
 
-pub fn triangulate_with_cache<M, N, G>(
+pub fn diverge_with_cache<M, N, G>(
     mut mutation: N,
-    cache: FaceTriangulateCache<G>,
-) -> Result<Option<VertexKey>, GraphError>
+    cache: FaceDivergeCache<G>,
+) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: FaceCentroid<Centroid = <G as Geometry>::Vertex> + Geometry,
+    G: Geometry,
 {
-    let FaceTriangulateCache {
+    let FaceDivergeCache {
         vertices,
-        centroid,
         geometry,
         cache,
     } = cache;
-    if vertices.len() <= 3 {
-        return Ok(None);
-    }
-    remove_with_cache(mutation.as_mut(), cache)?;
-    let c = mutation.as_mut().insert_vertex(centroid);
+    let face = remove_with_cache(mutation.as_mut(), cache)?;
+    let c = mutation.as_mut().insert_vertex(geometry);
     for (a, b) in vertices.into_iter().perimeter() {
         mutation
             .as_mut()
-            .insert_face(&[a, b, c], (Default::default(), geometry.clone()))?;
+            .insert_face(&[a, b, c], (Default::default(), face.geometry.clone()))?;
     }
-    Ok(Some(c))
+    Ok(c)
 }
 
 pub fn bridge_with_cache<M, N, G>(

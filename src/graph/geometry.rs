@@ -70,6 +70,7 @@ where
 {
     type Centroid = G::Vertex;
 
+    // TODO: This should operate over the result of `AsPosition`.
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
