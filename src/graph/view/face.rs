@@ -1287,15 +1287,10 @@ mod tests {
         )
         .unwrap();
         let abc = graph.faces().nth(0).unwrap().key();
-        let (p, q) = {
-            let face = graph.face(abc).unwrap();
-            let mut vertices = face.vertices().map(|vertex| vertex.key()).step_by(2);
-            (vertices.next().unwrap(), vertices.next().unwrap())
-        };
         let arc = graph
             .face_mut(abc)
             .unwrap()
-            .bisect(ByKey(p), ByKey(q))
+            .bisect(ByIndex(0), ByIndex(2))
             .unwrap()
             .into_ref();
 
