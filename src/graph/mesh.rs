@@ -14,10 +14,10 @@ use crate::geometry::{Geometry, Triplet};
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core};
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::IntoView;
 use crate::graph::view::{
     ArcView, EdgeView, FaceView, OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView,
@@ -62,10 +62,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(Storage::<Vertex<G>>::new())
-                .bind(Storage::<Arc<G>>::new())
-                .bind(Storage::<Edge<G>>::new())
-                .bind(Storage::<Face<G>>::new()),
+                .bind(Storage::<VertexPayload<G>>::new())
+                .bind(Storage::<ArcPayload<G>>::new())
+                .bind(Storage::<EdgePayload<G>>::new())
+                .bind(Storage::<FacePayload<G>>::new()),
         )
     }
 
@@ -76,10 +76,10 @@ where
     pub fn empty() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(Storage::<Vertex<G>>::empty())
-                .bind(Storage::<Arc<G>>::empty())
-                .bind(Storage::<Edge<G>>::empty())
-                .bind(Storage::<Face<G>>::empty()),
+                .bind(Storage::<VertexPayload<G>>::empty())
+                .bind(Storage::<ArcPayload<G>>::empty())
+                .bind(Storage::<EdgePayload<G>>::empty())
+                .bind(Storage::<FacePayload<G>>::empty()),
         )
     }
 
@@ -390,74 +390,74 @@ where
     }
 }
 
-impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
+impl<G> AsStorage<VertexPayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.core.as_vertex_storage()
     }
 }
 
-impl<G> AsStorage<Arc<G>> for MeshGraph<G>
+impl<G> AsStorage<ArcPayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.core.as_arc_storage()
     }
 }
 
-impl<G> AsStorage<Edge<G>> for MeshGraph<G>
+impl<G> AsStorage<EdgePayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         self.core.as_edge_storage()
     }
 }
 
-impl<G> AsStorage<Face<G>> for MeshGraph<G>
+impl<G> AsStorage<FacePayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.core.as_face_storage()
     }
 }
 
-impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
+impl<G> AsStorageMut<VertexPayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
         self.core.as_vertex_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
+impl<G> AsStorageMut<ArcPayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
         self.core.as_arc_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
+impl<G> AsStorageMut<EdgePayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
         self.core.as_edge_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
+impl<G> AsStorageMut<FacePayload<G>> for MeshGraph<G>
 where
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
         self.core.as_face_storage_mut()
     }
 }
@@ -509,10 +509,13 @@ where
         let MeshGraph { core, .. } = graph;
         let (vertices, arcs, edges, faces) = core.into_storage();
         let core = Core::empty()
-            .bind(vertices.map_values_into(|vertex| Vertex::<G>::from_interior_geometry(vertex)))
-            .bind(arcs.map_values_into(|arc| Arc::<G>::from_interior_geometry(arc)))
-            .bind(edges.map_values_into(|edge| Edge::<G>::from_interior_geometry(edge)))
-            .bind(faces.map_values_into(|face| Face::<G>::from_interior_geometry(face)));
+            .bind(
+                vertices
+                    .map_values_into(|vertex| VertexPayload::<G>::from_interior_geometry(vertex)),
+            )
+            .bind(arcs.map_values_into(|arc| ArcPayload::<G>::from_interior_geometry(arc)))
+            .bind(edges.map_values_into(|edge| EdgePayload::<G>::from_interior_geometry(edge)))
+            .bind(faces.map_values_into(|face| FacePayload::<G>::from_interior_geometry(face)));
         MeshGraph::from(core)
     }
 }

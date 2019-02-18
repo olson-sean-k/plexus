@@ -4,10 +4,10 @@ use std::marker::PhantomData;
 
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
+use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, FaceKey, VertexKey};
-use crate::graph::topology::{Arc, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
 use crate::graph::GraphError;
@@ -44,7 +44,7 @@ pub type Singularity = (VertexKey, Vec<FaceKey>);
 pub struct Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
     storage: M,
@@ -56,7 +56,7 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
     pub fn from_keyed_storage(vertices: &'a [VertexKey], storage: M) -> Result<Self, GraphError> {
@@ -112,7 +112,7 @@ where
 impl<'a, M, G> Region<'a, M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
     pub fn reachable_connectivity(&self) -> ((Connectivity, Connectivity), Option<Singularity>) {

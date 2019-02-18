@@ -169,15 +169,17 @@ mod container;
 pub(in crate) mod geometry;
 mod mesh;
 mod mutation;
+mod payload;
 mod storage;
-mod topology;
 mod view;
 
 use std::fmt::Debug;
 
 use crate::buffer::BufferError;
+use crate::graph::storage::OpaqueKey;
 
 pub use self::mesh::MeshGraph;
+pub use self::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 // TODO: It's unclear how view types should be exposed to users. Type aliases
 //       for mutable, immutable, and orphan views over a `MeshGraph` would be
@@ -190,7 +192,7 @@ pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 //       necessary. For now, use them directly.
 pub use self::view::{
     ArcNeighborhood, ArcView, EdgeView, FaceNeighborhood, FaceView, InteriorPathView,
-    OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, Selector, VertexView,
+    OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
 };
 
 pub use Selector::ByIndex;
@@ -242,5 +244,50 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
         E: Debug,
     {
         self.expect("graph consistency violated")
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Selector<K> {
+    ByKey(K),
+    ByIndex(usize),
+}
+
+impl<K> Selector<K> {
+    pub fn key_or_else<E, F>(self, f: F) -> Result<K, GraphError>
+    where
+        E: Into<GraphError>,
+        F: Fn(usize) -> Result<K, E>,
+    {
+        match self {
+            Selector::ByKey(key) => Ok(key),
+            Selector::ByIndex(index) => f(index).map_err(|error| error.into()),
+        }
+    }
+
+    pub fn index_or_else<E, F>(self, f: F) -> Result<usize, GraphError>
+    where
+        E: Into<GraphError>,
+        F: Fn(K) -> Result<usize, E>,
+    {
+        match self {
+            Selector::ByKey(key) => f(key).map_err(|error| error.into()),
+            Selector::ByIndex(index) => Ok(index),
+        }
+    }
+}
+
+impl<K> From<K> for Selector<K>
+where
+    K: OpaqueKey,
+{
+    fn from(key: K) -> Self {
+        Selector::ByKey(key)
+    }
+}
+
+impl<K> From<usize> for Selector<K> {
+    fn from(index: usize) -> Self {
+        Selector::ByIndex(index)
     }
 }

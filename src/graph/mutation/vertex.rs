@@ -3,9 +3,9 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::payload::VertexPayload;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, Storage, VertexKey};
-use crate::graph::topology::Vertex;
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::VertexView;
 use crate::graph::GraphError;
@@ -14,7 +14,7 @@ pub struct VertexMutation<G>
 where
     G: Geometry,
 {
-    storage: Storage<Vertex<G>>,
+    storage: Storage<VertexPayload<G>>,
 }
 
 impl<G> VertexMutation<G>
@@ -22,7 +22,7 @@ where
     G: Geometry,
 {
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.storage.insert(Vertex::new(geometry))
+        self.storage.insert(VertexPayload::new(geometry))
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
@@ -40,11 +40,11 @@ where
     }
 }
 
-impl<G> AsStorage<Vertex<G>> for VertexMutation<G>
+impl<G> AsStorage<VertexPayload<G>> for VertexMutation<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         &self.storage
     }
 }
@@ -53,7 +53,7 @@ impl<G> Mutate for VertexMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, (), (), ()>;
+    type Mutant = Core<Storage<VertexPayload<G>>, (), (), ()>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
@@ -83,7 +83,7 @@ where
     pub fn snapshot<M>(storage: M, a: VertexKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<VertexPayload<G>> + Consistent,
     {
         unimplemented!()
     }
@@ -92,7 +92,7 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: VertexRemoveCache<G>,
-) -> Result<Vertex<G>, GraphError>
+) -> Result<VertexPayload<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,

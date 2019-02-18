@@ -9,10 +9,10 @@ use crate::graph::geometry::ArcNormal;
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::ArcView;
 use crate::graph::GraphError;
@@ -23,7 +23,7 @@ where
     G: Geometry,
 {
     mutation: VertexMutation<G>,
-    storage: (Storage<Arc<G>>, Storage<Edge<G>>),
+    storage: (Storage<ArcPayload<G>>, Storage<EdgePayload<G>>),
 }
 
 impl<G> EdgeMutation<G>
@@ -60,7 +60,10 @@ where
                 (arc.edge, ab)
             }
             else {
-                mutation.storage.0.insert_with_key(&ab, Arc::new(f()));
+                mutation
+                    .storage
+                    .0
+                    .insert_with_key(&ab, ArcPayload::new(f()));
                 let _ = mutation.connect_outgoing_arc(a, ab);
                 (None, ab)
             }
@@ -72,7 +75,10 @@ where
         match (e1, e2) {
             (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
             (None, None) => {
-                let ab_ba = self.storage.1.insert(Edge::new(ab, Default::default()));
+                let ab_ba = self
+                    .storage
+                    .1
+                    .insert(EdgePayload::new(ab, Default::default()));
                 self.connect_arc_to_edge(ab, ab_ba)?;
                 self.connect_arc_to_edge(ba, ab_ba)?;
                 Ok((ab_ba, (ab, ba)))
@@ -122,7 +128,7 @@ where
 
     fn with_arc_mut<T, F>(&mut self, ab: ArcKey, mut f: F) -> Result<T, GraphError>
     where
-        F: FnMut(&mut Arc<G>) -> T,
+        F: FnMut(&mut ArcPayload<G>) -> T,
     {
         let arc = self
             .storage
@@ -133,20 +139,20 @@ where
     }
 }
 
-impl<G> AsStorage<Arc<G>> for EdgeMutation<G>
+impl<G> AsStorage<ArcPayload<G>> for EdgeMutation<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         &self.storage.0
     }
 }
 
-impl<G> AsStorage<Edge<G>> for EdgeMutation<G>
+impl<G> AsStorage<EdgePayload<G>> for EdgeMutation<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         &self.storage.1
     }
 }
@@ -155,7 +161,8 @@ impl<G> Mutate for EdgeMutation<G>
 where
     G: Geometry,
 {
-    type Mutant = Core<Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
+    type Mutant =
+        Core<Storage<VertexPayload<G>>, Storage<ArcPayload<G>>, Storage<EdgePayload<G>>, ()>;
     type Error = GraphError;
 
     fn mutate(mutant: Self::Mutant) -> Self {
@@ -216,7 +223,10 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
     {
         let storage = storage.reborrow();
         let arc = ArcView::from_keyed_source((ab, storage))
@@ -261,10 +271,10 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<EdgePayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
             + Consistent,
     {
         let storage = storage.reborrow();
@@ -303,7 +313,8 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + AsStorage<VertexPayload<G>>,
     {
         let storage = storage.reborrow();
         let arc = ArcView::from_keyed_source((ab, storage))
@@ -350,7 +361,8 @@ where
     pub fn snapshot<M>(storage: M, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorage<VertexPayload<G>>,
     {
         let storage = storage.reborrow();
         let source = ArcView::from_keyed_source((source, storage))
@@ -417,7 +429,10 @@ where
     pub fn snapshot<M, T>(storage: M, ab: ArcKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
         G: Geometry + ArcNormal,
         G::Normal: Mul<T>,
         G::Vertex: AsPosition,
@@ -453,7 +468,7 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeRemoveCache<G>,
-) -> Result<(Edge<G>, (Arc<G>, Arc<G>)), GraphError>
+) -> Result<(EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>)), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -462,7 +477,7 @@ where
     fn remove_arc_with_cache<M, N, G>(
         mut mutation: N,
         cache: ArcRemoveCache<G>,
-    ) -> Result<Arc<G>, GraphError>
+    ) -> Result<ArcPayload<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -526,7 +541,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<Arc<G>, GraphError>
+    fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<ArcPayload<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -557,7 +572,7 @@ where
         G: Geometry,
     {
         // Remove the arc and insert two truncated arcs in its place.
-        let Arc {
+        let ArcPayload {
             next,
             previous,
             face,

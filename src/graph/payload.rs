@@ -2,14 +2,14 @@ use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry}
 use crate::geometry::{Attribute, Geometry};
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 
-pub trait Topological {
+pub trait Payload {
     type Key: OpaqueKey;
     type Attribute: Attribute;
 }
 
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Vertex<G>
+pub struct VertexPayload<G>
 where
     G: Geometry,
 {
@@ -18,33 +18,33 @@ where
     pub(in crate::graph) arc: Option<ArcKey>,
 }
 
-impl<G> Vertex<G>
+impl<G> VertexPayload<G>
 where
     G: Geometry,
 {
     pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
-        Vertex {
+        VertexPayload {
             geometry,
             arc: None,
         }
     }
 }
 
-impl<G, H> FromInteriorGeometry<Vertex<H>> for Vertex<G>
+impl<G, H> FromInteriorGeometry<VertexPayload<H>> for VertexPayload<G>
 where
     G: Geometry,
     G::Vertex: FromGeometry<H::Vertex>,
     H: Geometry,
 {
-    fn from_interior_geometry(vertex: Vertex<H>) -> Self {
-        Vertex {
+    fn from_interior_geometry(vertex: VertexPayload<H>) -> Self {
+        VertexPayload {
             geometry: vertex.geometry.into_geometry(),
             arc: vertex.arc,
         }
     }
 }
 
-impl<G> Topological for Vertex<G>
+impl<G> Payload for VertexPayload<G>
 where
     G: Geometry,
 {
@@ -63,7 +63,7 @@ where
 // or opposite arc key, as these would be redundant.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Arc<G>
+pub struct ArcPayload<G>
 where
     G: Geometry,
 {
@@ -75,12 +75,12 @@ where
     pub(in crate::graph) face: Option<FaceKey>,
 }
 
-impl<G> Arc<G>
+impl<G> ArcPayload<G>
 where
     G: Geometry,
 {
     pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
-        Arc {
+        ArcPayload {
             geometry,
             next: None,
             previous: None,
@@ -90,14 +90,14 @@ where
     }
 }
 
-impl<G, H> FromInteriorGeometry<Arc<H>> for Arc<G>
+impl<G, H> FromInteriorGeometry<ArcPayload<H>> for ArcPayload<G>
 where
     G: Geometry,
     G::Arc: FromGeometry<H::Arc>,
     H: Geometry,
 {
-    fn from_interior_geometry(arc: Arc<H>) -> Self {
-        Arc {
+    fn from_interior_geometry(arc: ArcPayload<H>) -> Self {
+        ArcPayload {
             geometry: arc.geometry.into_geometry(),
             next: arc.next,
             previous: arc.previous,
@@ -107,7 +107,7 @@ where
     }
 }
 
-impl<G> Topological for Arc<G>
+impl<G> Payload for ArcPayload<G>
 where
     G: Geometry,
 {
@@ -117,7 +117,7 @@ where
 
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Edge<G>
+pub struct EdgePayload<G>
 where
     G: Geometry,
 {
@@ -126,30 +126,30 @@ where
     pub(in crate::graph) arc: ArcKey,
 }
 
-impl<G> Edge<G>
+impl<G> EdgePayload<G>
 where
     G: Geometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
-        Edge { geometry, arc }
+        EdgePayload { geometry, arc }
     }
 }
 
-impl<G, H> FromInteriorGeometry<Edge<H>> for Edge<G>
+impl<G, H> FromInteriorGeometry<EdgePayload<H>> for EdgePayload<G>
 where
     G: Geometry,
     G::Edge: FromGeometry<H::Edge>,
     H: Geometry,
 {
-    fn from_interior_geometry(edge: Edge<H>) -> Self {
-        Edge {
+    fn from_interior_geometry(edge: EdgePayload<H>) -> Self {
+        EdgePayload {
             geometry: edge.geometry.into_geometry(),
             arc: edge.arc,
         }
     }
 }
 
-impl<G> Topological for Edge<G>
+impl<G> Payload for EdgePayload<G>
 where
     G: Geometry,
 {
@@ -159,7 +159,7 @@ where
 
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
-pub struct Face<G>
+pub struct FacePayload<G>
 where
     G: Geometry,
 {
@@ -168,30 +168,30 @@ where
     pub(in crate::graph) arc: ArcKey,
 }
 
-impl<G> Face<G>
+impl<G> FacePayload<G>
 where
     G: Geometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
-        Face { geometry, arc }
+        FacePayload { geometry, arc }
     }
 }
 
-impl<G, H> FromInteriorGeometry<Face<H>> for Face<G>
+impl<G, H> FromInteriorGeometry<FacePayload<H>> for FacePayload<G>
 where
     G: Geometry,
     G::Face: FromGeometry<H::Face>,
     H: Geometry,
 {
-    fn from_interior_geometry(face: Face<H>) -> Self {
-        Face {
+    fn from_interior_geometry(face: FacePayload<H>) -> Self {
+        FacePayload {
             geometry: face.geometry.into_geometry(),
             arc: face.arc,
         }
     }
 }
 
-impl<G> Topological for Face<G>
+impl<G> Payload for FacePayload<G>
 where
     G: Geometry,
 {

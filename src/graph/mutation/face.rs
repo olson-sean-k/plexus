@@ -12,10 +12,10 @@ use crate::graph::geometry::FaceNormal;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::convert::FromKeyedSource;
 use crate::graph::view::{ArcView, FaceNeighborhood, FaceView, VertexView};
 use crate::graph::GraphError;
@@ -26,7 +26,7 @@ where
     G: Geometry,
 {
     mutation: EdgeMutation<G>,
-    storage: Storage<Face<G>>,
+    storage: Storage<FacePayload<G>>,
     singularities: HashMap<VertexKey, HashSet<FaceKey>>,
 }
 
@@ -36,7 +36,12 @@ where
 {
     fn core(
         &self,
-    ) -> Core<&Storage<Vertex<G>>, &Storage<Arc<G>>, &Storage<Edge<G>>, &Storage<Face<G>>> {
+    ) -> Core<
+        &Storage<VertexPayload<G>>,
+        &Storage<ArcPayload<G>>,
+        &Storage<EdgePayload<G>>,
+        &Storage<FacePayload<G>>,
+    > {
         Core::empty()
             .bind(self.as_vertex_storage())
             .bind(self.as_arc_storage())
@@ -75,7 +80,7 @@ where
             })
             .collect::<Result<Vec<_>, _>>()?;
         // Insert the face.
-        let face = self.storage.insert(Face::new(arcs[0], geometry.1));
+        let face = self.storage.insert(FacePayload::new(arcs[0], geometry.1));
         // If a singularity was detected, record it and its neighboring faces.
         if let Some(singularity) = singularity {
             let faces = self
@@ -172,11 +177,11 @@ where
     }
 }
 
-impl<G> AsStorage<Face<G>> for FaceMutation<G>
+impl<G> AsStorage<FacePayload<G>> for FaceMutation<G>
 where
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &Storage<FacePayload<G>> {
         &self.storage
     }
 }
@@ -282,7 +287,8 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorage<VertexPayload<G>>,
     {
         // Verify that the closed path is not already occupied by a face and
         // collect the incoming and outgoing arcs for each vertex in the
@@ -318,7 +324,10 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
     {
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
@@ -353,7 +362,10 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
     {
         let storage = storage.reborrow();
         let face = FaceView::from_keyed_source((abc, storage))
@@ -414,7 +426,10 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
     {
         let storage = storage.reborrow();
         let vertices = FaceView::from_keyed_source((abc, storage))
@@ -450,7 +465,10 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
     {
         let storage = storage.reborrow();
         let cache = (
@@ -492,7 +510,10 @@ where
     pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<ArcPayload<G>>
+            + AsStorage<FacePayload<G>>
+            + AsStorage<VertexPayload<G>>
+            + Consistent,
         G::Normal: Mul<T>,
         ScaledFaceNormal<G, T>: Clone,
         VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
@@ -525,7 +546,7 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceRemoveCache<G>,
-) -> Result<Face<G>, GraphError>
+) -> Result<FacePayload<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,

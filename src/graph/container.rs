@@ -1,7 +1,7 @@
 use crate::geometry::Geometry;
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::Storage;
-use crate::graph::topology::{Arc, Edge, Face, Topological, Vertex};
 
 /// Marker trait for containers that promise to be in a consistent state.
 ///
@@ -53,7 +53,7 @@ impl<'a, T> ReborrowMut for &'a mut T {
 
 pub trait Bind<T, M>
 where
-    T: Topological,
+    T: Payload,
     M: AsStorage<T>,
 {
     type Output;
@@ -102,89 +102,89 @@ impl<V, A, E, F> Core<V, A, E, F> {
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Vertex<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorage<VertexPayload<G>> for Core<V, A, E, F>
 where
-    V: AsStorage<Vertex<G>>,
+    V: AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.vertices.as_storage()
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Arc<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorage<ArcPayload<G>> for Core<V, A, E, F>
 where
-    A: AsStorage<Arc<G>>,
+    A: AsStorage<ArcPayload<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.arcs.as_storage()
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Edge<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorage<EdgePayload<G>> for Core<V, A, E, F>
 where
-    E: AsStorage<Edge<G>>,
+    E: AsStorage<EdgePayload<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         self.edges.as_storage()
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Face<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorage<FacePayload<G>> for Core<V, A, E, F>
 where
-    F: AsStorage<Face<G>>,
+    F: AsStorage<FacePayload<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.faces.as_storage()
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Vertex<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorageMut<VertexPayload<G>> for Core<V, A, E, F>
 where
-    V: AsStorageMut<Vertex<G>>,
+    V: AsStorageMut<VertexPayload<G>>,
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
         self.vertices.as_storage_mut()
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Arc<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorageMut<ArcPayload<G>> for Core<V, A, E, F>
 where
-    A: AsStorageMut<Arc<G>>,
+    A: AsStorageMut<ArcPayload<G>>,
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
         self.arcs.as_storage_mut()
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Edge<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorageMut<EdgePayload<G>> for Core<V, A, E, F>
 where
-    E: AsStorageMut<Edge<G>>,
+    E: AsStorageMut<EdgePayload<G>>,
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
         self.edges.as_storage_mut()
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Face<G>> for Core<V, A, E, F>
+impl<V, A, E, F, G> AsStorageMut<FacePayload<G>> for Core<V, A, E, F>
 where
-    F: AsStorageMut<Face<G>>,
+    F: AsStorageMut<FacePayload<G>>,
     G: Geometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
         self.faces.as_storage_mut()
     }
 }
 
-impl<V, A, E, F, G> Bind<Vertex<G>, V> for Core<(), A, E, F>
+impl<V, A, E, F, G> Bind<VertexPayload<G>, V> for Core<(), A, E, F>
 where
-    V: AsStorage<Vertex<G>>,
+    V: AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
     type Output = Core<V, A, E, F>;
@@ -202,9 +202,9 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Arc<G>, A> for Core<V, (), E, F>
+impl<V, A, E, F, G> Bind<ArcPayload<G>, A> for Core<V, (), E, F>
 where
-    A: AsStorage<Arc<G>>,
+    A: AsStorage<ArcPayload<G>>,
     G: Geometry,
 {
     type Output = Core<V, A, E, F>;
@@ -225,9 +225,9 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Edge<G>, E> for Core<V, A, (), F>
+impl<V, A, E, F, G> Bind<EdgePayload<G>, E> for Core<V, A, (), F>
 where
-    E: AsStorage<Edge<G>>,
+    E: AsStorage<EdgePayload<G>>,
     G: Geometry,
 {
     type Output = Core<V, A, E, F>;
@@ -248,9 +248,9 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Face<G>, F> for Core<V, A, E, ()>
+impl<V, A, E, F, G> Bind<FacePayload<G>, F> for Core<V, A, E, ()>
 where
-    F: AsStorage<Face<G>>,
+    F: AsStorage<FacePayload<G>>,
     G: Geometry,
 {
     type Output = Core<V, A, E, F>;
@@ -274,9 +274,13 @@ where
 pub mod alias {
     use super::*;
 
+    use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
     use crate::graph::storage::Storage;
-    use crate::graph::topology::{Arc, Face, Vertex};
 
-    pub type OwnedCore<G> =
-        Core<Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
+    pub type OwnedCore<G> = Core<
+        Storage<VertexPayload<G>>,
+        Storage<ArcPayload<G>>,
+        Storage<EdgePayload<G>>,
+        Storage<FacePayload<G>>,
+    >;
 }

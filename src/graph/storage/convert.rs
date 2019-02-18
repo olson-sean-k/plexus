@@ -1,5 +1,5 @@
+use crate::graph::payload::Payload;
 use crate::graph::storage::Storage;
-use crate::graph::topology::Topological;
 
 pub trait FromInnerKey<K> {
     fn from_inner_key(key: K) -> Self;
@@ -20,14 +20,14 @@ where
 
 pub trait AsStorage<T>
 where
-    T: Topological,
+    T: Payload,
 {
     fn as_storage(&self) -> &Storage<T>;
 }
 
 impl<'a, T, U> AsStorage<T> for &'a U
 where
-    T: Topological,
+    T: Payload,
     U: AsStorage<T>,
 {
     fn as_storage(&self) -> &Storage<T> {
@@ -37,7 +37,7 @@ where
 
 impl<'a, T, U> AsStorage<T> for &'a mut U
 where
-    T: Topological,
+    T: Payload,
     U: AsStorage<T>,
 {
     fn as_storage(&self) -> &Storage<T> {
@@ -47,14 +47,14 @@ where
 
 pub trait AsStorageMut<T>
 where
-    T: Topological,
+    T: Payload,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<T>;
 }
 
 impl<'a, T, U> AsStorageMut<T> for &'a mut U
 where
-    T: Topological,
+    T: Payload,
     U: AsStorageMut<T>,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<T> {
@@ -69,132 +69,132 @@ pub mod alias {
     use super::*;
 
     use crate::geometry::Geometry;
-    use crate::graph::topology::{Arc, Edge, Face, Vertex};
+    use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 
-    pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>
+    pub trait AsVertexStorage<G>: AsStorage<VertexPayload<G>>
     where
         G: Geometry,
     {
-        fn as_vertex_storage(&self) -> &Storage<Vertex<G>> {
+        fn as_vertex_storage(&self) -> &Storage<VertexPayload<G>> {
             self.as_storage()
         }
     }
 
     impl<T, G> AsVertexStorage<G> for T
     where
-        T: AsStorage<Vertex<G>>,
+        T: AsStorage<VertexPayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsVertexStorageMut<G>: AsStorageMut<Vertex<G>>
+    pub trait AsVertexStorageMut<G>: AsStorageMut<VertexPayload<G>>
     where
         G: Geometry,
     {
-        fn as_vertex_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+        fn as_vertex_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
             self.as_storage_mut()
         }
     }
 
     impl<T, G> AsVertexStorageMut<G> for T
     where
-        T: AsStorageMut<Vertex<G>>,
+        T: AsStorageMut<VertexPayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsArcStorage<G>: AsStorage<Arc<G>>
+    pub trait AsArcStorage<G>: AsStorage<ArcPayload<G>>
     where
         G: Geometry,
     {
-        fn as_arc_storage(&self) -> &Storage<Arc<G>> {
+        fn as_arc_storage(&self) -> &Storage<ArcPayload<G>> {
             self.as_storage()
         }
     }
 
     impl<T, G> AsArcStorage<G> for T
     where
-        T: AsStorage<Arc<G>>,
+        T: AsStorage<ArcPayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsArcStorageMut<G>: AsStorageMut<Arc<G>>
+    pub trait AsArcStorageMut<G>: AsStorageMut<ArcPayload<G>>
     where
         G: Geometry,
     {
-        fn as_arc_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
+        fn as_arc_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
             self.as_storage_mut()
         }
     }
 
     impl<T, G> AsArcStorageMut<G> for T
     where
-        T: AsStorageMut<Arc<G>>,
+        T: AsStorageMut<ArcPayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsEdgeStorage<G>: AsStorage<Edge<G>>
+    pub trait AsEdgeStorage<G>: AsStorage<EdgePayload<G>>
     where
         G: Geometry,
     {
-        fn as_edge_storage(&self) -> &Storage<Edge<G>> {
+        fn as_edge_storage(&self) -> &Storage<EdgePayload<G>> {
             self.as_storage()
         }
     }
 
     impl<T, G> AsEdgeStorage<G> for T
     where
-        T: AsStorage<Edge<G>>,
+        T: AsStorage<EdgePayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsEdgeStorageMut<G>: AsStorageMut<Edge<G>>
+    pub trait AsEdgeStorageMut<G>: AsStorageMut<EdgePayload<G>>
     where
         G: Geometry,
     {
-        fn as_edge_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+        fn as_edge_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
             self.as_storage_mut()
         }
     }
 
     impl<T, G> AsEdgeStorageMut<G> for T
     where
-        T: AsStorageMut<Edge<G>>,
+        T: AsStorageMut<EdgePayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsFaceStorage<G>: AsStorage<Face<G>>
+    pub trait AsFaceStorage<G>: AsStorage<FacePayload<G>>
     where
         G: Geometry,
     {
-        fn as_face_storage(&self) -> &Storage<Face<G>> {
+        fn as_face_storage(&self) -> &Storage<FacePayload<G>> {
             self.as_storage()
         }
     }
 
     impl<T, G> AsFaceStorage<G> for T
     where
-        T: AsStorage<Face<G>>,
+        T: AsStorage<FacePayload<G>>,
         G: Geometry,
     {
     }
 
-    pub trait AsFaceStorageMut<G>: AsStorageMut<Face<G>>
+    pub trait AsFaceStorageMut<G>: AsStorageMut<FacePayload<G>>
     where
         G: Geometry,
     {
-        fn as_face_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+        fn as_face_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
             self.as_storage_mut()
         }
     }
 
     impl<T, G> AsFaceStorageMut<G> for T
     where
-        T: AsStorageMut<Face<G>>,
+        T: AsStorageMut<FacePayload<G>>,
         G: Geometry,
     {
     }

@@ -12,10 +12,10 @@ use crate::geometry::Geometry;
 use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::Consistent;
 use crate::graph::mutation::face::FaceMutation;
+use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::Storage;
-use crate::graph::topology::{Arc, Face, Vertex};
 use crate::graph::GraphError;
 
 pub trait Mutate: Sized {
@@ -205,32 +205,32 @@ where
     }
 }
 
-impl<M, G> AsStorage<Arc<G>> for Mutation<M, G>
+impl<M, G> AsStorage<ArcPayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.mutation.as_arc_storage()
     }
 }
 
-impl<M, G> AsStorage<Face<G>> for Mutation<M, G>
+impl<M, G> AsStorage<FacePayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.mutation.as_face_storage()
     }
 }
 
-impl<M, G> AsStorage<Vertex<G>> for Mutation<M, G>
+impl<M, G> AsStorage<VertexPayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.mutation.as_vertex_storage()
     }
 }

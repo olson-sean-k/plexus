@@ -4,8 +4,8 @@ use fnv::FnvBuildHasher;
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::graph::payload::Payload;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut, FromInnerKey};
-use crate::graph::topology::Topological;
 
 pub mod convert;
 
@@ -141,15 +141,15 @@ impl From<FaceKey> for Key {
 #[derive(Clone, Default)]
 pub struct Storage<T>
 where
-    T: Topological,
+    T: Payload,
 {
-    sequence: <<T as Topological>::Key as OpaqueKey>::Sequence,
+    sequence: <<T as Payload>::Key as OpaqueKey>::Sequence,
     hash: HashMap<T::Key, T, FnvBuildHasher>,
 }
 
 impl<T> Storage<T>
 where
-    T: Topological,
+    T: Payload,
 {
     pub fn new() -> Self {
         Storage {
@@ -169,7 +169,7 @@ where
 
     pub fn map_values_into<U, F>(self, mut f: F) -> Storage<U>
     where
-        U: Topological<Key = T::Key>,
+        U: Payload<Key = T::Key>,
         F: FnMut(T) -> U,
     {
         let mut hash = HashMap::default();
@@ -221,7 +221,7 @@ where
 
 impl<T> Storage<T>
 where
-    T: Topological,
+    T: Payload,
     T::Key: KeySequence + OpaqueKey<Sequence = T::Key>,
 {
     pub fn insert(&mut self, item: T) -> T::Key {
@@ -234,7 +234,7 @@ where
 
 impl<T> AsStorage<T> for Storage<T>
 where
-    T: Topological,
+    T: Payload,
 {
     fn as_storage(&self) -> &Storage<T> {
         self
@@ -243,7 +243,7 @@ where
 
 impl<T> AsStorageMut<T> for Storage<T>
 where
-    T: Topological,
+    T: Payload,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<T> {
         self

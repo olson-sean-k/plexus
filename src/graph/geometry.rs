@@ -10,8 +10,8 @@ use crate::geometry::convert::AsPosition;
 use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::topology::{Arc, Edge, Face, Vertex};
 use crate::graph::view::{ArcView, EdgeView, FaceView};
 use crate::graph::GraphError;
 
@@ -24,7 +24,9 @@ pub trait FaceNormal: Geometry {
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> FaceNormal for G
@@ -40,7 +42,9 @@ where
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
     {
         let positions = face
             .reachable_vertices()
@@ -60,7 +64,9 @@ pub trait FaceCentroid: Geometry {
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> FaceCentroid for G
@@ -74,7 +80,9 @@ where
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
     {
         Ok(G::Vertex::average(
             face.reachable_vertices()
@@ -89,7 +97,9 @@ pub trait EdgeMidpoint: Geometry {
     fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<EdgePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -103,7 +113,9 @@ where
     fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<EdgePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
     {
         let a = edge
             .reachable_arc()
@@ -131,7 +143,7 @@ pub trait ArcNormal: Geometry {
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> ArcNormal for G
@@ -150,7 +162,7 @@ where
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
         let a = arc
             .reachable_source_vertex()
