@@ -276,3 +276,20 @@ where
         self.mutation.commit().map(|core| core.into())
     }
 }
+
+pub mod alias {
+    use super::*;
+
+    pub trait Mutable<G>: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>
+    where
+        G: Geometry,
+    {
+    }
+
+    impl<T, G> Mutable<G> for T
+    where
+        T: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+        G: Geometry,
+    {
+    }
+}

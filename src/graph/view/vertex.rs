@@ -5,8 +5,8 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, FacePayload, Payload, VertexPayload};
@@ -318,10 +318,8 @@ where
     M: AsStorage<ArcPayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<(), GraphError> {

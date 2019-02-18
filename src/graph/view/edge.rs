@@ -8,9 +8,9 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
@@ -541,10 +541,8 @@ where
     M: AsStorage<ArcPayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn bridge(
@@ -572,10 +570,8 @@ where
         + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn split_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
@@ -629,10 +625,8 @@ where
     M: AsStorage<ArcPayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + ArcNormal + Geometry,
     G::Vertex: AsPosition,
 {
@@ -656,10 +650,8 @@ where
         + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {

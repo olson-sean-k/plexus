@@ -8,9 +8,9 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
     self, FaceBisectCache, FaceBridgeCache, FaceDivergeCache, FaceExtrudeCache, FaceInsertCache,
     FaceRemoveCache,
@@ -368,10 +368,8 @@ where
     M: AsStorage<ArcPayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
@@ -389,10 +387,8 @@ where
         + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn bisect(
@@ -866,10 +862,8 @@ where
     M: AsStorage<VertexPayload<G>>
         + AsStorage<ArcPayload<G>>
         + AsStorage<FacePayload<G>>
-        + Consistent
         + Default
-        + From<OwnedCore<G>>
-        + Into<OwnedCore<G>>,
+        + Mutable<G>,
     G: 'a + Geometry,
 {
     pub fn get_or_insert_face(self) -> Result<FaceView<&'a mut M, G>, GraphError> {
