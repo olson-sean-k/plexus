@@ -5,8 +5,8 @@
 //! which in turn enable geometric features.
 //!
 //! To use types as geometry in a `MeshGraph` only requires implementing the
-//! `Geometry` and `Attribute` traits. Implementing operations like `Cross`,
-//! `Normalize`, etc., enable features like extrusion and splitting.
+//! `Geometry` trait. Implementing operations like `Cross`, `Normalize`, etc.,
+//! enable geometric features like extrusion, centroids, midpoints, etc.
 
 use decorum::R64;
 use num::{self, Num, NumCast, One, Zero};
@@ -14,9 +14,6 @@ use num::{self, Num, NumCast, One, Zero};
 pub mod compose;
 pub mod convert;
 pub mod ops;
-
-/// Geometric attribute.
-pub trait Attribute: Clone {}
 
 /// Graph geometry.
 ///
@@ -39,7 +36,7 @@ pub trait Attribute: Clone {}
 /// use nalgebra::{Point3, Vector4};
 /// use num::One;
 /// use plexus::geometry::convert::{AsPosition, IntoGeometry};
-/// use plexus::geometry::{Attribute, Geometry};
+/// use plexus::geometry::Geometry;
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
@@ -50,8 +47,6 @@ pub trait Attribute: Clone {}
 ///     pub position: Point3<R64>,
 ///     pub color: Vector4<R64>,
 /// }
-///
-/// impl Attribute for VertexGeometry {}
 ///
 /// impl Geometry for VertexGeometry {
 ///     type Vertex = Self;
@@ -84,13 +79,11 @@ pub trait Attribute: Clone {}
 /// # }
 /// ```
 pub trait Geometry: Sized {
-    type Vertex: Attribute;
-    type Arc: Attribute + Default;
-    type Edge: Attribute + Default;
-    type Face: Attribute + Default;
+    type Vertex: Clone;
+    type Arc: Clone + Default;
+    type Edge: Clone + Default;
+    type Face: Clone + Default;
 }
-
-impl Attribute for () {}
 
 impl Geometry for () {
     type Vertex = ();
@@ -122,8 +115,6 @@ impl<T> Duplet<T> {
         Duplet(Zero::zero(), Zero::zero())
     }
 }
-
-impl<T> Attribute for Duplet<T> where T: Clone {}
 
 impl<T> Geometry for Duplet<T>
 where
@@ -158,8 +149,6 @@ impl<T> Triplet<T> {
         Triplet(Zero::zero(), Zero::zero(), Zero::zero())
     }
 }
-
-impl<T> Attribute for Triplet<T> where T: Clone {}
 
 impl<T> Geometry for Triplet<T>
 where
@@ -296,10 +285,6 @@ mod feature_geometry_cgmath {
         }
     }
 
-    impl<T> Attribute for Point2<T> where T: Clone {}
-
-    impl<T> Attribute for Point3<T> where T: Clone {}
-
     impl<T> Geometry for Point2<T>
     where
         T: Clone,
@@ -430,10 +415,6 @@ mod feature_geometry_mint {
         }
     }
 
-    impl<T> Attribute for Point2<T> where T: Clone {}
-
-    impl<T> Attribute for Point3<T> where T: Clone {}
-
     impl<T> Geometry for Point2<T>
     where
         T: Clone,
@@ -557,10 +538,6 @@ mod feature_geometry_nalgebra {
             )
         }
     }
-
-    impl<T> Attribute for Point2<T> where T: Scalar {}
-
-    impl<T> Attribute for Point3<T> where T: Scalar {}
 
     impl<T> Geometry for Point2<T>
     where

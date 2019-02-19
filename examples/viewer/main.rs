@@ -20,7 +20,7 @@ use glutin::{
 };
 use nalgebra::{Matrix4, Point3, Scalar};
 use plexus::buffer::MeshBuffer3;
-use plexus::geometry::{Attribute, Geometry};
+use plexus::geometry::Geometry;
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
@@ -28,8 +28,6 @@ use plexus::primitive::sphere::{Bounds, UvSphere};
 use crate::camera::Camera;
 use crate::pipeline::{Color4, Transform, Vertex};
 use crate::renderer::{GlutinRenderer, Renderer};
-
-impl<T> Attribute for Color4<T> where T: Scalar {}
 
 struct FaceColorGeometry;
 

@@ -1050,8 +1050,6 @@ mod tests {
     // the unsafe transmutations used to coerce lifetimes.
     #[test]
     fn read_write_geometry_ref() {
-        impl Attribute for f32 {}
-
         struct ValueGeometry;
 
         impl Geometry for ValueGeometry {

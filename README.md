@@ -67,28 +67,26 @@ if let Ok(face) = graph.face_mut(abc).unwrap().extrude(1.0) {
 Plexus avoids exposing very basic topological operations like inserting
 individual vertices, because they can easily be done incorrectly and lead to
 invalid topologies. Instead, meshes are typically manipulated with higher-level
-operations like extrusion and joining.
+operations like splitting and joining.
 
 ## Geometric Traits
 
-Meshes support arbitrary geometry for vertices, arcs, edges, and faces
+Graphs support arbitrary geometry for vertices, arcs, edges, and faces
 (including no geometry at all) via optional traits. Implementing these traits
-enables more operations and features, but only two basic traits are required:
-`Geometry` and `Attribute`.
+enables more operations and features, but only one trait is required:
+`Geometry`.
 
 ```rust
-use decorum::R64;
 use nalgebra::{Point3, Vector3};
 use plexus::geometry::convert::AsPosition;
-use plexus::geometry::{Attribute, Geometry};
+use plexus::geometry::Geometry;
+use plexus::R64;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct VertexGeometry {
     pub position: Point3<R64>,
     pub normal: Vector3<R64>,
 }
-
-impl Attribute for VertexGeometry {}
 
 impl Geometry for VertexGeometry {
     type Vertex = Self;
@@ -112,7 +110,7 @@ impl AsPosition for VertexGeometry {
 
 Geometric operations are vertex-based. By implementing `AsPosition` to expose
 positional data from vertices and implementing geometric traits for that
-positional data, operations like extrusion, splitting, etc. are exposed.
+positional data, operations like extrusion are exposed.
 
 Geometric traits are optionally implemented for types in the
 [cgmath](https://crates.io/crates/cgmath),

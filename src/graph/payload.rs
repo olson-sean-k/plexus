@@ -1,10 +1,10 @@
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
-use crate::geometry::{Attribute, Geometry};
+use crate::geometry::Geometry;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 
 pub trait Payload {
     type Key: OpaqueKey;
-    type Attribute: Attribute;
+    type Attribute: Clone;
 }
 
 #[derivative(Debug, Hash)]
