@@ -12,8 +12,8 @@ use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
-    self, FaceBisectCache, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache,
-    FaceRemoveCache,
+    self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
+    FaceSplitCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
@@ -391,7 +391,7 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    pub fn bisect(
+    pub fn split(
         self,
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
@@ -409,18 +409,10 @@ where
                 .map(|vertex| vertex.key())
         })?;
         let (abc, storage) = self.into_keyed_source();
-        let cache = FaceBisectCache::snapshot(&storage, abc, source, destination)?;
+        let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::bisect_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::split_with_cache(mutation, cache))
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
-    }
-
-    pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
-        let (source, storage) = self.into_keyed_source();
-        let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
-            .map(|_| ())
     }
 
     pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
@@ -448,13 +440,21 @@ where
             .get_or_insert_face_with(|| geometry)
     }
 
+    pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
+        let (source, storage) = self.into_keyed_source();
+        let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
+            .map(|_| ())
+    }
+
     pub fn triangulate(self) -> Result<Self, GraphError> {
         let mut face = self;
         while face.arity() > 3 {
             face = face
-                .bisect(ByIndex(0), ByIndex(2))?
+                .split(ByIndex(0), ByIndex(2))?
                 .into_face()
-                .expect("bisection resulted in no face");
+                .expect("split resulted in no face");
         }
         Ok(face)
     }
@@ -1291,7 +1291,7 @@ mod tests {
     }
 
     #[test]
-    fn bisect_face() {
+    fn split_face() {
         let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -1302,7 +1302,7 @@ mod tests {
         let arc = graph
             .face_mut(abc)
             .unwrap()
-            .bisect(ByIndex(0), ByIndex(2))
+            .split(ByIndex(0), ByIndex(2))
             .unwrap()
             .into_ref();
 

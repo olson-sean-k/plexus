@@ -44,7 +44,7 @@
 //!     }
 //!     let mut face = arc.into_face().unwrap();
 //!     for (a, b) in splits.into_iter().perimeter() {
-//!         face = face.bisect(ByKey(a), ByKey(b))?.into_face().unwrap();
+//!         face = face.split(ByKey(a), ByKey(b))?.into_face().unwrap();
 //!     }
 //!     Ok(face)
 //! }

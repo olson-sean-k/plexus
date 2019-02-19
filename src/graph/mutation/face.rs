@@ -340,7 +340,7 @@ where
     }
 }
 
-pub struct FaceBisectCache<G>
+pub struct FaceSplitCache<G>
 where
     G: Geometry,
 {
@@ -350,7 +350,7 @@ where
     geometry: G::Face,
 }
 
-impl<G> FaceBisectCache<G>
+impl<G> FaceSplitCache<G>
 where
     G: Geometry,
 {
@@ -401,7 +401,7 @@ where
             .take_while(|(a, _)| *a != source)
             .map(|(_, b)| b)
             .collect::<Vec<_>>();
-        Ok(FaceBisectCache {
+        Ok(FaceSplitCache {
             cache: FaceRemoveCache::snapshot(storage, abc)?,
             left,
             right,
@@ -562,16 +562,16 @@ where
     Ok(face)
 }
 
-pub fn bisect_with_cache<M, N, G>(
+pub fn split_with_cache<M, N, G>(
     mut mutation: N,
-    cache: FaceBisectCache<G>,
+    cache: FaceSplitCache<G>,
 ) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let FaceBisectCache {
+    let FaceSplitCache {
         cache,
         left,
         right,
