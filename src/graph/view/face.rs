@@ -12,7 +12,7 @@ use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
-    self, FaceBisectCache, FaceBridgeCache, FaceDivergeCache, FaceExtrudeCache, FaceInsertCache,
+    self, FaceBisectCache, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache,
     FaceRemoveCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
@@ -459,30 +459,30 @@ where
         Ok(face)
     }
 
-    pub fn diverge_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         F: FnOnce() -> G::Vertex,
     {
         let (abc, storage) = self.into_keyed_source();
-        let cache = FaceDivergeCache::snapshot(&storage, abc, f())?;
+        let cache = FacePokeCache::snapshot(&storage, abc, f())?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::diverge_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
             .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
     }
 
-    pub fn diverge(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke(self) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         G::Vertex: Default,
     {
-        self.diverge_with(|| Default::default())
+        self.poke_with(|| Default::default())
     }
 
-    pub fn diverge_at_centroid(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke_at_centroid(self) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
     {
         let centroid = self.centroid()?;
-        self.diverge_with(move || centroid)
+        self.poke_with(move || centroid)
     }
 
     pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, GraphError>
@@ -1374,12 +1374,12 @@ mod tests {
     }
 
     #[test]
-    fn diverge_face() {
+    fn poke_face() {
         let mut graph = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let key = graph.faces().nth(0).unwrap().key();
-        let vertex = graph.face_mut(key).unwrap().diverge_at_centroid().unwrap();
+        let vertex = graph.face_mut(key).unwrap().poke_at_centroid().unwrap();
 
         // Diverging a quad yields a tetrahedron.
         assert_eq!(4, vertex.neighboring_faces().count());
@@ -1390,7 +1390,7 @@ mod tests {
         assert_eq!(3, face.arity());
 
         // Diverge the triangle.
-        let vertex = face.diverge_at_centroid().unwrap();
+        let vertex = face.poke_at_centroid().unwrap();
 
         assert_eq!(3, vertex.neighboring_faces().count());
     }

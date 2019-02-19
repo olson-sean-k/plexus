@@ -410,7 +410,7 @@ where
     }
 }
 
-pub struct FaceDivergeCache<G>
+pub struct FacePokeCache<G>
 where
     G: Geometry,
 {
@@ -419,7 +419,7 @@ where
     cache: FaceRemoveCache<G>,
 }
 
-impl<G> FaceDivergeCache<G>
+impl<G> FacePokeCache<G>
 where
     G: Geometry,
 {
@@ -437,7 +437,7 @@ where
             .vertices()
             .map(|vertex| vertex.key())
             .collect();
-        Ok(FaceDivergeCache {
+        Ok(FacePokeCache {
             vertices,
             geometry,
             cache: FaceRemoveCache::snapshot(storage, abc)?,
@@ -588,16 +588,16 @@ where
     Ok((left[0], right[0]).into())
 }
 
-pub fn diverge_with_cache<M, N, G>(
+pub fn poke_with_cache<M, N, G>(
     mut mutation: N,
-    cache: FaceDivergeCache<G>,
+    cache: FacePokeCache<G>,
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: Geometry,
 {
-    let FaceDivergeCache {
+    let FacePokeCache {
         vertices,
         geometry,
         cache,
