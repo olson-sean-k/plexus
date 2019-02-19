@@ -539,34 +539,6 @@ where
 impl<'a, M, G> ArcView<&'a mut M, G>
 where
     M: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Default
-        + Mutable<G>,
-    G: 'a + Geometry,
-{
-    pub fn bridge(
-        self,
-        destination: Selector<ArcKey>,
-    ) -> Result<FaceView<&'a mut M, G>, GraphError> {
-        let destination = destination.key_or_else(|index| {
-            self.interior_path()
-                .arcs()
-                .nth(index)
-                .ok_or_else(|| GraphError::TopologyNotFound)
-                .map(|arc| arc.key())
-        })?;
-        let (source, storage) = self.into_keyed_source();
-        let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
-            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
-    }
-}
-
-impl<'a, M, G> ArcView<&'a mut M, G>
-where
-    M: AsStorage<ArcPayload<G>>
         + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
@@ -604,6 +576,48 @@ where
             geometry
         })
     }
+
+    pub fn bridge(
+        self,
+        destination: Selector<ArcKey>,
+    ) -> Result<FaceView<&'a mut M, G>, GraphError> {
+        let destination = destination.key_or_else(|index| {
+            self.interior_path()
+                .arcs()
+                .nth(index)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+                .map(|arc| arc.key())
+        })?;
+        let (source, storage) = self.into_keyed_source();
+        let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
+            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+    }
+
+    pub fn extrude<T>(self, distance: T) -> Result<ArcView<&'a mut M, G>, GraphError>
+    where
+        G: ArcNormal,
+        G::Normal: Mul<T>,
+        G::Vertex: AsPosition,
+        ScaledArcNormal<G, T>: Clone,
+        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
+    {
+        let (ab, storage) = self.into_keyed_source();
+        let cache = ArcExtrudeCache::snapshot(&storage, ab, distance)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
+            .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+    }
+
+    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
+        let a = self.source_vertex().key();
+        let (ab, storage) = self.into_keyed_source();
+        let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
+            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
+    }
 }
 
 impl<M, G> ArcView<M, G>
@@ -617,50 +631,6 @@ where
 {
     pub fn normal(&self) -> Result<G::Normal, GraphError> {
         G::normal(self.interior_reborrow())
-    }
-}
-
-impl<'a, M, G> ArcView<&'a mut M, G>
-where
-    M: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Default
-        + Mutable<G>,
-    G: 'a + ArcNormal + Geometry,
-    G::Vertex: AsPosition,
-{
-    pub fn extrude<T>(self, distance: T) -> Result<ArcView<&'a mut M, G>, GraphError>
-    where
-        G::Normal: Mul<T>,
-        ScaledArcNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
-    {
-        let (ab, storage) = self.into_keyed_source();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab, distance)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
-            .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
-    }
-}
-
-impl<'a, M, G> ArcView<&'a mut M, G>
-where
-    M: AsStorage<ArcPayload<G>>
-        + AsStorage<EdgePayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Default
-        + Mutable<G>,
-    G: 'a + Geometry,
-{
-    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
-        let a = self.source_vertex().key();
-        let (ab, storage) = self.into_keyed_source();
-        let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
     }
 }
 

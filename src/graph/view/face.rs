@@ -366,24 +366,6 @@ where
 impl<'a, M, G> FaceView<&'a mut M, G>
 where
     M: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Default
-        + Mutable<G>,
-    G: 'a + Geometry,
-{
-    pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceRemoveCache::snapshot(&storage, abc)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
-            .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
-    }
-}
-
-impl<'a, M, G> FaceView<&'a mut M, G>
-where
-    M: AsStorage<ArcPayload<G>>
         + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
@@ -498,6 +480,14 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+    }
+
+    pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
+        let (abc, storage) = self.into_keyed_source();
+        let cache = FaceRemoveCache::snapshot(&storage, abc)?;
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
+            .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
     }
 }
 

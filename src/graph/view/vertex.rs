@@ -9,7 +9,7 @@ use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, FacePayload, Payload, VertexPayload};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
@@ -316,6 +316,7 @@ where
 impl<'a, M, G> VertexView<&'a mut M, G>
 where
     M: AsStorage<ArcPayload<G>>
+        + AsStorage<EdgePayload<G>>
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
         + Default
