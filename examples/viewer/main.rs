@@ -18,7 +18,7 @@ mod renderer;
 use glutin::{
     ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
 };
-use nalgebra::{Matrix4, Point3, Scalar};
+use nalgebra::{Matrix4, Point3};
 use plexus::buffer::MeshBuffer3;
 use plexus::geometry::Geometry;
 use plexus::graph::MeshGraph;

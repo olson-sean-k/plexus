@@ -15,9 +15,6 @@ use crate::graph::storage::convert::AsStorage;
 use crate::graph::view::{ArcView, EdgeView, FaceView};
 use crate::graph::GraphError;
 
-// TODO: Some traits should operate directly on arcs instead of edges (and vice
-//       versa.
-
 pub trait FaceNormal: Geometry {
     type Normal;
 

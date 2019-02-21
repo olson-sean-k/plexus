@@ -19,15 +19,19 @@
 //! midpoints:
 //!
 //! ```rust
+//! # extern crate plexus;
+//! # extern crate smallvec;
 //! use plexus::geometry::alias::VertexPosition;
 //! use plexus::geometry::compose::EdgeMidpoint;
 //! use plexus::geometry::convert::AsPosition;
 //! use plexus::geometry::Geometry;
 //! use plexus::graph::{FaceView, GraphError, MeshGraph};
 //! use plexus::prelude::*;
+//! use smallvec::SmallVec;
 //!
-//! // Requires `EdgeMidpoint` to split edges.
-//! pub fn subdivide<G>(
+//! # fn main() {
+//! // Requires `EdgeMidpoint` for `split_at_midpoint`.
+//! pub fn circumscribe<G>(
 //!     face: FaceView<&mut MeshGraph<G>, G>,
 //! ) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
 //! where
@@ -36,7 +40,7 @@
 //! {
 //!     let arity = face.arity();
 //!     let mut arc = face.into_arc();
-//!     let mut splits = Vec::with_capacity(arity);
+//!     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
 //!     for _ in 0..arity {
 //!         let vertex = arc.split_at_midpoint()?;
 //!         splits.push(vertex.key());
@@ -48,6 +52,7 @@
 //!     }
 //!     Ok(face)
 //! }
+//! # }
 //! ```
 
 pub use crate::graph::geometry::*;

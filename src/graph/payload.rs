@@ -1,3 +1,10 @@
+//! Graph payloads.
+//!
+//! This module provides types that store the user geometry and connectivity of
+//! graphs. A limited subset of fields from these types are exposed via
+//! `Deref` implementations in views. Most notably, user geometry is exposed
+//! via the `geometry` field.
+
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::Geometry;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
@@ -7,6 +14,9 @@ pub trait Payload {
     type Attribute: Clone;
 }
 
+/// Vertex payload.
+///
+/// Contains the vertex attribute of a graph's `Geometry`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct VertexPayload<G>
@@ -52,15 +62,18 @@ where
     type Attribute = G::Vertex;
 }
 
-// Unlike other topological structures, the vertex connectivity of `Arc`s is
-// immutable and encoded within the key for each arc. A arc key
-// consists of its source and destination vertex keys. This provides fast and
-// reliable arc lookups, even when a mesh is in an inconsistent state.
-// However, it also complicates basic mutations of vertices and arcs,
-// requiring rekeying of `Arc`s.
+// Unlike other topological structures, the vertex connectivity of arcs is
+// immutable and encoded within the key for each arc. An arc key consists of
+// its source and destination vertex keys. This provides fast and reliable arc
+// lookups, even when a mesh is in an inconsistent state. However, it also
+// complicates basic mutations of vertices and arcs, requiring arcs to be
+// rekeyed.
 //
-// For this reason, `Arc` has no fields for storing its destination vertex key
-// or opposite arc key, as these would be redundant.
+// For this reason, `ArcPayload` has no fields for storing its destination
+// vertex key or opposite arc key, as these would be redundant.
+/// Arc payload.
+///
+/// Contains the arc attribute of a graph's `Geometry`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct ArcPayload<G>
@@ -115,6 +128,9 @@ where
     type Attribute = G::Arc;
 }
 
+/// Edge payload.
+///
+/// Contains the edge attribute of a graph's `Geometry`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct EdgePayload<G>
@@ -157,6 +173,9 @@ where
     type Attribute = G::Edge;
 }
 
+/// Face payload.
+///
+/// Contains the face attribute of a graph's `Geometry`.
 #[derivative(Debug, Hash)]
 #[derive(Clone, Derivative)]
 pub struct FacePayload<G>

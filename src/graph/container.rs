@@ -6,9 +6,10 @@ use crate::graph::storage::Storage;
 /// Marker trait for containers that promise to be in a consistent state.
 ///
 /// This trait is only implemented by containers that expose storage and ensure
-/// that that storage is consistent via the mutation API.  Note that `Core`
-/// does not implement this trait, and instead acts as a raw container for
-/// topological storage that can be freely manipulated.
+/// that that storage is only ever mutated via the mutation API (and therefore
+/// is consistent). Note that `Core` does not implement this trait and instead
+/// acts as a raw container for topological storage that can be freely
+/// manipulated.
 ///
 /// This trait allows code to make assumptions about the data it operates
 /// against. For example, views expose an API to user code that assumes that
@@ -71,6 +72,14 @@ where
 /// Unlike `MeshGraph`, `Core` does not implement the `Consistent` trait.
 /// `MeshGraph` contains an owned core, but does not mutate it outside of the
 /// mutation API, which maintains consistency.
+///
+/// A core's fields may be in one of two states: _unbound_ and _bound_. When a
+/// field is unbound, its type is `()`. An unbound field has no value and is
+/// zero-sized. A bound field has any type other than `()`. These fields should
+/// provide storage for their corresponding topology, though this is not
+/// enforced directly in `Core`. The `Bind` trait can be used to transition
+/// from `()` to some other type. `Bind` implementations enforce storage
+/// constraints.
 pub struct Core<V = (), A = (), E = (), F = ()> {
     vertices: V,
     arcs: A,

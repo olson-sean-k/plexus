@@ -6,8 +6,8 @@ authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/olson-sean-k/plexus"
-description = "2D and 3D mesh manipulation."
-keywords = ["graphics", "half-edge", "mesh", "topology"]
+description = "2D and 3D mesh processing."
+keywords = ["graphics", "half-edge", "mesh", "topology", "geometry"]
 
 [package.metadata.docs.rs]
 # Enable all featues so that trait implementations for types from commonly used

@@ -1,4 +1,4 @@
-//! Linear buffers that can be used for rendering.
+//! Linear representation of meshes.
 //!
 //! This module provides a `MeshBuffer` that can be read by graphics pipelines
 //! to render meshes. `MeshBuffer` combines an index buffer and vertex buffer,
@@ -101,6 +101,9 @@ pub enum BufferError {
 }
 
 /// Index buffer.
+///
+/// Describes the contents of an index buffer. This includes the arity of the
+/// buffer if constant.
 pub trait IndexBuffer {
     type Item;
 
@@ -140,8 +143,11 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
 {
+    /// Flat index buffers directly contain indices into vertex data. These
+    /// indices are implicitly grouped by the arity of the buffer.
     type Item = N;
 
+    /// Flat index buffers have a constant arity.
     const ARITY: Option<usize> = Some(A::USIZE);
 }
 
@@ -185,22 +191,32 @@ where
     phantom: PhantomData<P>,
 }
 
+/// `Structured` index buffer that contains dynamic `Polygon`s.
 impl<N> IndexBuffer for Structured<Polygon<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
+    /// `Polygon` index buffers contain topological structures that explicitly
+    /// group their indices into vertex data.
     type Item = Polygon<N>;
 
+    /// `Polygon` index buffers may or may not have a constant arity. Arity is
+    /// encoded independently by each item in the buffer.
     const ARITY: Option<usize> = None;
 }
 
+/// `Structured` index buffer that contains `Polygonal` structures with
+/// constant arity.
 impl<P> IndexBuffer for Structured<P>
 where
     P: Arity + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
+    /// `Polygonal` index buffers contain topological structures that
+    /// explicitly group their indices into vertex data.
     type Item = P;
 
+    /// `Polygonal` index buffers have a constant arity.
     const ARITY: Option<usize> = Some(<P as Arity>::ARITY);
 }
 

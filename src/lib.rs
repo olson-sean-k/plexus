@@ -1,5 +1,4 @@
-//! **Plexus** is a library for generating and manipulating 2D and 3D mesh
-//! data.
+//! **Plexus** is a library for 2D and 3D mesh processing.
 //!
 //! Please note that versions in the `0.0.*` series are experimental and
 //! unstable! Use exact version constraints when specifying a dependency to
@@ -37,8 +36,9 @@ pub mod geometry;
 pub mod graph;
 pub mod primitive;
 
-// Re-exported to avoid requiring a direct dependency on decorum.
+// These types are re-exported to avoid requiring direct dependencies.
 pub use decorum::{R32, R64};
+pub use either::Either;
 
 // TODO: Documentation comments include static image content from the GitHub
 //       repository. This is fragile and difficult to maintain. Use a mechanism

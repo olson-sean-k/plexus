@@ -17,10 +17,13 @@ use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView};
 use crate::graph::{GraphError, OptionExt};
 
-/// Reference to a vertex.
+/// View of a vertex.
 ///
-/// Provides traversals, queries, and mutations related to vertices in a mesh.
+/// Provides traversals, queries, and mutations related to vertices in a graph.
 /// See the module documentation for more information about topological views.
+///
+/// Disjoint vertices with no leading arc are disallowed. Any mutation that
+/// would yield a disjoint vertex will also remove that vertex.
 pub struct VertexView<M, G>
 where
     M: Reborrow,
@@ -107,6 +110,14 @@ where
         (key, &*storage).into_view().unwrap()
     }
 
+    /// Reborrows the view and constructs another mutable view from a given
+    /// key.
+    ///
+    /// This allows for fallible traversals from a mutable view without the
+    /// need for direct access to the source `MeshGraph`. If the given function
+    /// emits a key, then that key will be used to convert this view into
+    /// another. If no key is emitted, then the original mutable view is
+    /// returned.
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
     where
         T: FromKeyedSource<(K, &'a mut M)>,
@@ -130,7 +141,7 @@ where
     M::Target: AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
-    /// Gets the key for this vertex.
+    /// Gets the key for the vertex.
     pub fn key(&self) -> VertexKey {
         self.key
     }
@@ -199,14 +210,20 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: Geometry,
 {
+    /// Converts the vertex into its leading (outgoing) arc.
     pub fn into_outgoing_arc(self) -> ArcView<M, G> {
         self.into_reachable_outgoing_arc().expect_consistent()
     }
 
+    /// Gets the leading (outgoing) arc of the vertex.
     pub fn outgoing_arc(&self) -> ArcView<&M::Target, G> {
         self.reachable_outgoing_arc().expect_consistent()
     }
 
+    /// Gets an iterator of views over the incoming arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc
+    /// of the vertex.
     pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         self.reachable_incoming_arcs()
     }
@@ -235,6 +252,10 @@ where
         + Consistent,
     G: Geometry,
 {
+    /// Gets an iterator of views over the neighboring faces of the vertex.
+    ///
+    /// The ordering of faces is deterministic and is based on the leading arc
+    /// of the vertex.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
     }
@@ -276,6 +297,10 @@ where
         self.reachable_outgoing_orphan_arc().expect_consistent()
     }
 
+    /// Gets an iterator of orphan views over the incoming arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc
+    /// of the vertex.
     pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.reachable_incoming_orphan_arcs()
     }
@@ -308,6 +333,11 @@ where
         + Consistent,
     G: Geometry,
 {
+    /// Gets an iterator of orphan views over the neighboring faces of the
+    /// vertex.
+    ///
+    /// The ordering of faces is deterministic and is based on the leading arc
+    /// of the vertex.
     pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.reachable_neighboring_orphan_faces()
     }
@@ -323,6 +353,35 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    // TODO: This is not yet implemented, so examples use `no_run`. Run these
+    //       examples in doc tests once this no longer intentionally panics.
+    /// Removes the vertex.
+    ///
+    /// Any and all dependent topology is also removed, such as arcs and edges
+    /// connected to the vertex, faces connected to such arcs, vertices with no
+    /// remaining leading arc, etc.
+    ///
+    /// Vertex removal is the most destructive removal, because vertices are a
+    /// dependency of all other topological structures.
+    ///
+    /// # Examples
+    ///
+    /// Removing a corner from a cube by removing its vertex:
+    ///
+    /// ```rust,no_run
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    ///
+    /// let mut graph = Cube::new()
+    ///     .polygons_with_position()
+    ///     .collect::<MeshGraph<Triplet<_>>>();
+    /// let key = graph.vertices().nth(0).unwrap().key();
+    /// graph.vertex_mut(key).unwrap().remove().unwrap();
+    /// ```
     pub fn remove(self) -> Result<(), GraphError> {
         let (a, storage) = self.into_keyed_source();
         let cache = VertexRemoveCache::snapshot(&storage, a)?;
@@ -411,7 +470,10 @@ where
     }
 }
 
-/// Orphan reference to a vertex.
+/// Orphan view of a vertex.
+///
+/// Provides mutable access to vertex's geometry. See the module documentation
+/// for more information about topological views.
 pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,

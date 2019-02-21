@@ -13,15 +13,14 @@ use plexus::graph::{FaceView, GraphError, MeshGraph};
 use plexus::prelude::*;
 use smallvec::SmallVec;
 
-pub fn subdivide<G>(
+pub fn circumscribe<G>(
     face: FaceView<&mut MeshGraph<G>, G>,
 ) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
 where
     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
     G::Vertex: AsPosition,
 {
-    // Split each edge, stashing the vertex key and moving to the next
-    // arc-edge.
+    // Split each edge, stashing the vertex key and moving to the next arc.
     let arity = face.arity();
     let mut arc = face.into_arc();
     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
@@ -30,7 +29,7 @@ where
         splits.push(vertex.key());
         arc = vertex.into_outgoing_arc().into_next_arc();
     }
-    // Split along the vertices from each edge split.
+    // Split faces along the vertices from each arc split.
     let mut face = arc.into_face().unwrap();
     for (a, b) in splits.into_iter().perimeter() {
         face = face.split(ByKey(a), ByKey(b))?.into_face().unwrap();
@@ -50,5 +49,5 @@ fn main() {
     // Get the key of the singular face.
     let abc = graph.faces().nth(0).unwrap().key();
     // Subdivide the face.
-    subdivide(graph.face_mut(abc).unwrap()).unwrap();
+    circumscribe(graph.face_mut(abc).unwrap()).unwrap();
 }

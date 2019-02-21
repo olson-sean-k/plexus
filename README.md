@@ -1,6 +1,6 @@
 ![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.png)
 
-**Plexus** is a Rust library for manipulating 2D and 3D meshes.
+**Plexus** is a Rust library for 2D and 3D mesh processing.
 
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
@@ -8,11 +8,10 @@
 
 ## Primitives and Iterator Expressions
 
-Streams of topological and geometric data can be generated from primitives like
-cubes and spheres using iterator expressions. Primitives emit topological
-structures like `Triangle`s or `Quad`s, which contain arbitrary data in their
-vertices. These can be transformed and decomposed into other topologies and
-geometric data via tessellation and other operations.
+Streams of geometric data can be generated from primitives like cubes and
+spheres using iterator expressions. Primitives emit topological structures like
+`Triangle`s or `Quad`s, which contain arbitrary data in their vertices. These
+can be transformed and decomposed via tessellation and other operations.
 
 ```rust
 use nalgebra::Point3;
@@ -23,11 +22,10 @@ use plexus::primitive::sphere::UvSphere;
 // Example module in the local crate that provides basic rendering.
 use render::{self, Color, Vertex};
 
-// Construct a buffer of index and vertex data from a sphere primitive.
+// Construct a linear buffer of index and vertex data from a sphere primitive.
 let buffer = UvSphere::new(16, 16)
     .polygons_with_position()
     .map_vertices(|position| -> Point3<f64> { position.into() })
-    .map_vertices(|position| position * 10.0)
     .map_vertices(|position| Vertex::new(position, Color::white()))
     .triangulate()
     .collect::<MeshBuffer3<u32, Vertex>>();
@@ -39,12 +37,12 @@ example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 
 ## Half-Edge Graph Meshes
 
-Primitives produce an ephemeral stream of topology and vertex geometry. A
 `MeshGraph`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
-arbitrary geometry for vertices, arcs (half-edges), edges, and faces. The graph
-can also be traversed and manipulated in ways that iterator expressions and
-simple buffers cannot, such as circulation, extrusion, merging, and joining.
+arbitrary geometry for vertices, arcs (half-edges), edges, and faces. Graphs
+are persistent and can be traversed and manipulated in ways that iterator
+expressions and linear buffers cannot, such as circulation, extrusion, merging,
+and joining.
 
 ```rust
 use nalgebra::Point3;
@@ -65,22 +63,21 @@ if let Ok(face) = graph.face_mut(abc).unwrap().extrude(1.0) {
 ```
 
 Plexus avoids exposing very basic topological operations like inserting
-individual vertices, because they can easily be done incorrectly and lead to
-invalid topologies. Instead, meshes are typically manipulated with higher-level
-operations like splitting and joining.
+individual vertices, because they can easily be done incorrectly. Instead,
+meshes are typically manipulated with higher-level operations like splitting
+and joining.
 
 ## Geometric Traits
 
 Graphs support arbitrary geometry for vertices, arcs, edges, and faces
 (including no geometry at all) via optional traits. Implementing these traits
-enables more operations and features, but only one trait is required:
-`Geometry`.
+enables geometric features, but only one trait is required: `Geometry`.
 
 ```rust
 use nalgebra::{Point3, Vector3};
 use plexus::geometry::convert::AsPosition;
 use plexus::geometry::Geometry;
-use plexus::R64;
+use plexus::R64; // Re-exported from the `decorum` crate.
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct VertexGeometry {

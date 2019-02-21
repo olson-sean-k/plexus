@@ -8,7 +8,7 @@
 //!
 //! Geometry is vertex-based, meaning that geometric operations depend on
 //! vertices exposing some notion of positional data. See the `geometry` module
-//! and `AsPosition` trait. If geometry does not have this property, then most
+//! and `AsPosition` trait. If geometry does not have this property, then
 //! spatial operations will not be available.
 //!
 //! # Representation
@@ -29,7 +29,8 @@
 //! Given an arc from a vertex **A** to a vertex **B**, that arc will have an
 //! opposite arc from **B** to **A**. Such arcs are typically labeled **AB**
 //! and **BA**. Together, these arcs form an _edge_, which is not directed.
-//! Occassionally, the term "edge" may refer to either an arc or an edge.
+//! Occassionally, the term "edge" may refer to either an arc or an edge. Edges
+//! are typically labeled **AB+BA**.
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! When a face is present in the contiguous region formed by a perimeter of
@@ -139,12 +140,12 @@
 //! use nalgebra::Point2;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
+//! use plexus::primitive::Quad;
 //!
 //! # fn main() {
-//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
-//!     vec![0u32, 1, 2, 3],
+//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
+//!     vec![Quad::new(0u32, 1, 2, 3)],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-//!     4,
 //! )
 //! .unwrap();
 //! graph.triangulate().unwrap();
@@ -174,15 +175,6 @@ mod view;
 
 pub use self::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
-// TODO: It's unclear how view types should be exposed to users. Type aliases
-//       for mutable, immutable, and orphan views over a `MeshGraph` would be
-//       simpler and help insulate users from the complexity of views, but it
-//       is currently not possible to document such aliases. See:
-//       https://github.com/rust-lang/rust/issues/39437
-//
-//       Moreover, in the future it may be tenable to expose the internal
-//       mutation APIs, and exposing the underlying view types would then be
-//       necessary. For now, use them directly.
 pub use self::view::{
     ArcNeighborhood, ArcView, EdgeView, FaceNeighborhood, FaceView, InteriorPathView,
     OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
@@ -248,7 +240,7 @@ trait OptionExt<T> {
 
 impl<T> OptionExt<T> for Option<T> {
     fn expect_consistent(self) -> T {
-        self.expect("graph consistency violated")
+        self.expect("internal error: graph consistency violated")
     }
 }
 
@@ -263,10 +255,40 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
     where
         E: Debug,
     {
-        self.expect("graph consistency violated")
+        self.expect("internal error: graph consistency violated")
     }
 }
 
+/// Topology selector.
+///
+/// Identifies topology by key or index. Keys behave as an absolute selector
+/// and uniquely identify a single topological structure. Indices behave as a
+/// relative selector and identify topological structures relative to some
+/// other structure. `Selector` is used by operations that support both of
+/// these selection mechanisms.
+///
+/// An index is typically used to select a neighbor or contained (and ordered)
+/// topological structure, such as a neighboring face.
+///
+/// # Examples
+///
+/// Splitting a face by index (of its contained vertices):
+///
+/// ```rust
+/// use plexus::graph::MeshGraph;
+/// use plexus::prelude::*;
+/// use plexus::primitive::cube::Cube;
+///
+/// let mut graph = Cube::new()
+///     .polygons_with_position()
+///     .collect::<MeshGraph<Triplet<_>>>();
+/// let abc = graph.faces().nth(0).unwrap().key();
+/// graph
+///     .face_mut(abc)
+///     .unwrap()
+///     .split(ByIndex(0), ByIndex(2))
+///     .unwrap();
+/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Selector<K> {
     ByKey(K),
@@ -274,6 +296,8 @@ pub enum Selector<K> {
 }
 
 impl<K> Selector<K> {
+    /// Gets the selector's key or passes its index to a function to resolve
+    /// the key.
     pub fn key_or_else<E, F>(self, f: F) -> Result<K, GraphError>
     where
         E: Into<GraphError>,
@@ -285,6 +309,8 @@ impl<K> Selector<K> {
         }
     }
 
+    /// Gets the selector's index or passes its key to a function to resolve
+    /// the index.
     pub fn index_or_else<E, F>(self, f: F) -> Result<usize, GraphError>
     where
         E: Into<GraphError>,
@@ -369,8 +395,8 @@ where
     /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
     /// the index buffer must be known and constant.
     ///
-    /// `MeshGraph` also implements `From` for `MeshBuffer`, but will panic if
-    /// the conversion fails.
+    /// `MeshGraph` also implements `From` for `MeshBuffer`, but will yield an
+    /// empty graph if the conversion fails.
     ///
     /// # Examples
     ///
@@ -402,7 +428,7 @@ where
         MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
 
-    /// Gets the number of vertices in the mesh.
+    /// Gets the number of vertices in the graph.
     pub fn vertex_count(&self) -> usize {
         self.as_vertex_storage().len()
     }
@@ -417,14 +443,14 @@ where
         (key, self).into_view()
     }
 
-    /// Gets an iterator of immutable views over the vertices in the mesh.
+    /// Gets an iterator of immutable views over the vertices in the graph.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&Self, G>> {
         self.as_vertex_storage()
             .keys()
             .map(move |key| (*key, self).into_view().unwrap())
     }
 
-    /// Gets an iterator of orphan views over the vertices in the mesh.
+    /// Gets an iterator of orphan views over the vertices in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
@@ -435,7 +461,7 @@ where
             .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
-    /// Gets the number of arcs in the mesh.
+    /// Gets the number of arcs in the graph.
     pub fn arc_count(&self) -> usize {
         self.as_arc_storage().len()
     }
@@ -450,14 +476,14 @@ where
         (key, self).into_view()
     }
 
-    /// Gets an iterator of immutable views over the arcs in the mesh.
+    /// Gets an iterator of immutable views over the arcs in the graph.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&Self, G>> {
         self.as_arc_storage()
             .keys()
             .map(move |key| (*key, self).into_view().unwrap())
     }
 
-    /// Gets an iterator of orphan views over the arcs in the mesh.
+    /// Gets an iterator of orphan views over the arcs in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
@@ -468,7 +494,7 @@ where
             .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
-    /// Gets the number of edges in the mesh.
+    /// Gets the number of edges in the graph.
     pub fn edge_count(&self) -> usize {
         self.as_edge_storage().len()
     }
@@ -483,14 +509,14 @@ where
         (key, self).into_view()
     }
 
-    /// Gets an iterator of immutable views over the edges in the mesh.
+    /// Gets an iterator of immutable views over the edges in the graph.
     pub fn edges(&self) -> impl Clone + Iterator<Item = EdgeView<&Self, G>> {
         self.as_edge_storage()
             .keys()
             .map(move |key| (*key, self).into_view().unwrap())
     }
 
-    /// Gets an iterator of orphan views over the edges in the mesh.
+    /// Gets an iterator of orphan views over the edges in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
@@ -501,7 +527,7 @@ where
             .map(|(key, source)| (*key, source).into_view().unwrap())
     }
 
-    /// Gets the number of faces in the mesh.
+    /// Gets the number of faces in the graph.
     pub fn face_count(&self) -> usize {
         self.as_face_storage().len()
     }
@@ -516,14 +542,14 @@ where
         (key, self).into_view()
     }
 
-    /// Gets an iterator of immutable views over the faces in the mesh.
+    /// Gets an iterator of immutable views over the faces in the graph.
     pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&Self, G>> {
         self.as_face_storage()
             .keys()
             .map(move |key| (*key, self).into_view().unwrap())
     }
 
-    /// Gets an iterator of orphan views over the faces in the mesh.
+    /// Gets an iterator of orphan views over the faces in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
@@ -543,7 +569,7 @@ where
         Ok(())
     }
 
-    /// Creates a mesh buffer from the mesh.
+    /// Creates a `MeshBuffer` from the graph.
     ///
     /// The buffer is created using the vertex geometry of each unique vertex.
     ///
@@ -561,7 +587,7 @@ where
         self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.clone().into_geometry())
     }
 
-    /// Creates a mesh buffer from the mesh.
+    /// Creates a `MeshBuffer` from the graph.
     ///
     /// The buffer is created using each unique vertex, which is converted into
     /// the buffer geometry by the given function.
@@ -609,7 +635,7 @@ where
             .map_err(|error| error.into())
     }
 
-    /// Creates a mesh buffer from the mesh.
+    /// Creates a `MeshBuffer` from the graph.
     ///
     /// The buffer is created using the vertex geometry of each face. Shared
     /// vertices are included for each face to which they belong.
@@ -628,7 +654,7 @@ where
         self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.clone().into_geometry())
     }
 
-    /// Creates a mesh buffer from the mesh.
+    /// Creates a `MeshBuffer` from the graph.
     ///
     /// The buffer is created from each face, which is converted into the
     /// buffer geometry by the given function.
@@ -766,7 +792,7 @@ where
     G: Geometry,
 {
     fn from(buffer: MeshBuffer<Flat<A, N>, H>) -> Self {
-        MeshGraph::from_mesh_buffer(buffer).unwrap()
+        MeshGraph::from_mesh_buffer(buffer).unwrap_or_else(|_| Self::default())
     }
 }
 

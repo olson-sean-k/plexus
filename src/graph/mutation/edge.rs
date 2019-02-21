@@ -465,6 +465,10 @@ where
     }
 }
 
+// TODO: Removing arcs must also remove disjoint vertices. More importantly,
+//       the leading arc of vertices may be invalidated by this operation and
+//       must be healed. This code does not handle these cases, and so can
+//       become inconsistent.
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeRemoveCache<G>,

@@ -1,12 +1,13 @@
 //! Geometric traits and primitives.
 //!
-//! These traits are used to support high-order operations in generators and
+//! These traits are used to support geometric operations in generators and
 //! graphs. Implementing these traits implicitly implements internal traits,
 //! which in turn enable geometric features.
 //!
 //! To use types as geometry in a `MeshGraph` only requires implementing the
-//! `Geometry` trait. Implementing operations like `Cross`, `Normalize`, etc.,
-//! enable geometric features like extrusion, centroids, midpoints, etc.
+//! `Geometry` trait. Implementing operations like `Cross` and `Normalize` for
+//! the `Vertex` attribute enables geometric features like extrusion,
+//! centroids, midpoints, etc.
 
 use decorum::R64;
 use num::{self, Num, NumCast, One, Zero};

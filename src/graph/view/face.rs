@@ -25,10 +25,10 @@ use crate::graph::{GraphError, OptionExt, Selector};
 
 use Selector::ByIndex;
 
-/// Reference to a face.
+/// View of a face.
 ///
-/// Provides traversals, queries, and mutations related to faces in a mesh. See
-/// the module documentation for more information about topological views.
+/// Provides traversals, queries, and mutations related to faces in a graph.
+/// See the module documentation for more information about topological views.
 pub struct FaceView<M, G>
 where
     M: Reborrow,
@@ -111,6 +111,14 @@ where
         (key, &*storage).into_view().unwrap()
     }
 
+    /// Reborrows the view and constructs another mutable view from a given
+    /// key.
+    ///
+    /// This allows for fallible traversals from a mutable view without the
+    /// need for direct access to the source `MeshGraph`. If the given function
+    /// emits a key, then that key will be used to convert this view into
+    /// another. If no key is emitted, then the original mutable view is
+    /// returned.
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
     where
         T: FromKeyedSource<(K, &'a mut M)>,
@@ -134,7 +142,7 @@ where
     M::Target: AsStorage<FacePayload<G>>,
     G: Geometry,
 {
-    /// Gets the key for this face.
+    /// Gets the key for the face.
     pub fn key(&self) -> FaceKey {
         self.key
     }
@@ -210,34 +218,42 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: Geometry,
 {
+    /// Converts the face into its interior path.
     pub fn into_interior_path(self) -> InteriorPathView<M, G> {
         let key = self.arc().key();
         let (_, storage) = self.into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
 
+    /// Converts the face into its leading arc.
     pub fn into_arc(self) -> ArcView<M, G> {
         self.into_reachable_arc().expect_consistent()
     }
 
+    /// Gets the interior path of the face.
     pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
         let key = self.arc().key();
         let storage = self.storage.reborrow();
         (key, storage).into_view().expect_consistent()
     }
 
+    /// Gets the leading arc of the face.
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         self.reachable_arc().expect_consistent()
     }
 
+    /// Gets an iterator of views over the arcs in the face's interior path.
     pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         self.reachable_interior_arcs()
     }
 
+    /// Gets an iterator of views over neighboring faces.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
     }
 
+    /// Gets the arity of the face. This is the number of arcs that form the
+    /// face's interior path.
     pub fn arity(&self) -> usize {
         self.reachable_arity()
     }
@@ -270,6 +286,7 @@ where
         FaceNeighborhood::from(self.interior_reborrow())
     }
 
+    /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
@@ -298,6 +315,8 @@ where
         + Consistent,
     G: Geometry,
 {
+    /// Gets an iterator of orphan views over the arcs in the face's interior
+    /// path.
     pub fn interior_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.reachable_interior_orphan_arcs()
     }
@@ -326,6 +345,7 @@ where
         + Consistent,
     G: Geometry,
 {
+    /// Gets an iterator of orphan views over neighboring faces.
     pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.reachable_neighboring_orphan_faces()
     }
@@ -358,6 +378,7 @@ where
         + Consistent,
     G: Geometry,
 {
+    /// Gets an iterator of orphan views over the vertices that form the face.
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         self.reachable_orphan_vertices()
     }
@@ -373,6 +394,51 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
+    /// Splits the face by bisecting it with an edge (and arcs) inserted
+    /// between two non-neighboring vertices within the face's perimeter.
+    ///
+    /// The vertices can be chosen by key or index, where index selects the nth
+    /// vertex within the face's interior path.
+    ///
+    /// This can be thought of as the opposite of `merge`.
+    ///
+    /// Returns the inserted arc that spans from the source vertex to the
+    /// destination vertex if successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either of the given vertices cannot be found, are
+    /// not within the face's perimeter, or the distance between the vertices
+    /// along the interior path is less than two.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a quadrilateral face:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Quad;
+    ///
+    /// # fn main() {
+    /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
+    ///     vec![Quad::new(0usize, 1, 2, 3)],
+    ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    /// )
+    /// .unwrap();
+    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let arc = graph
+    ///     .face_mut(key)
+    ///     .unwrap()
+    ///     .split(ByIndex(0), ByIndex(2))
+    ///     .unwrap()
+    ///     .into_ref();
+    /// # }
+    /// ```
     pub fn split(
         self,
         source: Selector<VertexKey>,
@@ -397,6 +463,57 @@ where
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
     }
 
+    /// Merges the face into a neighboring face over their shared edge (and
+    /// arcs).
+    ///
+    /// The neighboring face can be chosen by key or index, where index selects
+    /// the nth neighbor of the face.
+    ///
+    /// This can be thought of as the opposite of `split`.
+    ///
+    /// Returns the merged face if successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the destination face cannot be found or is not a
+    /// neighbor of the initiating face.
+    ///
+    /// # Examples
+    ///
+    /// Merging two neighboring quadrilateral faces:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Quad;
+    ///
+    /// # fn main() {
+    /// let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
+    ///     vec![Quad::new(0usize, 1, 2, 3), Quad::new(0, 3, 4, 5)],
+    ///     vec![
+    ///         (0.0, 0.0),  // 0
+    ///         (1.0, 0.0),  // 1
+    ///         (1.0, 1.0),  // 2
+    ///         (0.0, 1.0),  // 3
+    ///         (-1.0, 1.0), // 4
+    ///         (-1.0, 0.0), // 5
+    ///     ],
+    /// )
+    /// .unwrap();
+    ///
+    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let face = graph
+    ///     .face_mut(key)
+    ///     .unwrap()
+    ///     .merge(ByIndex(0))
+    ///     .unwrap()
+    ///     .into_ref();
+    /// # }
+    /// ```
     pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
         let destination = destination.key_or_else(|index| {
             self.neighboring_faces()
@@ -422,6 +539,16 @@ where
             .get_or_insert_face_with(|| geometry)
     }
 
+    /// Connects faces with equal arity with faces inserted along their
+    /// perimeters.
+    ///
+    /// The inserted faces are always quadrilateral. Both the initiating face
+    /// and destination face are removed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the destination face cannot be found or the arity
+    /// of the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (source, storage) = self.into_keyed_source();
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
@@ -430,6 +557,12 @@ where
             .map(|_| ())
     }
 
+    // TODO: This should not be a fallible operation. Use `expect` and do not
+    //       expose users to failure modes.
+    /// Decomposes the face into triangles. Does nothing if the face is
+    /// triangular.
+    ///
+    /// Returns the terminating face of the decomposition.
     pub fn triangulate(self) -> Result<Self, GraphError> {
         let mut face = self;
         while face.arity() > 3 {
@@ -441,6 +574,16 @@ where
         Ok(face)
     }
 
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    /// Subdivides the face about a vertex. A triangle fan is formed from each
+    /// arc in the face's perimeter and the vertex.
+    ///
+    /// Poking inserts a new vertex with geometry provided by the given
+    /// function.
+    ///
+    /// Returns the inserted vertex.
     pub fn poke_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         F: FnOnce() -> G::Vertex,
@@ -452,6 +595,9 @@ where
             .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
     }
 
+    // TODO: Remove this function. It is useful for non-geometric graphs, but
+    //       is likely confusing. Users should consider the geometry used when
+    //       splitting.
     pub fn poke(self) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         G::Vertex: Default,
@@ -459,6 +605,44 @@ where
         self.poke_with(|| Default::default())
     }
 
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    /// Subdivides the face about its centroid. A triangle fan is formed from each
+    /// arc in the face's perimeter and a vertex inserted at the centroid.
+    ///
+    /// Returns the inserted vertex.
+    ///
+    /// # Examples
+    ///
+    /// Forming a baseless triangular pyramid from a face:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point3;
+    /// use plexus::geometry::convert::AsPosition;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Triangle;
+    ///
+    /// # fn main() {
+    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(
+    ///     vec![Triangle::new(0usize, 1, 2)],
+    ///     vec![(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 2.0, 0.0)],
+    /// )
+    /// .unwrap();
+    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let mut face = graph.face_mut(key).unwrap();
+    ///
+    /// // Use the face's normal to translate the vertex from the centroid.
+    /// let normal = face.normal().unwrap();
+    /// let mut vertex = face.poke_at_centroid().unwrap();
+    /// let position = vertex.geometry.as_position() + (normal * 2.0);
+    /// *vertex.geometry.as_position_mut() = position;
+    /// # }
+    /// ```
     pub fn poke_at_centroid(self) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
@@ -482,6 +666,12 @@ where
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
     }
 
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    /// Removes the face.
+    ///
+    /// Returns the interior path of the face.
     pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
         let (abc, storage) = self.into_keyed_source();
         let cache = FaceRemoveCache::snapshot(&storage, abc)?;
@@ -598,7 +788,10 @@ where
     }
 }
 
-/// Orphan reference to a face.
+/// Orphan view of a face.
+///
+/// Provides mutable access to a face's geometry. See the module documentation
+/// for more information about topological views.
 pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
@@ -696,6 +889,16 @@ where
     }
 }
 
+/// View of an interior path.
+///
+/// Interior paths are closed paths formed by arcs and their immediate
+/// neighboring arcs. In a consistent graph, every arc forms such a path. Such
+/// paths may or may not be occupied by faces.
+///
+/// Interior paths have no associated payload and do not directly expose
+/// geometry.
+///
+/// See the module documentation for more information about topological views.
 pub struct InteriorPathView<M, G>
 where
     M: Reborrow,
@@ -713,11 +916,23 @@ where
     M: AsStorage<ArcPayload<G>> + Consistent,
     G: 'a + Geometry,
 {
+    /// Converts a mutable view into an immutable view.
+    ///
+    /// This is useful when mutations are not (or no longer) needed and mutual
+    /// access is desired.
     pub fn into_ref(self) -> InteriorPathView<&'a M, G> {
         let (arc, face, storage) = self.into_keyed_source();
         InteriorPathView::from_keyed_source_unchecked((arc, face, &*storage))
     }
 
+    /// Reborrows the view and constructs another mutable view from a given
+    /// key.
+    ///
+    /// This allows for fallible traversals from a mutable view without the
+    /// need for direct access to the source `MeshGraph`. If the given function
+    /// emits a key, then that key will be used to convert this view into
+    /// another. If no key is emitted, then the original mutable view is
+    /// returned.
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
     where
         T: FromKeyedSource<(K, &'a mut M)>,
@@ -751,10 +966,13 @@ where
         }
     }
 
+    /// Gets the arity of the interior path. This is the number of arcs that
+    /// form the path.
     pub fn arity(&self) -> usize {
         self.arcs().count()
     }
 
+    /// Gets an iterator of views over the arcs within the interior path.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         ArcCirculator::from(self.interior_reborrow())
     }
@@ -773,17 +991,21 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: Geometry,
 {
+    /// Converts the interior path into its originating arc.
     pub fn into_arc(self) -> ArcView<M, G> {
         let (arc, _, storage) = self.into_keyed_source();
         (arc, storage).into_view().expect_consistent()
     }
 
+    /// Gets the originating arc of the interior path.
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         let arc = self.arc;
         let storage = self.storage.reborrow();
         (arc, storage).into_view().expect_consistent()
     }
 
+    /// Gets the distance (number of arcs) between two vertices within the
+    /// interior path.
     pub fn distance(
         &self,
         source: Selector<VertexKey>,
@@ -815,6 +1037,7 @@ where
         Ok(cmp::min(difference, arity - difference))
     }
 
+    /// Gets an iterator of views over the vertices within the interior path.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(ArcCirculator::from(self.interior_reborrow()))
     }
@@ -826,6 +1049,9 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: Geometry,
 {
+    /// Converts the interior path into its face.
+    ///
+    /// If the path has no associated face, then `None` is returned.
     pub fn into_face(self) -> Option<FaceView<M, G>> {
         let (_, face, storage) = self.into_keyed_source();
         if let Some(face) = face {
@@ -836,6 +1062,9 @@ where
         }
     }
 
+    /// Gets the face of the interior path.
+    ///
+    /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
         if let Some(face) = self.face {
             let storage = self.storage.reborrow();
@@ -856,10 +1085,27 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    /// Gets the face of the interior path or inserts a face if one does not
+    /// already exist.
+    ///
+    /// Returns the inserted face.
     pub fn get_or_insert_face(self) -> Result<FaceView<&'a mut M, G>, GraphError> {
         self.get_or_insert_face_with(|| Default::default())
     }
 
+    // TODO: Because the storage is consistent, this should not be a fallible
+    //       operation. Use `expect_consistent` and do not expose users to
+    //       failure modes.
+    /// Gets the face of the interior path or inserts a face if one does not
+    /// already exist.
+    ///
+    /// If a face is inserted, then the given function is used to get the
+    /// geometry for the face.
+    ///
+    /// Returns the inserted face.
     pub fn get_or_insert_face_with<F>(self, f: F) -> Result<FaceView<&'a mut M, G>, GraphError>
     where
         F: FnOnce() -> G::Face,
@@ -1334,7 +1580,7 @@ mod tests {
     }
 
     #[test]
-    fn join_faces() {
+    fn merge_faces() {
         // Construct a graph with two connected quads.
         let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 0, 3, 4, 5],
