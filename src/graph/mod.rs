@@ -148,7 +148,7 @@
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //! )
 //! .unwrap();
-//! graph.triangulate().unwrap();
+//! graph.triangulate();
 //!
 //! // Traverse an arc and use a circulator to get the faces of a nearby vertex.
 //! let key = graph.arcs().nth(0).unwrap().key();
@@ -561,12 +561,11 @@ where
     }
 
     /// Triangulates the mesh, tesselating all faces into triangles.
-    pub fn triangulate(&mut self) -> Result<(), GraphError> {
+    pub fn triangulate(&mut self) {
         let faces = self.as_face_storage().keys().cloned().collect::<Vec<_>>();
         for face in faces {
-            self.face_mut(face).unwrap().triangulate()?;
+            self.face_mut(face).unwrap().triangulate();
         }
-        Ok(())
     }
 
     /// Creates a `MeshBuffer` from the graph.

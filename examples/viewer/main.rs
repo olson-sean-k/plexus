@@ -45,7 +45,7 @@ fn new_mesh_buffer() -> MeshBuffer3<u32, Vertex> {
     for mut face in graph.orphan_faces() {
         face.geometry = Color4::random();
     }
-    graph.triangulate().unwrap();
+    graph.triangulate();
     graph
         .to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.geometry))
         .unwrap()

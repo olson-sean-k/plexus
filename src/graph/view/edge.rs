@@ -22,7 +22,7 @@ use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{
     FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, VertexView,
 };
-use crate::graph::{GraphError, OptionExt, Selector};
+use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 /// View of an arc.
 ///
@@ -615,9 +615,6 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Splits an edge (and its arcs) into two neighboring edges that share a
     /// vertex.
     ///
@@ -653,32 +650,22 @@ where
     /// )
     /// .unwrap();
     /// let key = graph.arcs().nth(0).unwrap().key();
-    /// graph.arc_mut(key).unwrap().split_with(|| 0.1).unwrap();
+    /// let vertex = graph.arc_mut(key).unwrap().split_with(|| 0.1);
     /// ```
-    pub fn split_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn split_with<F>(self, f: F) -> VertexView<&'a mut M, G>
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (ab, storage) = self.into_keyed_source();
-        let cache = EdgeSplitCache::snapshot(&storage, ab, f())?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
-            .map(|(storage, m)| (m, storage).into_view().expect_consistent())
+        (move || {
+            let (ab, storage) = self.into_keyed_source();
+            let cache = EdgeSplitCache::snapshot(&storage, ab, f())?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
+                .map(|(storage, m)| (m, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
     }
 
-    // TODO: Remove this function. It is useful for non-geometric graphs, but
-    //       is likely confusing. Users should consider the geometry used when
-    //       splitting.
-    pub fn split(self) -> Result<VertexView<&'a mut M, G>, GraphError>
-    where
-        G::Vertex: Default,
-    {
-        self.split_with(|| Default::default())
-    }
-
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Splits an edge (and its arcs) at the midpoint of the arc's vertices.
     ///
     /// Splitting inserts a new vertex with the geometry of the arc's source
@@ -712,16 +699,16 @@ where
     /// )
     /// .unwrap();
     /// let key = graph.arcs().nth(0).unwrap().key();
-    /// graph.arc_mut(key).unwrap().split_at_midpoint().unwrap();
+    /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint();
     /// # }
     /// ```
-    pub fn split_at_midpoint(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn split_at_midpoint(self) -> VertexView<&'a mut M, G>
     where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
         G::Vertex: AsPosition,
     {
         let mut geometry = self.source_vertex().geometry.clone();
-        let midpoint = EdgeMidpoint::midpoint(self.edge())?;
+        let midpoint = self.edge().midpoint();
         self.split_with(move || {
             *geometry.as_position_mut() = midpoint;
             geometry
@@ -880,22 +867,22 @@ where
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
     }
 
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Removes the arc, its opposite arc, and edge.
     ///
     /// Any and all dependent topology is also removed, such as connected
     /// faces, vertices with no remaining leading arc, etc.
     ///
     /// Returns the source vertex of the initiating arc.
-    pub fn remove(self) -> Result<VertexView<&'a mut M, G>, GraphError> {
-        let a = self.source_vertex().key();
-        let (ab, storage) = self.into_keyed_source();
-        let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-            .map(|(storage, _)| (a, storage).into_view().expect_consistent())
+    pub fn remove(self) -> VertexView<&'a mut M, G> {
+        (move || {
+            let a = self.source_vertex().key();
+            let (ab, storage) = self.into_keyed_source();
+            let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
+                .map(|(storage, _)| (a, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
     }
 }
 
@@ -1230,8 +1217,8 @@ where
         + Consistent,
     G: EdgeMidpoint + Geometry,
 {
-    pub fn midpoint(&self) -> Result<G::Midpoint, GraphError> {
-        G::midpoint(self.interior_reborrow())
+    pub fn midpoint(&self) -> G::Midpoint {
+        G::midpoint(self.interior_reborrow()).expect_consistent()
     }
 }
 
@@ -1708,12 +1695,7 @@ mod tests {
             .index_vertices(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
-        let vertex = graph
-            .arc_mut(key)
-            .unwrap()
-            .split_at_midpoint()
-            .unwrap()
-            .into_ref();
+        let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
 
         assert_eq!(5, vertex.into_outgoing_arc().into_face().unwrap().arity());
         assert_eq!(
@@ -1750,7 +1732,7 @@ mod tests {
         // Remove the edge joining the quads from the graph.
         let ab = find_arc_with_vertex_geometry(&graph, ((0.0, 0.0), (0.0, 1.0))).unwrap();
         {
-            let vertex = graph.arc_mut(ab).unwrap().remove().unwrap().into_ref();
+            let vertex = graph.arc_mut(ab).unwrap().remove().into_ref();
 
             // The path should be formed from 6 edges.
             assert_eq!(6, vertex.into_outgoing_arc().into_interior_path().arity());

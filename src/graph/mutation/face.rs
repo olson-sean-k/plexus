@@ -521,7 +521,7 @@ where
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
         let face = FaceView::from_keyed_source((abc, storage)).unwrap();
-        let translation = face.normal()? * distance;
+        let translation = face.normal() * distance;
 
         let sources = face.vertices().map(|vertex| vertex.key()).collect();
         let destinations = face

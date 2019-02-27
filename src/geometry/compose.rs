@@ -25,15 +25,13 @@
 //! use plexus::geometry::compose::EdgeMidpoint;
 //! use plexus::geometry::convert::AsPosition;
 //! use plexus::geometry::Geometry;
-//! use plexus::graph::{FaceView, GraphError, MeshGraph};
+//! use plexus::graph::{FaceView, MeshGraph};
 //! use plexus::prelude::*;
 //! use smallvec::SmallVec;
 //!
 //! # fn main() {
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
-//! pub fn circumscribe<G>(
-//!     face: FaceView<&mut MeshGraph<G>, G>,
-//! ) -> Result<FaceView<&mut MeshGraph<G>, G>, GraphError>
+//! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
 //! where
 //!     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
 //!     G::Vertex: AsPosition,
@@ -42,15 +40,15 @@
 //!     let mut arc = face.into_arc();
 //!     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
 //!     for _ in 0..arity {
-//!         let vertex = arc.split_at_midpoint()?;
+//!         let vertex = arc.split_at_midpoint();
 //!         splits.push(vertex.key());
 //!         arc = vertex.into_outgoing_arc().into_next_arc();
 //!     }
 //!     let mut face = arc.into_face().unwrap();
 //!     for (a, b) in splits.into_iter().perimeter() {
-//!         face = face.split(ByKey(a), ByKey(b))?.into_face().unwrap();
+//!         face = face.split(ByKey(a), ByKey(b)).unwrap().into_face().unwrap();
 //!     }
-//!     Ok(face)
+//!     face
 //! }
 //! # }
 //! ```

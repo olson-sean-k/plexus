@@ -21,7 +21,7 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, VertexView};
-use crate::graph::{GraphError, OptionExt, Selector};
+use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;
 
@@ -531,12 +531,12 @@ where
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry.clone();
         let (_, storage) = self.into_keyed_source();
-        ArcView::from_keyed_source((ab, storage))
+        Ok(ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
-            .remove()?
+            .remove()
             .into_outgoing_arc()
             .into_interior_path()
-            .get_or_insert_face_with(|| geometry)
+            .get_or_insert_face_with(|| geometry))
     }
 
     /// Connects faces with equal arity with faces inserted along their
@@ -557,26 +557,22 @@ where
             .map(|_| ())
     }
 
-    // TODO: This should not be a fallible operation. Use `expect` and do not
-    //       expose users to failure modes.
     /// Decomposes the face into triangles. Does nothing if the face is
     /// triangular.
     ///
     /// Returns the terminating face of the decomposition.
-    pub fn triangulate(self) -> Result<Self, GraphError> {
+    pub fn triangulate(self) -> Self {
         let mut face = self;
         while face.arity() > 3 {
             face = face
-                .split(ByIndex(0), ByIndex(2))?
+                .split(ByIndex(0), ByIndex(2))
+                .expect_consistent()
                 .into_face()
-                .expect("split resulted in no face");
+                .expect_consistent();
         }
-        Ok(face)
+        face
     }
 
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Subdivides the face about a vertex. A triangle fan is formed from each
     /// arc in the face's perimeter and the vertex.
     ///
@@ -584,30 +580,20 @@ where
     /// function.
     ///
     /// Returns the inserted vertex.
-    pub fn poke_with<F>(self, f: F) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M, G>
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FacePokeCache::snapshot(&storage, abc, f())?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
-            .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
+        (move || {
+            let (abc, storage) = self.into_keyed_source();
+            let cache = FacePokeCache::snapshot(&storage, abc, f())?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
+                .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
     }
 
-    // TODO: Remove this function. It is useful for non-geometric graphs, but
-    //       is likely confusing. Users should consider the geometry used when
-    //       splitting.
-    pub fn poke(self) -> Result<VertexView<&'a mut M, G>, GraphError>
-    where
-        G::Vertex: Default,
-    {
-        self.poke_with(|| Default::default())
-    }
-
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Subdivides the face about its centroid. A triangle fan is formed from each
     /// arc in the face's perimeter and a vertex inserted at the centroid.
     ///
@@ -637,17 +623,17 @@ where
     /// let mut face = graph.face_mut(key).unwrap();
     ///
     /// // Use the face's normal to translate the vertex from the centroid.
-    /// let normal = face.normal().unwrap();
-    /// let mut vertex = face.poke_at_centroid().unwrap();
+    /// let normal = face.normal();
+    /// let mut vertex = face.poke_at_centroid();
     /// let position = vertex.geometry.as_position() + (normal * 2.0);
     /// *vertex.geometry.as_position_mut() = position;
     /// # }
     /// ```
-    pub fn poke_at_centroid(self) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke_at_centroid(self) -> VertexView<&'a mut M, G>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
     {
-        let centroid = self.centroid()?;
+        let centroid = self.centroid();
         self.poke_with(move || centroid)
     }
 
@@ -666,18 +652,18 @@ where
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
     }
 
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Removes the face.
     ///
     /// Returns the interior path of the face.
-    pub fn remove(self) -> Result<InteriorPathView<&'a mut M, G>, GraphError> {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceRemoveCache::snapshot(&storage, abc)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
-            .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
+    pub fn remove(self) -> InteriorPathView<&'a mut M, G> {
+        (move || {
+            let (abc, storage) = self.into_keyed_source();
+            let cache = FaceRemoveCache::snapshot(&storage, abc)?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
+                .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
     }
 }
 
@@ -690,8 +676,8 @@ where
         + Consistent,
     G: FaceCentroid + Geometry,
 {
-    pub fn centroid(&self) -> Result<G::Centroid, GraphError> {
-        G::centroid(self.interior_reborrow())
+    pub fn centroid(&self) -> G::Centroid {
+        G::centroid(self.interior_reborrow()).expect_consistent()
     }
 }
 
@@ -704,8 +690,8 @@ where
         + Consistent,
     G: FaceNormal + Geometry,
 {
-    pub fn normal(&self) -> Result<G::Normal, GraphError> {
-        G::normal(self.interior_reborrow())
+    pub fn normal(&self) -> G::Normal {
+        G::normal(self.interior_reborrow()).expect_consistent()
     }
 }
 
@@ -1085,20 +1071,14 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Gets the face of the interior path or inserts a face if one does not
     /// already exist.
     ///
     /// Returns the inserted face.
-    pub fn get_or_insert_face(self) -> Result<FaceView<&'a mut M, G>, GraphError> {
+    pub fn get_or_insert_face(self) -> FaceView<&'a mut M, G> {
         self.get_or_insert_face_with(|| Default::default())
     }
 
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     /// Gets the face of the interior path or inserts a face if one does not
     /// already exist.
     ///
@@ -1106,24 +1086,28 @@ where
     /// geometry for the face.
     ///
     /// Returns the inserted face.
-    pub fn get_or_insert_face_with<F>(self, f: F) -> Result<FaceView<&'a mut M, G>, GraphError>
+    pub fn get_or_insert_face_with<F>(self, f: F) -> FaceView<&'a mut M, G>
     where
         F: FnOnce() -> G::Face,
     {
         if let Some(face) = self.face.clone().take() {
             let (_, _, storage) = self.into_keyed_source();
-            Ok((face, storage).into_view().expect_consistent())
+            (face, storage).into_view().expect_consistent()
         }
         else {
-            let vertices = self
-                .vertices()
-                .map(|vertex| vertex.key())
-                .collect::<Vec<_>>();
-            let (_, _, storage) = self.into_keyed_source();
-            let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
-                .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            (move || {
+                let vertices = self
+                    .vertices()
+                    .map(|vertex| vertex.key())
+                    .collect::<Vec<_>>();
+                let (_, _, storage) = self.into_keyed_source();
+                let cache =
+                    FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
+                Mutation::replace(storage, Default::default())
+                    .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
+                    .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            })()
+            .expect_consistent()
         }
     }
 }
@@ -1518,7 +1502,7 @@ mod tests {
             let face = graph.face_mut(abc).unwrap();
             assert_eq!(3, face.arity()); // The face should be triangular.
 
-            let path = face.remove().unwrap().into_ref();
+            let path = face.remove().into_ref();
             assert_eq!(3, path.arity()); // The path should also be triangular.
         }
 
@@ -1615,7 +1599,7 @@ mod tests {
             .polygons_with_position() // 6 quads, 24 vertices.
             .collect::<MeshGraph<Point3<f32>>>();
         let key = graph.faces().nth(0).unwrap().key();
-        let vertex = graph.face_mut(key).unwrap().poke_at_centroid().unwrap();
+        let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
 
         // Diverging a quad yields a tetrahedron.
         assert_eq!(4, vertex.neighboring_faces().count());
@@ -1626,7 +1610,7 @@ mod tests {
         assert_eq!(3, face.arity());
 
         // Diverge the triangle.
-        let vertex = face.poke_at_centroid().unwrap();
+        let vertex = face.poke_at_centroid();
 
         assert_eq!(3, vertex.neighboring_faces().count());
     }
@@ -1637,7 +1621,7 @@ mod tests {
             .polygons_with_position() // 6 quads, 24 vertices.
             .index_vertices(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
-        graph.triangulate().unwrap();
+        graph.triangulate();
 
         assert_eq!(8, graph.vertex_count());
         assert_eq!(36, graph.arc_count());

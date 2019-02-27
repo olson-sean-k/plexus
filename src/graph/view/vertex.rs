@@ -15,7 +15,7 @@ use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView};
-use crate::graph::{GraphError, OptionExt};
+use crate::graph::{GraphError, OptionExt, ResultExt};
 
 /// View of a vertex.
 ///
@@ -89,12 +89,7 @@ where
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Point3<f32>>>();
     /// let key = graph.arcs().nth(0).unwrap().key();
-    /// let vertex = graph
-    ///     .arc_mut(key)
-    ///     .unwrap()
-    ///     .split_at_midpoint()
-    ///     .unwrap()
-    ///     .into_ref();
+    /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = vertex.into_outgoing_arc().into_face().unwrap();
@@ -353,9 +348,6 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    // TODO: Because the storage is consistent, this should not be a fallible
-    //       operation. Use `expect_consistent` and do not expose users to
-    //       failure modes.
     // TODO: This is not yet implemented, so examples use `no_run`. Run these
     //       examples in doc tests once this no longer intentionally panics.
     /// Removes the vertex.
@@ -380,14 +372,17 @@ where
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Triplet<_>>>();
     /// let key = graph.vertices().nth(0).unwrap().key();
-    /// graph.vertex_mut(key).unwrap().remove().unwrap();
+    /// graph.vertex_mut(key).unwrap().remove();
     /// ```
-    pub fn remove(self) -> Result<(), GraphError> {
-        let (a, storage) = self.into_keyed_source();
-        let cache = VertexRemoveCache::snapshot(&storage, a)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
-            .map(|_| ())
+    pub fn remove(self) {
+        (move || {
+            let (a, storage) = self.into_keyed_source();
+            let cache = VertexRemoveCache::snapshot(&storage, a)?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
+                .map(|_| ())
+        })()
+        .expect_consistent()
     }
 }
 
