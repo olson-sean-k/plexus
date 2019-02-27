@@ -273,7 +273,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// use plexus::buffer::{Flat3, MeshBuffer};
     /// use plexus::geometry::Triplet;
     ///
@@ -286,6 +286,43 @@ where
     pub fn into_raw_buffers(self) -> (Vec<I::Item>, Vec<G>) {
         let MeshBuffer { indices, vertices } = self;
         (indices, vertices)
+    }
+
+    /// Maps over the vertex data in a `MeshBuffer`.
+    ///
+    /// # Examples
+    ///
+    /// Translating the position data in a buffer:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    ///
+    /// use nalgebra::{Point3, Vector3};
+    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    ///
+    /// # fn main() {
+    /// let buffer = UvSphere::new(16, 8)
+    ///     .polygons_with_position()
+    ///     .triangulate()
+    ///     .collect::<MeshBuffer3<usize, Point3<f64>>>();
+    /// // Translate the positions.
+    /// let translation = Vector3::new(1.0.into(), 0.0.into(), 0.0.into());
+    /// let buffer = buffer.map_vertices_into(|position| position + translation);
+    /// # }
+    /// ```
+    pub fn map_vertices_into<H, F>(self, f: F) -> MeshBuffer<I, H>
+    where
+        F: FnMut(G) -> H,
+    {
+        let (indices, vertices) = self.into_raw_buffers();
+        MeshBuffer {
+            indices,
+            vertices: vertices.into_iter().map(f).collect::<Vec<_>>(),
+        }
     }
 
     pub fn arity(&self) -> Option<usize> {
@@ -346,6 +383,55 @@ where
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     Structured<P>: IndexBuffer,
 {
+    /// Converts a structured `MeshBuffer` into an iterator of polygons
+    /// containing vertex data.
+    ///
+    /// # Examples
+    ///
+    /// Mapping over the polygons described by a buffer:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    ///
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBufferN;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::R64;
+    ///
+    /// # fn main() {
+    /// let buffer = UvSphere::new(8, 8)
+    ///     .polygons_with_position()
+    ///     .collect::<MeshBufferN<usize, Point3<R64>>>();
+    /// let graph = buffer
+    ///     .into_polygons()
+    ///     .map_vertices(|position| position * 2.0.into())
+    ///     .triangulate()
+    ///     .collect::<MeshGraph<Point3<R64>>>();
+    /// # }
+    /// ```
+    pub fn into_polygons(
+        self,
+    ) -> impl Clone + Iterator<Item = <<Structured<P> as IndexBuffer>::Item as Map<G>>::Output>
+    where
+        G: Clone,
+        <Structured<P> as IndexBuffer>::Item: Map<G>,
+        <<Structured<P> as IndexBuffer>::Item as Map<G>>::Output: Clone,
+        <<Structured<P> as IndexBuffer>::Item as Topological>::Vertex: ToPrimitive,
+    {
+        let (indices, vertices) = self.into_raw_buffers();
+        indices
+            .into_iter()
+            .map(|polygon| {
+                polygon.map(|index| vertices[<usize as NumCast>::from(index).unwrap()].clone())
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
     pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
