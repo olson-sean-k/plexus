@@ -7,9 +7,10 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
+use crate::graph::container::alias::{OwnedCore, RefCore};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::FaceNormal;
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -33,14 +34,7 @@ impl<G> FaceMutation<G>
 where
     G: Geometry,
 {
-    fn core(
-        &self,
-    ) -> Core<
-        &Storage<VertexPayload<G>>,
-        &Storage<ArcPayload<G>>,
-        &Storage<EdgePayload<G>>,
-        &Storage<FacePayload<G>>,
-    > {
+    fn core(&self) -> RefCore<G> {
         Core::empty()
             .bind(self.as_vertex_storage())
             .bind(self.as_arc_storage())
@@ -560,7 +554,7 @@ pub fn remove_with_cache<M, N, G>(
 ) -> Result<FacePayload<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let FaceRemoveCache { abc, arcs, .. } = cache;
@@ -579,7 +573,7 @@ pub fn split_with_cache<M, N, G>(
 ) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let FaceSplitCache {
@@ -605,7 +599,7 @@ pub fn poke_with_cache<M, N, G>(
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let FacePokeCache {
@@ -629,7 +623,7 @@ pub fn bridge_with_cache<M, N, G>(
 ) -> Result<(), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let FaceBridgeCache {
@@ -664,7 +658,7 @@ pub fn extrude_with_cache<M, N, G>(
 ) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {

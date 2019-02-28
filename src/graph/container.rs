@@ -80,6 +80,8 @@ where
 /// enforced directly in `Core`. The `Bind` trait can be used to transition
 /// from `()` to some other type. `Bind` implementations enforce storage
 /// constraints.
+///
+/// A `Core` with no unbound fields is _complete_.
 pub struct Core<V = (), A = (), E = (), F = ()> {
     vertices: V,
     arcs: A,
@@ -286,10 +288,18 @@ pub mod alias {
     use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
     use crate::graph::storage::Storage;
 
+    /// A complete core that owns all of its storage.
     pub type OwnedCore<G> = Core<
         Storage<VertexPayload<G>>,
         Storage<ArcPayload<G>>,
         Storage<EdgePayload<G>>,
         Storage<FacePayload<G>>,
+    >;
+    /// A complete core with immutable references to all of its storage.
+    pub type RefCore<'a, G> = Core<
+        &'a Storage<VertexPayload<G>>,
+        &'a Storage<ArcPayload<G>>,
+        &'a Storage<EdgePayload<G>>,
+        &'a Storage<FacePayload<G>>,
     >;
 }

@@ -1,6 +1,6 @@
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::payload::VertexPayload;
@@ -95,7 +95,7 @@ pub fn remove_with_cache<M, N, G>(
 ) -> Result<VertexPayload<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let VertexRemoveCache { cache } = cache;

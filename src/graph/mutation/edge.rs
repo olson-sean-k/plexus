@@ -3,9 +3,9 @@ use std::ops::{Add, Deref, DerefMut, Mul};
 use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::ArcNormal;
+use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Mutate, Mutation};
@@ -475,7 +475,7 @@ pub fn remove_with_cache<M, N, G>(
 ) -> Result<(EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>)), GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     fn remove_arc_with_cache<M, N, G>(
@@ -484,7 +484,7 @@ where
     ) -> Result<ArcPayload<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
-        M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+        M: Mutable<G>,
         G: Geometry,
     {
         let ArcRemoveCache { ab, cache, .. } = cache;
@@ -542,13 +542,13 @@ pub fn split_with_cache<M, N, G>(
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<ArcPayload<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
-        M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+        M: Mutable<G>,
         G: Geometry,
     {
         let (a, _) = ab.into();
@@ -572,7 +572,7 @@ where
     ) -> Result<(ArcKey, ArcKey), GraphError>
     where
         N: AsMut<Mutation<M, G>>,
-        M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+        M: Mutable<G>,
         G: Geometry,
     {
         // Remove the arc and insert two truncated arcs in its place.
@@ -638,7 +638,7 @@ pub fn bridge_with_cache<M, N, G>(
 ) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry,
 {
     let ArcBridgeCache {
@@ -659,7 +659,7 @@ pub fn extrude_with_cache<M, N, G, T>(
 ) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
-    M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    M: Mutable<G>,
     G: Geometry + ArcNormal,
     G::Normal: Mul<T>,
     G::Vertex: AsPosition,
