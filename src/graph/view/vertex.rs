@@ -197,6 +197,19 @@ where
     ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         ArcCirculator::from(self.interior_reborrow())
     }
+
+    // TODO: Should this be exposed as part of the public (consistent) API?
+    pub(in crate::graph) fn reachable_connectivity(&self) -> (Vec<ArcKey>, Vec<ArcKey>) {
+        (
+            self.reachable_incoming_arcs()
+                .map(|arc| arc.key())
+                .collect(),
+            self.reachable_incoming_arcs()
+                .flat_map(|arc| arc.into_reachable_opposite_arc())
+                .map(|arc| arc.key())
+                .collect(),
+        )
+    }
 }
 
 impl<M, G> VertexView<M, G>

@@ -1,6 +1,5 @@
 pub mod edge;
 pub mod face;
-mod region;
 pub mod vertex;
 
 use std::fmt::Debug;

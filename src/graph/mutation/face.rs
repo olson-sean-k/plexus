@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use smallvec::SmallVec;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Add, Deref, DerefMut, Mul};
@@ -10,13 +11,12 @@ use crate::graph::container::alias::OwnedCore;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::FaceNormal;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
-use crate::graph::mutation::region::{Connectivity, Region, Singularity};
 use crate::graph::mutation::{Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::convert::FromKeyedSource;
+use crate::graph::view::convert::{FromKeyedSource, IntoView};
 use crate::graph::view::{ArcView, FaceNeighborhood, FaceView, VertexView};
 use crate::graph::GraphError;
 use crate::IteratorExt;
@@ -27,7 +27,6 @@ where
 {
     mutation: EdgeMutation<G>,
     storage: Storage<FacePayload<G>>,
-    singularities: HashMap<VertexKey, HashSet<FaceKey>>,
 }
 
 impl<G> FaceMutation<G>
@@ -65,7 +64,6 @@ where
         let FaceInsertCache {
             vertices,
             connectivity,
-            singularity,
             geometry,
             ..
         } = cache;
@@ -81,17 +79,6 @@ where
             .collect::<Result<Vec<_>, _>>()?;
         // Insert the face.
         let face = self.storage.insert(FacePayload::new(arcs[0], geometry.1));
-        // If a singularity was detected, record it and its neighboring faces.
-        if let Some(singularity) = singularity {
-            let faces = self
-                .singularities
-                .entry(singularity.0)
-                .or_insert_with(Default::default);
-            for face in singularity.1 {
-                faces.insert(face);
-            }
-            faces.insert(face);
-        }
         self.connect_face_interior(&arcs, face)?;
         self.connect_face_exterior(&arcs, connectivity)?;
         Ok(face)
@@ -125,7 +112,10 @@ where
     fn connect_face_exterior(
         &mut self,
         arcs: &[ArcKey],
-        connectivity: (Connectivity, Connectivity),
+        connectivity: (
+            HashMap<VertexKey, Vec<ArcKey>>,
+            HashMap<VertexKey, Vec<ArcKey>>,
+        ),
     ) -> Result<(), GraphError> {
         let (incoming, outgoing) = connectivity;
         for ab in arcs {
@@ -197,7 +187,6 @@ where
         // TODO: Include edges.
         let (vertices, arcs, edges, faces) = core.into_storage();
         FaceMutation {
-            singularities: Default::default(),
             storage: faces,
             mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs).bind(edges)),
         }
@@ -207,36 +196,10 @@ where
         let FaceMutation {
             mutation,
             storage: faces,
-            singularities,
             ..
         } = self;
         mutation.commit().and_then(move |core| {
             let (vertices, arcs, edges, ..) = core.into_storage();
-            {
-                // TODO: Rejection of pinwheel connectivity has been removed.
-                //       Determine if this check is related in a way that is
-                //       inconsistent. If so, this should probably be removed.
-                let core = Core::empty().bind(&vertices).bind(&arcs).bind(&faces);
-                for (vertex, faces) in singularities {
-                    // Determine if any unreachable faces exist in the mesh. This
-                    // cannot happen if the mesh is ultimately a manifold and edge
-                    // connectivity heals.
-                    if let Some(vertex) = VertexView::from_keyed_source((vertex, &core)) {
-                        for unreachable in faces.difference(
-                            &vertex
-                                .reachable_neighboring_faces()
-                                .map(|face| face.key())
-                                .collect(),
-                        ) {
-                            if core.as_face_storage().contains_key(unreachable) {
-                                // Non-manifold connectivity.
-                                return Err(GraphError::TopologyMalformed);
-                            }
-                        }
-                    }
-                }
-            }
-            // TODO: Include edges.
             Ok(Core::empty()
                 .bind(vertices)
                 .bind(arcs)
@@ -271,8 +234,10 @@ where
     G: Geometry,
 {
     vertices: &'a [VertexKey],
-    connectivity: (Connectivity, Connectivity),
-    singularity: Option<Singularity>,
+    connectivity: (
+        HashMap<VertexKey, Vec<ArcKey>>,
+        HashMap<VertexKey, Vec<ArcKey>>,
+    ),
     geometry: (G::Arc, G::Face),
 }
 
@@ -282,7 +247,7 @@ where
 {
     pub fn snapshot<M>(
         storage: M,
-        vertices: &'a [VertexKey],
+        keys: &'a [VertexKey],
         geometry: (G::Arc, G::Face),
     ) -> Result<Self, GraphError>
     where
@@ -290,18 +255,64 @@ where
         M::Target:
             AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorage<VertexPayload<G>>,
     {
-        // Verify that the closed path is not already occupied by a face and
-        // collect the incoming and outgoing arcs for each vertex in the
-        // region.
-        let region = Region::from_keyed_storage(vertices, storage)?;
-        if region.face().is_some() {
-            return Err(GraphError::TopologyConflict);
+        let arity = keys.len();
+        let set = keys.iter().cloned().collect::<HashSet<_>>();
+        if set.len() != arity {
+            // Vertex keys are not unique.
+            return Err(GraphError::TopologyMalformed);
         }
-        let (connectivity, singularity) = region.reachable_connectivity();
+
+        let storage = storage.reborrow();
+        let vertices = keys
+            .iter()
+            .flat_map(|key| (*key, storage).into_view())
+            .collect::<SmallVec<[VertexView<_, _>; 4]>>();
+        if vertices.len() != arity {
+            // Vertex keys refer to nonexistent vertices.
+            return Err(GraphError::TopologyNotFound);
+        }
+        for (previous, next) in keys
+            .iter()
+            .perimeter()
+            .map(|(a, b)| ArcView::from_keyed_source(((*a, *b).into(), storage)))
+            .perimeter()
+        {
+            if let Some(previous) = previous {
+                if previous.face.is_some() {
+                    // An interior arc is already occuppied by a face.
+                    return Err(GraphError::TopologyConflict);
+                }
+                // Let the previous arc be AB and the next arc be BC. The
+                // vertices A, B, and C lie within the implied interior path in
+                // order.
+                //
+                // If BC does not exist and AB is neighbors with some arc BX,
+                // then X must not lie within the implied interior path (the
+                // ordered set of vertices given to this function). If X is
+                // within the path, then BX must bisect the implied interior
+                // path (because X cannot be C).
+                if next.is_none() {
+                    if let Some(next) = previous.reachable_next_arc() {
+                        let (_, destination) = next.key().into();
+                        if set.contains(&destination) {
+                            return Err(GraphError::TopologyConflict);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut incoming = HashMap::with_capacity(arity);
+        let mut outgoing = HashMap::with_capacity(arity);
+        for vertex in vertices {
+            let key = vertex.key();
+            let connectivity = vertex.reachable_connectivity();
+            incoming.insert(key, connectivity.0);
+            outgoing.insert(key, connectivity.1);
+        }
         Ok(FaceInsertCache {
-            vertices,
-            connectivity,
-            singularity,
+            vertices: keys,
+            connectivity: (incoming, outgoing),
             geometry,
         })
     }
