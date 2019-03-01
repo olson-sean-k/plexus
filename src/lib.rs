@@ -36,10 +36,6 @@ pub mod geometry;
 pub mod graph;
 pub mod primitive;
 
-// These types are re-exported to avoid requiring direct dependencies.
-pub use decorum::{R32, R64};
-pub use either::Either;
-
 // TODO: Documentation comments include static image content from the GitHub
 //       repository. This is fragile and difficult to maintain. Use a mechanism
 //       provided by rustdoc or doxidize for this instead.

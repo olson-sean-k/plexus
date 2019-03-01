@@ -540,17 +540,21 @@ impl<T> Rotate for Polygon<T> {
 /// Create a topological stream of position and UV-mapping data for a cube:
 ///
 /// ```rust
+/// # extern crate decorum;
 /// # extern crate num;
 /// # extern crate plexus;
-/// # use plexus::R64;
+/// #
+/// use decorum::R64;
 /// use plexus::prelude::*;
 /// use plexus::primitive;
 /// use plexus::primitive::cube::Cube;
 ///
-/// # use num::One;
-/// # fn map_uv_to_color(uv: &Duplet<R64>) -> Triplet<R64> {
+/// fn map_uv_to_color(uv: &Duplet<R64>) -> Triplet<R64> {
+/// #     use num::One;
 /// #     Triplet(One::one(), One::one(), One::one())
-/// # }
+///     // ...
+/// }
+///
 /// # fn main() {
 /// let cube = Cube::new();
 /// let polygons =

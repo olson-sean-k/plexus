@@ -74,10 +74,10 @@ Graphs support arbitrary geometry for vertices, arcs, edges, and faces
 enables geometric features, but only one trait is required: `Geometry`.
 
 ```rust
+use decorum::R64;
 use nalgebra::{Point3, Vector3};
 use plexus::geometry::convert::AsPosition;
 use plexus::geometry::Geometry;
-use plexus::R64; // Re-exported from the `decorum` crate.
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct VertexGeometry {

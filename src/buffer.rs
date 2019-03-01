@@ -391,16 +391,17 @@ where
     /// Mapping over the polygons described by a buffer:
     ///
     /// ```rust
+    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
     ///
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBufferN;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::sphere::UvSphere;
-    /// use plexus::R64;
     ///
     /// # fn main() {
     /// let buffer = UvSphere::new(8, 8)
