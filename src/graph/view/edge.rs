@@ -1154,19 +1154,6 @@ where
     }
 }
 
-impl<M, G> EdgeView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
-{
-    fn interior_reborrow_mut(&mut self) -> EdgeView<&mut M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow_mut();
-        EdgeView::from_keyed_source_unchecked((key, storage))
-    }
-}
-
 /// Reachable API.
 impl<M, G> EdgeView<M, G>
 where

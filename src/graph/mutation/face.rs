@@ -13,7 +13,7 @@ use crate::graph::geometry::FaceNormal;
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};

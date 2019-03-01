@@ -47,5 +47,5 @@ fn main() {
     // Get the key of the singular face.
     let key = graph.faces().nth(0).unwrap().key();
     // Subdivide the face.
-    let face = circumscribe(graph.face_mut(key).unwrap());
+    let _ = circumscribe(graph.face_mut(key).unwrap());
 }

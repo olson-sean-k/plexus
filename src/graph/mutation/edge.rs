@@ -30,13 +30,6 @@ impl<G> EdgeMutation<G>
 where
     G: Geometry,
 {
-    pub fn get_or_insert_edge(
-        &mut self,
-        span: (VertexKey, VertexKey),
-    ) -> Result<(EdgeKey, (ArcKey, ArcKey)), GraphError> {
-        self.get_or_insert_edge_with(span, || Default::default())
-    }
-
     pub fn get_or_insert_edge_with<F>(
         &mut self,
         span: (VertexKey, VertexKey),
