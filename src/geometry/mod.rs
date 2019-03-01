@@ -11,10 +11,14 @@
 
 use decorum::R64;
 use num::{self, Num, NumCast, One, Zero};
+use std::ops::{Add, Mul, Neg, Sub};
 
 pub mod compose;
 pub mod convert;
 pub mod ops;
+pub mod query;
+
+use self::convert::AsPosition;
 
 /// Graph geometry.
 ///
@@ -91,6 +95,27 @@ impl Geometry for () {
     type Arc = ();
     type Edge = ();
     type Face = ();
+}
+
+pub trait Space: Geometry
+where
+    <Self as Geometry>::Vertex: AsPosition<Target = Self::Point>,
+{
+    type Scalar: Clone + Neg<Output = Self::Scalar> + Num;
+    type Vector: Add<Output = Self::Vector>
+        + Clone
+        + Mul<Self::Scalar, Output = Self::Vector>
+        + Neg<Output = Self::Vector>;
+    type Point: Add<Self::Vector, Output = Self::Point> + Clone + Sub<Output = Self::Vector>;
+}
+
+pub struct Ray<S>
+where
+    S: Space,
+    <S as Geometry>::Vertex: AsPosition<Target = S::Point>,
+{
+    pub origin: S::Point,
+    pub direction: S::Vector,
 }
 
 /// Homogeneous duplet.
@@ -441,6 +466,7 @@ mod feature_geometry_mint {
 mod feature_geometry_nalgebra {
     use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
+    use std::ops::{AddAssign, MulAssign, SubAssign};
 
     use crate::geometry::*;
 
@@ -558,5 +584,25 @@ mod feature_geometry_nalgebra {
         type Arc = ();
         type Edge = ();
         type Face = ();
+    }
+
+    impl<T> Space for Point2<T>
+    where
+        T: AddAssign + MulAssign + Neg<Output = T> + Num + Scalar + SubAssign,
+        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
+    {
+        type Scalar = T;
+        type Vector = Vector2<T>;
+        type Point = Self;
+    }
+
+    impl<T> Space for Point3<T>
+    where
+        T: AddAssign + MulAssign + Neg<Output = T> + Num + Scalar + SubAssign,
+        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
+    {
+        type Scalar = T;
+        type Vector = Vector3<T>;
+        type Point = Self;
     }
 }
