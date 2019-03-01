@@ -87,7 +87,7 @@ gfx_pipeline! {
         camera: gfx::Global<[[f32; 4]; 4]> = "u_camera",
         model: gfx::Global<[[f32; 4]; 4]> = "u_model",
         color: gfx::RenderTarget<gfx::format::Rgba8> = "f_target0",
-        depth: gfx::DepthTarget<gfx::format::DepthStencil> = gfx::preset::depth::LESS_EQUAL_WRITE,
+        depth: gfx::DepthTarget<gfx::format::Depth> = gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
 

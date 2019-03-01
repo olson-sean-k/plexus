@@ -1,11 +1,11 @@
-use gfx::format::{DepthStencil, Rgba8};
+use gfx::format::{Depth, Rgba8};
 use gfx::handle::{DepthStencilView, RenderTargetView};
 use gfx::state::{CullFace, FrontFace, RasterMethod, Rasterizer};
 use gfx::traits::FactoryExt;
 use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
 use gfx_device_gl;
 use gfx_window_glutin;
-use glutin::{GlContext, GlWindow};
+use glutin::GlWindow;
 use plexus::buffer::MeshBuffer3;
 
 use crate::pipeline::{self, Data, Meta, Transform, Vertex};
@@ -18,7 +18,7 @@ pub trait SwapBuffers {
 
 impl SwapBuffers for GlWindow {
     fn swap_buffers(&mut self) -> Result<(), ()> {
-        match <GlWindow as GlContext>::swap_buffers(self) {
+        match GlWindow::swap_buffers(self) {
             Ok(_) => Ok(()),
             Err(_) => Err(()),
         }
@@ -32,7 +32,7 @@ where
     fn update_frame_buffer_view(
         &self,
         color: &mut RenderTargetView<R, Rgba8>,
-        depth: &mut DepthStencilView<R, DepthStencil>,
+        depth: &mut DepthStencilView<R, Depth>,
     );
 }
 
@@ -40,7 +40,7 @@ impl UpdateFrameBufferView<gfx_device_gl::Resources> for GlWindow {
     fn update_frame_buffer_view(
         &self,
         color: &mut RenderTargetView<gfx_device_gl::Resources, Rgba8>,
-        depth: &mut DepthStencilView<gfx_device_gl::Resources, DepthStencil>,
+        depth: &mut DepthStencilView<gfx_device_gl::Resources, Depth>,
     ) {
         gfx_window_glutin::update_views(self, color, depth);
     }
@@ -94,7 +94,7 @@ where
         device: R::Device,
         encoder: Encoder<R::Resources, R::CommandBuffer>,
         color: RenderTargetView<R::Resources, Rgba8>,
-        depth: DepthStencilView<R::Resources, DepthStencil>,
+        depth: DepthStencilView<R::Resources, Depth>,
     ) -> Self {
         let shaders = factory
             .create_shader_set(
