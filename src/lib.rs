@@ -41,21 +41,51 @@ pub mod primitive;
 //       provided by rustdoc or doxidize for this instead.
 
 pub mod prelude {
-    pub use crate::buffer::{IntoFlatIndex, IntoStructuredIndex};
+    //! Re-exports commonly used types and traits.
+    //!
+    //! Importing the contents of this module is recommended when working with
+    //! generators and iterator expressions, as those operations are expressed
+    //! mostly through traits.
+    //!
+    //! # Traits
+    //!
+    //! This module re-exports numerous traits. Traits from the `primitive`
+    //! module for generating, decomposing, and indexing iterators over
+    //! topological data (e.g., `Triangle`, `Quad`, etc.) are re-exported so
+    //! that functions in iterator expressions can be used without lengthy
+    //! imports.
+    //!
+    //! Basic traits for (de)constructing `MeshBuffer`s and `MeshGraph`s are
+    //! also re-exported. These traits allow mesh types to be constructed from
+    //! raw buffers and buffers to be re-indexed.
+    //!
+    //! # Types
+    //!
+    //! The `Selector` enum and its variants are re-exported for convenience.
+    //! `Selector` is often used when mutating `MeshGraph`s.
+    //!
+    //! The geometric `Duplet` and `Triplet` types are also re-exported. These
+    //! types are emitted by generators and support various conversions.
+
+    pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
     pub use crate::geometry::{Duplet, Triplet};
     pub use crate::graph::Selector;
     pub use crate::primitive::decompose::{
-        Edges, IntoEdges, IntoSubdivisions, IntoTetrahedrons, IntoTriangles, IntoVertices,
-        Subdivide, Tetrahedrons, Triangulate, Vertices,
+        Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _,
+        IntoTriangles as _, IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _,
+        Vertices as _,
     };
     pub use crate::primitive::generate::{
-        IndicesForNormal, IndicesForPosition, PolygonGenerator, PolygonsWithNormal,
-        PolygonsWithPosition, PolygonsWithUvMap, VerticesWithNormal, VerticesWithPosition,
+        IndicesForNormal as _, IndicesForPosition as _, PolygonGenerator as _,
+        PolygonsWithNormal as _, PolygonsWithPosition as _, PolygonsWithUvMap as _,
+        VerticesWithNormal as _, VerticesWithPosition as _,
     };
-    pub use crate::primitive::index::{CollectWithIndexer, FlatIndexVertices, IndexVertices};
-    pub use crate::primitive::{Converged, Map, MapVertices, Zip};
-    pub use crate::IteratorExt;
-    pub use crate::{FromRawBuffers, FromRawBuffersWithArity};
+    pub use crate::primitive::index::{
+        CollectWithIndexer as _, FlatIndexVertices as _, IndexVertices as _,
+    };
+    pub use crate::primitive::{Converged as _, Map as _, MapVertices as _, Zip as _};
+    pub use crate::IteratorExt as _;
+    pub use crate::{FromRawBuffers as _, FromRawBuffersWithArity as _};
 
     pub use Selector::ByIndex;
     pub use Selector::ByKey;
