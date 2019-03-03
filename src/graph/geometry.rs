@@ -3,12 +3,10 @@
 //! See the `geometry::compose` module. This module's contents are re-exported
 //! there.
 
-use std::ops::{Add, Sub};
-
 use crate::geometry::alias::*;
 use crate::geometry::convert::AsPosition;
 use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Space};
 use crate::graph::container::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::AsStorage;
@@ -28,13 +26,11 @@ pub trait FaceNormal: Geometry {
 
 impl<G> FaceNormal for G
 where
-    G: Geometry,
-    G::Vertex: AsPosition,
-    VertexPosition<G>: Clone + Sub,
-    <VertexPosition<G> as Sub>::Output: Cross,
-    <<VertexPosition<G> as Sub>::Output as Cross>::Output: Normalize,
+    G: Geometry + Space,
+    G::Vertex: AsPosition<Target = G::Point>,
+    G::Vector: Cross<Output = G::Vector> + Normalize,
 {
-    type Normal = <<VertexPosition<G> as Sub>::Output as Cross>::Output;
+    type Normal = G::Vector;
 
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
@@ -43,12 +39,19 @@ where
             + AsStorage<FacePayload<Self>>
             + AsStorage<VertexPayload<Self>>,
     {
-        let positions = face
+        let mut positions = face
             .reachable_vertices()
             .take(3)
-            .map(|vertex| vertex.geometry.as_position().clone())
-            .collect::<Vec<_>>();
-        let (a, b, c) = (&positions[0], &positions[1], &positions[2]);
+            .map(|vertex| vertex.geometry.as_position().clone());
+        let a = positions
+            .next()
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let b = positions
+            .next()
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let c = positions
+            .next()
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let ab = a.clone() - b.clone();
         let bc = b.clone() - c.clone();
         Ok(ab.cross(bc).normalize())
@@ -73,7 +76,7 @@ where
 {
     type Centroid = G::Vertex;
 
-    // TODO: This should operate over the result of `AsPosition`.
+    // TODO: Should this only operate over the result of `AsPosition`?
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
@@ -145,16 +148,11 @@ pub trait ArcNormal: Geometry {
 
 impl<G> ArcNormal for G
 where
-    G: Geometry,
-    G::Vertex: AsPosition,
-    VertexPosition<G>: Clone
-        + Add<
-            <<VertexPosition<G> as Sub>::Output as Project>::Output,
-            Output = VertexPosition<G>,
-        > + Sub,
-    <VertexPosition<G> as Sub>::Output: Normalize + Project,
+    G: Geometry + Space,
+    G::Vertex: AsPosition<Target = G::Point>,
+    G::Vector: Project<Output = G::Vector> + Normalize,
 {
-    type Normal = <VertexPosition<G> as Sub>::Output;
+    type Normal = G::Vector;
 
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
