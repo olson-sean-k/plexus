@@ -210,7 +210,7 @@ pub mod alias {
 
 #[cfg(feature = "geometry-cgmath")]
 mod feature_geometry_cgmath {
-    use cgmath::{Point2, Point3, Vector2, Vector3};
+    use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
     use num::{NumCast, ToPrimitive};
 
     use crate::geometry::*;
@@ -330,8 +330,29 @@ mod feature_geometry_cgmath {
         type Edge = ();
         type Face = ();
     }
+
+    impl<T> Space for Point2<T>
+    where
+        T: BaseNum + Neg<Output = T> + Num,
+        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
+    {
+        type Scalar = T;
+        type Vector = Vector2<T>;
+        type Point = Self;
+    }
+
+    impl<T> Space for Point3<T>
+    where
+        T: BaseNum + Neg<Output = T> + Num,
+        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
+    {
+        type Scalar = T;
+        type Vector = Vector3<T>;
+        type Point = Self;
+    }
 }
 
+// TODO: Consider using conversion to implement `Space` for mint types.
 #[cfg(feature = "geometry-mint")]
 mod feature_geometry_mint {
     use mint::{Point2, Point3, Vector2, Vector3};
