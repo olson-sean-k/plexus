@@ -803,9 +803,10 @@ where
         })?;
         let (source, storage) = self.into_keyed_source();
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
-        Mutation::replace(storage, Default::default())
+        Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            .expect_consistent())
     }
 
     /// Extrudes a boundary arc along its normal.
@@ -862,9 +863,10 @@ where
     {
         let (ab, storage) = self.into_keyed_source();
         let cache = ArcExtrudeCache::snapshot(&storage, ab, distance)?;
-        Mutation::replace(storage, Default::default())
+        Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+            .expect_consistent())
     }
 
     /// Removes the arc, its opposite arc, and edge.

@@ -456,11 +456,14 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
         })?;
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
-        Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::split_with_cache(mutation, cache))
-            .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+        Ok((move || {
+            let (abc, storage) = self.into_keyed_source();
+            let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| face::split_with_cache(mutation, cache))
+                .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent())
     }
 
     /// Merges the face into a neighboring face over their shared edge (and
@@ -530,6 +533,7 @@ where
             .map(|arc| arc.key())
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry.clone();
+        // TODO: Batch this operation by using the mutation API instead.
         let (_, storage) = self.into_keyed_source();
         Ok(ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
@@ -552,9 +556,10 @@ where
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (source, storage) = self.into_keyed_source();
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
-        Mutation::replace(storage, Default::default())
+        Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
             .map(|_| ())
+            .expect_consistent())
     }
 
     /// Decomposes the face into triangles. Does nothing if the face is
@@ -647,9 +652,10 @@ where
     {
         let (abc, storage) = self.into_keyed_source();
         let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
-        Mutation::replace(storage, Default::default())
+        Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            .expect_consistent())
     }
 
     /// Removes the face.
