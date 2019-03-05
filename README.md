@@ -5,6 +5,7 @@
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
 [![Crate](https://img.shields.io/crates/v/plexus.svg)](https://crates.io/crates/plexus)
+[![Chat](https://badges.gitter.im/plexus-rs/community.svg)](https://gitter.im/plexus-rs/community#)
 
 ## Primitives and Iterator Expressions
 
