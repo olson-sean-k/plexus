@@ -3,11 +3,10 @@ use fool::prelude::*;
 use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::{Add, Deref, DerefMut, Mul};
+use std::ops::{Deref, DerefMut};
 
-use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Space};
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
@@ -585,28 +584,10 @@ where
     /// function.
     ///
     /// Returns the inserted vertex.
-    pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M, G>
-    where
-        F: FnOnce() -> G::Vertex,
-    {
-        (move || {
-            let (abc, storage) = self.into_keyed_source();
-            let cache = FacePokeCache::snapshot(&storage, abc, f())?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
-                .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent()
-    }
-
-    /// Subdivides the face about its centroid. A triangle fan is formed from each
-    /// arc in the face's perimeter and a vertex inserted at the centroid.
-    ///
-    /// Returns the inserted vertex.
     ///
     /// # Examples
     ///
-    /// Forming a baseless triangular pyramid from a face:
+    /// Forming a pyramid from a triangular face:
     ///
     /// ```rust
     /// # extern crate nalgebra;
@@ -627,13 +608,33 @@ where
     /// let key = graph.faces().nth(0).unwrap().key();
     /// let mut face = graph.face_mut(key).unwrap();
     ///
-    /// // Use the face's normal to translate the vertex from the centroid.
-    /// let normal = face.normal();
-    /// let mut vertex = face.poke_at_centroid();
-    /// let position = vertex.geometry.as_position() + (normal * 2.0);
-    /// *vertex.geometry.as_position_mut() = position;
+    /// // See `poke_with_offset`, which provides this functionality.
+    /// let mut geometry = face.centroid();
+    /// let position = geometry.as_position().clone() + face.normal();
+    /// face.poke_with(move || {
+    ///     *geometry.as_position_mut() = position;
+    ///     geometry
+    /// });
     /// # }
     /// ```
+    pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M, G>
+    where
+        F: FnOnce() -> G::Vertex,
+    {
+        (move || {
+            let (abc, storage) = self.into_keyed_source();
+            let cache = FacePokeCache::snapshot(&storage, abc, f())?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
+                .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
+    }
+
+    /// Subdivides the face about its centroid. A triangle fan is formed from
+    /// each arc in the face's perimeter and a vertex inserted at the centroid.
+    ///
+    /// Returns the inserted vertex.
     pub fn poke_at_centroid(self) -> VertexView<&'a mut M, G>
     where
         G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
@@ -642,16 +643,60 @@ where
         self.poke_with(move || centroid)
     }
 
-    pub fn extrude<T>(self, distance: T) -> Result<FaceView<&'a mut M, G>, GraphError>
+    /// Subdivides the face about its centroid. A triangle fan is formed from
+    /// each arc in the face's perimeter and a vertex inserted at the centroid.
+    /// The inserted vertex is then translated along the initiating face's
+    /// normal by the given offset.
+    ///
+    /// Returns the inserted vertex.
+    ///
+    /// # Examples
+    ///
+    /// Constructing a "spikey" sphere:
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point3;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::sphere::UvSphere;
+    ///
+    /// # fn main() {
+    /// let mut graph = UvSphere::new(16, 8)
+    ///     .polygons_with_position()
+    ///     .collect::<MeshGraph<Point3<f64>>>();
+    /// let keys = graph.faces().map(|face| face.key()).collect::<Vec<_>>();
+    /// for key in keys {
+    ///     graph.face_mut(key).unwrap().poke_with_offset(0.5);
+    /// }
+    /// # }
+    /// ```
+    pub fn poke_with_offset<T>(self, offset: T) -> VertexView<&'a mut M, G>
     where
-        G: FaceNormal,
-        G::Normal: Mul<T>,
-        G::Vertex: AsPosition,
-        ScaledFaceNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
+        T: Into<G::Scalar>,
+        G: FaceCentroid<Centroid = <G as Geometry>::Vertex>
+            + FaceNormal<Normal = <G as Space>::Vector>
+            + Space,
+        G::Vertex: AsPosition<Target = G::Point>,
+    {
+        let mut geometry = self.centroid();
+        let position = geometry.as_position().clone() + (self.normal() * offset.into());
+        self.poke_with(move || {
+            *geometry.as_position_mut() = position;
+            geometry
+        })
+    }
+
+    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M, G>, GraphError>
+    where
+        T: Into<G::Scalar>,
+        G: FaceNormal<Normal = <G as Space>::Vector> + Space,
+        G::Vertex: AsPosition<Target = G::Point>,
     {
         let (abc, storage) = self.into_keyed_source();
-        let cache = FaceExtrudeCache::snapshot(&storage, abc, distance)?;
+        let cache = FaceExtrudeCache::snapshot(&storage, abc, offset.into())?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())

@@ -2,11 +2,10 @@ use itertools::Itertools;
 use smallvec::SmallVec;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
-use std::ops::{Add, Deref, DerefMut, Mul};
+use std::ops::{Deref, DerefMut};
 
-use crate::geometry::alias::{ScaledFaceNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Space};
 use crate::graph::container::alias::{OwnedCore, RefCore};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::FaceNormal;
@@ -506,27 +505,27 @@ where
     geometry: G::Face,
     cache: FaceRemoveCache<G>,
 }
-
 impl<G> FaceExtrudeCache<G>
 where
     G: FaceNormal + Geometry,
     G::Vertex: AsPosition,
 {
-    pub fn snapshot<M, T>(storage: M, abc: FaceKey, distance: T) -> Result<Self, GraphError>
+    pub fn snapshot<M, T>(storage: M, abc: FaceKey, offset: T) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        G::Normal: Mul<T>,
-        ScaledFaceNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledFaceNormal<G, T>, Output = VertexPosition<G>> + Clone,
+        T: Into<G::Scalar>,
+        G: FaceNormal<Normal = <G as Space>::Vector> + Space,
+        G::Vertex: AsPosition<Target = G::Point>,
     {
+        // TODO: The translation should be computed before taking the snapshot.
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
         let face = FaceView::from_keyed_source((abc, storage)).unwrap();
-        let translation = face.normal() * distance;
+        let translation = face.normal() * offset.into();
 
         let sources = face.vertices().map(|vertex| vertex.key()).collect();
         let destinations = face

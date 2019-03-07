@@ -1,8 +1,7 @@
-use std::ops::{Add, Deref, DerefMut, Mul};
+use std::ops::{Deref, DerefMut};
 
-use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Space};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::geometry::ArcNormal;
 use crate::graph::mutation::alias::Mutable;
@@ -419,18 +418,16 @@ impl<G> ArcExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M, T>(storage: M, ab: ArcKey, distance: T) -> Result<Self, GraphError>
+    pub fn snapshot<M, T>(storage: M, ab: ArcKey, offset: T) -> Result<Self, GraphError>
     where
+        T: Into<G::Scalar>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        G: Geometry + ArcNormal,
-        G::Normal: Mul<T>,
-        G::Vertex: AsPosition,
-        ScaledArcNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
+        G: ArcNormal<Normal = <G as Space>::Vector> + Space,
+        G::Vertex: AsPosition<Target = G::Point>,
     {
         // Get the extruded geometry.
         let (vertices, arc) = {
@@ -449,7 +446,9 @@ where
                     .geometry
                     .clone(),
             );
-            let translation = arc.normal()? * distance;
+            // TODO: The translation should be computed before taking the
+            //       snapshot.
+            let translation = arc.normal()? * offset.into();
             *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
             *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
             (vertices, arc.geometry.clone())
@@ -646,18 +645,14 @@ where
     mutation.as_mut().insert_face(&[a, b, c, d], (arc, face))
 }
 
-pub fn extrude_with_cache<M, N, G, T>(
+pub fn extrude_with_cache<M, N, G>(
     mut mutation: N,
     cache: ArcExtrudeCache<G>,
 ) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry + ArcNormal,
-    G::Normal: Mul<T>,
-    G::Vertex: AsPosition,
-    ScaledArcNormal<G, T>: Clone,
-    VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
+    G: Geometry,
 {
     let ArcExtrudeCache {
         ab, vertices, arc, ..

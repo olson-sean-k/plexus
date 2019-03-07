@@ -204,7 +204,6 @@ pub mod alias {
     use crate::geometry::*;
 
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
-    pub type ScaledFaceNormal<G, T> = <<G as FaceNormal>::Normal as Mul<T>>::Output;
     pub type ScaledArcNormal<G, T> = <<G as ArcNormal>::Normal as Mul<T>>::Output;
 }
 

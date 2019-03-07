@@ -3,11 +3,11 @@ use either::Either;
 use fool::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::{Add, Deref, DerefMut, Mul};
+use std::ops::{Deref, DerefMut};
 
-use crate::geometry::alias::{ScaledArcNormal, VertexPosition};
+use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
+use crate::geometry::{Geometry, Space};
 use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::alias::Mutable;
@@ -853,16 +853,14 @@ where
     /// graph.arc_mut(key).unwrap().extrude(1.0).unwrap();
     /// # }
     /// ```
-    pub fn extrude<T>(self, distance: T) -> Result<ArcView<&'a mut M, G>, GraphError>
+    pub fn extrude<T>(self, offset: T) -> Result<ArcView<&'a mut M, G>, GraphError>
     where
-        G: ArcNormal,
-        G::Normal: Mul<T>,
-        G::Vertex: AsPosition,
-        ScaledArcNormal<G, T>: Clone,
-        VertexPosition<G>: Add<ScaledArcNormal<G, T>, Output = VertexPosition<G>> + Clone,
+        T: Into<G::Scalar>,
+        G: ArcNormal<Normal = <G as Space>::Vector> + Space,
+        G::Vertex: AsPosition<Target = G::Point>,
     {
         let (ab, storage) = self.into_keyed_source();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab, distance)?;
+        let cache = ArcExtrudeCache::snapshot(&storage, ab, offset)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
