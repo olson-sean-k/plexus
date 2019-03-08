@@ -3,7 +3,6 @@ use std::ops::{Deref, DerefMut};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::{Geometry, Space};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::ArcNormal;
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
@@ -418,15 +417,14 @@ impl<G> ArcExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M, T>(storage: M, ab: ArcKey, offset: T) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, ab: ArcKey, translation: G::Vector) -> Result<Self, GraphError>
     where
-        T: Into<G::Scalar>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        G: ArcNormal<Normal = <G as Space>::Vector> + Space,
+        G: Space,
         G::Vertex: AsPosition<Target = G::Point>,
     {
         // Get the extruded geometry.
@@ -446,9 +444,6 @@ where
                     .geometry
                     .clone(),
             );
-            // TODO: The translation should be computed before taking the
-            //       snapshot.
-            let translation = arc.normal()? * offset.into();
             *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
             *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
             (vertices, arc.geometry.clone())

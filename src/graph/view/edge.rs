@@ -859,8 +859,9 @@ where
         G: ArcNormal<Normal = <G as Space>::Vector> + Space,
         G::Vertex: AsPosition<Target = G::Point>,
     {
+        let translation = self.normal() * offset.into();
         let (ab, storage) = self.into_keyed_source();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab, offset)?;
+        let cache = ArcExtrudeCache::snapshot(&storage, ab, translation)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
@@ -895,8 +896,8 @@ where
         + Consistent,
     G: Geometry + ArcNormal,
 {
-    pub fn normal(&self) -> Result<G::Normal, GraphError> {
-        G::normal(self.interior_reborrow())
+    pub fn normal(&self) -> G::Normal {
+        G::normal(self.interior_reborrow()).expect_consistent()
     }
 }
 

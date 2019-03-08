@@ -57,10 +57,8 @@ let mut graph = UvSphere::new(8, 8)
     .polygons_with_position_from(Bounds::unit_width())
     .collect::<MeshGraph<Point3<f64>>>();
 // Extrude a face in the mesh.
-let abc = graph.faces().nth(0).unwrap().key();
-if let Ok(face) = graph.face_mut(abc).unwrap().extrude(1.0) {
-    // ...
-}
+let key = graph.faces().nth(0).unwrap().key();
+let face = graph.face_mut(key).unwrap().extrude(1.0);
 ```
 
 Plexus avoids exposing very basic topological operations like inserting

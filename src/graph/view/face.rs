@@ -93,12 +93,7 @@ where
     ///     .polygons_with_position()
     ///     .collect::<MeshGraph<Point3<f32>>>();
     /// let key = graph.faces().nth(0).unwrap().key();
-    /// let face = graph
-    ///     .face_mut(key)
-    ///     .unwrap()
-    ///     .extrude(1.0)
-    ///     .unwrap()
-    ///     .into_ref();
+    /// let face = graph.face_mut(key).unwrap().extrude(1.0).into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = face.into_arc();
@@ -689,18 +684,21 @@ where
         })
     }
 
-    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M, G>, GraphError>
+    pub fn extrude<T>(self, offset: T) -> FaceView<&'a mut M, G>
     where
         T: Into<G::Scalar>,
         G: FaceNormal<Normal = <G as Space>::Vector> + Space,
         G::Vertex: AsPosition<Target = G::Point>,
     {
-        let (abc, storage) = self.into_keyed_source();
-        let cache = FaceExtrudeCache::snapshot(&storage, abc, offset.into())?;
-        Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
-            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
-            .expect_consistent())
+        let translation = self.normal() * offset.into();
+        (move || {
+            let (abc, storage) = self.into_keyed_source();
+            let cache = FaceExtrudeCache::snapshot(&storage, abc, translation)?;
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
+                .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+        })()
+        .expect_consistent()
     }
 
     /// Removes the face.
@@ -1591,12 +1589,7 @@ mod tests {
             .collect::<MeshGraph<Point3<f32>>>();
         {
             let key = graph.faces().nth(0).unwrap().key();
-            let face = graph
-                .face_mut(key)
-                .unwrap()
-                .extrude(1.0)
-                .unwrap()
-                .into_ref();
+            let face = graph.face_mut(key).unwrap().extrude(1.0).into_ref();
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.

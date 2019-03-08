@@ -128,7 +128,7 @@
 //!     .polygons_with_position()
 //!     .collect::<MeshGraph<Point3<f32>>>();
 //! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
-//! graph.face_mut(key).unwrap().extrude(1.0).unwrap(); // Extrude the face.
+//! let face = graph.face_mut(key).unwrap().extrude(1.0); // Extrude the face.
 //! # }
 //! ```
 //!

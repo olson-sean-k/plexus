@@ -8,7 +8,6 @@ use crate::geometry::convert::AsPosition;
 use crate::geometry::{Geometry, Space};
 use crate::graph::container::alias::{OwnedCore, RefCore};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
-use crate::graph::geometry::FaceNormal;
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Mutate, Mutation};
@@ -497,8 +496,7 @@ where
 
 pub struct FaceExtrudeCache<G>
 where
-    G: FaceNormal + Geometry,
-    G::Vertex: AsPosition,
+    G: Geometry,
 {
     sources: Vec<VertexKey>,
     destinations: Vec<G::Vertex>,
@@ -507,25 +505,21 @@ where
 }
 impl<G> FaceExtrudeCache<G>
 where
-    G: FaceNormal + Geometry,
-    G::Vertex: AsPosition,
+    G: Geometry,
 {
-    pub fn snapshot<M, T>(storage: M, abc: FaceKey, offset: T) -> Result<Self, GraphError>
+    pub fn snapshot<M>(storage: M, abc: FaceKey, translation: G::Vector) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        T: Into<G::Scalar>,
-        G: FaceNormal<Normal = <G as Space>::Vector> + Space,
+        G: Space,
         G::Vertex: AsPosition<Target = G::Point>,
     {
-        // TODO: The translation should be computed before taking the snapshot.
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
         let face = FaceView::from_keyed_source((abc, storage)).unwrap();
-        let translation = face.normal() * offset.into();
 
         let sources = face.vertices().map(|vertex| vertex.key()).collect();
         let destinations = face
@@ -658,8 +652,7 @@ pub fn extrude_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: FaceNormal + Geometry,
-    G::Vertex: AsPosition,
+    G: Geometry,
 {
     let FaceExtrudeCache {
         sources,
