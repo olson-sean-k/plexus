@@ -197,14 +197,10 @@ where
 }
 
 pub mod alias {
-    use std::ops::Mul;
-
-    use crate::geometry::compose::*;
-    use crate::geometry::convert::*;
-    use crate::geometry::*;
+    use crate::geometry::convert::AsPosition;
+    use crate::geometry::Geometry;
 
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
-    pub type ScaledArcNormal<G, T> = <<G as ArcNormal>::Normal as Mul<T>>::Output;
 }
 
 #[cfg(feature = "geometry-cgmath")]
