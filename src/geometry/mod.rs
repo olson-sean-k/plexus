@@ -99,7 +99,7 @@ impl Geometry for () {
 
 pub trait Space: Geometry
 where
-    <Self as Geometry>::Vertex: AsPosition<Target = Self::Point>,
+    Self::Vertex: AsPosition<Target = Self::Point>,
 {
     type Scalar: Clone + Neg<Output = Self::Scalar> + Num;
     type Vector: Add<Output = Self::Vector>
@@ -112,10 +112,32 @@ where
 pub struct Ray<S>
 where
     S: Space,
-    <S as Geometry>::Vertex: AsPosition<Target = S::Point>,
+    S::Vertex: AsPosition<Target = S::Point>,
 {
     pub origin: S::Point,
     pub direction: S::Vector,
+}
+
+impl<S> Clone for Ray<S>
+where
+    S: Space,
+    S::Vertex: AsPosition<Target = S::Point>,
+{
+    fn clone(&self) -> Self {
+        Ray {
+            origin: self.origin.clone(),
+            direction: self.direction.clone(),
+        }
+    }
+}
+
+impl<S> Copy for Ray<S>
+where
+    S: Space,
+    S::Vector: Copy,
+    S::Point: Copy,
+    S::Vertex: AsPosition<Target = S::Point>,
+{
 }
 
 /// Homogeneous duplet.

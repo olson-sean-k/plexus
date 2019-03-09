@@ -1,10 +1,10 @@
 use crate::geometry::convert::AsPosition;
-use crate::geometry::{Geometry, Ray, Space};
+use crate::geometry::{Ray, Space};
 
 pub trait RayIntersection<S>
 where
     S: Space,
-    <S as Geometry>::Vertex: AsPosition<Target = S::Point>,
+    S::Vertex: AsPosition<Target = S::Point>,
 {
     fn intersection(&self, ray: Ray<S>) -> Option<(S::Scalar, S::Scalar)>;
 }
