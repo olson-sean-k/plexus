@@ -7,8 +7,8 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
+//! use plexus::index::HashIndexer;
 //! use plexus::prelude::*;
-//! use plexus::primitive::index::HashIndexer;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
@@ -29,7 +29,7 @@ use crate::primitive::generate::{
     PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
     PositionVertexGenerator,
 };
-use crate::primitive::topology::{Polygon, Quad, Triangle};
+use crate::primitive::{Polygon, Quad, Triangle};
 
 #[derive(Clone, Copy)]
 pub struct Bounds {
@@ -229,8 +229,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
-    use crate::primitive::decompose::*;
-    use crate::primitive::generate::*;
+    use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
 
     #[test]

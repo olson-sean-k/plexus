@@ -1,35 +1,40 @@
 //! Linear representation of meshes.
 //!
-//! This module provides a `MeshBuffer` that can be read by graphics pipelines
-//! to render meshes. `MeshBuffer` combines an index buffer and vertex buffer,
-//! which are exposed as slices.
+//! This module provides a `MeshBuffer` that represents a mesh as a linear
+//! collection of vertex geometry and a linear collection of indeces into that
+//! vertex geometry (topology). These two buffers are called the _vertex
+//! buffer_ and _index buffer_, respectively. This layout is well-suited for
+//! graphics pipelines. `MeshBuffer` combines an index buffer and vertex
+//! buffer, which are exposed as slices.
 //!
 //! # Vertex Buffers
 //!
-//! Vertex buffers describe the geometry of a `MeshBuffer`.
+//! Vertex buffers describe the geometry of a `MeshBuffer`. Only vertex
+//! geometry is supported; there is no way to associate geometry with an edge
+//! or face, for example.
 //!
-//! `MeshBuffer`s use _composite_ vertex buffers (as opposed to _component_
-//! buffers). Each index in the buffer refers to a datum in the vertex buffer
-//! that completely describes that vertex. For example, if each vertex is
-//! described by a position and color attribute, then each element in the
-//! vertex buffer contains both attributes within a single structure.
+//! `MeshBuffer`s use _composite_ vertex buffers. Each element of the vertex
+//! buffer completely describes the geometry of that vertex. For example, if
+//! each vertex is described by a position and color attribute, then each
+//! element in the vertex buffer contains both attributes within a single
+//! structure. _Component_ buffers, which store attributes in separate buffers,
+//! are not supported.
 //!
 //! # Index Buffers
 //!
 //! Index buffers describe the topology of a `MeshBuffer`. Both _structured_
 //! (_polygonal_) and _unstructured_ (_flat_) index buffers are supported. See
-//! `Flat` and `Structured`.
+//! the `index` module.
 //!
-//! Structured index buffers store indices as `Triangle`s, `Quad`s, or
-//! `Polygon`s, all of which preserve the topology of a mesh even if its arity
-//! is non-constant. These types only support triangles and quads; higher arity
-//! N-gons are not supported.
+//! Flat index buffers directly store individual indices and tend to be more
+//! useful for rendering, especially triangular buffers (see the `MeshBuffer3`
+//! type definition).
 //!
-//! Flat index buffers store individual indices. Because there is no structure,
-//! arity must by constant, but arbitrary N-gons are supported. Flat buffers
-//! tend to be more useful for rendering, especially triangular flat buffers.
+//! Structured index buffers contain sub-structures that in turn contain
+//! indices. This is more flexible, but may complicate the consumption of a
+//! `MeshBuffer` (by a graphics pipeline, for example).
 //!
-//! The `MeshBuffer3` and `MeshBufferN` type aliases avoid verbose type
+//! The `MeshBuffer3` and `MeshBufferN` type definitions avoid verbose type
 //! parameters and provide the most common index buffer configurations.
 //!
 //! # Examples
@@ -57,20 +62,22 @@
 //! Converting a `MeshGraph` to a flat `MeshBuffer`:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! use decorum::R64;
 //! use nalgebra::Point3;
-//! use plexus::buffer::U4;
 //! use plexus::graph::MeshGraph;
+//! use plexus::index::U4;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //!
 //! # fn main() {
 //! let graph = Cube::new()
 //!     .polygons_with_position()
-//!     .collect::<MeshGraph<Point3<f32>>>();
+//!     .collect::<MeshGraph<Point3<R64>>>();
 //! let buffer = graph
-//!     .to_mesh_buffer_by_vertex::<U4, u32, Point3<f32>>()
+//!     .to_mesh_buffer_by_vertex::<U4, usize, Point3<R64>>()
 //!     .unwrap();
 //! # }
 //! ```
@@ -79,18 +86,17 @@ use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 use typenum::{self, NonZero};
 
 use crate::geometry::convert::IntoGeometry;
-use crate::primitive::decompose::IntoVertices;
-use crate::primitive::index::{
-    FlatIndexVertices, FromIndexer, HashIndexer, IndexVertices, Indexer,
+use crate::index::{
+    ClosedIndexVertices, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer,
+    Indexer, Push, Structured, Structured3, Structured4, StructuredN, U3, U4,
 };
-use crate::primitive::{Arity, Map, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::primitive::decompose::IntoVertices;
+use crate::primitive::{Map, Polygonal, Quad, Topological, Triangle};
 use crate::FromRawBuffers;
-
-pub use typenum::{U3, U4};
 
 #[derive(Debug, Fail)]
 pub enum BufferError {
@@ -100,62 +106,6 @@ pub enum BufferError {
     ArityConflict,
 }
 
-/// Index buffer.
-///
-/// Describes the contents of an index buffer. This includes the arity of the
-/// buffer if constant.
-pub trait IndexBuffer {
-    type Item;
-
-    // TODO: Use `Option<NonZeroU8>`.
-    /// Arity of the index buffer (and by extension the mesh).
-    const ARITY: Option<usize>;
-}
-
-/// Flat index buffer.
-///
-/// A flat (unstructured) index buffer with a constant and static arity. Arity
-/// is specified using a type constant from the
-/// [typenum](https://crates.io/crates/typenum) crate. `U3` and `U4` are
-/// re-exported in the `buffer` module.
-///
-/// # Examples
-///
-/// Creating a flat and triangular `MeshBuffer`:
-///
-/// ```rust
-/// use plexus::buffer::{Flat, MeshBuffer, U3};
-/// use plexus::prelude::*;
-///
-/// let mut buffer = MeshBuffer::<Flat<U3, usize>, Triplet<f64>>::default();
-/// ```
-#[derive(Debug)]
-pub struct Flat<A = U3, N = usize>
-where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    phantom: PhantomData<(A, N)>,
-}
-
-impl<A, N> IndexBuffer for Flat<A, N>
-where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// Flat index buffers directly contain indices into vertex data. These
-    /// indices are implicitly grouped by the arity of the buffer.
-    type Item = N;
-
-    /// Flat index buffers have a constant arity.
-    const ARITY: Option<usize> = Some(A::USIZE);
-}
-
-/// Alias for a flat and triangular index buffer.
-pub type Flat3<N = usize> = Flat<U3, N>;
-/// Alias for a flat and quadrilateral index buffer.
-pub type Flat4<N = usize> = Flat<U4, N>;
-
 /// Alias for a flat and triangular `MeshBuffer`. Prefer this alias.
 ///
 /// For most applications, this alias can be used to avoid more complex and
@@ -164,68 +114,6 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 pub type MeshBuffer3<N, G> = MeshBuffer<Flat3<N>, G>;
 /// Alias for a flat and quadrilateral `MeshBuffer`.
 pub type MeshBuffer4<N, G> = MeshBuffer<Flat4<N>, G>;
-
-/// Structured index buffer.
-///
-/// A structured index buffer of triangles and/or quads. Useful if a buffer
-/// representing a mesh comprised of both triangles and quads is needed (no
-/// need for triangulation).
-///
-/// # Examples
-///
-/// Creating a structured `MeshBuffer`:
-///
-/// ```rust
-/// use plexus::buffer::{MeshBuffer, Structured};
-/// use plexus::prelude::*;
-/// use plexus::primitive::Polygon;
-///
-/// let mut buffer = MeshBuffer::<Structured<Polygon<usize>>, Triplet<f64>>::default();
-/// ```
-#[derive(Debug)]
-pub struct Structured<P = Polygon<usize>>
-where
-    P: Polygonal,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
-{
-    phantom: PhantomData<P>,
-}
-
-/// `Structured` index buffer that contains dynamic `Polygon`s.
-impl<N> IndexBuffer for Structured<Polygon<N>>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// `Polygon` index buffers contain topological structures that explicitly
-    /// group their indices into vertex data.
-    type Item = Polygon<N>;
-
-    /// `Polygon` index buffers may or may not have a constant arity. Arity is
-    /// encoded independently by each item in the buffer.
-    const ARITY: Option<usize> = None;
-}
-
-/// `Structured` index buffer that contains `Polygonal` structures with
-/// constant arity.
-impl<P> IndexBuffer for Structured<P>
-where
-    P: Arity + Polygonal,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
-{
-    /// `Polygonal` index buffers contain topological structures that
-    /// explicitly group their indices into vertex data.
-    type Item = P;
-
-    /// `Polygonal` index buffers have a constant arity.
-    const ARITY: Option<usize> = Some(<P as Arity>::ARITY);
-}
-
-/// Alias for a structured and triangular index buffer.
-pub type Structured3<N = usize> = Structured<Triangle<N>>;
-/// Alias for a structured and quadrilateral index buffer.
-pub type Structured4<N = usize> = Structured<Quad<N>>;
-/// Alias for a structured and polygonal (variable arity) index buffer.
-pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 
 /// Alias for a structured and polygonal `MeshBuffer`.
 pub type MeshBufferN<N, G> = MeshBuffer<StructuredN<N>, G>;
@@ -241,7 +129,7 @@ where
 
 pub trait IntoStructuredIndex<G>
 where
-    Structured<Self::Item>: IndexBuffer,
+    Structured<Self::Item>: Grouping,
     <Self::Item as Topological>::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Item: Polygonal;
@@ -257,25 +145,26 @@ where
 /// indices into the data in the vertex buffer and describes the topology of
 /// the mesh. The vertex buffer contains arbitrary geometric data.
 #[derive(Debug)]
-pub struct MeshBuffer<I, G>
+pub struct MeshBuffer<R, G>
 where
-    I: IndexBuffer,
+    R: Grouping,
 {
-    indices: Vec<I::Item>,
+    indices: Vec<R::Item>,
     vertices: Vec<G>,
 }
 
-impl<I, G> MeshBuffer<I, G>
+impl<R, G> MeshBuffer<R, G>
 where
-    I: IndexBuffer,
+    R: Grouping,
 {
     /// Creates an empty `MeshBuffer`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use plexus::buffer::{Flat3, MeshBuffer};
+    /// use plexus::buffer::MeshBuffer;
     /// use plexus::geometry::Triplet;
+    /// use plexus::index::Flat3;
     ///
     /// let buffer = MeshBuffer::<Flat3<u32>, Triplet<f64>>::new();
     /// ```
@@ -283,7 +172,7 @@ where
         Self::default()
     }
 
-    pub fn into_raw_buffers(self) -> (Vec<I::Item>, Vec<G>) {
+    pub fn into_raw_buffers(self) -> (Vec<R::Item>, Vec<G>) {
         let MeshBuffer { indices, vertices } = self;
         (indices, vertices)
     }
@@ -314,7 +203,7 @@ where
     /// let buffer = buffer.map_vertices_into(|position| position + translation);
     /// # }
     /// ```
-    pub fn map_vertices_into<H, F>(self, f: F) -> MeshBuffer<I, H>
+    pub fn map_vertices_into<H, F>(self, f: F) -> MeshBuffer<R, H>
     where
         F: FnMut(G) -> H,
     {
@@ -325,12 +214,12 @@ where
         }
     }
 
-    pub fn arity(&self) -> Option<usize> {
-        I::ARITY
+    pub fn arity(&self) -> Option<NonZeroUsize> {
+        R::ARITY
     }
 
     /// Gets a slice of the index data.
-    pub fn as_index_slice(&self) -> &[I::Item] {
+    pub fn as_index_slice(&self) -> &[R::Item] {
         self.indices.as_slice()
     }
 
@@ -340,9 +229,9 @@ where
     }
 }
 
-impl<I, G> Default for MeshBuffer<I, G>
+impl<R, G> Default for MeshBuffer<R, G>
 where
-    I: IndexBuffer,
+    R: Grouping,
 {
     fn default() -> Self {
         MeshBuffer {
@@ -359,10 +248,10 @@ where
 {
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
-    pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
+    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
     where
-        U: IndexBuffer,
-        U::Item: Into<<Flat<A, N> as IndexBuffer>::Item>,
+        R: Grouping,
+        R::Item: Into<<Flat<A, N> as Grouping>::Item>,
         H: IntoGeometry<G>,
     {
         let offset = N::from(self.vertices.len()).unwrap();
@@ -381,7 +270,7 @@ impl<P, G> MeshBuffer<Structured<P>, G>
 where
     P: Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<P>: IndexBuffer,
+    Structured<P>: Grouping,
 {
     /// Converts a structured `MeshBuffer` into an iterator of polygons
     /// containing vertex data.
@@ -416,12 +305,12 @@ where
     /// ```
     pub fn into_polygons(
         self,
-    ) -> impl Clone + Iterator<Item = <<Structured<P> as IndexBuffer>::Item as Map<G>>::Output>
+    ) -> impl Clone + Iterator<Item = <<Structured<P> as Grouping>::Item as Map<G>>::Output>
     where
         G: Clone,
-        <Structured<P> as IndexBuffer>::Item: Map<G>,
-        <<Structured<P> as IndexBuffer>::Item as Map<G>>::Output: Clone,
-        <<Structured<P> as IndexBuffer>::Item as Topological>::Vertex: ToPrimitive,
+        <Structured<P> as Grouping>::Item: Map<G>,
+        <<Structured<P> as Grouping>::Item as Map<G>>::Output: Clone,
+        <<Structured<P> as Grouping>::Item as Topological>::Vertex: ToPrimitive,
     {
         let (indices, vertices) = self.into_raw_buffers();
         indices
@@ -435,13 +324,13 @@ where
 
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
-    pub fn append<U, H>(&mut self, buffer: &mut MeshBuffer<U, H>)
+    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
     where
-        U: IndexBuffer,
-        U::Item: Into<<Structured<P> as IndexBuffer>::Item>,
+        R: Grouping,
+        R::Item: Into<<Structured<P> as Grouping>::Item>,
         H: IntoGeometry<G>,
-        <Structured<P> as IndexBuffer>::Item: Copy
-            + Map<Output = <Structured<P> as IndexBuffer>::Item>
+        <Structured<P> as Grouping>::Item: Copy
+            + Map<Output = <Structured<P> as Grouping>::Item>
             + Topological<Vertex = P::Vertex>,
     {
         let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
@@ -460,42 +349,16 @@ where
     }
 }
 
-impl<A, N, P, G> FromIndexer<P, P> for MeshBuffer<Flat<A, N>, G>
+impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-    P: Arity + IntoVertices + Polygonal,
+    R: Grouping,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Unit> + Topological,
+    P::Output: Topological,
     P::Vertex: IntoGeometry<G>,
+    Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
+    Self: FromRawBuffers<R::Item, G>,
 {
-    type Error = BufferError;
-
-    fn from_indexer<I, M>(input: I, indexer: M) -> Result<Self, Self::Error>
-    where
-        I: IntoIterator<Item = P>,
-        M: Indexer<P, P::Vertex>,
-    {
-        let (indices, vertices) = input.into_iter().flat_index_vertices(indexer);
-        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(
-            indices.into_iter().map(|index| N::from(index).unwrap()),
-            vertices.into_iter().map(|vertex| vertex.into_geometry()),
-        )
-    }
-}
-
-impl<P, Q, G> FromIndexer<P, P> for MeshBuffer<Structured<Q>, G>
-where
-    P: Map<usize> + Polygonal,
-    P::Output: Map<Q::Vertex>,
-    P::Vertex: IntoGeometry<G>,
-    Q: Polygonal,
-    Q::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<Q>: IndexBuffer,
-    <Structured<Q> as IndexBuffer>::Item: Copy
-        + From<<P::Output as Map<Q::Vertex>>::Output>
-        + IntoVertices
-        + Topological<Vertex = Q::Vertex>,
-{
-    type Error = BufferError;
+    type Error = <Self as FromRawBuffers<R::Item, G>>::Error;
 
     fn from_indexer<I, M>(input: I, indexer: M) -> Result<Self, Self::Error>
     where
@@ -503,42 +366,19 @@ where
         M: Indexer<P, P::Vertex>,
     {
         let (indices, vertices) = input.into_iter().index_vertices(indexer);
-        MeshBuffer::<Structured<_>, _>::from_raw_buffers(
-            indices
-                .into_iter()
-                .map(|topology| topology.map(|index| <Q::Vertex as NumCast>::from(index).unwrap())),
+        MeshBuffer::<R, _>::from_raw_buffers(
+            indices,
             vertices.into_iter().map(|vertex| vertex.into_geometry()),
         )
     }
 }
 
-impl<A, N, P, G> FromIterator<P> for MeshBuffer<Flat<A, N>, G>
+impl<R, P, G> FromIterator<P> for MeshBuffer<R, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-    P: Arity + IntoVertices + Polygonal,
+    R: Grouping,
+    P: Topological,
     P::Vertex: Copy + Eq + Hash + IntoGeometry<G>,
-{
-    fn from_iter<I>(input: I) -> Self
-    where
-        I: IntoIterator<Item = P>,
-    {
-        Self::from_indexer(input, HashIndexer::default()).unwrap_or_else(|_| Self::default())
-    }
-}
-
-impl<P, Q, G> FromIterator<P> for MeshBuffer<Structured<Q>, G>
-where
-    P: Map<usize> + Polygonal,
-    P::Output: Map<Q::Vertex>,
-    P::Vertex: Copy + Eq + Hash + IntoGeometry<G>,
-    Q: Polygonal,
-    Q::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<Q>: IndexBuffer,
-    <Structured<Q> as IndexBuffer>::Item: Copy
-        + From<<P::Output as Map<Q::Vertex>>::Output>
-        + IntoVertices
-        + Topological<Vertex = Q::Vertex>,
+    Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
     where
@@ -553,7 +393,7 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     M: Copy + Integer + NumCast + Unsigned,
-    <Flat<A, N> as IndexBuffer>::Item: ToPrimitive,
+    <Flat<A, N> as Grouping>::Item: ToPrimitive,
 {
     type Error = BufferError;
 
@@ -569,10 +409,10 @@ where
     ///
     /// ```rust
     /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::index::{Flat3, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
     ///
     /// # fn main() {
     /// let cube = Cube::new();
@@ -581,7 +421,8 @@ where
     ///     cube.polygons_with_normal(),
     ///     cube.polygons_with_uv_map(),
     /// ))
-    /// .flat_index_vertices(HashIndexer::default());
+    /// .triangulate()
+    /// .index_vertices::<Flat3, _>(HashIndexer::default());
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
     /// # }
     /// ```
@@ -592,9 +433,9 @@ where
     {
         let indices = indices
             .into_iter()
-            .map(|index| <<Flat<A, N> as IndexBuffer>::Item as NumCast>::from(index).unwrap())
+            .map(|index| <<Flat<A, N> as Grouping>::Item as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
-        if indices.len() % Flat::<A, N>::ARITY.unwrap() != 0 {
+        if indices.len() % Flat::<A, N>::ARITY.unwrap().get() != 0 {
             Err(BufferError::ArityConflict)
         }
         else {
@@ -614,9 +455,9 @@ impl<P, Q, G> FromRawBuffers<Q, G> for MeshBuffer<Structured<P>, G>
 where
     P: Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Q: Into<<Structured<P> as IndexBuffer>::Item>,
-    Structured<P>: IndexBuffer,
-    <Structured<P> as IndexBuffer>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
+    Q: Into<<Structured<P> as Grouping>::Item>,
+    Structured<P>: Grouping,
+    <Structured<P> as Grouping>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
 {
     type Error = BufferError;
 
@@ -702,7 +543,8 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Structured3};
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::index::Structured3;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
@@ -745,7 +587,8 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::{MeshBuffer, Structured4};
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::index::Structured4;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
@@ -778,7 +621,7 @@ impl<P, G> IntoStructuredIndex<G> for MeshBuffer<Structured<P>, G>
 where
     P: Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<P>: IndexBuffer,
+    Structured<P>: Grouping,
 {
     type Item = P;
 
@@ -823,9 +666,9 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .chunks(Flat3::<N>::ARITY.unwrap())
+                .chunks(Flat3::<N>::ARITY.unwrap().get())
                 .into_iter()
-                .map(|triangle| <Structured<Self::Item> as IndexBuffer>::Item::from_iter(triangle))
+                .map(|triangle| <Structured<Self::Item> as Grouping>::Item::from_iter(triangle))
                 .collect(),
             vertices,
         }
@@ -868,9 +711,9 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .chunks(Flat4::<N>::ARITY.unwrap())
+                .chunks(Flat4::<N>::ARITY.unwrap().get())
                 .into_iter()
-                .map(|quad| <Structured<Self::Item> as IndexBuffer>::Item::from_iter(quad))
+                .map(|quad| <Structured<Self::Item> as Grouping>::Item::from_iter(quad))
                 .collect(),
             vertices,
         }
@@ -881,11 +724,11 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use crate::buffer::*;
-    use crate::graph::*;
+    use crate::buffer::{MeshBuffer, MeshBuffer3, MeshBufferN};
+    use crate::graph::MeshGraph;
+    use crate::index::{Structured4, StructuredN, U3};
+    use crate::prelude::*;
     use crate::primitive::cube::Cube;
-    use crate::primitive::decompose::*;
-    use crate::primitive::generate::*;
     use crate::primitive::sphere::UvSphere;
 
     #[test]

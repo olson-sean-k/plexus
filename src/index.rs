@@ -4,29 +4,225 @@
 //! the minimal set of topological and geometric data. This can be collected
 //! into aggregate data structures like `MeshGraph` and `MeshBuffer`.
 //!
+//! Plexus abstracts over _structured_ (_polygonal_) and _unstructured_
+//! (_flat_) index buffers. `Flat` and `Structured`.
+//!
+//! Flat index buffers directly store individual indices. Because there is no
+//! structure, arity must by constant, but arbitrary N-gons are trivially
+//! supported. Flat index buffers tend to be more useful for rendering,
+//! especially triangular buffers.
+//!
+//! Structured index buffers contain sub-structures that in turn contain
+//! indices. Structured index buffers typically contain `Triangle`s, `Quad`s,
+//! or `Polygon`s, all of which preserve the topology of a mesh even if its
+//! arity is non-constant.
+//!
+//! See the `buffer` module and `MeshBuffer` for applications of indexing and
+//! index buffers.
+//!
 //! # Examples
 //!
 //! ```rust
 //! use plexus::buffer::MeshBuffer3;
+//! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
-//! use plexus::primitive::index::HashIndexer;
 //!
 //! let (indices, positions) = Cube::new()
 //!     .polygons_with_position()
 //!     .triangulate()
-//!     .flat_index_vertices(HashIndexer::default());
+//!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
 //! ```
 
+use num::{Integer, NumCast, Unsigned};
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
+use typenum::NonZero;
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::topology::{Arity, Map, Topological};
+use crate::primitive::{Arity, Map, Polygon, Quad, Topological, Triangle};
+
+pub use typenum::{U3, U4};
+
+pub trait Grouping {
+    type Item;
+
+    /// Arity of the index buffer (and by extension the mesh).
+    const ARITY: Option<NonZeroUsize>;
+}
+
+/// Index buffer.
+pub trait IndexBuffer<R>
+where
+    R: Grouping,
+{
+    type Unit: Copy + Integer + NumCast + Unsigned;
+}
+
+impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+    Flat<A, N>: Grouping<Item = N>,
+{
+    type Unit = N;
+}
+
+impl<P> IndexBuffer<Structured<P>> for Vec<P>
+where
+    P: Topological,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    Structured<P>: Grouping<Item = P>,
+{
+    type Unit = P::Vertex;
+}
+
+pub trait Push<R, P>: IndexBuffer<R>
+where
+    R: Grouping,
+    P: Topological<Vertex = Self::Unit>,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    fn push(&mut self, index: P);
+}
+
+impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+    P: Arity + IntoVertices + Topological<Vertex = N>,
+    Flat<A, N>: Grouping<Item = N>,
+{
+    fn push(&mut self, index: P) {
+        for index in index.into_vertices() {
+            self.push(index);
+        }
+    }
+}
+
+impl<P> Push<Structured<P>, P> for Vec<P>
+where
+    P: Topological,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    Structured<P>: Grouping<Item = P>,
+{
+    fn push(&mut self, index: P) {
+        self.push(index);
+    }
+}
+
+/// Flat index buffer grouping.
+///
+/// A flat (unstructured) index buffer with a constant arity. Arity is
+/// specified using a type constant from the
+/// [typenum](https://crates.io/crates/typenum) crate. `U3` and `U4` are
+/// re-exported in the `index` module.
+///
+/// # Examples
+///
+/// Creating a flat and triangular `MeshBuffer`:
+///
+/// ```rust
+/// use plexus::buffer::MeshBuffer;
+/// use plexus::index::{Flat, U3};
+/// use plexus::prelude::*;
+///
+/// let mut buffer = MeshBuffer::<Flat<U3, usize>, Triplet<f64>>::default();
+/// ```
+#[derive(Debug)]
+pub struct Flat<A = U3, N = usize>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    phantom: PhantomData<(A, N)>,
+}
+
+impl<A, N> Grouping for Flat<A, N>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    /// Flat index buffers directly contain indices into vertex data. These
+    /// indices are implicitly grouped by the arity of the buffer.
+    type Item = N;
+
+    /// Flat index buffers have a constant arity.
+    const ARITY: Option<NonZeroUsize> = unsafe { Some(NonZeroUsize::new_unchecked(A::USIZE)) };
+}
+
+/// Alias for a flat and triangular index buffer.
+pub type Flat3<N = usize> = Flat<U3, N>;
+/// Alias for a flat and quadrilateral index buffer.
+pub type Flat4<N = usize> = Flat<U4, N>;
+
+/// Structured index buffer grouping.
+///
+/// A structured index buffer of triangles, quads, etc. Useful if a buffer
+/// representing a mesh comprised of both triangles and quads is needed (no
+/// need for triangulation).
+///
+/// # Examples
+///
+/// Creating a structured `MeshBuffer`:
+///
+/// ```rust
+/// use plexus::buffer::MeshBuffer;
+/// use plexus::index::Structured;
+/// use plexus::prelude::*;
+/// use plexus::primitive::Polygon;
+///
+/// let mut buffer = MeshBuffer::<Structured<Polygon<usize>>, Triplet<f64>>::default();
+/// ```
+#[derive(Debug)]
+pub struct Structured<P = Polygon<usize>>
+where
+    P: Topological,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    phantom: PhantomData<P>,
+}
+
+/// `Structured` index buffer that contains dynamic `Polygon`s.
+impl<N> Grouping for Structured<Polygon<N>>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    /// `Polygon` index buffers contain topological structures that explicitly
+    /// group their indices into vertex data.
+    type Item = Polygon<N>;
+
+    /// `Polygon` index buffers may or may not have a constant arity. Arity is
+    /// encoded independently by each item in the buffer.
+    const ARITY: Option<NonZeroUsize> = None;
+}
+
+/// `Structured` index buffer that contains `Topological` structures with
+/// constant arity.
+impl<P> Grouping for Structured<P>
+where
+    P: Arity + Topological,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    /// `Topological` index buffers contain topological structures that
+    /// explicitly group their indices into vertex data.
+    type Item = P;
+
+    /// `Topological` index buffers have a constant arity.
+    const ARITY: Option<NonZeroUsize> = Some(<P as Arity>::ARITY);
+}
+
+/// Alias for a structured and triangular index buffer.
+pub type Structured3<N = usize> = Structured<Triangle<N>>;
+/// Alias for a structured and quadrilateral index buffer.
+pub type Structured4<N = usize> = Structured<Quad<N>>;
+/// Alias for a structured and polygonal (variable arity) index buffer.
+pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 
 /// Vertex indexer.
 ///
@@ -64,14 +260,14 @@ where
 /// # Examples
 ///
 /// ```rust
+/// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
-/// use plexus::primitive::index::HashIndexer;
 ///
 /// let (indices, positions) = Cube::new()
 ///     .polygons_with_position()
 ///     .triangulate()
-///     .index_vertices(HashIndexer::default());
+///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
 pub struct HashIndexer<T, K>
 where
@@ -144,14 +340,14 @@ where
 /// # Examples
 ///
 /// ```rust
+/// use plexus::index::{Flat3, LruIndexer};
 /// use plexus::prelude::*;
-/// use plexus::primitive::index::LruIndexer;
 /// use plexus::primitive::sphere::UvSphere;
 ///
 /// let (indices, positions) = UvSphere::new(8, 8)
 ///     .polygons_with_position()
 ///     .triangulate()
-///     .index_vertices(LruIndexer::with_capacity(64));
+///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(64));
 /// ```
 pub struct LruIndexer<T, K>
 where
@@ -237,12 +433,12 @@ where
     }
 }
 
+// TODO: The name `(indices, vertices)` that is commonly used for indexing
+//       output is a bit ambiguous. The indices are contained in topological
+//       structures which have vertices.
+
 /// Functions for collecting a topology stream into raw index and vertex
 /// buffers.
-///
-/// Produces structured index buffers with arbitrary arity. The buffers may
-/// contain `Triangle`s, `Quad`s, `Polygon`s, etc. For flat buffers with
-/// constant arity, see `FlatIndexVertices`.
 ///
 /// See `HashIndexer` and `LruIndexer`.
 ///
@@ -252,11 +448,11 @@ where
 /// create buffers or meshes from a topology stream. Primitives provide
 /// per-attribute indeces that may be less expensive to generate than using an
 /// indexer. For iterator expressions operating on a single attribute
-/// (position, normal, etc.), this can be more effecient.
+/// (position, normal, etc.), this can be more efficient.
 ///
 /// ```rust
+/// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
-/// use plexus::primitive::index::HashIndexer;
 /// use plexus::primitive::sphere::UvSphere;
 ///
 /// // Detailed UV-sphere.
@@ -275,19 +471,16 @@ where
 /// let (indices, positions) = sphere
 ///     .polygons_with_position()
 ///     .triangulate()
-///     .index_vertices(HashIndexer::default());
+///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
-pub trait IndexVertices<P>: Sized
+pub trait ClosedIndexVertices<R, P>: Sized
 where
-    P: Map<usize> + Topological,
+    R: Grouping,
+    P: Topological,
 {
     /// Indexes a topology stream into a structured index buffer and vertex
     /// buffer using the given indexer and keying function.
-    fn index_vertices_with<N, K, F>(
-        self,
-        indexer: N,
-        f: F,
-    ) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
+    fn index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K;
@@ -298,18 +491,18 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// use plexus::index::{HashIndexer, Structured3};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
     ///
     /// // `indices` contains `Triangle`s with index data.
     /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position()
     ///     .subdivide()
     ///     .triangulate()
-    ///     .index_vertices(HashIndexer::default());
+    ///     .index_vertices::<Structured3, _>(HashIndexer::default());
     /// ```
-    fn index_vertices<N>(self, indexer: N) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
+    fn index_vertices<N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
         N: Indexer<P, P::Vertex>,
     {
@@ -317,19 +510,15 @@ where
     }
 }
 
-// TODO: The name `(indices, vertices)` that is commonly used for indexing
-//       output is a bit ambiguous. The indices are contained in topological
-//       structures which have vertices.
-impl<P, I> IndexVertices<P> for I
+impl<R, P, I> ClosedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
-    P: Map<usize> + Topological,
+    R: Grouping,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Unit> + Topological,
+    P::Output: Topological,
+    Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
 {
-    fn index_vertices_with<N, K, F>(
-        self,
-        mut indexer: N,
-        f: F,
-    ) -> (Vec<<P as Map<usize>>::Output>, Vec<P::Vertex>)
+    fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K,
@@ -337,127 +526,53 @@ where
         let mut indices = Vec::new();
         let mut vertices = Vec::new();
         for topology in self {
-            indices.push(topology.map(|vertex| {
-                let (index, vertex) = indexer.index(vertex, &f);
-                if let Some(vertex) = vertex {
-                    vertices.push(vertex);
-                }
-                index
-            }));
+            Push::push(
+                &mut indices,
+                topology.map(|vertex| {
+                    let (index, vertex) = indexer.index(vertex, &f);
+                    if let Some(vertex) = vertex {
+                        vertices.push(vertex);
+                    }
+                    NumCast::from(index).unwrap()
+                }),
+            );
         }
         (indices, vertices)
     }
 }
 
-/// Functions for collecting a topology stream into raw index and vertex
-/// buffers.
-///
-/// Produces flat index buffers, where the polygon arity is constant. This
-/// typically requires some kind of tessellation, such as triangulation, to
-/// ensure that all polygons have the same arity. For structured buffers with
-/// variable arity, see `IndexVertices`.
-///
-/// See `HashIndexer` and `LruIndexer`.
-///
-/// # Examples
-///
-/// Note that using an indexer is not always the most effecient method to
-/// create buffers or meshes from a topology stream. Primitives provide
-/// per-attribute indeces that may be less expensive to generate than using an
-/// indexer. For iterator expressions operating on a single attribute
-/// (position, normal, etc.), this can be more effecient.
-///
-/// ```rust
-/// use plexus::prelude::*;
-/// use plexus::primitive::index::HashIndexer;
-/// use plexus::primitive::sphere::UvSphere;
-///
-/// let sphere = UvSphere::new(64, 32);
-///
-/// // Using a positional index is more efficient.
-/// let (indices, positions) = (
-///     sphere
-///         .indices_for_position()
-///         .triangulate()
-///         .vertices()
-///         .collect::<Vec<_>>(),
-///     sphere.vertices_with_position().collect::<Vec<_>>(),
-/// );
-///
-/// // Using an indexer is less efficient.
-/// let (indices, positions) = sphere
-///     .polygons_with_position()
-///     .triangulate()
-///     .flat_index_vertices(HashIndexer::default());
-/// ```
-pub trait FlatIndexVertices<P>: Sized
+pub trait OpenIndexVertices<P>
 where
-    P: Arity + IntoVertices + Topological,
+    P: Topological,
 {
-    /// Indexes a topology stream into a flat index buffer and vertex buffer
-    /// using the given indexer and keying function.
-    fn flat_index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
+    fn index_vertices_with<R, N, K, F>(self, indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
+        Self: ClosedIndexVertices<R, P>,
+        R: Grouping,
         N: Indexer<P, K>,
-        F: Fn(&P::Vertex) -> &K;
+        F: Fn(&P::Vertex) -> &K,
+    {
+        ClosedIndexVertices::<R, P>::index_vertices_with(self, indexer, f)
+    }
 
-    /// Indexes a topology stream into a flat index buffer and vertex buffer
-    /// using the given indexer.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// use nalgebra::Point3;
-    /// use plexus::graph::MeshGraph;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::index::HashIndexer;
-    /// use plexus::primitive::sphere::UvSphere;
-    ///
-    /// # fn main() {
-    /// let (indices, positions) = UvSphere::new(16, 16)
-    ///     .polygons_with_position()
-    ///     .triangulate()
-    ///     .flat_index_vertices(HashIndexer::default());
-    /// // `indices` is a flat buffer with arity 3.
-    /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3);
-    /// # }
-    /// ```
-    fn flat_index_vertices<N>(self, indexer: N) -> (Vec<usize>, Vec<P::Vertex>)
+    fn index_vertices<R, N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
+        Self: ClosedIndexVertices<R, P>,
+        R: Grouping,
         N: Indexer<P, P::Vertex>,
     {
-        self.flat_index_vertices_with::<N, P::Vertex, _>(indexer, |vertex| vertex)
+        OpenIndexVertices::<P>::index_vertices_with(self, indexer, |vertex| vertex)
     }
 }
 
-impl<P, I> FlatIndexVertices<P> for I
+impl<P, I> OpenIndexVertices<P> for I
 where
     I: Iterator<Item = P>,
-    P: Arity + IntoVertices + Topological,
+    P: Topological,
 {
-    fn flat_index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<usize>, Vec<P::Vertex>)
-    where
-        N: Indexer<P, K>,
-        F: Fn(&P::Vertex) -> &K,
-    {
-        // Do not use `index_vertices`, because flattening index topologies
-        // would require allocated an additional `Vec`.
-        let mut indices = Vec::new();
-        let mut vertices = Vec::new();
-        for topology in self {
-            for vertex in topology.into_vertices() {
-                let (index, vertex) = indexer.index(vertex, &f);
-                if let Some(vertex) = vertex {
-                    vertices.push(vertex);
-                }
-                indices.push(index);
-            }
-        }
-        (indices, vertices)
-    }
 }
+
+pub use OpenIndexVertices as IndexVertices;
 
 pub trait FromIndexer<P, Q>: Sized
 where
@@ -499,7 +614,7 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
+    /// use plexus::index::HashIndexer;
     ///
     /// # fn main() {
     /// let graph = Cube::new()

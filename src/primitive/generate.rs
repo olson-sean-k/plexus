@@ -5,7 +5,7 @@
 
 use std::ops::Range;
 
-use crate::primitive::topology::Polygonal;
+use crate::primitive::Polygonal;
 
 pub struct Generate<'a, G, S, P>
 where
@@ -251,13 +251,13 @@ pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     /// # Examples
     ///
     /// ```rust
+    /// use plexus::index::{HashIndexer, StructuredN};
     /// use plexus::prelude::*;
-    /// use plexus::primitive::index::HashIndexer;
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// let (indices, positions) = UvSphere::new(8, 8)
     ///     .polygons_with_position()
-    ///     .index_vertices(HashIndexer::default());
+    ///     .index_vertices::<StructuredN, _>(HashIndexer::default());
     /// ```
     fn polygons_with_position(
         &self,
@@ -274,13 +274,13 @@ pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     /// # Examples
     ///
     /// ```rust
+    /// use plexus::index::{HashIndexer, Structured4};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::{Bounds, Cube};
-    /// use plexus::primitive::index::HashIndexer;
     ///
     /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position_from(Bounds::unit_radius())
-    ///     .index_vertices(HashIndexer::default());
+    ///     .index_vertices::<Structured4, _>(HashIndexer::default());
     /// ```
     fn polygons_with_position_from(
         &self,
@@ -320,15 +320,15 @@ pub trait PolygonsWithUvMap: Sized + UvMapPolygonGenerator {
     /// # Examples
     ///
     /// ```rust
+    /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
     ///
     /// let cube = Cube::new();
     /// let (indices, positions) =
     ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
-    ///         .index_vertices(HashIndexer::default());
+    ///         .index_vertices::<Flat4, _>(HashIndexer::default());
     /// ```
     fn polygons_with_uv_map(
         &self,

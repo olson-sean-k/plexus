@@ -40,9 +40,9 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 ///
 /// ```rust
 /// use plexus::graph::MeshGraph;
+/// use plexus::index::HashIndexer;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
-/// use plexus::primitive::index::HashIndexer;
 ///
 /// let mut graph = Cube::new()
 ///     .polygons_with_position()
@@ -1589,12 +1589,11 @@ mod tests {
     use nalgebra::{Point2, Point3};
 
     use crate::geometry::convert::IntoGeometry;
-    use crate::geometry::*;
-    use crate::graph::*;
+    use crate::geometry::Geometry;
+    use crate::graph::{ArcKey, MeshGraph, VertexView};
+    use crate::index::{HashIndexer, Structured4};
+    use crate::prelude::*;
     use crate::primitive::cube::Cube;
-    use crate::primitive::generate::*;
-    use crate::primitive::index::*;
-    use crate::*;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where
@@ -1680,7 +1679,7 @@ mod tests {
     fn split_edge() {
         let (indices, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
-            .index_vertices(HashIndexer::default());
+            .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
         let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();

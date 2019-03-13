@@ -1507,12 +1507,11 @@ where
 mod tests {
     use nalgebra::{Point2, Point3};
 
-    use crate::graph::*;
+    use crate::graph::MeshGraph;
+    use crate::index::{HashIndexer, Structured4};
+    use crate::prelude::*;
     use crate::primitive::cube::Cube;
-    use crate::primitive::generate::*;
-    use crate::primitive::index::*;
     use crate::primitive::sphere::UvSphere;
-    use crate::*;
 
     #[test]
     fn circulate_over_arcs() {
@@ -1663,7 +1662,7 @@ mod tests {
     fn triangulate_mesh() {
         let (indices, vertices) = Cube::new()
             .polygons_with_position() // 6 quads, 24 vertices.
-            .index_vertices(HashIndexer::default());
+            .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate();
 

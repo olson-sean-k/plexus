@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 use std::iter::IntoIterator;
 
 use crate::geometry::ops::Interpolate;
-use crate::primitive::topology::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::primitive::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -39,22 +39,22 @@ where
 {
     /// Reapplies a congruent decomposition.
     ///
-    /// A decomposition is congruent if its input and output types are the
+    /// A decomposition is _congruent_ if its input and output types are the
     /// same. This is useful when the number of applications is somewhat large
     /// or variable, in which case chaining calls is impractical or impossible.
     ///
     /// # Examples
     ///
     /// ```rust
+    /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
-    /// use plexus::primitive::index::HashIndexer;
     ///
     /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
-    ///     .flat_index_vertices(HashIndexer::default());
+    ///     .index_vertices::<Flat4, _>(HashIndexer::default());
     /// ```
     pub fn remap(self, n: usize) -> Decompose<impl Iterator<Item = P>, P, P, R> {
         let Decompose { input, output, f } = self;

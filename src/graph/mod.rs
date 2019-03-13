@@ -191,7 +191,7 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 use typenum::{self, NonZero};
 
-use crate::buffer::{BufferError, Flat, IndexBuffer, MeshBuffer};
+use crate::buffer::{BufferError, MeshBuffer};
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::{Geometry, Triplet};
 use crate::graph::container::alias::OwnedCore;
@@ -202,9 +202,11 @@ use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{OpaqueKey, Storage};
 use crate::graph::view::convert::IntoView;
+use crate::index::{
+    ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, Indexer, Structured,
+};
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::index::{FromIndexer, HashIndexer, IndexVertices, Indexer};
-use crate::primitive::{self, Arity, Map, Polygonal, Quad};
+use crate::primitive::{Arity, Map, Polygonal, Quad};
 use crate::{FromRawBuffers, FromRawBuffersWithArity};
 
 pub use Selector::ByIndex;
@@ -218,6 +220,8 @@ pub enum GraphError {
     TopologyConflict,
     #[fail(display = "topology malformed")]
     TopologyMalformed,
+    #[fail(display = "arity is non-polygonl")]
+    ArityNonPolygonal,
     #[fail(
         display = "conflicting arity; expected {}, but got {}",
         expected, actual
@@ -403,14 +407,20 @@ where
     /// `MeshGraph` also implements `From` for `MeshBuffer`, but will yield an
     /// empty graph if the conversion fails.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if a `MeshGraph` cannot represent the topology in the
+    /// `MeshBuffer`.
+    ///
     /// # Examples
     ///
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// use nalgebra::Point2;
-    /// use plexus::buffer::{Flat4, MeshBuffer};
+    /// use plexus::buffer::MeshBuffer;
     /// use plexus::graph::MeshGraph;
+    /// use plexus::index::Flat4;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
@@ -428,7 +438,7 @@ where
         N: Copy + Integer + NumCast + Unsigned,
         H: Clone + IntoGeometry<G::Vertex>,
     {
-        let arity = buffer.arity().unwrap();
+        let arity = buffer.arity().unwrap().get();
         let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
@@ -638,7 +648,7 @@ where
             (keys, vertices)
         };
         let indices = {
-            let arity = Flat::<A, N>::ARITY.unwrap();
+            let arity = Flat::<A, N>::ARITY.unwrap().get();
             let mut indices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
@@ -696,7 +706,7 @@ where
         F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> H,
     {
         let vertices = {
-            let arity = Flat::<A, N>::ARITY.unwrap();
+            let arity = Flat::<A, N>::ARITY.unwrap().get();
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
@@ -854,9 +864,10 @@ where
 impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
     G: Geometry,
-    P: Map<usize> + primitive::Topological,
-    P::Output: IntoVertices,
+    P: Map<usize> + Polygonal,
+    P::Output: IntoVertices + Polygonal<Vertex = usize>,
     P::Vertex: IntoGeometry<G::Vertex>,
+    Structured<P::Output>: Grouping<Item = P::Output>,
 {
     type Error = GraphError;
 
@@ -878,7 +889,7 @@ where
                 .into_vertices()
                 .into_iter()
                 .map(|index| vertices[index])
-                .collect::<ArrayVec<[_; Quad::<usize>::ARITY]>>();
+                .collect::<ArrayVec<[_; Quad::<()>::ARITY.get()]>>();
             mutation.insert_face(&perimeter, Default::default())?;
         }
         mutation.commit()
@@ -888,9 +899,9 @@ where
 impl<G, P> FromIterator<P> for MeshGraph<G>
 where
     G: Geometry,
-    P: Map<usize> + primitive::Topological,
-    P::Output: IntoVertices,
+    P: Polygonal,
     P::Vertex: Clone + Eq + Hash + IntoGeometry<G::Vertex>,
+    Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
     where
@@ -920,7 +931,7 @@ where
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
-            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity());
+            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity().get());
             for index in face.into_vertices() {
                 let index = <usize as NumCast>::from(index).unwrap();
                 perimeter.push(
@@ -959,15 +970,15 @@ where
     /// # extern crate plexus;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
+    /// use plexus::index::{Flat3, LruIndexer};
     /// use plexus::prelude::*;
-    /// use plexus::primitive::index::LruIndexer;
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
     /// let (indices, positions) = UvSphere::new(16, 16)
     ///     .polygons_with_position()
     ///     .triangulate()
-    ///     .flat_index_vertices(LruIndexer::with_capacity(256));
+    ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(256));
     /// let mut graph =
     ///     MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3).unwrap();
     /// # }
@@ -981,6 +992,9 @@ where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = H>,
     {
+        if arity < 3 {
+            return Err(GraphError::ArityNonPolygonal);
+        }
         let mut mutation = Mutation::mutate(MeshGraph::new());
         let vertices = vertices
             .into_iter()
@@ -1028,13 +1042,11 @@ mod tests {
     use nalgebra::{Point3, Vector3};
     use num::Zero;
 
-    use crate::buffer::U3;
-    use crate::geometry::*;
-    use crate::graph::*;
-    use crate::primitive::decompose::*;
-    use crate::primitive::generate::*;
+    use crate::geometry::Geometry;
+    use crate::graph::{GraphError, MeshGraph};
+    use crate::index::U3;
+    use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
-    use crate::*;
 
     #[test]
     fn collect_topology_into_mesh() {

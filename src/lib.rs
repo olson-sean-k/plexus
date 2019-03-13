@@ -34,6 +34,7 @@ use std::ops::Div;
 pub mod buffer;
 pub mod geometry;
 pub mod graph;
+pub mod index;
 pub mod primitive;
 
 // TODO: Documentation comments include static image content from the GitHub
@@ -70,6 +71,7 @@ pub mod prelude {
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
     pub use crate::geometry::{Duplet, Triplet};
     pub use crate::graph::Selector;
+    pub use crate::index::{CollectWithIndexer as _, OpenIndexVertices as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _,
         IntoTriangles as _, IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _,
@@ -79,9 +81,6 @@ pub mod prelude {
         IndicesForNormal as _, IndicesForPosition as _, PolygonGenerator as _,
         PolygonsWithNormal as _, PolygonsWithPosition as _, PolygonsWithUvMap as _,
         VerticesWithNormal as _, VerticesWithPosition as _,
-    };
-    pub use crate::primitive::index::{
-        CollectWithIndexer as _, FlatIndexVertices as _, IndexVertices as _,
     };
     pub use crate::primitive::{Converged as _, Map as _, MapVertices as _, Zip as _};
     pub use crate::IteratorExt as _;

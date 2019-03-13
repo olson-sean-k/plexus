@@ -747,8 +747,8 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use crate::graph::*;
-    use crate::primitive::generate::*;
+    use crate::graph::MeshGraph;
+    use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
 
     #[test]

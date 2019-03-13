@@ -7,9 +7,9 @@
 //! # extern crate plexus;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
+//! use plexus::index::HashIndexer;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
-//! use plexus::primitive::index::HashIndexer;
 //!
 //! # fn main() {
 //! let graph = Cube::new()
@@ -28,7 +28,7 @@ use crate::primitive::generate::{
     PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
     PositionVertexGenerator, UvMapGenerator, UvMapPolygonGenerator,
 };
-use crate::primitive::topology::{Converged, Map, Quad};
+use crate::primitive::{Converged, Map, Quad};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Plane {
