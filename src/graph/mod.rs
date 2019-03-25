@@ -202,6 +202,7 @@ use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{OpaqueKey, Storage};
 use crate::graph::view::convert::IntoView;
+use crate::graph::view::OrphanView;
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, Indexer, Structured,
 };
@@ -473,7 +474,8 @@ where
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
-            .map(|(key, source)| (*key, source).into_view().unwrap())
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|view| view.into())
     }
 
     /// Gets the number of arcs in the graph.
@@ -506,7 +508,8 @@ where
     pub fn orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
-            .map(|(key, source)| (*key, source).into_view().unwrap())
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|view| view.into())
     }
 
     /// Gets the number of edges in the graph.
@@ -539,7 +542,8 @@ where
     pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
-            .map(|(key, source)| (*key, source).into_view().unwrap())
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|view| view.into())
     }
 
     /// Gets the number of faces in the graph.
@@ -572,7 +576,8 @@ where
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.as_face_storage_mut()
             .iter_mut()
-            .map(|(key, source)| (*key, source).into_view().unwrap())
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|view| view.into())
     }
 
     /// Gets the arity of the graph.

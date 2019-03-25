@@ -1,5 +1,4 @@
 use either::Either;
-use fool::prelude::*;
 use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
@@ -7,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::geometry::convert::AsPosition;
 use crate::geometry::{Geometry, Space};
-use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
@@ -15,11 +14,13 @@ use crate::graph::mutation::face::{
     FaceSplitCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
-use crate::graph::view::{ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, VertexView};
+use crate::graph::view::{
+    ArcNeighborhood, ArcView, OrphanArcView, OrphanVertexView, OrphanView, VertexView, View,
+};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;
@@ -34,31 +35,38 @@ where
     M::Target: AsStorage<FacePayload<G>>,
     G: Geometry,
 {
-    key: FaceKey,
-    storage: M,
-    phantom: PhantomData<G>,
+    inner: View<M, FacePayload<G>>,
 }
 
-/// Storage.
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
     G: Geometry,
 {
-    // TODO: This may become useful as the `mutation` module is developed. It
-    //       may also be necessary to expose this API to user code.
-    #[allow(dead_code)]
-    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> FaceView<<M as Bind<T, N>>::Output, G>
-    where
-        T: Payload,
-        M: Bind<T, N>,
-        M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<FacePayload<G>>,
-        N: AsStorage<T>,
-    {
-        let (key, origin) = self.into_keyed_source();
-        FaceView::from_keyed_source_unchecked((key, origin.bind(storage)))
+    fn into_inner(self) -> View<M, FacePayload<G>> {
+        let FaceView { inner, .. } = self;
+        inner
+    }
+
+    fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
+        self.inner.interior_reborrow().into()
+    }
+
+    /// Gets the key for the face.
+    pub fn key(&self) -> FaceKey {
+        self.inner.key()
+    }
+}
+
+impl<M, G> FaceView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<FacePayload<G>>,
+    G: Geometry,
+{
+    fn interior_reborrow_mut(&mut self) -> FaceView<&mut M::Target, G> {
+        self.inner.interior_reborrow_mut().into()
     }
 }
 
@@ -69,8 +77,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanFaceView<'a, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, storage).into_view().unwrap()
+        self.into_inner().into_orphan().into()
     }
 
     /// Converts a mutable view into an immutable view.
@@ -101,8 +108,7 @@ where
     /// # }
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, &*storage).into_view().unwrap()
+        self.into_inner().into_ref().into()
     }
 
     /// Reborrows the view and constructs another mutable view from a given
@@ -119,7 +125,7 @@ where
         F: FnOnce(FaceView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_source();
+            let (_, storage) = self.into_inner().into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -130,46 +136,6 @@ where
     }
 }
 
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
-{
-    /// Gets the key for the face.
-    pub fn key(&self) -> FaceKey {
-        self.key
-    }
-
-    fn from_keyed_source_unchecked(source: (FaceKey, M)) -> Self {
-        let (key, storage) = source;
-        FaceView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
-    }
-
-    fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow();
-        FaceView::from_keyed_source_unchecked((key, storage))
-    }
-}
-
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
-{
-    fn interior_reborrow_mut(&mut self) -> FaceView<&mut M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow_mut();
-        FaceView::from_keyed_source_unchecked((key, storage))
-    }
-}
-
 /// Reachable API.
 impl<M, G> FaceView<M, G>
 where
@@ -177,16 +143,14 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        let key = self.arc;
-        let storage = self.storage.reborrow();
-        (key, storage).into_view()
-    }
-
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
-        let (_, storage) = self.into_keyed_source();
-        (key, storage).into_view()
+        self.into_inner().rekey_map(key)
+    }
+
+    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M::Target, G>> {
+        let key = self.arc;
+        self.inner.interior_reborrow().rekey_map(key)
     }
 
     pub(in crate::graph) fn reachable_interior_arcs(
@@ -200,10 +164,6 @@ where
     ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(ArcCirculator::from(self.interior_reborrow()))
     }
-
-    pub(in crate::graph) fn reachable_arity(&self) -> usize {
-        self.reachable_interior_arcs().count()
-    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -215,8 +175,7 @@ where
     /// Converts the face into its interior path.
     pub fn into_interior_path(self) -> InteriorPathView<M, G> {
         let key = self.arc().key();
-        let (_, storage) = self.into_keyed_source();
-        (key, storage).into_view().expect_consistent()
+        self.into_inner().rekey_map(key).expect_consistent()
     }
 
     /// Converts the face into its leading arc.
@@ -227,8 +186,10 @@ where
     /// Gets the interior path of the face.
     pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
         let key = self.arc().key();
-        let storage = self.storage.reborrow();
-        (key, storage).into_view().expect_consistent()
+        self.inner
+            .interior_reborrow()
+            .rekey_map(key)
+            .expect_consistent()
     }
 
     /// Gets the leading arc of the face.
@@ -249,7 +210,7 @@ where
     /// Gets the arity of the face. This is the number of arcs that form the
     /// face's interior path.
     pub fn arity(&self) -> usize {
-        self.reachable_arity()
+        self.interior_arcs().count()
     }
 }
 
@@ -451,7 +412,7 @@ where
                 .map(|vertex| vertex.key())
         })?;
         Ok((move || {
-            let (abc, storage) = self.into_keyed_source();
+            let (abc, storage) = self.into_inner().into_keyed_source();
             let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| face::split_with_cache(mutation, cache))
@@ -528,7 +489,7 @@ where
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry.clone();
         // TODO: Batch this operation by using the mutation API instead.
-        let (_, storage) = self.into_keyed_source();
+        let (_, storage) = self.into_inner().into_keyed_source();
         Ok(ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
             .remove()
@@ -548,7 +509,7 @@ where
     /// Returns an error if the destination face cannot be found or the arity
     /// of the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
-        let (source, storage) = self.into_keyed_source();
+        let (source, storage) = self.into_inner().into_keyed_source();
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
@@ -617,7 +578,7 @@ where
         F: FnOnce() -> G::Vertex,
     {
         (move || {
-            let (abc, storage) = self.into_keyed_source();
+            let (abc, storage) = self.into_inner().into_keyed_source();
             let cache = FacePokeCache::snapshot(&storage, abc, f())?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
@@ -692,7 +653,7 @@ where
     {
         let translation = self.normal() * offset.into();
         (move || {
-            let (abc, storage) = self.into_keyed_source();
+            let (abc, storage) = self.into_inner().into_keyed_source();
             let cache = FaceExtrudeCache::snapshot(&storage, abc, translation)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
@@ -706,7 +667,7 @@ where
     /// Returns the interior path of the face.
     pub fn remove(self) -> InteriorPathView<&'a mut M, G> {
         (move || {
-            let (abc, storage) = self.into_keyed_source();
+            let (abc, storage) = self.into_inner().into_keyed_source();
             let cache = FaceRemoveCache::snapshot(&storage, abc)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
@@ -746,24 +707,24 @@ where
 
 impl<M, G> Clone for FaceView<M, G>
 where
-    M: Clone + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
     G: Geometry,
+    View<M, FacePayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
         FaceView {
-            storage: self.storage.clone(),
-            key: self.key,
-            phantom: PhantomData,
+            inner: self.inner.clone(),
         }
     }
 }
 
 impl<M, G> Copy for FaceView<M, G>
 where
-    M: Copy + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
     G: Geometry,
+    View<M, FacePayload<G>>: Copy,
 {
 }
 
@@ -776,7 +737,7 @@ where
     type Target = FacePayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        self.storage.reborrow().as_storage().get(&self.key).unwrap()
+        self.inner.deref()
     }
 }
 
@@ -787,11 +748,18 @@ where
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
-            .reborrow_mut()
-            .as_storage_mut()
-            .get_mut(&self.key)
-            .unwrap()
+        self.inner.deref_mut()
+    }
+}
+
+impl<M, G> From<View<M, FacePayload<G>>> for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<FacePayload<G>>,
+    G: Geometry,
+{
+    fn from(view: View<M, FacePayload<G>>) -> Self {
+        FaceView { inner: view }
     }
 }
 
@@ -802,24 +770,7 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (FaceKey, M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(FaceView::from_keyed_source_unchecked((key, storage)))
-    }
-}
-
-impl<M, G> IntoKeyedSource<(FaceKey, M)> for FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
-{
-    fn into_keyed_source(self) -> (FaceKey, M) {
-        let FaceView { key, storage, .. } = self;
-        (key, storage)
+        View::<_, FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -831,8 +782,7 @@ pub struct OrphanFaceView<'a, G>
 where
     G: 'a + Geometry,
 {
-    key: FaceKey,
-    face: &'a mut FacePayload<G>,
+    inner: OrphanView<'a, FacePayload<G>>,
 }
 
 impl<'a, G> OrphanFaceView<'a, G>
@@ -840,7 +790,7 @@ where
     G: 'a + Geometry,
 {
     pub fn key(&self) -> FaceKey {
-        self.key
+        self.inner.key()
     }
 }
 
@@ -851,7 +801,7 @@ where
     type Target = FacePayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.face
+        self.inner.deref()
     }
 }
 
@@ -860,7 +810,16 @@ where
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.face
+        self.inner.deref_mut()
+    }
+}
+
+impl<'a, G> From<OrphanView<'a, FacePayload<G>>> for OrphanFaceView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn from(view: OrphanView<'a, FacePayload<G>>) -> Self {
+        OrphanFaceView { inner: view }
     }
 }
 
@@ -870,21 +829,7 @@ where
     G: 'a + Geometry,
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .as_storage_mut()
-            .get_mut(&key)
-            .map(|face| OrphanFaceView { key, face })
-    }
-}
-
-impl<'a, G> FromKeyedSource<(FaceKey, &'a mut FacePayload<G>)> for OrphanFaceView<'a, G>
-where
-    G: 'a + Geometry,
-{
-    fn from_keyed_source(source: (FaceKey, &'a mut FacePayload<G>)) -> Option<Self> {
-        let (key, face) = source;
-        Some(OrphanFaceView { key, face })
+        OrphanView::<FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -915,7 +860,7 @@ where
 {
     fn from(face: FaceView<M, G>) -> Self {
         FaceNeighborhood {
-            key: face.key,
+            key: face.key(),
             arcs: face
                 .reachable_interior_arcs()
                 .map(|arc| arc.neighborhood())
@@ -940,15 +885,39 @@ where
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: Geometry,
 {
-    storage: M,
-    arc: ArcKey,
-    face: Option<FaceKey>,
-    phantom: PhantomData<G>,
+    inner: View<M, ArcPayload<G>>,
+}
+
+impl<M, G> InteriorPathView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: Geometry,
+{
+    fn into_inner(self) -> View<M, ArcPayload<G>> {
+        let InteriorPathView { inner, .. } = self;
+        inner
+    }
+
+    /// Gets the arity of the interior path. This is the number of arcs that
+    /// form the path.
+    pub fn arity(&self) -> usize {
+        self.arcs().count()
+    }
+
+    /// Gets an iterator of views over the arcs within the interior path.
+    pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        ArcCirculator::from(self.interior_reborrow())
+    }
+
+    fn interior_reborrow(&self) -> InteriorPathView<&M::Target, G> {
+        self.inner.interior_reborrow().into()
+    }
 }
 
 impl<'a, M, G> InteriorPathView<&'a mut M, G>
 where
-    M: AsStorage<ArcPayload<G>> + Consistent,
+    M: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + Consistent,
     G: 'a + Geometry,
 {
     /// Converts a mutable view into an immutable view.
@@ -956,8 +925,7 @@ where
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
     pub fn into_ref(self) -> InteriorPathView<&'a M, G> {
-        let (arc, face, storage) = self.into_keyed_source();
-        InteriorPathView::from_keyed_source_unchecked((arc, face, &*storage))
+        self.into_inner().into_ref().into()
     }
 
     /// Reborrows the view and constructs another mutable view from a given
@@ -974,7 +942,7 @@ where
         F: FnOnce(InteriorPathView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, _, storage) = self.into_keyed_source();
+            let (_, storage) = self.into_inner().into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -988,55 +956,17 @@ where
 impl<M, G> InteriorPathView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + Consistent,
-    G: Geometry,
-{
-    fn from_keyed_source_unchecked(source: (ArcKey, Option<FaceKey>, M)) -> Self {
-        let (arc, face, storage) = source;
-        InteriorPathView {
-            storage,
-            arc,
-            face,
-            phantom: PhantomData,
-        }
-    }
-
-    /// Gets the arity of the interior path. This is the number of arcs that
-    /// form the path.
-    pub fn arity(&self) -> usize {
-        self.arcs().count()
-    }
-
-    /// Gets an iterator of views over the arcs within the interior path.
-    pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        ArcCirculator::from(self.interior_reborrow())
-    }
-
-    fn interior_reborrow(&self) -> InteriorPathView<&M::Target, G> {
-        let arc = self.arc;
-        let face = self.face;
-        let storage = self.storage.reborrow();
-        InteriorPathView::from_keyed_source_unchecked((arc, face, storage))
-    }
-}
-
-impl<M, G> InteriorPathView<M, G>
-where
-    M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: Geometry,
 {
     /// Converts the interior path into its originating arc.
     pub fn into_arc(self) -> ArcView<M, G> {
-        let (arc, _, storage) = self.into_keyed_source();
-        (arc, storage).into_view().expect_consistent()
+        self.into_inner().into()
     }
 
     /// Gets the originating arc of the interior path.
     pub fn arc(&self) -> ArcView<&M::Target, G> {
-        let arc = self.arc;
-        let storage = self.storage.reborrow();
-        (arc, storage).into_view().expect_consistent()
+        self.inner.interior_reborrow().into()
     }
 
     /// Gets the distance (number of arcs) between two vertices within the
@@ -1088,26 +1018,22 @@ where
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn into_face(self) -> Option<FaceView<M, G>> {
-        let (_, face, storage) = self.into_keyed_source();
-        if let Some(face) = face {
-            Some((face, storage).into_view().expect_consistent())
-        }
-        else {
-            None
-        }
+        let inner = self.into_inner();
+        let key = inner.face;
+        key.map(move |key| inner.rekey_map(key).expect_consistent())
     }
 
     /// Gets the face of the interior path.
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
-        if let Some(face) = self.face {
-            let storage = self.storage.reborrow();
-            Some((face, storage).into_view().expect_consistent())
-        }
-        else {
-            None
-        }
+        let key = self.inner.face;
+        key.map(|key| {
+            self.inner
+                .interior_reborrow()
+                .rekey_map(key)
+                .expect_consistent()
+        })
     }
 }
 
@@ -1139,9 +1065,9 @@ where
     where
         F: FnOnce() -> G::Face,
     {
-        if let Some(face) = self.face.clone().take() {
-            let (_, _, storage) = self.into_keyed_source();
-            (face, storage).into_view().expect_consistent()
+        let key = self.inner.face;
+        if let Some(key) = key {
+            self.into_inner().rekey_map(key).expect_consistent()
         }
         else {
             (move || {
@@ -1149,7 +1075,7 @@ where
                     .vertices()
                     .map(|vertex| vertex.key())
                     .collect::<Vec<_>>();
-                let (_, _, storage) = self.into_keyed_source();
+                let (_, storage) = self.into_inner().into_keyed_source();
                 let cache =
                     FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
                 Mutation::replace(storage, Default::default())
@@ -1161,6 +1087,17 @@ where
     }
 }
 
+impl<M, G> From<View<M, ArcPayload<G>>> for InteriorPathView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: Geometry,
+{
+    fn from(view: View<M, ArcPayload<G>>) -> Self {
+        InteriorPathView { inner: view }
+    }
+}
+
 impl<M, G> FromKeyedSource<(ArcKey, M)> for InteriorPathView<M, G>
 where
     M: Reborrow,
@@ -1168,38 +1105,7 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
-        // Because the storage is consistent, this code assumes that any and
-        // all arcs in the graph will form a loop. Note that this allows
-        // exterior arcs of non-enclosed meshes to form a region. For
-        // conceptually flat meshes, this is odd, but is topologically
-        // consistent.
-        let (key, storage) = source;
-        if let Some(arc) = storage.reborrow().as_storage().get(&key) {
-            let face = arc.face.clone();
-            Some(InteriorPathView {
-                storage,
-                arc: key,
-                face,
-                phantom: PhantomData,
-            })
-        }
-        else {
-            None
-        }
-    }
-}
-
-impl<M, G> IntoKeyedSource<(ArcKey, Option<FaceKey>, M)> for InteriorPathView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + Consistent,
-    G: Geometry,
-{
-    fn into_keyed_source(self) -> (ArcKey, Option<FaceKey>, M) {
-        let InteriorPathView {
-            storage, arc, face, ..
-        } = self;
-        (arc, face, storage)
+        View::<_, ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -1348,12 +1254,12 @@ where
     G: Geometry,
 {
     fn from(face: FaceView<M, G>) -> Self {
-        let arc = face.arc;
-        let (_, storage) = face.into_keyed_source();
+        let key = face.arc;
+        let (_, storage) = face.into_inner().into_keyed_source();
         ArcCirculator {
             storage,
-            arc: Some(arc),
-            breadcrumb: Some(arc),
+            arc: Some(key),
+            breadcrumb: Some(key),
             phantom: PhantomData,
         }
     }
@@ -1366,11 +1272,11 @@ where
     G: Geometry,
 {
     fn from(path: InteriorPathView<M, G>) -> Self {
-        let (arc, _, storage) = path.into_keyed_source();
+        let (key, storage) = path.into_inner().into_keyed_source();
         ArcCirculator {
             storage,
-            arc: Some(arc),
-            breadcrumb: Some(arc),
+            arc: Some(key),
+            breadcrumb: Some(key),
             phantom: PhantomData,
         }
     }

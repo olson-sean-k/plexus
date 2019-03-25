@@ -8,19 +8,19 @@ use std::ops::{Deref, DerefMut};
 use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
 use crate::geometry::{Geometry, Space};
-use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
 use crate::graph::mutation::{Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
 use crate::graph::view::{
-    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, VertexView,
+    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, OrphanView, VertexView, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
@@ -65,31 +65,45 @@ where
     M::Target: AsStorage<ArcPayload<G>>,
     G: Geometry,
 {
-    key: ArcKey,
-    storage: M,
-    phantom: PhantomData<G>,
+    inner: View<M, ArcPayload<G>>,
 }
 
-/// Storage.
 impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: Geometry,
 {
-    // TODO: This may become useful as the `mutation` module is developed. It
-    //       may also be necessary to expose this API to user code.
-    #[allow(dead_code)]
-    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> ArcView<<M as Bind<T, N>>::Output, G>
-    where
-        T: Payload,
-        M: Bind<T, N>,
-        M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<ArcPayload<G>>,
-        N: AsStorage<T>,
-    {
-        let (key, origin) = self.into_keyed_source();
-        ArcView::from_keyed_source_unchecked((key, origin.bind(storage)))
+    fn into_inner(self) -> View<M, ArcPayload<G>> {
+        let ArcView { inner, .. } = self;
+        inner
+    }
+
+    fn interior_reborrow(&self) -> ArcView<&M::Target, G> {
+        self.inner.interior_reborrow().into()
+    }
+
+    /// Gets the key for the arc.
+    pub fn key(&self) -> ArcKey {
+        self.inner.key()
+    }
+
+    /// Returns true if this is a boundary arc.
+    ///
+    /// A boundary arc has no associated face.
+    pub fn is_boundary_arc(&self) -> bool {
+        self.face.is_none()
+    }
+}
+
+impl<M, G> ArcView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<ArcPayload<G>>,
+    G: Geometry,
+{
+    fn interior_reborrow_mut(&mut self) -> ArcView<&mut M::Target, G> {
+        self.inner.interior_reborrow_mut().into()
     }
 }
 
@@ -100,8 +114,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanArcView<'a, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, storage).into_view().unwrap()
+        self.into_inner().into_orphan().into()
     }
 
     /// Converts a mutable view into an immutable view.
@@ -138,8 +151,7 @@ where
     /// # }
     /// ```
     pub fn into_ref(self) -> ArcView<&'a M, G> {
-        let (key, storage) = self.into_keyed_source();
-        ArcView::from_keyed_source_unchecked((key, &*storage))
+        self.into_inner().into_ref().into()
     }
 
     /// Reborrows the view and constructs another mutable view from a given
@@ -156,7 +168,7 @@ where
         F: FnOnce(ArcView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_source();
+            let (_, storage) = self.into_inner().into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -164,53 +176,6 @@ where
         else {
             Either::Right(self)
         }
-    }
-}
-
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
-{
-    /// Gets the key for the arc.
-    pub fn key(&self) -> ArcKey {
-        self.key
-    }
-
-    /// Returns true if this is a boundary arc.
-    ///
-    /// A boundary arc has no associated face.
-    pub fn is_boundary_arc(&self) -> bool {
-        self.face.is_none()
-    }
-
-    fn from_keyed_source_unchecked(source: (ArcKey, M)) -> Self {
-        let (key, storage) = source;
-        ArcView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
-    }
-
-    fn interior_reborrow(&self) -> ArcView<&M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow();
-        ArcView::from_keyed_source_unchecked((key, storage))
-    }
-}
-
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
-{
-    fn interior_reborrow_mut(&mut self) -> ArcView<&mut M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow_mut();
-        ArcView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -232,24 +197,20 @@ where
     }
 
     pub(in crate::graph) fn into_reachable_opposite_arc(self) -> Option<Self> {
-        let (key, storage) = self.into_keyed_source();
-        (key.opposite(), storage).into_view()
+        let key = self.key().opposite();
+        self.into_inner().rekey_map(key)
     }
 
     pub(in crate::graph) fn into_reachable_next_arc(self) -> Option<Self> {
-        let key = self.next;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_source();
-            (key, storage).into_view()
-        })
+        let inner = self.into_inner();
+        let key = inner.next;
+        key.and_then(move |key| inner.rekey_map(key))
     }
 
     pub(in crate::graph) fn into_reachable_previous_arc(self) -> Option<Self> {
-        let key = self.previous;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_source();
-            (key, storage).into_view()
-        })
+        let inner = self.into_inner();
+        let key = inner.previous;
+        key.and_then(move |key| inner.rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_boundary_arc(&self) -> Option<ArcView<&M::Target, G>> {
@@ -263,23 +224,18 @@ where
     }
 
     pub(in crate::graph) fn reachable_opposite_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        let ba = self.key.opposite();
-        let storage = self.storage.reborrow();
-        (ba, storage).into_view()
+        let key = self.key().opposite();
+        self.inner.interior_reborrow().rekey_map(key)
     }
 
     pub(in crate::graph) fn reachable_next_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        self.next.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        self.next
+            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_previous_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        self.previous.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        self.previous
+            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 }
 
@@ -291,7 +247,7 @@ where
 {
     /// Converts the arc into its interior path.
     pub fn into_interior_path(self) -> InteriorPathView<M, G> {
-        let (key, storage) = self.into_keyed_source();
+        let (key, storage) = self.into_inner().into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
 
@@ -317,8 +273,7 @@ where
 
     /// Gets the interior path of the arc.
     pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow();
+        let (key, storage) = self.inner.interior_reborrow().into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
 
@@ -351,29 +306,25 @@ where
     G: Geometry,
 {
     pub(in crate::graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
-        let (a, _) = self.key.into();
-        let (_, storage) = self.into_keyed_source();
-        (a, storage).into_view()
+        let (key, _) = self.key().into();
+        self.into_inner().rekey_map(key)
     }
 
     pub(in crate::graph) fn into_reachable_destination_vertex(self) -> Option<VertexView<M, G>> {
-        let (_, b) = self.key.into();
-        let (_, storage) = self.into_keyed_source();
-        (b, storage).into_view()
+        let (_, key) = self.key().into();
+        self.into_inner().rekey_map(key)
     }
 
     pub(in crate::graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M::Target, G>> {
-        let (a, _) = self.key.into();
-        let storage = self.storage.reborrow();
-        (a, storage).into_view()
+        let (key, _) = self.key().into();
+        self.inner.interior_reborrow().rekey_map(key)
     }
 
     pub(in crate::graph) fn reachable_destination_vertex(
         &self,
     ) -> Option<VertexView<&M::Target, G>> {
-        let (_, b) = self.key.into();
-        let storage = self.storage.reborrow();
-        (b, storage).into_view()
+        let (_, key) = self.key().into();
+        self.inner.interior_reborrow().rekey_map(key)
     }
 }
 
@@ -417,18 +368,14 @@ where
     G: Geometry,
 {
     pub(in crate::graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
-        let key = self.edge;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_source();
-            (key, storage).into_view()
-        })
+        let inner = self.into_inner();
+        let key = inner.edge;
+        key.and_then(move |key| inner.rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_edge(&self) -> Option<EdgeView<&M::Target, G>> {
-        self.edge.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        self.edge
+            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 }
 
@@ -457,18 +404,14 @@ where
     G: Geometry,
 {
     pub(in crate::graph) fn into_reachable_face(self) -> Option<FaceView<M, G>> {
-        let key = self.face;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_source();
-            (key, storage).into_view()
-        })
+        let inner = self.into_inner();
+        let key = inner.face;
+        key.and_then(move |key| inner.rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_face(&self) -> Option<FaceView<&M::Target, G>> {
-        self.face.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        self.face
+            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 }
 
@@ -657,7 +600,7 @@ where
         F: FnOnce() -> G::Vertex,
     {
         (move || {
-            let (ab, storage) = self.into_keyed_source();
+            let (ab, storage) = self.into_inner().into_keyed_source();
             let cache = EdgeSplitCache::snapshot(&storage, ab, f())?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
@@ -801,7 +744,7 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
         })?;
-        let (source, storage) = self.into_keyed_source();
+        let (source, storage) = self.into_inner().into_keyed_source();
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
@@ -860,7 +803,7 @@ where
         G::Vertex: AsPosition<Target = G::Point>,
     {
         let translation = self.normal() * offset.into();
-        let (ab, storage) = self.into_keyed_source();
+        let (ab, storage) = self.into_inner().into_keyed_source();
         let cache = ArcExtrudeCache::snapshot(&storage, ab, translation)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
@@ -877,7 +820,7 @@ where
     pub fn remove(self) -> VertexView<&'a mut M, G> {
         (move || {
             let a = self.source_vertex().key();
-            let (ab, storage) = self.into_keyed_source();
+            let (ab, storage) = self.into_inner().into_keyed_source();
             let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
@@ -903,24 +846,24 @@ where
 
 impl<M, G> Clone for ArcView<M, G>
 where
-    M: Clone + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: Geometry,
+    View<M, ArcPayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
         ArcView {
-            key: self.key,
-            storage: self.storage.clone(),
-            phantom: PhantomData,
+            inner: self.inner.clone(),
         }
     }
 }
 
 impl<M, G> Copy for ArcView<M, G>
 where
-    M: Copy + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: Geometry,
+    View<M, ArcPayload<G>>: Copy,
 {
 }
 
@@ -933,7 +876,7 @@ where
     type Target = ArcPayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        self.storage.reborrow().as_storage().get(&self.key).unwrap()
+        self.inner.deref()
     }
 }
 
@@ -944,11 +887,18 @@ where
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
-            .reborrow_mut()
-            .as_storage_mut()
-            .get_mut(&self.key)
-            .unwrap()
+        self.inner.deref_mut()
+    }
+}
+
+impl<M, G> From<View<M, ArcPayload<G>>> for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>,
+    G: Geometry,
+{
+    fn from(view: View<M, ArcPayload<G>>) -> Self {
+        ArcView { inner: view }
     }
 }
 
@@ -959,24 +909,7 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(ArcView::from_keyed_source_unchecked((key, storage)))
-    }
-}
-
-impl<M, G> IntoKeyedSource<(ArcKey, M)> for ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
-{
-    fn into_keyed_source(self) -> (ArcKey, M) {
-        let ArcView { key, storage, .. } = self;
-        (key, storage)
+        View::<_, ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -988,8 +921,7 @@ pub struct OrphanArcView<'a, G>
 where
     G: 'a + Geometry,
 {
-    key: ArcKey,
-    arc: &'a mut ArcPayload<G>,
+    inner: OrphanView<'a, ArcPayload<G>>,
 }
 
 impl<'a, G> OrphanArcView<'a, G>
@@ -997,7 +929,7 @@ where
     G: 'a + Geometry,
 {
     pub fn key(&self) -> ArcKey {
-        self.key
+        self.inner.key()
     }
 }
 
@@ -1008,7 +940,7 @@ where
     type Target = ArcPayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.arc
+        self.inner.deref()
     }
 }
 
@@ -1017,7 +949,16 @@ where
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.arc
+        self.inner.deref_mut()
+    }
+}
+
+impl<'a, G> From<OrphanView<'a, ArcPayload<G>>> for OrphanArcView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn from(view: OrphanView<'a, ArcPayload<G>>) -> Self {
+        OrphanArcView { inner: view }
     }
 }
 
@@ -1027,21 +968,7 @@ where
     G: 'a + Geometry,
 {
     fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .as_storage_mut()
-            .get_mut(&key)
-            .map(|arc| OrphanArcView { key, arc })
-    }
-}
-
-impl<'a, G> FromKeyedSource<(ArcKey, &'a mut ArcPayload<G>)> for OrphanArcView<'a, G>
-where
-    G: 'a + Geometry,
-{
-    fn from_keyed_source(source: (ArcKey, &'a mut ArcPayload<G>)) -> Option<Self> {
-        let (key, arc) = source;
-        Some(OrphanArcView { key, arc })
+        OrphanView::<ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -1055,31 +982,27 @@ where
     M::Target: AsStorage<EdgePayload<G>>,
     G: Geometry,
 {
-    key: EdgeKey,
-    storage: M,
-    phantom: PhantomData<G>,
+    inner: View<M, EdgePayload<G>>,
 }
 
-/// Storage.
 impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
     G: Geometry,
 {
-    // TODO: This may become useful as the `mutation` module is developed. It
-    //       may also be necessary to expose this API to user code.
-    #[allow(dead_code)]
-    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> EdgeView<<M as Bind<T, N>>::Output, G>
-    where
-        T: Payload,
-        M: Bind<T, N>,
-        M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<EdgePayload<G>>,
-        N: AsStorage<T>,
-    {
-        let (key, origin) = self.into_keyed_source();
-        EdgeView::from_keyed_source_unchecked((key, origin.bind(storage)))
+    fn into_inner(self) -> View<M, EdgePayload<G>> {
+        let EdgeView { inner, .. } = self;
+        inner
+    }
+
+    fn interior_reborrow(&self) -> EdgeView<&M::Target, G> {
+        self.inner.interior_reborrow().into()
+    }
+
+    /// Gets the key for the edge.
+    pub fn key(&self) -> EdgeKey {
+        self.inner.key()
     }
 }
 
@@ -1090,8 +1013,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanEdgeView<'a, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, storage).into_view().unwrap()
+        self.into_inner().into_orphan().into()
     }
 
     /// Converts a mutable view into an immutable view.
@@ -1099,8 +1021,7 @@ where
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
     pub fn into_ref(self) -> EdgeView<&'a M, G> {
-        let (key, storage) = self.into_keyed_source();
-        EdgeView::from_keyed_source_unchecked((key, &*storage))
+        self.into_inner().into_ref().into()
     }
 
     /// Reborrows the view and constructs another mutable view from a given
@@ -1117,7 +1038,7 @@ where
         F: FnOnce(EdgeView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_source();
+            let (_, storage) = self.into_inner().into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -1125,33 +1046,6 @@ where
         else {
             Either::Right(self)
         }
-    }
-}
-
-impl<M, G> EdgeView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
-{
-    /// Gets the key for the edge.
-    pub fn key(&self) -> EdgeKey {
-        self.key
-    }
-
-    fn from_keyed_source_unchecked(source: (EdgeKey, M)) -> Self {
-        let (key, storage) = source;
-        EdgeView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
-    }
-
-    fn interior_reborrow(&self) -> EdgeView<&M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow();
-        EdgeView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -1164,14 +1058,12 @@ where
 {
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
-        let (_, storage) = self.into_keyed_source();
-        (key, storage).into_view()
+        self.into_inner().rekey_map(key)
     }
 
     pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M::Target, G>> {
         let key = self.arc;
-        let storage = self.storage.reborrow();
-        (key, storage).into_view()
+        self.inner.interior_reborrow().rekey_map(key)
     }
 }
 
@@ -1212,24 +1104,24 @@ where
 
 impl<M, G> Clone for EdgeView<M, G>
 where
-    M: Clone + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
     G: Geometry,
+    View<M, EdgePayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
         EdgeView {
-            key: self.key,
-            storage: self.storage.clone(),
-            phantom: PhantomData,
+            inner: self.inner.clone(),
         }
     }
 }
 
 impl<M, G> Copy for EdgeView<M, G>
 where
-    M: Copy + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
     G: Geometry,
+    View<M, EdgePayload<G>>: Copy,
 {
 }
 
@@ -1242,7 +1134,7 @@ where
     type Target = EdgePayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        self.storage.reborrow().as_storage().get(&self.key).unwrap()
+        self.inner.deref()
     }
 }
 
@@ -1253,11 +1145,18 @@ where
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
-            .reborrow_mut()
-            .as_storage_mut()
-            .get_mut(&self.key)
-            .unwrap()
+        self.inner.deref_mut()
+    }
+}
+
+impl<M, G> From<View<M, EdgePayload<G>>> for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<EdgePayload<G>>,
+    G: Geometry,
+{
+    fn from(view: View<M, EdgePayload<G>>) -> Self {
+        EdgeView { inner: view }
     }
 }
 
@@ -1268,24 +1167,7 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(EdgeView::from_keyed_source_unchecked((key, storage)))
-    }
-}
-
-impl<M, G> IntoKeyedSource<(EdgeKey, M)> for EdgeView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
-{
-    fn into_keyed_source(self) -> (EdgeKey, M) {
-        let EdgeView { key, storage, .. } = self;
-        (key, storage)
+        View::<_, EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -1297,8 +1179,7 @@ pub struct OrphanEdgeView<'a, G>
 where
     G: 'a + Geometry,
 {
-    key: EdgeKey,
-    edge: &'a mut EdgePayload<G>,
+    inner: OrphanView<'a, EdgePayload<G>>,
 }
 
 impl<'a, G> OrphanEdgeView<'a, G>
@@ -1306,7 +1187,7 @@ where
     G: 'a + Geometry,
 {
     pub fn key(&self) -> EdgeKey {
-        self.key
+        self.inner.key()
     }
 }
 
@@ -1317,7 +1198,7 @@ where
     type Target = EdgePayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.edge
+        self.inner.deref()
     }
 }
 
@@ -1326,7 +1207,16 @@ where
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.edge
+        self.inner.deref_mut()
+    }
+}
+
+impl<'a, G> From<OrphanView<'a, EdgePayload<G>>> for OrphanEdgeView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn from(view: OrphanView<'a, EdgePayload<G>>) -> Self {
+        OrphanEdgeView { inner: view }
     }
 }
 
@@ -1336,21 +1226,7 @@ where
     G: 'a + Geometry,
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .as_storage_mut()
-            .get_mut(&key)
-            .map(|edge| OrphanEdgeView { key, edge })
-    }
-}
-
-impl<'a, G> FromKeyedSource<(EdgeKey, &'a mut EdgePayload<G>)> for OrphanEdgeView<'a, G>
-where
-    G: 'a + Geometry,
-{
-    fn from_keyed_source(source: (EdgeKey, &'a mut EdgePayload<G>)) -> Option<Self> {
-        let (key, edge) = source;
-        Some(OrphanEdgeView { key, edge })
+        OrphanView::<EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -1380,11 +1256,10 @@ where
     G: Geometry,
 {
     fn from(arc: ArcView<M, G>) -> Self {
-        let a = arc.source_vertex().key();
-        let b = arc.destination_vertex().key();
+        let key = arc.key();
         ArcNeighborhood {
-            key: arc.key,
-            vertices: (a, b),
+            key,
+            vertices: key.into(),
         }
     }
 }
@@ -1419,7 +1294,7 @@ where
 {
     fn from(arc: ArcView<M, G>) -> Self {
         let (a, b) = arc.key().into();
-        let (_, storage) = arc.into_keyed_source();
+        let (_, storage) = arc.into_inner().into_keyed_source();
         VertexCirculator {
             storage,
             input: ArrayVec::<_>::from([a, b]).into_iter(),
@@ -1536,7 +1411,7 @@ where
             )
             .collect::<ArrayVec<_>>()
             .into_iter();
-        let (_, storage) = arc.into_keyed_source();
+        let (_, storage) = arc.into_inner().into_keyed_source();
         FaceCirculator {
             storage,
             input,

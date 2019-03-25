@@ -1,20 +1,19 @@
 use either::Either;
-use fool::prelude::*;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
-use crate::graph::container::{Bind, Consistent, Reborrow, ReborrowMut};
+use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
+use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
-use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView};
+use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
 /// View of a vertex.
@@ -30,31 +29,38 @@ where
     M::Target: AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
-    key: VertexKey,
-    storage: M,
-    phantom: PhantomData<G>,
+    inner: View<M, VertexPayload<G>>,
 }
 
-/// Storage.
 impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
-    // TODO: This may become useful as the `mutation` module is developed. It
-    //       may also be necessary to expose this API to user code.
-    #[allow(dead_code)]
-    pub(in crate::graph) fn bind<T, N>(self, storage: N) -> VertexView<<M as Bind<T, N>>::Output, G>
-    where
-        T: Payload,
-        M: Bind<T, N>,
-        M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<VertexPayload<G>>,
-        N: AsStorage<T>,
-    {
-        let (key, origin) = self.into_keyed_source();
-        VertexView::from_keyed_source_unchecked((key, origin.bind(storage)))
+    fn into_inner(self) -> View<M, VertexPayload<G>> {
+        let VertexView { inner, .. } = self;
+        inner
+    }
+
+    fn interior_reborrow(&self) -> VertexView<&M::Target, G> {
+        self.inner.interior_reborrow().into()
+    }
+
+    /// Gets the key for the vertex.
+    pub fn key(&self) -> VertexKey {
+        self.inner.key()
+    }
+}
+
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<VertexPayload<G>>,
+    G: Geometry,
+{
+    fn interior_reborrow_mut(&mut self) -> VertexView<&mut M::Target, G> {
+        self.inner.interior_reborrow_mut().into()
     }
 }
 
@@ -65,8 +71,7 @@ where
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanVertexView<'a, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, storage).into_view().unwrap()
+        self.into_inner().into_orphan().into()
     }
 
     /// Converts a mutable view into an immutable view.
@@ -101,8 +106,7 @@ where
     /// # }
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M, G> {
-        let (key, storage) = self.into_keyed_source();
-        (key, &*storage).into_view().unwrap()
+        self.into_inner().into_ref().into()
     }
 
     /// Reborrows the view and constructs another mutable view from a given
@@ -119,7 +123,7 @@ where
         F: FnOnce(VertexView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_source();
+            let (_, storage) = self.into_inner().into_keyed_source();
             Either::Left(
                 T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
             )
@@ -127,46 +131,6 @@ where
         else {
             Either::Right(self)
         }
-    }
-}
-
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
-{
-    /// Gets the key for the vertex.
-    pub fn key(&self) -> VertexKey {
-        self.key
-    }
-
-    fn from_keyed_source_unchecked(source: (VertexKey, M)) -> Self {
-        let (key, storage) = source;
-        VertexView {
-            key,
-            storage,
-            phantom: PhantomData,
-        }
-    }
-
-    fn interior_reborrow(&self) -> VertexView<&M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow();
-        VertexView::from_keyed_source_unchecked((key, storage))
-    }
-}
-
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
-{
-    fn interior_reborrow_mut(&mut self) -> VertexView<&mut M::Target, G> {
-        let key = self.key;
-        let storage = self.storage.reborrow_mut();
-        VertexView::from_keyed_source_unchecked((key, storage))
     }
 }
 
@@ -178,18 +142,14 @@ where
     G: Geometry,
 {
     pub(in crate::graph) fn into_reachable_outgoing_arc(self) -> Option<ArcView<M, G>> {
-        let key = self.arc;
-        key.and_then(move |key| {
-            let (_, storage) = self.into_keyed_source();
-            (key, storage).into_view()
-        })
+        let inner = self.into_inner();
+        let key = inner.arc;
+        key.and_then(move |key| inner.rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_outgoing_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        self.arc.and_then(|key| {
-            let storage = self.storage.reborrow();
-            (key, storage).into_view()
-        })
+        self.arc
+            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 
     pub(in crate::graph) fn reachable_incoming_arcs(
@@ -276,15 +236,6 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: Geometry,
 {
-    pub(in crate::graph) fn reachable_outgoing_orphan_arc(&mut self) -> Option<OrphanArcView<G>> {
-        if let Some(key) = self.arc {
-            (key, self.storage.reborrow_mut()).into_view()
-        }
-        else {
-            None
-        }
-    }
-
     pub(in crate::graph) fn reachable_incoming_orphan_arcs(
         &mut self,
     ) -> impl Iterator<Item = OrphanArcView<G>> {
@@ -301,10 +252,6 @@ where
         + Consistent,
     G: Geometry,
 {
-    pub fn outgoing_orphan_arc(&mut self) -> OrphanArcView<G> {
-        self.reachable_outgoing_orphan_arc().expect_consistent()
-    }
-
     /// Gets an iterator of orphan views over the incoming arcs of the vertex.
     ///
     /// The ordering of arcs is deterministic and is based on the leading arc
@@ -389,7 +336,7 @@ where
     /// ```
     pub fn remove(self) {
         (move || {
-            let (a, storage) = self.into_keyed_source();
+            let (a, storage) = self.into_inner().into_keyed_source();
             let cache = VertexRemoveCache::snapshot(&storage, a)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
@@ -401,24 +348,24 @@ where
 
 impl<M, G> Clone for VertexView<M, G>
 where
-    M: Clone + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
     G: Geometry,
+    View<M, VertexPayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
         VertexView {
-            key: self.key,
-            storage: self.storage.clone(),
-            phantom: PhantomData,
+            inner: self.inner.clone(),
         }
     }
 }
 
 impl<M, G> Copy for VertexView<M, G>
 where
-    M: Copy + Reborrow,
+    M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
     G: Geometry,
+    View<M, VertexPayload<G>>: Copy,
 {
 }
 
@@ -431,7 +378,7 @@ where
     type Target = VertexPayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        self.storage.reborrow().as_storage().get(&self.key).unwrap()
+        self.inner.deref()
     }
 }
 
@@ -442,11 +389,18 @@ where
     G: Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
-            .reborrow_mut()
-            .as_storage_mut()
-            .get_mut(&self.key)
-            .unwrap()
+        self.inner.deref_mut()
+    }
+}
+
+impl<M, G> From<View<M, VertexPayload<G>>> for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<VertexPayload<G>>,
+    G: Geometry,
+{
+    fn from(view: View<M, VertexPayload<G>>) -> Self {
+        VertexView { inner: view }
     }
 }
 
@@ -457,24 +411,7 @@ where
     G: Geometry,
 {
     fn from_keyed_source(source: (VertexKey, M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(VertexView::from_keyed_source_unchecked((key, storage)))
-    }
-}
-
-impl<M, G> IntoKeyedSource<(VertexKey, M)> for VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
-{
-    fn into_keyed_source(self) -> (VertexKey, M) {
-        let VertexView { key, storage, .. } = self;
-        (key, storage)
+        View::<_, VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -486,8 +423,7 @@ pub struct OrphanVertexView<'a, G>
 where
     G: 'a + Geometry,
 {
-    key: VertexKey,
-    vertex: &'a mut VertexPayload<G>,
+    inner: OrphanView<'a, VertexPayload<G>>,
 }
 
 impl<'a, G> OrphanVertexView<'a, G>
@@ -495,7 +431,7 @@ where
     G: 'a + Geometry,
 {
     pub fn key(&self) -> VertexKey {
-        self.key
+        self.inner.key()
     }
 }
 
@@ -506,7 +442,7 @@ where
     type Target = VertexPayload<G>;
 
     fn deref(&self) -> &Self::Target {
-        &*self.vertex
+        self.inner.deref()
     }
 }
 
@@ -515,7 +451,16 @@ where
     G: 'a + Geometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.vertex
+        self.inner.deref_mut()
+    }
+}
+
+impl<'a, G> From<OrphanView<'a, VertexPayload<G>>> for OrphanVertexView<'a, G>
+where
+    G: 'a + Geometry,
+{
+    fn from(view: OrphanView<'a, VertexPayload<G>>) -> Self {
+        OrphanVertexView { inner: view }
     }
 }
 
@@ -525,21 +470,7 @@ where
     G: 'a + Geometry,
 {
     fn from_keyed_source(source: (VertexKey, &'a mut M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .as_storage_mut()
-            .get_mut(&key)
-            .map(|vertex| OrphanVertexView { key, vertex })
-    }
-}
-
-impl<'a, G> FromKeyedSource<(VertexKey, &'a mut VertexPayload<G>)> for OrphanVertexView<'a, G>
-where
-    G: 'a + Geometry,
-{
-    fn from_keyed_source(source: (VertexKey, &'a mut VertexPayload<G>)) -> Option<Self> {
-        let (key, vertex) = source;
-        Some(OrphanVertexView { key, vertex })
+        OrphanView::<VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -609,8 +540,9 @@ where
     G: Geometry,
 {
     fn from(vertex: VertexView<M, G>) -> Self {
-        let key = vertex.arc;
-        let (_, storage) = vertex.into_keyed_source();
+        let inner = vertex.into_inner();
+        let key = inner.arc;
+        let (_, storage) = inner.into_keyed_source();
         ArcCirculator {
             storage,
             outgoing: key,
