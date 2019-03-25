@@ -51,10 +51,9 @@ pub mod prelude {
     //! # Traits
     //!
     //! This module re-exports numerous traits. Traits from the `primitive`
-    //! module for generating, decomposing, and indexing iterators over
-    //! topological data (e.g., `Triangle`, `Quad`, etc.) are re-exported so
-    //! that functions in iterator expressions can be used without lengthy
-    //! imports.
+    //! module for generating and decomposing iterators over topological data
+    //! (e.g., `Triangle`, `Quad`, etc.) are re-exported so that functions in
+    //! iterator expressions can be used without lengthy imports.
     //!
     //! Basic traits for (de)constructing `MeshBuffer`s and `MeshGraph`s are
     //! also re-exported. These traits allow mesh types to be constructed from
