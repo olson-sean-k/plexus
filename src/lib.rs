@@ -1,4 +1,4 @@
-//! **Plexus** is a library for 2D and 3D mesh processing.
+//! **Plexus** is a library for polygonal mesh processing.
 //!
 //! Please note that versions in the `0.0.*` series are experimental and
 //! unstable! Use exact version constraints when specifying a dependency to

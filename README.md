@@ -1,6 +1,6 @@
 ![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.png)
 
-**Plexus** is a Rust library for 2D and 3D mesh processing.
+**Plexus** is a Rust library for polygonal mesh processing.
 
 [![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)

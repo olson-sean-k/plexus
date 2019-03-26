@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://plexus.rs"
 repository = "https://github.com/olson-sean-k/plexus"
-description = "2D and 3D mesh processing."
+description = "Polygonal mesh processing."
 keywords = ["graphics", "half-edge", "mesh", "topology", "geometry"]
 
 [package.metadata.docs.rs]
