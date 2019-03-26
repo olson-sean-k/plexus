@@ -13,10 +13,10 @@ keywords = ["graphics", "half-edge", "mesh", "topology", "geometry"]
 # Enable all featues so that trait implementations for types from commonly used
 # linear algebra crates are shown.
 all-features = true
+# Enable Katex support.
 rustdoc-args = [
-    # https://github.com/rust-lang/rust/issues/39437
-    #
-    #"--document-private-items"
+    "--html-in-header",
+    "doc/katex-header.html"
 ]
 
 [badges]
