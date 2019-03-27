@@ -3,4 +3,4 @@
 set -e
 
 RUSTDOCFLAGS="--html-in-header doc/katex-header.html" \
-cargo +nightly doc --no-deps "$@"
+cargo +nightly doc -p plexus --no-deps "$@"
