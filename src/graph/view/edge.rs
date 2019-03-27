@@ -816,15 +816,16 @@ where
     /// Any and all dependent topology is also removed, such as connected
     /// faces, vertices with no remaining leading arc, etc.
     ///
-    /// Returns the source vertex of the initiating arc.
-    pub fn remove(self) -> VertexView<&'a mut M, G> {
+    /// Returns the source vertex of the initiating arc or `None` if that
+    /// vertex becomes disjoint and is also removed.
+    pub fn remove(self) -> Option<VertexView<&'a mut M, G>> {
         (move || {
             let a = self.source_vertex().key();
             let (ab, storage) = self.into_inner().into_keyed_source();
             let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-                .map(|(storage, _)| (a, storage).into_view().expect_consistent())
+                .map(|(storage, _)| (a, storage).into_view())
         })()
         .expect_consistent()
     }
@@ -1594,7 +1595,7 @@ mod tests {
         // Remove the edge joining the quads from the graph.
         let ab = find_arc_with_vertex_geometry(&graph, ((0.0, 0.0), (0.0, 1.0))).unwrap();
         {
-            let vertex = graph.arc_mut(ab).unwrap().remove().into_ref();
+            let vertex = graph.arc_mut(ab).unwrap().remove().unwrap().into_ref();
 
             // The path should be formed from 6 edges.
             assert_eq!(6, vertex.into_outgoing_arc().into_interior_path().arity());

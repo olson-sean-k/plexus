@@ -493,6 +493,8 @@ where
         Ok(ArcView::from_keyed_source((ab, storage))
             .expect_consistent()
             .remove()
+            // Removing an edge between faces must yield a vertex.
+            .expect_consistent()
             .into_outgoing_arc()
             .into_interior_path()
             .get_or_insert_face_with(|| geometry))
