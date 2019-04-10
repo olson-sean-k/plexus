@@ -4,8 +4,10 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+use crate::geometry::alias::{Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::{Geometry, Space};
+use crate::geometry::space::EuclideanSpace;
+use crate::geometry::Geometry;
 use crate::graph::container::alias::{OwnedCore, RefCore};
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::mutation::alias::Mutable;
@@ -507,15 +509,19 @@ impl<G> FaceExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, abc: FaceKey, translation: G::Vector) -> Result<Self, GraphError>
+    pub fn snapshot<M>(
+        storage: M,
+        abc: FaceKey,
+        translation: Vector<VertexPosition<G>>,
+    ) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        G: Space,
-        G::Vertex: AsPosition<Target = G::Point>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
     {
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;

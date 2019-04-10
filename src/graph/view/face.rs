@@ -4,8 +4,10 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use crate::geometry::alias::{Scalar, Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::{Geometry, Space};
+use crate::geometry::space::EuclideanSpace;
+use crate::geometry::Geometry;
 use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
@@ -595,10 +597,15 @@ where
     /// Returns the inserted vertex.
     pub fn poke_at_centroid(self) -> VertexView<&'a mut M, G>
     where
-        G: FaceCentroid<Centroid = <G as Geometry>::Vertex>,
+        G: FaceCentroid<Centroid = VertexPosition<G>>,
+        G::Vertex: AsPosition,
     {
+        let mut geometry = self.arc().source_vertex().geometry.clone();
         let centroid = self.centroid();
-        self.poke_with(move || centroid)
+        self.poke_with(move || {
+            *geometry.as_position_mut() = centroid;
+            geometry
+        })
     }
 
     /// Subdivides the face about its centroid. A triangle fan is formed from
@@ -633,14 +640,14 @@ where
     /// ```
     pub fn poke_with_offset<T>(self, offset: T) -> VertexView<&'a mut M, G>
     where
-        T: Into<G::Scalar>,
-        G: FaceCentroid<Centroid = <G as Geometry>::Vertex>
-            + FaceNormal<Normal = <G as Space>::Vector>
-            + Space,
-        G::Vertex: AsPosition<Target = G::Point>,
+        T: Into<Scalar<VertexPosition<G>>>,
+        G: FaceCentroid<Centroid = VertexPosition<G>>
+            + FaceNormal<Normal = Vector<VertexPosition<G>>>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
     {
-        let mut geometry = self.centroid();
-        let position = geometry.as_position().clone() + (self.normal() * offset.into());
+        let mut geometry = self.arc().source_vertex().geometry.clone();
+        let position = self.centroid() + (self.normal() * offset.into());
         self.poke_with(move || {
             *geometry.as_position_mut() = position;
             geometry
@@ -649,9 +656,10 @@ where
 
     pub fn extrude<T>(self, offset: T) -> FaceView<&'a mut M, G>
     where
-        T: Into<G::Scalar>,
-        G: FaceNormal<Normal = <G as Space>::Vector> + Space,
-        G::Vertex: AsPosition<Target = G::Point>,
+        T: Into<Scalar<VertexPosition<G>>>,
+        G: FaceNormal<Normal = Vector<VertexPosition<G>>>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal() * offset.into();
         (move || {

@@ -1,7 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
+use crate::geometry::alias::{Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::{Geometry, Space};
+use crate::geometry::space::EuclideanSpace;
+use crate::geometry::Geometry;
 use crate::graph::container::{Bind, Consistent, Core, Reborrow};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{self, FaceRemoveCache};
@@ -417,15 +419,19 @@ impl<G> ArcExtrudeCache<G>
 where
     G: Geometry,
 {
-    pub fn snapshot<M>(storage: M, ab: ArcKey, translation: G::Vector) -> Result<Self, GraphError>
+    pub fn snapshot<M>(
+        storage: M,
+        ab: ArcKey,
+        translation: Vector<VertexPosition<G>>,
+    ) -> Result<Self, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<G>>
             + AsStorage<FacePayload<G>>
             + AsStorage<VertexPayload<G>>
             + Consistent,
-        G: Space,
-        G::Vertex: AsPosition<Target = G::Point>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
     {
         // Get the extruded geometry.
         let (vertices, arc) = {

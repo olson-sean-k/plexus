@@ -3,15 +3,16 @@
 //! See the `geometry::compose` module. This module's contents are re-exported
 //! there.
 
-use crate::geometry::alias::*;
+use crate::geometry::alias::{Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::ops::{Average, Cross, Interpolate, Normalize, Project};
-use crate::geometry::{Geometry, Space};
+use crate::geometry::ops::{Cross, Interpolate, Normalize, Project};
+use crate::geometry::space::{EuclideanSpace, Origin};
+use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::view::{ArcView, EdgeView, FaceView};
-use crate::graph::GraphError;
+use crate::graph::{GraphError, OptionExt};
 
 pub trait FaceNormal: Geometry {
     type Normal;
@@ -26,11 +27,12 @@ pub trait FaceNormal: Geometry {
 
 impl<G> FaceNormal for G
 where
-    G: Geometry + Space,
-    G::Vertex: AsPosition<Target = G::Point>,
-    G::Vector: Cross<Output = G::Vector> + Normalize,
+    G: Geometry,
+    G::Vertex: AsPosition,
+    Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
+    VertexPosition<G>: EuclideanSpace,
 {
-    type Normal = G::Vector;
+    type Normal = Vector<VertexPosition<G>>;
 
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
@@ -72,11 +74,11 @@ pub trait FaceCentroid: Geometry {
 impl<G> FaceCentroid for G
 where
     G: Geometry,
-    G::Vertex: Average,
+    G::Vertex: AsPosition,
+    VertexPosition<G>: EuclideanSpace,
 {
-    type Centroid = G::Vertex;
+    type Centroid = VertexPosition<G>;
 
-    // TODO: Should this only operate over the result of `AsPosition`?
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
@@ -84,10 +86,11 @@ where
             + AsStorage<FacePayload<Self>>
             + AsStorage<VertexPayload<Self>>,
     {
-        Ok(G::Vertex::average(
+        Ok(VertexPosition::<G>::centroid(
             face.reachable_vertices()
-                .map(|vertex| vertex.geometry.clone()),
-        ))
+                .map(|vertex| vertex.geometry.as_position().clone()),
+        )
+        .expect_consistent())
     }
 }
 
@@ -106,9 +109,9 @@ impl<G> EdgeMidpoint for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
-    VertexPosition<G>: Clone + Interpolate,
+    VertexPosition<G>: EuclideanSpace,
 {
-    type Midpoint = <VertexPosition<G> as Interpolate>::Output;
+    type Midpoint = VertexPosition<G>;
 
     fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
     where
@@ -123,7 +126,7 @@ where
             .and_then(|arc| {
                 arc.reachable_source_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().clone())
+                    .map(|vertex| vertex.geometry.as_position().coordinate())
             })?;
         let b = edge
             .reachable_arc()
@@ -131,9 +134,9 @@ where
             .and_then(|arc| {
                 arc.reachable_destination_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().clone())
+                    .map(|vertex| vertex.geometry.as_position().coordinate())
             })?;
-        Ok(a.midpoint(b))
+        Ok(VertexPosition::<G>::origin() + a.midpoint(b))
     }
 }
 
@@ -148,11 +151,12 @@ pub trait ArcNormal: Geometry {
 
 impl<G> ArcNormal for G
 where
-    G: Geometry + Space,
-    G::Vertex: AsPosition<Target = G::Point>,
-    G::Vector: Project<Output = G::Vector> + Normalize,
+    G: Geometry,
+    G::Vertex: AsPosition,
+    Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
+    VertexPosition<G>: EuclideanSpace,
 {
-    type Normal = G::Vector;
+    type Normal = Vector<VertexPosition<G>>;
 
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where

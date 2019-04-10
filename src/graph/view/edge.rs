@@ -5,9 +5,10 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::geometry::alias::VertexPosition;
+use crate::geometry::alias::{Scalar, Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
-use crate::geometry::{Geometry, Space};
+use crate::geometry::space::EuclideanSpace;
+use crate::geometry::Geometry;
 use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::alias::Mutable;
@@ -798,9 +799,10 @@ where
     /// ```
     pub fn extrude<T>(self, offset: T) -> Result<ArcView<&'a mut M, G>, GraphError>
     where
-        T: Into<G::Scalar>,
-        G: ArcNormal<Normal = <G as Space>::Vector> + Space,
-        G::Vertex: AsPosition<Target = G::Point>,
+        T: Into<Scalar<VertexPosition<G>>>,
+        G: ArcNormal<Normal = Vector<VertexPosition<G>>>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal() * offset.into();
         let (ab, storage) = self.into_inner().into_keyed_source();

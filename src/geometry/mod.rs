@@ -9,16 +9,34 @@
 //! the `Vertex` attribute enables geometric features like extrusion,
 //! centroids, midpoints, etc.
 
-use decorum::R64;
-use num::{self, Num, NumCast, One, Zero};
-use std::ops::{Add, Mul, Neg, Sub};
-
 pub mod compose;
 pub mod convert;
 pub mod ops;
 pub mod query;
+pub mod space;
 
-use self::convert::AsPosition;
+// Feature modules. These are empty unless `geometry-*` features are enabled.
+mod cgmath;
+mod mint;
+mod nalgebra;
+
+use decorum::{Real, R64};
+use num::{self, Num, NumCast, One, Zero};
+use std::ops::Div;
+
+trait Half {
+    fn half() -> Self;
+}
+
+impl<T> Half for T
+where
+    T: Div<T, Output = T> + One + Real,
+{
+    fn half() -> Self {
+        let one = T::one();
+        one / (one + one)
+    }
+}
 
 /// Graph geometry.
 ///
@@ -95,49 +113,6 @@ impl Geometry for () {
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-pub trait Space: Geometry
-where
-    Self::Vertex: AsPosition<Target = Self::Point>,
-{
-    type Scalar: Clone + Neg<Output = Self::Scalar> + Num;
-    type Vector: Add<Output = Self::Vector>
-        + Clone
-        + Mul<Self::Scalar, Output = Self::Vector>
-        + Neg<Output = Self::Vector>;
-    type Point: Add<Self::Vector, Output = Self::Point> + Clone + Sub<Output = Self::Vector>;
-}
-
-pub struct Ray<S>
-where
-    S: Space,
-    S::Vertex: AsPosition<Target = S::Point>,
-{
-    pub origin: S::Point,
-    pub direction: S::Vector,
-}
-
-impl<S> Clone for Ray<S>
-where
-    S: Space,
-    S::Vertex: AsPosition<Target = S::Point>,
-{
-    fn clone(&self) -> Self {
-        Ray {
-            origin: self.origin.clone(),
-            direction: self.direction.clone(),
-        }
-    }
-}
-
-impl<S> Copy for Ray<S>
-where
-    S: Space,
-    S::Vector: Copy,
-    S::Point: Copy,
-    S::Vertex: AsPosition<Target = S::Point>,
-{
 }
 
 /// Homogeneous duplet.
@@ -220,427 +195,10 @@ where
 
 pub mod alias {
     use crate::geometry::convert::AsPosition;
+    use crate::geometry::space::{AbstractSpace, EuclideanSpace};
     use crate::geometry::Geometry;
 
+    pub type Scalar<S> = <Vector<S> as AbstractSpace>::Scalar;
+    pub type Vector<S> = <S as EuclideanSpace>::Difference;
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
-}
-
-#[cfg(feature = "geometry-cgmath")]
-mod feature_geometry_cgmath {
-    use cgmath::{BaseNum, Point2, Point3, Vector2, Vector3};
-    use num::{NumCast, ToPrimitive};
-
-    use crate::geometry::*;
-
-    impl<T, U> From<Point2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Point2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> From<Vector2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Vector2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> Into<Point2<T>> for Duplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point2<T> {
-            Point2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-        }
-    }
-
-    impl<T, U> Into<Vector2<T>> for Duplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector2<T> {
-            Vector2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-        }
-    }
-
-    impl<T, U> From<Point3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Point3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> From<Vector3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Vector3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> Into<Point3<T>> for Triplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point3<T> {
-            Point3::new(
-                T::from(self.0).unwrap(),
-                T::from(self.1).unwrap(),
-                T::from(self.2).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> Into<Vector3<T>> for Triplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector3<T> {
-            Vector3::new(
-                T::from(self.0).unwrap(),
-                T::from(self.1).unwrap(),
-                T::from(self.2).unwrap(),
-            )
-        }
-    }
-
-    impl<T> Geometry for Point2<T>
-    where
-        T: Clone,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-
-    impl<T> Geometry for Point3<T>
-    where
-        T: Clone,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-
-    impl<T> Space for Point2<T>
-    where
-        T: BaseNum + Neg<Output = T> + Num,
-        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
-    {
-        type Scalar = T;
-        type Vector = Vector2<T>;
-        type Point = Self;
-    }
-
-    impl<T> Space for Point3<T>
-    where
-        T: BaseNum + Neg<Output = T> + Num,
-        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
-    {
-        type Scalar = T;
-        type Vector = Vector3<T>;
-        type Point = Self;
-    }
-}
-
-// TODO: Consider using conversion to implement `Space` for mint types.
-#[cfg(feature = "geometry-mint")]
-mod feature_geometry_mint {
-    use mint::{Point2, Point3, Vector2, Vector3};
-    use num::{NumCast, ToPrimitive};
-
-    use crate::geometry::*;
-
-    impl<T, U> From<Point2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Point2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> From<Vector2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Vector2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> Into<Point2<T>> for Duplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point2<T> {
-            Point2 {
-                x: T::from(self.0).unwrap(),
-                y: T::from(self.1).unwrap(),
-            }
-        }
-    }
-
-    impl<T, U> Into<Vector2<T>> for Duplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector2<T> {
-            Vector2 {
-                x: T::from(self.0).unwrap(),
-                y: T::from(self.1).unwrap(),
-            }
-        }
-    }
-
-    impl<T, U> From<Point3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Point3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> From<Vector3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn from(other: Vector3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> Into<Point3<T>> for Triplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point3<T> {
-            Point3 {
-                x: T::from(self.0).unwrap(),
-                y: T::from(self.1).unwrap(),
-                z: T::from(self.2).unwrap(),
-            }
-        }
-    }
-
-    impl<T, U> Into<Vector3<T>> for Triplet<U>
-    where
-        T: NumCast,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector3<T> {
-            Vector3 {
-                x: T::from(self.0).unwrap(),
-                y: T::from(self.1).unwrap(),
-                z: T::from(self.2).unwrap(),
-            }
-        }
-    }
-
-    impl<T> Geometry for Point2<T>
-    where
-        T: Clone,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-
-    impl<T> Geometry for Point3<T>
-    where
-        T: Clone,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-}
-
-#[cfg(feature = "geometry-nalgebra")]
-mod feature_geometry_nalgebra {
-    use nalgebra::{Point2, Point3, Scalar, Vector2, Vector3};
-    use num::{NumCast, ToPrimitive};
-    use std::ops::{AddAssign, MulAssign, SubAssign};
-
-    use crate::geometry::*;
-
-    impl<T, U> From<Point2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: Scalar + ToPrimitive,
-    {
-        fn from(other: Point2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> From<Vector2<U>> for Duplet<T>
-    where
-        T: NumCast,
-        U: Scalar + ToPrimitive,
-    {
-        fn from(other: Vector2<U>) -> Self {
-            Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-        }
-    }
-
-    impl<T, U> Into<Point2<T>> for Duplet<U>
-    where
-        T: NumCast + Scalar,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point2<T> {
-            Point2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-        }
-    }
-
-    impl<T, U> Into<Vector2<T>> for Duplet<U>
-    where
-        T: NumCast + Scalar,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector2<T> {
-            Vector2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-        }
-    }
-
-    impl<T, U> From<Point3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: Scalar + ToPrimitive,
-    {
-        fn from(other: Point3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> From<Vector3<U>> for Triplet<T>
-    where
-        T: NumCast,
-        U: Scalar + ToPrimitive,
-    {
-        fn from(other: Vector3<U>) -> Self {
-            Triplet(
-                T::from(other.x).unwrap(),
-                T::from(other.y).unwrap(),
-                T::from(other.z).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> Into<Point3<T>> for Triplet<U>
-    where
-        T: NumCast + Scalar,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Point3<T> {
-            Point3::new(
-                T::from(self.0).unwrap(),
-                T::from(self.1).unwrap(),
-                T::from(self.2).unwrap(),
-            )
-        }
-    }
-
-    impl<T, U> Into<Vector3<T>> for Triplet<U>
-    where
-        T: NumCast + Scalar,
-        U: ToPrimitive,
-    {
-        fn into(self) -> Vector3<T> {
-            Vector3::new(
-                T::from(self.0).unwrap(),
-                T::from(self.1).unwrap(),
-                T::from(self.2).unwrap(),
-            )
-        }
-    }
-
-    impl<T> Geometry for Point2<T>
-    where
-        T: Scalar,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-
-    impl<T> Geometry for Point3<T>
-    where
-        T: Scalar,
-    {
-        type Vertex = Self;
-        type Arc = ();
-        type Edge = ();
-        type Face = ();
-    }
-
-    impl<T> Space for Point2<T>
-    where
-        T: AddAssign + MulAssign + Neg<Output = T> + Num + Scalar + SubAssign,
-        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
-    {
-        type Scalar = T;
-        type Vector = Vector2<T>;
-        type Point = Self;
-    }
-
-    impl<T> Space for Point3<T>
-    where
-        T: AddAssign + MulAssign + Neg<Output = T> + Num + Scalar + SubAssign,
-        <Self as Geometry>::Vertex: AsPosition<Target = Self>,
-    {
-        type Scalar = T;
-        type Vector = Vector3<T>;
-        type Point = Self;
-    }
 }

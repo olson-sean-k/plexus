@@ -26,10 +26,7 @@ extern crate num;
 extern crate smallvec;
 extern crate typenum;
 
-use decorum::Real;
-use num::{One, Zero};
 use std::fmt::Debug;
-use std::ops::Div;
 
 pub mod buffer;
 pub mod geometry;
@@ -181,19 +178,5 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.input.size_hint()
-    }
-}
-
-trait Half {
-    fn half() -> Self;
-}
-
-impl<T> Half for T
-where
-    T: Div<T, Output = T> + One + Real + Zero,
-{
-    fn half() -> Self {
-        let one = T::one();
-        one / (one + one)
     }
 }

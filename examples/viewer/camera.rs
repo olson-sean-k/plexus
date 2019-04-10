@@ -1,8 +1,8 @@
-use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, Real, Scalar, Vector3};
+use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, RealField, Scalar, Vector3};
 
 pub struct Camera<T>
 where
-    T: Real + Scalar,
+    T: RealField + Scalar,
 {
     projection: Perspective3<T>,
     view: Isometry3<T>,
@@ -10,7 +10,7 @@ where
 
 impl<T> Camera<T>
 where
-    T: Real + Scalar,
+    T: RealField + Scalar,
 {
     pub fn new(aspect: T, fov: T, near: T, far: T) -> Self {
         Camera {
