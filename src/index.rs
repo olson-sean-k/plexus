@@ -61,7 +61,7 @@ pub trait IndexBuffer<R>
 where
     R: Grouping,
 {
-    type Unit: Copy + Integer + NumCast + Unsigned;
+    type Index: Copy + Integer + NumCast + Unsigned;
 }
 
 impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
@@ -70,7 +70,7 @@ where
     N: Copy + Integer + NumCast + Unsigned,
     Flat<A, N>: Grouping<Item = N>,
 {
-    type Unit = N;
+    type Index = N;
 }
 
 impl<P> IndexBuffer<Structured<P>> for Vec<P>
@@ -79,13 +79,13 @@ where
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     Structured<P>: Grouping<Item = P>,
 {
-    type Unit = P::Vertex;
+    type Index = P::Vertex;
 }
 
 pub trait Push<R, P>: IndexBuffer<R>
 where
     R: Grouping,
-    P: Topological<Vertex = Self::Unit>,
+    P: Topological<Vertex = Self::Index>,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     fn push(&mut self, index: P);
@@ -514,7 +514,7 @@ impl<R, P, I> ClosedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Unit> + Topological,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
     P::Output: Topological,
     Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
 {

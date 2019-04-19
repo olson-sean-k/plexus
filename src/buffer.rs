@@ -352,7 +352,7 @@ where
 impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Unit> + Topological,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
     P::Output: Topological,
     P::Vertex: IntoGeometry<G>,
     Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
