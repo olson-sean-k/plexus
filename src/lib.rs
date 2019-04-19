@@ -86,6 +86,11 @@ pub mod prelude {
     pub use Selector::ByKey;
 }
 
+pub enum Arity {
+    Uniform(usize),
+    NonUniform(usize, usize),
+}
+
 pub trait FromRawBuffers<N, G>: Sized {
     type Error: Debug;
 

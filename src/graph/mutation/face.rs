@@ -486,7 +486,7 @@ where
         let destination = FaceView::from_keyed_source((destination, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
-            return Err(GraphError::ArityNonConstant);
+            return Err(GraphError::ArityNonUniform);
         }
         Ok(FaceBridgeCache {
             source: source.neighborhood(),

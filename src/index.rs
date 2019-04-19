@@ -35,25 +35,23 @@
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
 //! ```
 
+use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, Unsigned};
 use std::cmp;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::num::NonZeroUsize;
 use typenum::NonZero;
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Arity, Map, Polygon, Quad, Topological, Triangle};
+use crate::primitive::{Map, Polygon, Quad, Topological, Triangle, UniformArity};
+use crate::Arity;
 
 pub use typenum::{U3, U4};
 
 pub trait Grouping {
     type Item;
-
-    /// Arity of the index buffer (and by extension the mesh).
-    const ARITY: Option<NonZeroUsize>;
 }
 
 /// Index buffer.
@@ -62,6 +60,8 @@ where
     R: Grouping,
 {
     type Index: Copy + Integer + NumCast + Unsigned;
+
+    fn arity(&self) -> Arity;
 }
 
 impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
@@ -71,15 +71,37 @@ where
     Flat<A, N>: Grouping<Item = N>,
 {
     type Index = N;
+
+    fn arity(&self) -> Arity {
+        Arity::Uniform(A::USIZE)
+    }
+}
+
+impl<N> IndexBuffer<Structured<Polygon<N>>> for Vec<Polygon<N>>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Index = <Polygon<N> as Topological>::Vertex;
+
+    fn arity(&self) -> Arity {
+        match self.iter().map(|polygon| polygon.arity().get()).minmax() {
+            MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
+            MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
+            _ => Arity::Uniform(0),
+        }
+    }
 }
 
 impl<P> IndexBuffer<Structured<P>> for Vec<P>
 where
-    P: Topological,
+    P: Topological + UniformArity,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<P>: Grouping<Item = P>,
 {
     type Index = P::Vertex;
+
+    fn arity(&self) -> Arity {
+        Arity::Uniform(P::ARITY.get())
+    }
 }
 
 pub trait Push<R, P>: IndexBuffer<R>
@@ -95,7 +117,7 @@ impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    P: Arity + IntoVertices + Topological<Vertex = N>,
+    P: UniformArity + IntoVertices + Topological<Vertex = N>,
     Flat<A, N>: Grouping<Item = N>,
 {
     fn push(&mut self, index: P) {
@@ -109,7 +131,7 @@ impl<P> Push<Structured<P>, P> for Vec<P>
 where
     P: Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<P>: Grouping<Item = P>,
+    Self: IndexBuffer<Structured<P>, Index = P::Vertex>,
 {
     fn push(&mut self, index: P) {
         self.push(index);
@@ -151,9 +173,6 @@ where
     /// Flat index buffers directly contain indices into vertex data. These
     /// indices are implicitly grouped by the arity of the buffer.
     type Item = N;
-
-    /// Flat index buffers have a constant arity.
-    const ARITY: Option<NonZeroUsize> = unsafe { Some(NonZeroUsize::new_unchecked(A::USIZE)) };
 }
 
 /// Alias for a flat and triangular index buffer.
@@ -188,33 +207,15 @@ where
     phantom: PhantomData<P>,
 }
 
-/// `Structured` index buffer that contains dynamic `Polygon`s.
-impl<N> Grouping for Structured<Polygon<N>>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    /// `Polygon` index buffers contain topological structures that explicitly
-    /// group their indices into vertex data.
-    type Item = Polygon<N>;
-
-    /// `Polygon` index buffers may or may not have a constant arity. Arity is
-    /// encoded independently by each item in the buffer.
-    const ARITY: Option<NonZeroUsize> = None;
-}
-
-/// `Structured` index buffer that contains `Topological` structures with
-/// constant arity.
+/// `Structured` index buffer that contains `Topological` structures.
 impl<P> Grouping for Structured<P>
 where
-    P: Arity + Topological,
+    P: Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     /// `Topological` index buffers contain topological structures that
     /// explicitly group their indices into vertex data.
     type Item = P;
-
-    /// `Topological` index buffers have a constant arity.
-    const ARITY: Option<NonZeroUsize> = Some(<P as Arity>::ARITY);
 }
 
 /// Alias for a structured and triangular index buffer.

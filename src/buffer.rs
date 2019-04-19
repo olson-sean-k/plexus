@@ -86,8 +86,7 @@ use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::num::NonZeroUsize;
-use typenum::{self, NonZero};
+use typenum::{self, NonZero, Unsigned as _};
 
 use crate::geometry::convert::IntoGeometry;
 use crate::index::{
@@ -96,7 +95,7 @@ use crate::index::{
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Map, Polygonal, Quad, Topological, Triangle};
-use crate::FromRawBuffers;
+use crate::{Arity, FromRawBuffers};
 
 #[derive(Debug, Fail)]
 pub enum BufferError {
@@ -156,6 +155,7 @@ where
 impl<R, G> MeshBuffer<R, G>
 where
     R: Grouping,
+    Vec<R::Item>: IndexBuffer<R>,
 {
     /// Creates an empty `MeshBuffer`.
     ///
@@ -172,6 +172,15 @@ where
         Self::default()
     }
 
+    pub fn arity(&self) -> Arity {
+        self.indices.arity()
+    }
+}
+
+impl<R, G> MeshBuffer<R, G>
+where
+    R: Grouping,
+{
     pub fn into_raw_buffers(self) -> (Vec<R::Item>, Vec<G>) {
         let MeshBuffer { indices, vertices } = self;
         (indices, vertices)
@@ -214,10 +223,6 @@ where
         }
     }
 
-    pub fn arity(&self) -> Option<NonZeroUsize> {
-        R::ARITY
-    }
-
     /// Gets a slice of the index data.
     pub fn as_index_slice(&self) -> &[R::Item] {
         self.indices.as_slice()
@@ -232,6 +237,7 @@ where
 impl<R, G> Default for MeshBuffer<R, G>
 where
     R: Grouping,
+    Vec<R::Item>: IndexBuffer<R>,
 {
     fn default() -> Self {
         MeshBuffer {
@@ -378,6 +384,7 @@ where
     R: Grouping,
     P: Topological,
     P::Vertex: Copy + Eq + Hash + IntoGeometry<G>,
+    Vec<R::Item>: IndexBuffer<R>,
     Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
@@ -435,7 +442,7 @@ where
             .into_iter()
             .map(|index| <<Flat<A, N> as Grouping>::Item as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
-        if indices.len() % Flat::<A, N>::ARITY.unwrap().get() != 0 {
+        if indices.len() % A::USIZE != 0 {
             Err(BufferError::ArityConflict)
         }
         else {
@@ -666,7 +673,7 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .chunks(Flat3::<N>::ARITY.unwrap().get())
+                .chunks(U3::USIZE)
                 .into_iter()
                 .map(|triangle| <Structured<Self::Item> as Grouping>::Item::from_iter(triangle))
                 .collect(),
@@ -711,7 +718,7 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .chunks(Flat4::<N>::ARITY.unwrap().get())
+                .chunks(U4::USIZE)
                 .into_iter()
                 .map(|quad| <Structured<Self::Item> as Grouping>::Item::from_iter(quad))
                 .collect(),

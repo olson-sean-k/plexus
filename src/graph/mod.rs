@@ -204,11 +204,11 @@ use crate::graph::storage::{OpaqueKey, Storage};
 use crate::graph::view::convert::IntoView;
 use crate::graph::view::OrphanView;
 use crate::index::{
-    ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, Indexer, Structured,
+    ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Arity, Map, Polygonal, Quad};
-use crate::{FromRawBuffers, FromRawBuffersWithArity};
+use crate::primitive::{Map, Polygonal, Quad, UniformArity};
+use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
@@ -221,15 +221,15 @@ pub enum GraphError {
     TopologyConflict,
     #[fail(display = "topology malformed")]
     TopologyMalformed,
-    #[fail(display = "arity is non-polygonl")]
+    #[fail(display = "arity is non-polygonal")]
     ArityNonPolygonal,
     #[fail(
         display = "conflicting arity; expected {}, but got {}",
         expected, actual
     )]
     ArityConflict { expected: usize, actual: usize },
-    #[fail(display = "arity is non-constant")]
-    ArityNonConstant,
+    #[fail(display = "arity is non-uniform")]
+    ArityNonUniform,
 }
 
 impl From<BufferError> for GraphError {
@@ -343,11 +343,6 @@ impl<K> From<usize> for Selector<K> {
     }
 }
 
-pub enum GraphArity {
-    Constant(usize),
-    NonConstant(usize, usize),
-}
-
 /// Half-edge graph representation of a mesh.
 ///
 /// Provides topological data in the form of vertices, arcs, edges, and faces.
@@ -439,7 +434,10 @@ where
         N: Copy + Integer + NumCast + Unsigned,
         H: Clone + IntoGeometry<G::Vertex>,
     {
-        let arity = buffer.arity().unwrap().get();
+        let arity = match buffer.arity() {
+            Arity::Uniform(arity) => arity,
+            _ => panic!("non-uniform flat index buffer arity"),
+        };
         let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
@@ -590,11 +588,11 @@ where
     ///
     /// `GraphArity::Constant` is returned with zero if there are no faces in
     /// the graph.
-    pub fn arity(&self) -> GraphArity {
+    pub fn arity(&self) -> Arity {
         match self.faces().map(|face| face.arity()).minmax() {
-            MinMaxResult::OneElement(arity) => GraphArity::Constant(arity),
-            MinMaxResult::MinMax(min, max) => GraphArity::NonConstant(min, max),
-            _ => GraphArity::Constant(0),
+            MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
+            MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
+            _ => Arity::Uniform(0),
         }
     }
 
@@ -653,7 +651,7 @@ where
             (keys, vertices)
         };
         let indices = {
-            let arity = Flat::<A, N>::ARITY.unwrap().get();
+            let arity = A::USIZE;
             let mut indices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
@@ -711,7 +709,7 @@ where
         F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> H,
     {
         let vertices = {
-            let arity = Flat::<A, N>::ARITY.unwrap().get();
+            let arity = A::USIZE;
             let mut vertices = Vec::with_capacity(arity * self.face_count());
             for face in self.faces() {
                 if face.arity() != arity {
@@ -872,7 +870,8 @@ where
     P: Map<usize> + Polygonal,
     P::Output: IntoVertices + Polygonal<Vertex = usize>,
     P::Vertex: IntoGeometry<G::Vertex>,
-    Structured<P::Output>: Grouping<Item = P::Output>,
+    Vec<<Structured<P::Output> as Grouping>::Item>:
+        IndexBuffer<Structured<P::Output>, Index = usize>,
 {
     type Error = GraphError;
 
