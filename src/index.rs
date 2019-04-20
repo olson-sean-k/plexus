@@ -515,9 +515,8 @@ impl<R, P, I> ClosedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological,
-    Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index>,
+    Vec<R::Item>: Push<R, P::Output>,
 {
     fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
