@@ -128,7 +128,6 @@ where
 
 pub trait IntoStructuredIndex<G>
 where
-    Structured<Self::Item>: Grouping,
     <Self::Item as Topological>::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Item: Polygonal;
@@ -358,10 +357,9 @@ where
 impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index>,
     P::Vertex: IntoGeometry<G>,
-    Vec<R::Item>: IndexBuffer<R> + Push<R, P::Output>,
+    Vec<R::Item>: Push<R, P::Output>,
     Self: FromRawBuffers<R::Item, G>,
 {
     type Error = <Self as FromRawBuffers<R::Item, G>>::Error;
@@ -628,7 +626,6 @@ impl<P, G> IntoStructuredIndex<G> for MeshBuffer<Structured<P>, G>
 where
     P: Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Structured<P>: Grouping,
 {
     type Item = P;
 

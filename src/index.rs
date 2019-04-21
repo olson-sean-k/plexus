@@ -5,7 +5,7 @@
 //! into aggregate data structures like `MeshGraph` and `MeshBuffer`.
 //!
 //! Plexus abstracts over _structured_ (_polygonal_) and _unstructured_
-//! (_flat_) index buffers. `Flat` and `Structured`.
+//! (_flat_) index buffers. See `Flat` and `Structured`.
 //!
 //! Flat index buffers directly store individual indices. Because there is no
 //! structure, arity must by constant, but arbitrary N-gons are trivially
@@ -68,7 +68,6 @@ impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    Flat<A, N>: Grouping<Item = N>,
 {
     type Index = N;
 
@@ -118,7 +117,6 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     P: UniformArity + IntoVertices + Topological<Vertex = N>,
-    Flat<A, N>: Grouping<Item = N>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {
