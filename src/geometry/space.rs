@@ -23,7 +23,7 @@ pub trait VectorSpace:
                 n += 1;
                 sum = sum + vector;
             }
-            NumCast::from(n).map(move |n| sum * (<Self as VectorSpace>::Scalar::one() / n))
+            NumCast::from(n).map(move |n| sum * (Self::Scalar::one() / n))
         }
         else {
             None
