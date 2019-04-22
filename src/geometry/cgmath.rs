@@ -7,19 +7,19 @@ use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{AbstractSpace, EuclideanSpace, Origin};
+use crate::geometry::space::{EuclideanSpace, Origin, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
 
-impl<T> AbstractSpace for Vector2<T>
+impl<T> VectorSpace for Vector2<T>
 where
-    T: Clone + Neg<Output = T> + Num + NumCast,
+    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
 {
     type Scalar = T;
 }
 
-impl<T> AbstractSpace for Vector3<T>
+impl<T> VectorSpace for Vector3<T>
 where
-    T: Clone + Neg<Output = T> + Num + NumCast,
+    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
 {
     type Scalar = T;
 }

@@ -13,22 +13,8 @@ use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{AbstractSpace, Origin};
+use crate::geometry::space::Origin;
 use crate::geometry::{self, Duplet, Geometry, Triplet};
-
-impl<T> AbstractSpace for Vector2<T>
-where
-    T: Clone + Neg<Output = T> + Num + NumCast,
-{
-    type Scalar = T;
-}
-
-impl<T> AbstractSpace for Vector3<T>
-where
-    T: Clone + Neg<Output = T> + Num + NumCast,
-{
-    type Scalar = T;
-}
 
 impl<T> Cross for Vector3<T>
 where

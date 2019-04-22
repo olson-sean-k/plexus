@@ -12,12 +12,12 @@ use std::ops::{AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::geometry::convert::{AsPosition, FromGeometry, IntoGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{AbstractSpace, EuclideanSpace, Origin, VectorSpace};
+use crate::geometry::space::{EuclideanSpace, Origin, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
 
-impl<T, D> AbstractSpace for VectorN<T, D>
+impl<T, D> VectorSpace for VectorN<T, D>
 where
-    T: Neg<Output = T> + Num + NumCast + Scalar,
+    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
     D: DimName,
     DefaultAllocator: Allocator<T, D>,
 {

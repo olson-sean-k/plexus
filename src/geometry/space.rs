@@ -3,17 +3,15 @@ use std::ops::{Add, Mul, Neg, Sub};
 
 use crate::geometry::ops::{Dot, Magnitude, Normalize, Project};
 
-pub trait AbstractSpace: Clone {
-    type Scalar: Clone + Neg<Output = Self::Scalar> + Num + NumCast;
-}
-
 pub trait VectorSpace:
-    AbstractSpace
-    + Add<Output = Self>
-    + Mul<<Self as AbstractSpace>::Scalar, Output = Self>
+    Add<Output = Self>
+    + Clone
+    + Mul<<Self as VectorSpace>::Scalar, Output = Self>
     + Neg<Output = Self>
     + Zero
 {
+    type Scalar: Clone + Neg<Output = Self::Scalar> + Num + NumCast;
+
     fn mean<I>(vectors: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self>,
@@ -25,7 +23,7 @@ pub trait VectorSpace:
                 n += 1;
                 sum = sum + vector;
             }
-            NumCast::from(n).map(move |n| sum * (<Self as AbstractSpace>::Scalar::one() / n))
+            NumCast::from(n).map(move |n| sum * (<Self as VectorSpace>::Scalar::one() / n))
         }
         else {
             None
@@ -33,18 +31,9 @@ pub trait VectorSpace:
     }
 }
 
-impl<T> VectorSpace for T where
-    T: AbstractSpace
-        + Add<Output = T>
-        + Mul<<T as AbstractSpace>::Scalar, Output = T>
-        + Neg<Output = T>
-        + Zero
-{
-}
-
 pub trait InnerSpace:
-    Dot<Output = <Self as AbstractSpace>::Scalar>
-    + Magnitude<Output = <Self as AbstractSpace>::Scalar>
+    Dot<Output = <Self as VectorSpace>::Scalar>
+    + Magnitude<Output = <Self as VectorSpace>::Scalar>
     + Normalize
     + Project<Output = Self>
     + VectorSpace
@@ -52,8 +41,8 @@ pub trait InnerSpace:
 }
 
 impl<T> InnerSpace for T where
-    T: Dot<Output = <T as AbstractSpace>::Scalar>
-        + Magnitude<Output = <T as AbstractSpace>::Scalar>
+    T: Dot<Output = <T as VectorSpace>::Scalar>
+        + Magnitude<Output = <T as VectorSpace>::Scalar>
         + Normalize
         + Project<Output = Self>
         + VectorSpace

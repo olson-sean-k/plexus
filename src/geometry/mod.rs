@@ -195,10 +195,10 @@ where
 
 pub mod alias {
     use crate::geometry::convert::AsPosition;
-    use crate::geometry::space::{AbstractSpace, EuclideanSpace};
+    use crate::geometry::space::{EuclideanSpace, VectorSpace};
     use crate::geometry::Geometry;
 
-    pub type Scalar<S> = <Vector<S> as AbstractSpace>::Scalar;
+    pub type Scalar<S> = <Vector<S> as VectorSpace>::Scalar;
     pub type Vector<S> = <S as EuclideanSpace>::Difference;
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 }

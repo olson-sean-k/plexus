@@ -1,7 +1,7 @@
 use decorum::{Real, R64};
 use num::{Num, NumCast, One};
 
-use crate::geometry::space::{AbstractSpace, VectorSpace};
+use crate::geometry::space::VectorSpace;
 use crate::geometry::{self, Duplet, Half, Triplet};
 
 pub trait Normalize {
@@ -10,7 +10,7 @@ pub trait Normalize {
 
 impl<T> Normalize for T
 where
-    T: Dot<Output = <T as AbstractSpace>::Scalar> + VectorSpace,
+    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
     T::Scalar: Real,
 {
     fn normalize(self) -> Self {
@@ -26,7 +26,7 @@ pub trait Project<T = Self> {
 
 impl<T> Project<T> for T
 where
-    T: Dot<Output = <T as AbstractSpace>::Scalar> + VectorSpace,
+    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
     T::Scalar: Real,
 {
     type Output = T;
@@ -48,7 +48,7 @@ pub trait Magnitude: Sized {
 
 impl<T> Magnitude for T
 where
-    T: Dot<Output = <T as AbstractSpace>::Scalar> + VectorSpace,
+    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
     T::Scalar: Real,
 {
     type Output = <T as Dot>::Output;
