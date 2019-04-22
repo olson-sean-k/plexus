@@ -7,7 +7,7 @@ use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{EuclideanSpace, Origin, VectorSpace};
+use crate::geometry::space::{EuclideanSpace, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
 
 impl<T> VectorSpace for Vector2<T>
@@ -163,6 +163,10 @@ where
     T: BaseFloat + BaseNum + Neg<Output = T> + Real,
 {
     type Difference = Vector2<T>;
+
+    fn origin() -> Self {
+        <Self as cgmath::EuclideanSpace>::origin()
+    }
 }
 
 impl<T> EuclideanSpace for Point3<T>
@@ -170,6 +174,10 @@ where
     T: BaseFloat + BaseNum + Neg<Output = T> + Real,
 {
     type Difference = Vector3<T>;
+
+    fn origin() -> Self {
+        <Self as cgmath::EuclideanSpace>::origin()
+    }
 }
 
 macro_rules! from_ordered_geometry {
@@ -294,24 +302,6 @@ where
             geometry::lerp(self.y, other.y, f),
             geometry::lerp(self.z, other.z, f),
         )
-    }
-}
-
-impl<T> Origin for Point2<T>
-where
-    Self: cgmath::EuclideanSpace,
-{
-    fn origin() -> Self {
-        <Self as cgmath::EuclideanSpace>::origin()
-    }
-}
-
-impl<T> Origin for Point3<T>
-where
-    Self: cgmath::EuclideanSpace,
-{
-    fn origin() -> Self {
-        <Self as cgmath::EuclideanSpace>::origin()
     }
 }
 

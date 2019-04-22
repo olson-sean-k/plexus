@@ -49,17 +49,14 @@ impl<T> InnerSpace for T where
 {
 }
 
-pub trait Origin {
-    fn origin() -> Self;
-}
-
 pub trait EuclideanSpace:
     Add<<Self as EuclideanSpace>::Difference, Output = Self>
     + Clone
-    + Origin
     + Sub<Output = <Self as EuclideanSpace>::Difference>
 {
     type Difference: InnerSpace;
+
+    fn origin() -> Self;
 
     fn coordinates(&self) -> Self::Difference {
         self.clone() - Self::origin()

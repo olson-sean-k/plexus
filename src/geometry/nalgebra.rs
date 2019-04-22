@@ -7,12 +7,12 @@ use nalgebra::base::default_allocator::DefaultAllocator;
 use nalgebra::base::dimension::DimName;
 use nalgebra::core::Matrix;
 use nalgebra::{Point, Point2, Point3, Scalar, Vector2, Vector3, VectorN};
-use num::{Float, Num, NumCast, ToPrimitive, Zero};
+use num::{Float, Num, NumCast, ToPrimitive};
 use std::ops::{AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::geometry::convert::{AsPosition, FromGeometry, IntoGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{EuclideanSpace, Origin, VectorSpace};
+use crate::geometry::space::{EuclideanSpace, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
 
 impl<T, D> VectorSpace for VectorN<T, D>
@@ -135,6 +135,10 @@ where
 {
     type Difference = VectorN<T, D>;
 
+    fn origin() -> Self {
+        Point::<T, D>::origin()
+    }
+
     fn coordinates(&self) -> Self::Difference {
         self.coords.clone()
     }
@@ -243,17 +247,6 @@ where
 
     fn lerp(self, other: Self, f: R64) -> Self::Output {
         Point::from(self.coords.lerp(other.coords, f))
-    }
-}
-
-impl<T, D> Origin for Point<T, D>
-where
-    T: Scalar + Zero,
-    D: DimName,
-    DefaultAllocator: Allocator<T, D>,
-{
-    fn origin() -> Self {
-        Point::<T, D>::origin()
     }
 }
 

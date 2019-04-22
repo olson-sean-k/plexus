@@ -8,12 +8,11 @@
 
 use decorum::{Finite, NotNan, Ordered, Primitive, R64};
 use mint::{Point2, Point3, Vector2, Vector3};
-use num::{Float, Num, NumCast, ToPrimitive, Zero};
+use num::{Float, Num, NumCast, ToPrimitive};
 use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::Origin;
 use crate::geometry::{self, Duplet, Geometry, Triplet};
 
 impl<T> Cross for Vector3<T>
@@ -316,31 +315,6 @@ where
             x: geometry::lerp(self.x, other.x, f),
             y: geometry::lerp(self.y, other.y, f),
             z: geometry::lerp(self.z, other.z, f),
-        }
-    }
-}
-
-impl<T> Origin for Point2<T>
-where
-    T: Zero,
-{
-    fn origin() -> Self {
-        Point2 {
-            x: Zero::zero(),
-            y: Zero::zero(),
-        }
-    }
-}
-
-impl<T> Origin for Point3<T>
-where
-    T: Zero,
-{
-    fn origin() -> Self {
-        Point3 {
-            x: Zero::zero(),
-            y: Zero::zero(),
-            z: Zero::zero(),
         }
     }
 }
