@@ -90,7 +90,7 @@ where
 
 impl<T, D> InnerSpace for VectorN<T, D>
 where
-    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
+    T: AddAssign + MulAssign + Real + Scalar,
     D: DimName,
     DefaultAllocator: Allocator<T, D>,
 {
@@ -111,7 +111,7 @@ where
 
 impl<T, D> VectorSpace for VectorN<T, D>
 where
-    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
+    T: AddAssign + MulAssign + Real + Scalar,
     D: DimName,
     DefaultAllocator: Allocator<T, D>,
 {
@@ -137,7 +137,7 @@ where
 
 impl<T, D> EuclideanSpace for Point<T, D>
 where
-    T: AddAssign + MulAssign + Neg<Output = T> + Real + Scalar + SubAssign,
+    T: AddAssign + MulAssign + Real + Scalar + SubAssign,
     D: DimName,
     DefaultAllocator: Allocator<T, D>,
 {

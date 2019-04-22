@@ -3,9 +3,7 @@
 //! See the `geometry::compose` module. This module's contents are re-exported
 //! there.
 
-use decorum::Real;
-
-use crate::geometry::alias::{Scalar, Vector, VertexPosition};
+use crate::geometry::alias::{Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::ops::{Cross, Interpolate, Normalize, Project};
 use crate::geometry::space::EuclideanSpace;
@@ -31,7 +29,6 @@ impl<G> FaceNormal for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
-    Scalar<VertexPosition<G>>: Real,
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
@@ -156,7 +153,6 @@ impl<G> ArcNormal for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
-    Scalar<VertexPosition<G>>: Real,
     Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {

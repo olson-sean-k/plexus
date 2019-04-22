@@ -3,7 +3,6 @@
 use cgmath::{self, BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
 use decorum::{Finite, NotNan, Ordered, Primitive, Real, R64};
 use num::{Float, Num, NumCast, ToPrimitive};
-use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
@@ -91,9 +90,9 @@ where
     }
 }
 
-impl<T> InnerSpace for Vector2<T> where T: BaseFloat {}
+impl<T> InnerSpace for Vector2<T> where T: BaseFloat + Real {}
 
-impl<T> InnerSpace for Vector3<T> where T: BaseFloat {}
+impl<T> InnerSpace for Vector3<T> where T: BaseFloat + Real {}
 
 impl<T> Interpolate for Vector2<T>
 where
@@ -126,14 +125,14 @@ where
 
 impl<T> VectorSpace for Vector2<T>
 where
-    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
+    T: BaseNum + Real,
 {
     type Scalar = T;
 }
 
 impl<T> VectorSpace for Vector3<T>
 where
-    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
+    T: BaseNum + Real,
 {
     type Scalar = T;
 }
@@ -164,7 +163,7 @@ impl<T> AsPosition for Point3<T> {
 
 impl<T> EuclideanSpace for Point2<T>
 where
-    T: BaseFloat + BaseNum + Neg<Output = T> + Real,
+    T: BaseFloat + BaseNum + Real,
 {
     type Difference = Vector2<T>;
 
@@ -175,7 +174,7 @@ where
 
 impl<T> EuclideanSpace for Point3<T>
 where
-    T: BaseFloat + BaseNum + Neg<Output = T> + Real,
+    T: BaseFloat + BaseNum + Real,
 {
     type Difference = Vector3<T>;
 

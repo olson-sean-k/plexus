@@ -1,5 +1,5 @@
 use decorum::Real;
-use num::{Num, NumCast, One, Zero};
+use num::{NumCast, One, Zero};
 use std::ops::{Add, Mul, Neg, Sub};
 
 use crate::geometry::ops::{Dot, Magnitude, Normalize, Project};
@@ -11,7 +11,7 @@ pub trait VectorSpace:
     + Neg<Output = Self>
     + Zero
 {
-    type Scalar: Clone + Neg<Output = Self::Scalar> + Num + NumCast;
+    type Scalar: Real;
 
     fn mean<I>(vectors: I) -> Option<Self>
     where
@@ -37,7 +37,6 @@ pub trait InnerSpace: Dot<Output = <Self as VectorSpace>::Scalar> + VectorSpace 
 impl<T> Normalize for T
 where
     T: InnerSpace,
-    T::Scalar: Real,
 {
     fn normalize(self) -> Self {
         self.clone() * (T::Scalar::one() / self.magnitude())
@@ -47,7 +46,6 @@ where
 impl<T> Project<T> for T
 where
     T: InnerSpace,
-    T::Scalar: Real,
 {
     type Output = T;
 
@@ -61,7 +59,6 @@ where
 impl<T> Magnitude for T
 where
     T: InnerSpace,
-    T::Scalar: Real,
 {
     type Output = <T as Dot>::Output;
 
