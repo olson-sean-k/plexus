@@ -74,7 +74,7 @@ pub trait EuclideanSpace:
 {
     type Difference: InnerSpace;
 
-    fn coordinate(&self) -> Self::Difference {
+    fn coordinates(&self) -> Self::Difference {
         self.clone() - Self::origin()
     }
 
@@ -82,7 +82,7 @@ pub trait EuclideanSpace:
     where
         I: IntoIterator<Item = Self>,
     {
-        VectorSpace::mean(points.into_iter().map(|point| point.coordinate()))
+        VectorSpace::mean(points.into_iter().map(|point| point.coordinates()))
             .map(|mean| Self::origin() + mean)
     }
 }

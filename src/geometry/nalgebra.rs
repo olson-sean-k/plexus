@@ -135,7 +135,7 @@ where
 {
     type Difference = VectorN<T, D>;
 
-    fn coordinate(&self) -> Self::Difference {
+    fn coordinates(&self) -> Self::Difference {
         self.coords.clone()
     }
 

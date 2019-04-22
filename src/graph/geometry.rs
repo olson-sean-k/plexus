@@ -126,7 +126,7 @@ where
             .and_then(|arc| {
                 arc.reachable_source_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().coordinate())
+                    .map(|vertex| vertex.geometry.as_position().coordinates())
             })?;
         let b = edge
             .reachable_arc()
@@ -134,7 +134,7 @@ where
             .and_then(|arc| {
                 arc.reachable_destination_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().coordinate())
+                    .map(|vertex| vertex.geometry.as_position().coordinates())
             })?;
         Ok(VertexPosition::<G>::origin() + a.midpoint(b))
     }
