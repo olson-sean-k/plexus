@@ -1,7 +1,7 @@
 use num::{Num, NumCast, One, Zero};
 use std::ops::{Add, Mul, Neg, Sub};
 
-use crate::geometry::ops::{Dot, Interpolate, Magnitude, Normalize};
+use crate::geometry::ops::{Dot, Interpolate, Magnitude, Normalize, Project};
 
 pub trait AbstractSpace: Clone {
     type Scalar: Clone + Neg<Output = Self::Scalar> + Num + NumCast;
@@ -48,6 +48,7 @@ pub trait InnerSpace:
     Dot<Output = <Self as AbstractSpace>::Scalar>
     + Magnitude<Output = <Self as AbstractSpace>::Scalar>
     + Normalize
+    + Project<Output = Self>
     + VectorSpace
 {
 }
@@ -56,6 +57,7 @@ impl<T> InnerSpace for T where
     T: Dot<Output = <T as AbstractSpace>::Scalar>
         + Magnitude<Output = <T as AbstractSpace>::Scalar>
         + Normalize
+        + Project<Output = Self>
         + VectorSpace
 {
 }
