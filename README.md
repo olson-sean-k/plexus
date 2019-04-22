@@ -9,10 +9,10 @@
 
 ## Primitives and Iterator Expressions
 
-Streams of geometric data can be generated from primitives like cubes and
-spheres using iterator expressions. Primitives emit topological structures like
-`Triangle`s or `Quad`s, which contain arbitrary data in their vertices. These
-can be transformed and decomposed via tessellation and other operations.
+Streams of geometric data can be generated for simple shapes like cubes and
+spheres using iterator expressions. These generators emit topological primitives
+like `Triangle`s or `Quad`s, which contain arbitrary data in their vertices.
+These can be transformed and decomposed via tessellation and other operations.
 
 ```rust
 use nalgebra::Point3;
@@ -79,19 +79,19 @@ use plexus::geometry::convert::AsPosition;
 use plexus::geometry::Geometry;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-pub struct VertexGeometry {
+pub struct Vertex {
     pub position: Point3<R64>,
     pub normal: Vector3<R64>,
 }
 
-impl Geometry for VertexGeometry {
+impl Geometry for Vertex {
     type Vertex = Self;
     type Arc = ();
     type Edge = ();
     type Face = ();
 }
 
-impl AsPosition for VertexGeometry {
+impl AsPosition for Vertex {
     type Target = Point3<R64>;
 
     fn as_position(&self) -> &Self::Target {
@@ -105,8 +105,8 @@ impl AsPosition for VertexGeometry {
 ```
 
 Geometric operations are vertex-based. By implementing `AsPosition` to expose
-positional data from vertices and implementing geometric traits for that
-positional data, operations like extrusion are exposed.
+positional data from vertices and implementing geometric and spatial traits for
+that positional data, operations like extrusion are exposed.
 
 Geometric traits are optionally implemented for types in the
 [cgmath](https://crates.io/crates/cgmath),
