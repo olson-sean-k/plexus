@@ -7,22 +7,8 @@ use std::ops::Neg;
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{EuclideanSpace, VectorSpace};
+use crate::geometry::space::{EuclideanSpace, InnerSpace, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
-
-impl<T> VectorSpace for Vector2<T>
-where
-    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
-{
-    type Scalar = T;
-}
-
-impl<T> VectorSpace for Vector3<T>
-where
-    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
-{
-    type Scalar = T;
-}
 
 impl<T> Cross for Vector3<T>
 where
@@ -105,6 +91,10 @@ where
     }
 }
 
+impl<T> InnerSpace for Vector2<T> where T: BaseFloat {}
+
+impl<T> InnerSpace for Vector3<T> where T: BaseFloat {}
+
 impl<T> Interpolate for Vector2<T>
 where
     T: Num + NumCast,
@@ -132,6 +122,20 @@ where
             geometry::lerp(self.z, other.z, f),
         )
     }
+}
+
+impl<T> VectorSpace for Vector2<T>
+where
+    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
+{
+    type Scalar = T;
+}
+
+impl<T> VectorSpace for Vector3<T>
+where
+    T: BaseNum + Clone + Neg<Output = T> + Num + NumCast,
+{
+    type Scalar = T;
 }
 
 impl<T> AsPosition for Point2<T> {

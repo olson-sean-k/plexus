@@ -1,21 +1,10 @@
-use decorum::{Real, R64};
-use num::{Num, NumCast, One};
+use decorum::R64;
+use num::{Num, NumCast};
 
-use crate::geometry::space::VectorSpace;
 use crate::geometry::{self, Duplet, Half, Triplet};
 
 pub trait Normalize {
     fn normalize(self) -> Self;
-}
-
-impl<T> Normalize for T
-where
-    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
-    T::Scalar: Real,
-{
-    fn normalize(self) -> Self {
-        self.clone() * (T::Scalar::one() / self.magnitude())
-    }
 }
 
 pub trait Project<T = Self> {
@@ -24,42 +13,12 @@ pub trait Project<T = Self> {
     fn project(self, other: T) -> Self::Output;
 }
 
-impl<T> Project<T> for T
-where
-    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
-    T::Scalar: Real,
-{
-    type Output = T;
-
-    fn project(self, other: T) -> Self::Output {
-        let n = other.dot(self.clone());
-        let d = self.clone().dot(self.clone());
-        self * (n / d)
-    }
-}
-
 pub trait Magnitude: Sized {
     type Output;
 
     fn square_magnitude(self) -> Self::Output;
 
     fn magnitude(self) -> Self::Output;
-}
-
-impl<T> Magnitude for T
-where
-    T: Dot<Output = <T as VectorSpace>::Scalar> + VectorSpace,
-    T::Scalar: Real,
-{
-    type Output = <T as Dot>::Output;
-
-    fn square_magnitude(self) -> Self::Output {
-        Dot::dot(self.clone(), self)
-    }
-
-    fn magnitude(self) -> Self::Output {
-        Real::sqrt(self.square_magnitude())
-    }
 }
 
 pub trait Interpolate<T = Self>: Sized {

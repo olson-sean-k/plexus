@@ -12,17 +12,8 @@ use std::ops::{AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use crate::geometry::convert::{AsPosition, FromGeometry, IntoGeometry};
 use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{EuclideanSpace, VectorSpace};
+use crate::geometry::space::{EuclideanSpace, InnerSpace, VectorSpace};
 use crate::geometry::{self, Duplet, Geometry, Triplet};
-
-impl<T, D> VectorSpace for VectorN<T, D>
-where
-    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
-    D: DimName,
-    DefaultAllocator: Allocator<T, D>,
-{
-    type Scalar = T;
-}
 
 impl<T> Cross for Vector3<T>
 where
@@ -97,6 +88,14 @@ where
     }
 }
 
+impl<T, D> InnerSpace for VectorN<T, D>
+where
+    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
+    D: DimName,
+    DefaultAllocator: Allocator<T, D>,
+{
+}
+
 impl<T, D> Interpolate for VectorN<T, D>
 where
     T: Num + NumCast + Scalar,
@@ -108,6 +107,15 @@ where
     fn lerp(self, other: Self, f: R64) -> Self::Output {
         self.zip_map(&other, |a, b| geometry::lerp(a, b, f))
     }
+}
+
+impl<T, D> VectorSpace for VectorN<T, D>
+where
+    T: AddAssign + Neg<Output = T> + MulAssign + Num + NumCast + Scalar,
+    D: DimName,
+    DefaultAllocator: Allocator<T, D>,
+{
+    type Scalar = T;
 }
 
 impl<T, D> AsPosition for Point<T, D>
