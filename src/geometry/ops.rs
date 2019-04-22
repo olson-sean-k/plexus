@@ -1,7 +1,6 @@
 use decorum::R64;
-use num::{Num, NumCast};
 
-use crate::geometry::{self, Duplet, Half, Triplet};
+use crate::geometry::Half;
 
 pub trait Normalize {
     fn normalize(self) -> Self;
@@ -41,33 +40,4 @@ pub trait Cross<T = Self> {
     type Output;
 
     fn cross(self, other: T) -> Self::Output;
-}
-
-impl<T> Interpolate for Duplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
-        Duplet(
-            geometry::lerp(self.0, other.0, f),
-            geometry::lerp(self.1, other.1, f),
-        )
-    }
-}
-
-impl<T> Interpolate for Triplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
-        Triplet(
-            geometry::lerp(self.0, other.0, f),
-            geometry::lerp(self.1, other.1, f),
-            geometry::lerp(self.2, other.2, f),
-        )
-    }
 }

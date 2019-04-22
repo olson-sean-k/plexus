@@ -21,8 +21,11 @@ mod mint;
 mod nalgebra;
 
 use decorum::{Real, R64};
-use num::{self, Num, NumCast, One, Zero};
+use num::{self, Num, NumCast, One, ToPrimitive, Zero};
 use std::ops::Div;
+
+use crate::geometry::convert::FromGeometry;
+use crate::geometry::ops::Interpolate;
 
 trait Half {
     fn half() -> Self;
@@ -139,6 +142,16 @@ impl<T> Duplet<T> {
     }
 }
 
+impl<T, U> FromGeometry<(U, U)> for Duplet<T>
+where
+    T: NumCast,
+    U: ToPrimitive,
+{
+    fn from_geometry(other: (U, U)) -> Self {
+        Duplet(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+    }
+}
+
 impl<T> Geometry for Duplet<T>
 where
     T: Clone,
@@ -147,6 +160,17 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
+}
+
+impl<T> Interpolate for Duplet<T>
+where
+    T: Copy + Num + NumCast,
+{
+    type Output = Self;
+
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
+        Duplet(lerp(self.0, other.0, f), lerp(self.1, other.1, f))
+    }
 }
 
 /// Homogeneous triplet.
@@ -173,6 +197,20 @@ impl<T> Triplet<T> {
     }
 }
 
+impl<T, U> FromGeometry<(U, U, U)> for Triplet<T>
+where
+    T: NumCast,
+    U: ToPrimitive,
+{
+    fn from_geometry(other: (U, U, U)) -> Self {
+        Triplet(
+            T::from(other.0).unwrap(),
+            T::from(other.1).unwrap(),
+            T::from(other.2).unwrap(),
+        )
+    }
+}
+
 impl<T> Geometry for Triplet<T>
 where
     T: Clone,
@@ -181,6 +219,21 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
+}
+
+impl<T> Interpolate for Triplet<T>
+where
+    T: Copy + Num + NumCast,
+{
+    type Output = Self;
+
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
+        Triplet(
+            lerp(self.0, other.0, f),
+            lerp(self.1, other.1, f),
+            lerp(self.2, other.2, f),
+        )
+    }
 }
 
 pub fn lerp<T>(a: T, b: T, f: R64) -> T

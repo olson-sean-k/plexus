@@ -1,7 +1,3 @@
-use num::{NumCast, ToPrimitive};
-
-use crate::geometry::{Duplet, Triplet};
-
 pub trait FromGeometry<T> {
     fn from_geometry(other: T) -> Self;
 }
@@ -22,30 +18,6 @@ where
 impl<T> FromGeometry<T> for T {
     fn from_geometry(other: T) -> Self {
         other
-    }
-}
-
-impl<T, U> FromGeometry<(U, U)> for Duplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: (U, U)) -> Self {
-        Duplet(T::from(other.0).unwrap(), T::from(other.1).unwrap())
-    }
-}
-
-impl<T, U> FromGeometry<(U, U, U)> for Triplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: (U, U, U)) -> Self {
-        Triplet(
-            T::from(other.0).unwrap(),
-            T::from(other.1).unwrap(),
-            T::from(other.2).unwrap(),
-        )
     }
 }
 
