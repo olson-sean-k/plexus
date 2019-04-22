@@ -305,6 +305,35 @@ where
     type Face = ();
 }
 
+impl<T> Interpolate for Point2<T>
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
+        Point2 {
+            x: geometry::lerp(self.x, other.x, f),
+            y: geometry::lerp(self.y, other.y, f),
+        }
+    }
+}
+
+impl<T> Interpolate for Point3<T>
+where
+    T: Num + NumCast,
+{
+    type Output = Self;
+
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
+        Point3 {
+            x: geometry::lerp(self.x, other.x, f),
+            y: geometry::lerp(self.y, other.y, f),
+            z: geometry::lerp(self.z, other.z, f),
+        }
+    }
+}
+
 impl<T> Origin for Point2<T>
 where
     T: Zero,

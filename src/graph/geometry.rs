@@ -6,7 +6,7 @@
 use crate::geometry::alias::{Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::ops::{Cross, Interpolate, Normalize, Project};
-use crate::geometry::space::{EuclideanSpace, Origin};
+use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
 use crate::graph::container::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -109,7 +109,7 @@ impl<G> EdgeMidpoint for G
 where
     G: Geometry,
     G::Vertex: AsPosition,
-    VertexPosition<G>: EuclideanSpace,
+    VertexPosition<G>: EuclideanSpace + Interpolate<Output = VertexPosition<G>>,
 {
     type Midpoint = VertexPosition<G>;
 
@@ -126,7 +126,7 @@ where
             .and_then(|arc| {
                 arc.reachable_source_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().coordinates())
+                    .map(|vertex| vertex.geometry.as_position().clone())
             })?;
         let b = edge
             .reachable_arc()
@@ -134,9 +134,9 @@ where
             .and_then(|arc| {
                 arc.reachable_destination_vertex()
                     .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().coordinates())
+                    .map(|vertex| vertex.geometry.as_position().clone())
             })?;
-        Ok(VertexPosition::<G>::origin() + a.midpoint(b))
+        Ok(a.midpoint(b))
     }
 }
 

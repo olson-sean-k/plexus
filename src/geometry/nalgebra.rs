@@ -233,6 +233,19 @@ where
     type Face = ();
 }
 
+impl<T, D> Interpolate for Point<T, D>
+where
+    T: Num + NumCast + Scalar,
+    D: DimName,
+    DefaultAllocator: Allocator<T, D>,
+{
+    type Output = Self;
+
+    fn lerp(self, other: Self, f: R64) -> Self::Output {
+        Point::from(self.coords.lerp(other.coords, f))
+    }
+}
+
 impl<T, D> Origin for Point<T, D>
 where
     T: Scalar + Zero,

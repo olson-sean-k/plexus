@@ -1,7 +1,7 @@
 use num::{Num, NumCast, One, Zero};
 use std::ops::{Add, Mul, Neg, Sub};
 
-use crate::geometry::ops::{Dot, Interpolate, Magnitude, Normalize, Project};
+use crate::geometry::ops::{Dot, Magnitude, Normalize, Project};
 
 pub trait AbstractSpace: Clone {
     type Scalar: Clone + Neg<Output = Self::Scalar> + Num + NumCast;
@@ -10,7 +10,6 @@ pub trait AbstractSpace: Clone {
 pub trait VectorSpace:
     AbstractSpace
     + Add<Output = Self>
-    + Interpolate<Output = Self>
     + Mul<<Self as AbstractSpace>::Scalar, Output = Self>
     + Neg<Output = Self>
     + Zero
@@ -37,7 +36,6 @@ pub trait VectorSpace:
 impl<T> VectorSpace for T where
     T: AbstractSpace
         + Add<Output = T>
-        + Interpolate<Output = T>
         + Mul<<T as AbstractSpace>::Scalar, Output = T>
         + Neg<Output = T>
         + Zero
