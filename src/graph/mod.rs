@@ -3,7 +3,7 @@
 //! This module provides a flexible representation of meshes as a [half-edge
 //! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list).
 //! _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
-//! respectively.  Meshes can store arbitrary geometric data associated with
+//! respectively. Meshes can store arbitrary geometric data associated with
 //! any topological structure (vertices, arcs, edges, and faces).
 //!
 //! Geometry is vertex-based, meaning that geometric operations depend on
@@ -11,33 +11,37 @@
 //! and `AsPosition` trait. If geometry does not have this property, then
 //! spatial operations will not be available.
 //!
+//! See the [user guide](https://plexus.rs/user-guide/graphs) for more details
+//! and examples.
+//!
 //! # Representation
 //!
 //! A `MeshGraph` is conceptually composed of _vertices_, _arcs_, _edges_, and
 //! _faces_. The figure below summarizes the connectivity in a `MeshGraph`.
 //!
-//! ![Half-Edge Graph Figure](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/heg.svg?sanitize=true)
+//! ![Half-Edge Graph Figure](https://plexus.rs/img/heg.svg)
 //!
 //! Arcs are directed and connect vertices. An arc that is directed toward a
-//! vertex **A** is an _incoming arc_ with respect to **A**.  Similarly, an arc
+//! vertex $A$ is an _incoming arc_ with respect to $A$.  Similarly, an arc
 //! directed away from such a vertex is an _outgoing arc_. Every vertex is
 //! associated with exactly one _leading arc_, which is always an outgoing arc.
 //! The vertex toward which an arc is directed is the arc's _destination
 //! vertex_ and the other is its _source vertex_.
 //!
 //! Every arc is paired with an _opposite arc_ with an opposing direction.
-//! Given an arc from a vertex **A** to a vertex **B**, that arc will have an
-//! opposite arc from **B** to **A**. Such arcs are typically labeled **AB**
-//! and **BA**. Together, these arcs form an _edge_, which is not directed.
-//! Occassionally, the term "edge" may refer to either an arc or an edge. Edges
-//! are typically labeled **AB+BA**.
+//! Given an arc from a vertex $A$ to a vertex $B$, that arc will have an
+//! opposite arc from $B$ to $A$. Such arcs are typically labeled $\vec{AB}$
+//! and $\vec{BA}$. Together, these arcs form an _edge_, which is not directed.
+//! Edges are labeled $AB$ or $BA$ (these labels denote the same edge).
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
-//! When a face is present in the contiguous region formed by a perimeter of
-//! vertices and their arcs, the arcs will refer to that face and the face will
-//! refer to exactly one of the arcs in the interior. An arc with no associated
-//! face is known as a _boundary arc_. If both of an edge's arcs are boundary
-//! arcs, then that edge is a _disjoint edge_.
+//! A traversal along a series of arcs is a _path_. The path formed by
+//! traversing from an arc to its next arc and so on is an _interior path_.
+//! When a face is present within an interior path, the arcs will refer to that
+//! face and the face will refer to exactly one of the arcs in the interior
+//! path (this is the leading arc of the face). An arc with no associated face
+//! is known as a _boundary arc_. If both of an edge's arcs are boundary arcs,
+//! then that edge is a _disjoint edge_.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find
@@ -47,8 +51,7 @@
 //! `MeshGraph`s store topological data using associative collections and mesh
 //! data is accessed using keys into this storage. Keys are exposed as strongly
 //! typed and opaque values, which can be used to refer to a topological
-//! structure, such as `VertexKey`. Topology is typically manipulated using a
-//! _view_, such as `VertexView` (see below).
+//! structure.
 //!
 //! # Topological Views
 //!
@@ -64,35 +67,17 @@
 //! | Mutable   | Yes       | Yes       | Mutable   | Mutable   |
 //! | Orphan    | No        | No        | Mutable   | N/A       |
 //!
-//! _Immutable_ and _mutable views_ behave similarly to references. Immutable
-//! views cannot mutate a mesh in any way and it is possible to obtain multiple
-//! such views at the same time. Mutable views are exclusive, but allow for
-//! mutations.
+//! _Immutable_ and _mutable views_ behave similarly to references: immutable
+//! views cannot mutate a graph and are not exclusive while mutable views may
+//! mutate both the geometry and topology of a graph but are exclusive.
 //!
-//! _Orphan views_ are similar to mutable views, but they only have access to
-//! the geometry of a single topological structure in a mesh. Because they do
-//! not know about other vertices, arcs, etc., an orphan view cannot traverse
-//! the topology of a mesh in any way. These views are most useful for
-//! modifying the geometry of a mesh and, unlike mutable views, multiple orphan
-//! views can be obtained at the same time. Orphan views are mostly used by
-//! mutable _circulators_ (iterators).
-//!
-//! Immutable and mutable views are both represented by view types, such as
-//! `FaceView`. Orphan views are represented by an oprhan view type, such as
-//! `OrphanFaceView`.
-//!
-//! # Circulators
-//!
-//! Topological views allow for traversals of a mesh's topology. One useful
-//! type of traversal uses a _circulator_, which is a type of iterator that
-//! examines the neighbors of a topological structure. For example, the face
-//! circulator of a vertex yields all faces that share that vertex in order.
-//!
-//! Mutable circulators emit orphan views, not mutable views. This is because
-//! it is not possible to instantiate more than one mutable view at a time. If
-//! multiple mutable views are needed, it is possible to use an immutable
-//! circulator to collect the keys of the target topology and then lookup each
-//! mutable view using those keys.
+//! _Orphan views_ are similar to mutable views in that they may mutate the
+//! geometry of a graph, but they do not have access to the topology of a
+//! graph. Because they do not know about other vertices, arcs, etc., an orphan
+//! view cannot traverse a graph in any way. These views are most useful for
+//! modifying the geometry of a graph and, unlike mutable views, they are not
+//! exclusive. Iterators over topological structures in a graph sometimes emit
+//! orphan views.
 //!
 //! # Examples
 //!
