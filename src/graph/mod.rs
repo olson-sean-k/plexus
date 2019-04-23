@@ -182,7 +182,6 @@ use crate::geometry::{Geometry, Triplet};
 use crate::graph::core::alias::OwnedCore;
 use crate::graph::core::{Bind, Core};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
-use crate::graph::storage::alias::*;
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{OpaqueKey, Storage};
@@ -361,10 +360,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(VertexStorage::<G>::new())
-                .bind(ArcStorage::<G>::new())
-                .bind(EdgeStorage::<G>::new())
-                .bind(FaceStorage::<G>::new()),
+                .bind(Storage::<VertexPayload<G>>::new())
+                .bind(Storage::<ArcPayload<G>>::new())
+                .bind(Storage::<EdgePayload<G>>::new())
+                .bind(Storage::<FacePayload<G>>::new()),
         )
     }
 
@@ -375,10 +374,10 @@ where
     pub fn empty() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(VertexStorage::<G>::empty())
-                .bind(ArcStorage::<G>::empty())
-                .bind(EdgeStorage::<G>::empty())
-                .bind(FaceStorage::<G>::empty()),
+                .bind(Storage::<VertexPayload<G>>::empty())
+                .bind(Storage::<ArcPayload<G>>::empty())
+                .bind(Storage::<EdgePayload<G>>::empty())
+                .bind(Storage::<FacePayload<G>>::empty()),
         )
     }
 

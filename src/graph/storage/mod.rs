@@ -249,13 +249,3 @@ where
         self
     }
 }
-
-pub mod alias {
-    use super::*;
-    use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-
-    pub type VertexStorage<G> = Storage<VertexPayload<G>>;
-    pub type ArcStorage<G> = Storage<ArcPayload<G>>;
-    pub type EdgeStorage<G> = Storage<EdgePayload<G>>;
-    pub type FaceStorage<G> = Storage<FacePayload<G>>;
-}
