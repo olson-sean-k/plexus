@@ -1,8 +1,9 @@
 use crate::geometry::Geometry;
-use crate::graph::container::{Bind, Consistent, Core, Reborrow};
+use crate::graph::borrow::Reborrow;
+use crate::graph::core::{Bind, Core};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
-use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::payload::VertexPayload;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::{ArcKey, Storage, VertexKey};

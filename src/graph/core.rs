@@ -3,55 +3,6 @@ use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, Verte
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::Storage;
 
-/// Marker trait for containers that promise to be in a consistent state.
-///
-/// This trait is only implemented by containers that expose storage and ensure
-/// that that storage is only ever mutated via the mutation API (and therefore
-/// is consistent). Note that `Core` does not implement this trait and instead
-/// acts as a raw container for topological storage that can be freely
-/// manipulated.
-///
-/// This trait allows code to make assumptions about the data it operates
-/// against. For example, views expose an API to user code that assumes that
-/// topologies are present and implicitly unwraps values.
-pub trait Consistent {}
-
-impl<'a, T> Consistent for &'a T where T: Consistent {}
-
-impl<'a, T> Consistent for &'a mut T where T: Consistent {}
-
-pub trait Reborrow {
-    type Target;
-
-    fn reborrow(&self) -> &Self::Target;
-}
-
-pub trait ReborrowMut: Reborrow {
-    fn reborrow_mut(&mut self) -> &mut Self::Target;
-}
-
-impl<'a, T> Reborrow for &'a T {
-    type Target = T;
-
-    fn reborrow(&self) -> &Self::Target {
-        *self
-    }
-}
-
-impl<'a, T> Reborrow for &'a mut T {
-    type Target = T;
-
-    fn reborrow(&self) -> &Self::Target {
-        &**self
-    }
-}
-
-impl<'a, T> ReborrowMut for &'a mut T {
-    fn reborrow_mut(&mut self) -> &mut Self::Target {
-        *self
-    }
-}
-
 pub trait Bind<T, M>
 where
     T: Payload,
@@ -62,7 +13,7 @@ where
     fn bind(self, source: M) -> Self::Output;
 }
 
-/// Topological storage container.
+/// Adaptable graph representation that can incorporate arbitrary storage.
 ///
 /// A core may or may not own its storage and may or may not provide storage
 /// for all topologies (vertices, arcs, edges, and faces). When a core does not

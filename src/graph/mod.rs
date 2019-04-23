@@ -149,7 +149,8 @@
 //! # }
 //! ```
 
-mod container;
+mod borrow;
+mod core;
 mod geometry;
 mod mutation;
 mod payload;
@@ -178,9 +179,9 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::geometry::{Geometry, Triplet};
-use crate::graph::container::alias::OwnedCore;
-use crate::graph::container::{Bind, Consistent, Core};
-use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::core::alias::OwnedCore;
+use crate::graph::core::{Bind, Core};
+use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};

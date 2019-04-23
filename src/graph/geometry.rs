@@ -57,7 +57,7 @@ use crate::geometry::convert::AsPosition;
 use crate::geometry::ops::{Cross, Interpolate, Normalize, Project};
 use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
-use crate::graph::container::Reborrow;
+use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::view::{ArcView, EdgeView, FaceView};

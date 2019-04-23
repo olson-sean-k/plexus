@@ -7,7 +7,8 @@ use either::Either;
 use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
-use crate::graph::container::{Bind, Reborrow, ReborrowMut};
+use crate::graph::borrow::{Reborrow, ReborrowMut};
+use crate::graph::core::Bind;
 use crate::graph::payload::Payload;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};

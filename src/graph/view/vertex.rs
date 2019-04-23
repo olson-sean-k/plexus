@@ -4,10 +4,10 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
-use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
+use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
-use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};

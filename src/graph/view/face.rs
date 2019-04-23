@@ -8,14 +8,14 @@ use crate::geometry::alias::{Scalar, Vector, VertexPosition};
 use crate::geometry::convert::AsPosition;
 use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
-use crate::graph::container::{Consistent, Reborrow, ReborrowMut};
+use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
-use crate::graph::mutation::{Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};

@@ -8,14 +8,31 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
-use crate::graph::container::alias::OwnedCore;
-use crate::graph::container::Consistent;
+use crate::graph::core::alias::OwnedCore;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::Storage;
 use crate::graph::GraphError;
+
+/// Marker trait for graph representations that promise to be in a consistent
+/// state.
+///
+/// This trait is only implemented by representations that ensure that their
+/// storage is only ever mutated via the mutation API (and therefore is
+/// consistent). Note that `Core` does not implement this trait and instead
+/// acts as a raw container for topological storage that can be freely
+/// manipulated.
+///
+/// This trait allows code to make assumptions about the data it operates
+/// against. For example, views expose an API to user code that assumes that
+/// topologies are present and therefore unwraps values.
+pub trait Consistent {}
+
+impl<'a, T> Consistent for &'a T where T: Consistent {}
+
+impl<'a, T> Consistent for &'a mut T where T: Consistent {}
 
 pub trait Mutate: Sized {
     type Mutant;
