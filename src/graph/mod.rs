@@ -150,14 +150,13 @@
 //! ```
 
 mod container;
-// The `graph::geometry` module uses private members of its parent module. It
-// is implemented here and re-exported in the `geometry::compose` module.
-pub(in crate) mod geometry;
+mod geometry;
 mod mutation;
 mod payload;
 mod storage;
 mod view;
 
+pub use self::geometry::*;
 pub use self::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use self::view::{

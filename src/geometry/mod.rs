@@ -9,7 +9,6 @@
 //! the `Vertex` attribute enables geometric features like extrusion,
 //! centroids, midpoints, etc.
 
-pub mod compose;
 pub mod convert;
 pub mod ops;
 pub mod query;
