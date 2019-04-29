@@ -104,8 +104,8 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
-        self.zip_map(&other, |a, b| geometry::lerp(a, b, f))
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
+        self.zip_map(&other, |a, b| geometry::lerp(a, b, factor))
     }
 }
 
@@ -253,8 +253,8 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
-        Point::from(self.coords.lerp(other.coords, f))
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
+        Point::from(self.coords.lerp(other.coords, factor))
     }
 }
 

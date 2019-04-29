@@ -112,10 +112,10 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Vector2 {
-            x: geometry::lerp(self.x, other.x, f),
-            y: geometry::lerp(self.y, other.y, f),
+            x: geometry::lerp(self.x, other.x, factor),
+            y: geometry::lerp(self.y, other.y, factor),
         }
     }
 }
@@ -126,11 +126,11 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Vector3 {
-            x: geometry::lerp(self.x, other.x, f),
-            y: geometry::lerp(self.y, other.y, f),
-            z: geometry::lerp(self.z, other.z, f),
+            x: geometry::lerp(self.x, other.x, factor),
+            y: geometry::lerp(self.y, other.y, factor),
+            z: geometry::lerp(self.z, other.z, factor),
         }
     }
 }
@@ -296,10 +296,10 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Point2 {
-            x: geometry::lerp(self.x, other.x, f),
-            y: geometry::lerp(self.y, other.y, f),
+            x: geometry::lerp(self.x, other.x, factor),
+            y: geometry::lerp(self.y, other.y, factor),
         }
     }
 }
@@ -310,11 +310,11 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Point3 {
-            x: geometry::lerp(self.x, other.x, f),
-            y: geometry::lerp(self.y, other.y, f),
-            z: geometry::lerp(self.z, other.z, f),
+            x: geometry::lerp(self.x, other.x, factor),
+            y: geometry::lerp(self.y, other.y, factor),
+            z: geometry::lerp(self.z, other.z, factor),
         }
     }
 }

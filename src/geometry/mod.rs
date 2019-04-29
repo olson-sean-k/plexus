@@ -167,8 +167,8 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
-        Duplet(lerp(self.0, other.0, f), lerp(self.1, other.1, f))
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
+        Duplet(lerp(self.0, other.0, factor), lerp(self.1, other.1, factor))
     }
 }
 
@@ -226,22 +226,22 @@ where
 {
     type Output = Self;
 
-    fn lerp(self, other: Self, f: R64) -> Self::Output {
+    fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Triplet(
-            lerp(self.0, other.0, f),
-            lerp(self.1, other.1, f),
-            lerp(self.2, other.2, f),
+            lerp(self.0, other.0, factor),
+            lerp(self.1, other.1, factor),
+            lerp(self.2, other.2, factor),
         )
     }
 }
 
-pub fn lerp<T>(a: T, b: T, f: R64) -> T
+pub fn lerp<T>(a: T, b: T, factor: R64) -> T
 where
     T: Num + NumCast,
 {
-    let f = num::clamp(f, Zero::zero(), One::one());
-    let af = <R64 as NumCast>::from(a).unwrap() * (R64::one() - f);
-    let bf = <R64 as NumCast>::from(b).unwrap() * f;
+    let factor = num::clamp(factor, Zero::zero(), One::one());
+    let af = <R64 as NumCast>::from(a).unwrap() * (R64::one() - factor);
+    let bf = <R64 as NumCast>::from(b).unwrap() * factor;
     <T as NumCast>::from(af + bf).unwrap()
 }
 
