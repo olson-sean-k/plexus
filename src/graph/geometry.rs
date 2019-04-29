@@ -60,8 +60,8 @@ use crate::geometry::Geometry;
 use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::AsStorage;
-use crate::graph::view::{ArcView, EdgeView, FaceView};
-use crate::graph::{GraphError, OptionExt};
+use crate::graph::view::{ArcView, EdgeView, FaceView, VertexView};
+use crate::graph::GraphError;
 
 pub trait FaceNormal: Geometry {
     type Normal;
@@ -109,6 +109,38 @@ where
     }
 }
 
+pub trait VertexCentroid: Geometry {
+    type Centroid;
+
+    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+}
+
+impl<G> VertexCentroid for G
+where
+    G: Geometry,
+    G::Vertex: AsPosition,
+    VertexPosition<G>: EuclideanSpace,
+{
+    type Centroid = VertexPosition<G>;
+
+    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+    {
+        VertexPosition::<G>::centroid(
+            vertex
+                .reachable_incoming_arcs()
+                .flat_map(|arc| arc.into_reachable_source_vertex())
+                .map(|vertex| vertex.geometry.as_position().clone()),
+        )
+        .ok_or_else(|| GraphError::TopologyNotFound)
+    }
+}
+
 pub trait FaceCentroid: Geometry {
     type Centroid;
 
@@ -135,11 +167,11 @@ where
             + AsStorage<FacePayload<Self>>
             + AsStorage<VertexPayload<Self>>,
     {
-        Ok(VertexPosition::<G>::centroid(
+        VertexPosition::<G>::centroid(
             face.reachable_vertices()
                 .map(|vertex| vertex.geometry.as_position().clone()),
         )
-        .expect_consistent())
+        .ok_or_else(|| GraphError::TopologyNotFound)
     }
 }
 

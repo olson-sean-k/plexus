@@ -177,10 +177,13 @@ use std::iter::FromIterator;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::geometry::convert::{FromGeometry, FromInteriorGeometry, IntoGeometry};
+use crate::geometry::alias::{Scalar, VertexPosition};
+use crate::geometry::convert::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
+use crate::geometry::space::EuclideanSpace;
 use crate::geometry::{Geometry, Triplet};
 use crate::graph::core::alias::OwnedCore;
 use crate::graph::core::{Bind, Core};
+use crate::graph::geometry::VertexCentroid;
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
@@ -585,6 +588,26 @@ where
         let faces = self.as_face_storage().keys().cloned().collect::<Vec<_>>();
         for face in faces {
             self.face_mut(face).unwrap().triangulate();
+        }
+    }
+
+    pub fn smooth<T>(&mut self, factor: T)
+    where
+        T: Into<Scalar<VertexPosition<G>>>,
+        G: VertexCentroid<Centroid = VertexPosition<G>>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
+    {
+        let factor = factor.into();
+        let mut transforms = HashMap::with_capacity(self.vertex_count());
+        for vertex in self.vertices() {
+            transforms.insert(
+                vertex.key(),
+                vertex.position().clone() + (vertex.centroid().coordinates() * factor),
+            );
+        }
+        for mut vertex in self.orphan_vertices() {
+            *vertex.geometry.as_position_mut() = transforms.remove(&vertex.key()).unwrap();
         }
     }
 

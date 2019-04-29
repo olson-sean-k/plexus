@@ -3,8 +3,11 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use crate::geometry::alias::VertexPosition;
+use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
+use crate::graph::geometry::VertexCentroid;
 use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
@@ -343,6 +346,29 @@ where
                 .map(|_| ())
         })()
         .expect_consistent()
+    }
+}
+
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<VertexPayload<G>>,
+    G: Geometry,
+    G::Vertex: AsPosition,
+{
+    pub fn position(&self) -> &VertexPosition<G> {
+        self.geometry.as_position()
+    }
+}
+
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    G: Geometry + VertexCentroid,
+{
+    pub fn centroid(&self) -> G::Centroid {
+        G::centroid(self.interior_reborrow()).expect_consistent()
     }
 }
 
