@@ -567,14 +567,13 @@ where
 
     /// Gets the arity of the graph.
     ///
-    /// If all faces in the graph have the same arity, then
-    /// `GraphArity::Constant` is returned with the singular arity of the
-    /// graph. If the graph contains faces with differing arity, then
-    /// `GraphArity::NonConstant` is returned with the minimum and maximum
-    /// arity.
+    /// If all faces in the graph have the same arity, then `Arity::Uniform` is
+    /// returned with the singular arity of the graph. If the graph contains
+    /// faces with differing arity, then `Arity::NonUniform` is returned with
+    /// the minimum and maximum arity.
     ///
-    /// `GraphArity::Constant` is returned with zero if there are no faces in
-    /// the graph.
+    /// `Arity::Uniform` is returned with zero if there are no faces in the
+    /// graph.
     pub fn arity(&self) -> Arity {
         match self.faces().map(|face| face.arity()).minmax() {
             MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
