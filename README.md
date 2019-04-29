@@ -23,27 +23,27 @@ use plexus::primitive::sphere::UvSphere;
 // Example module in the local crate that provides basic rendering.
 use render::{self, Color, Vertex};
 
-// Construct a linear buffer of index and vertex data from a sphere primitive.
+// Construct a linear buffer of index and vertex data from a sphere.
 let buffer = UvSphere::new(16, 16)
     .polygons_with_position()
     .map_vertices(|position| -> Point3<f64> { position.into() })
     .map_vertices(|position| Vertex::new(position, Color::white()))
     .triangulate()
-    .collect::<MeshBuffer3<u32, Vertex>>();
+    .collect::<MeshBuffer3<u64, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
 For an example of rendering, see the [viewer
 example](https://github.com/olson-sean-k/plexus/tree/master/examples/viewer).
 
-## Half-Edge Graph Meshes
+## Half-Edge Graphs
 
 `MeshGraph`, represented as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list), supports
 arbitrary geometry for vertices, arcs (half-edges), edges, and faces. Graphs
 are persistent and can be traversed and manipulated in ways that iterator
 expressions and linear buffers cannot, such as circulation, extrusion, merging,
-and joining.
+and splitting.
 
 ```rust
 use nalgebra::Point3;
@@ -51,8 +51,7 @@ use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
-// Construct a mesh from a sphere primitive. The vertex geometry is convertible
-// to `Point3` via the `FromGeometry` trait in this example.
+// Construct a mesh from a sphere.
 let mut graph = UvSphere::new(8, 8)
     .polygons_with_position_from(Bounds::unit_width())
     .collect::<MeshGraph<Point3<f64>>>();
@@ -61,16 +60,20 @@ let key = graph.faces().nth(0).unwrap().key();
 let face = graph.face_mut(key).unwrap().extrude(1.0);
 ```
 
+Graphs support arbitrary geometry for vertices, arcs, edges, and faces
+(including no geometry at all) via optional traits. See below.
+
 Plexus avoids exposing very basic topological operations like inserting
 individual vertices, because they can easily be done incorrectly. Instead,
-meshes are typically manipulated with higher-level operations like splitting
-and joining.
+meshes are typically manipulated with higher-level operations like merging and
+splitting.
 
 ## Geometric Traits
 
-Graphs support arbitrary geometry for vertices, arcs, edges, and faces
-(including no geometry at all) via optional traits. Implementing these traits
-enables geometric features, but only one trait is required: `Geometry`.
+Primitives, buffers, and graphs expose geometric operations and features if
+their payloads (vertex data) implement optional geometric traits. This is
+especially useful for `MeshGraph`, which specifies its payloads via the
+`Geometry` trait.
 
 ```rust
 use decorum::R64;
@@ -105,8 +108,9 @@ impl AsPosition for Vertex {
 ```
 
 Geometric operations are vertex-based. By implementing `AsPosition` to expose
-positional data from vertices and implementing geometric and spatial traits for
-that positional data, operations like extrusion are exposed.
+positional data from vertices and implementing spatial traits like
+`EuclideanSpace` for that positional data, operations like extrusion and
+smoothing are exposed.
 
 Geometric traits are optionally implemented for types in the
 [cgmath](https://crates.io/crates/cgmath),
@@ -114,5 +118,4 @@ Geometric traits are optionally implemented for types in the
 [nalgebra](https://crates.io/crates/nalgebra) crates so that common types can be
 used out-of-the-box for vertex geometry. See the `geometry-cgmath`,
 `geometry-mint`, and `geometry-nalgebra` crate features. By default, the
-`geometry-nalgebra` feature is enabled. Both 2D and 3D geometry are supported
-by mesh operations.
+`geometry-nalgebra` feature is enabled. Both 2D and 3D geometry are supported.
