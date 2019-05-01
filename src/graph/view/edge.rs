@@ -675,8 +675,8 @@ where
     ///
     /// Bridging two compatible arcs $\overrightarrow{AB}$ and
     /// $\overrightarrow{CD}$ will result in an interior path
-    /// $\{\overrightarrow{AB}, \overrightarrow{BC}, \overrightarrow{CD},
-    /// \overrightarrow{DA}\}$.
+    /// $\\{\overrightarrow{AB}, \overrightarrow{BC}, \overrightarrow{CD},
+    /// \overrightarrow{DA}\\}$.
     ///
     /// Arcs can be bridged within an interior path. The destination arc can be
     /// chosen by key or index, where an index selects the nth arc from the

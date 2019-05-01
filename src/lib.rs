@@ -118,8 +118,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// Provides an iterator over a window of duplets that includes the first
     /// value in the sequence at the beginning and end of the iteration.
     ///
-    /// Given a collection of ordered elements $\{a, b, c\}$, this iterator
-    /// yeilds the ordered items $\{(a, b), (b, c), (c, a)\}$.
+    /// Given a collection of ordered elements $\\{a, b, c\\}$, this iterator
+    /// yeilds the ordered items $\\{(a, b), (b, c), (c, a)\\}$.
     fn perimeter(self) -> Perimeter<Self>
     where
         Self::Item: Clone;
@@ -141,8 +141,8 @@ where
 ///
 /// The duplets produced include the first value in the input sequence at both
 /// the beginning and end of the iteration, forming a perimeter. Given a
-/// collection of ordered elements $\{a, b, c\}$, this iterator yeilds the
-/// ordered items $\{(a, b), (b, c), (c, a)\}$.
+/// collection of ordered elements $\\{a, b, c\\}$, this iterator yields the
+/// ordered items $\\{(a, b), (b, c), (c, a)\\}$.
 pub struct Perimeter<I>
 where
     I: Iterator,
