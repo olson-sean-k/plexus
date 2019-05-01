@@ -597,15 +597,16 @@ where
         VertexPosition<G>: EuclideanSpace,
     {
         let factor = factor.into();
-        let mut transforms = HashMap::with_capacity(self.vertex_count());
+        let mut positions = HashMap::with_capacity(self.vertex_count());
         for vertex in self.vertices() {
-            transforms.insert(
+            let position = vertex.position().clone();
+            positions.insert(
                 vertex.key(),
-                vertex.position().clone() + (vertex.centroid().coordinates() * factor),
+                position.clone() + ((vertex.centroid() - position) * factor),
             );
         }
         for mut vertex in self.orphan_vertices() {
-            *vertex.geometry.as_position_mut() = transforms.remove(&vertex.key()).unwrap();
+            *vertex.geometry.as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
     }
 
