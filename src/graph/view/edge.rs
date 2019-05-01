@@ -559,13 +559,13 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    /// Splits an edge (and its arcs) into two neighboring edges that share a
-    /// vertex.
+    /// Splits a composite edge into two neighboring edges that share a vertex.
     ///
     /// Splitting inserts a new vertex with the geometry provided by the given
-    /// function. The leading arc of the inserted vertex will be one half of
-    /// the arc that initiated the split and therefore will be part of the same
-    /// interior path.
+    /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
+    /// that subdivides the composite edge. The leading arc of $M$ is
+    /// $\overrightarrow{MB}$ and is a part of the same interior path as the
+    /// initiating arc.
     ///
     /// Returns the inserted vertex.
     ///
@@ -614,9 +614,13 @@ where
     ///
     /// Splitting inserts a new vertex with the geometry of the arc's source
     /// vertex but modified such that the positional data of the vertex is the
-    /// computed midpoint of both of the arc's vertices. The leading arc of the
-    /// inserted vertex will be one half of the arc that initiated the split
-    /// and therefore will be part of the same interior path.
+    /// computed midpoint of both of the arc's vertices.
+    ///
+    /// Splitting inserts a new vertex with the geometry provided by the given
+    /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
+    /// that subdivides the composite edge. The leading arc of $M$ is
+    /// $\overrightarrow{MB}$ and is a part of the same interior path as the
+    /// initiating arc.
     ///
     /// This function is only available if a graph's geometry exposes
     /// positional data in its vertices and that data supports interpolation.
@@ -669,6 +673,11 @@ where
     /// boundary arcs with an orientation that allows them to form an interior
     /// path.
     ///
+    /// Bridging two compatible arcs $\overrightarrow{AB}$ and
+    /// $\overrightarrow{CD}$ will result in an interior path
+    /// $\{\overrightarrow{AB}, \overrightarrow{BC}, \overrightarrow{CD},
+    /// \overrightarrow{DA}\}$.
+    ///
     /// Arcs can be bridged within an interior path. The destination arc can be
     /// chosen by key or index, where an index selects the nth arc from the
     /// source arc within the interior path.
@@ -679,7 +688,7 @@ where
     ///
     /// Returns an error if the destination arc cannot be found, either arc is
     /// not a boundary arc, or the orientation of the destination arc is
-    /// incompatible.
+    /// incompatible with the initiating arc.
     ///
     /// # Examples
     ///
@@ -753,16 +762,18 @@ where
             .expect_consistent())
     }
 
-    /// Extrudes a boundary arc along its normal.
+    /// Extrudes a boundary arc along its normal into a composite edge.
     ///
-    /// Extrusion inserts a new edge (and arcs) with the same geometry as the
-    /// initiating arc, but modifies the positional geometry of the new edge's
-    /// vertices such that they extend geometrically along the normal of the
-    /// originating arc. The originating arc is then bridged with an arc in the
-    /// opposing edge. This inserts a quadrilateral face. See `bridge`.
+    /// Extrusion inserts a new composite edge with the same geometry as the
+    /// initiating arc and its composite edge, but modifies the positional
+    /// geometry of the new edge's vertices such that they extend geometrically
+    /// along the normal of the originating arc. The originating arc is then
+    /// bridged with an arc in the opposing edge. This inserts a quadrilateral
+    /// face. See `bridge`.
     ///
     /// An arc's normal is perpendicular to the arc and also coplanar with the
-    /// arc and one of its neighbors. This is computed via a projection.
+    /// arc and one of its neighbors. This is computed via a projection and
+    /// supports both 2D and 3D geometries.
     ///
     /// Returns the opposing arc. This is the arc in the destination edge that
     /// is within the same interior path as the initiating arc.
@@ -813,13 +824,15 @@ where
             .expect_consistent())
     }
 
-    /// Removes the arc, its opposite arc, and edge.
+    /// Removes the arc and its composite edge.
     ///
     /// Any and all dependent topology is also removed, such as connected
-    /// faces, vertices with no remaining leading arc, etc.
+    /// faces, disjoint vertices, etc.
     ///
     /// Returns the source vertex of the initiating arc or `None` if that
-    /// vertex becomes disjoint and is also removed.
+    /// vertex becomes disjoint and is also removed. If an arc
+    /// $\overrightarrow{AB}$ is removed and its source vertex is not disjoint,
+    /// then $A$ is returned.
     pub fn remove(self) -> Option<VertexView<&'a mut M, G>> {
         (move || {
             let a = self.source_vertex().key();

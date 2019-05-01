@@ -30,9 +30,10 @@
 //!
 //! Every arc is paired with an _opposite arc_ with an opposing direction.
 //! Given an arc from a vertex $A$ to a vertex $B$, that arc will have an
-//! opposite arc from $B$ to $A$. Such arcs are typically labeled $\vec{AB}$
-//! and $\vec{BA}$. Together, these arcs form an _edge_, which is not directed.
-//! Edges are labeled $AB$ or $BA$ (these labels denote the same edge).
+//! opposite arc from $B$ to $A$. Such arcs are typically labeled
+//! $\overrightarrow{AB}$ and $\overrightarrow{BA}$. Together, these arcs form
+//! an _edge_, which is not directed. Edges are labeled $AB$ or $BA$ (these
+//! labels denote the same edge).
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! A traversal along a series of arcs is a _path_. The path formed by
