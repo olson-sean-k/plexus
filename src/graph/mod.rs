@@ -183,7 +183,6 @@ use crate::geometry::space::EuclideanSpace;
 use crate::geometry::{Geometry, Triplet};
 use crate::graph::core::alias::OwnedCore;
 use crate::graph::core::{Bind, Core};
-use crate::graph::geometry::VertexCentroid;
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::convert::alias::*;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
