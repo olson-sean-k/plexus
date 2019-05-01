@@ -32,9 +32,9 @@ use Selector::ByIndex;
 /// Provides traversals, queries, and mutations related to faces in a graph.
 /// See the module documentation for more information about topological views.
 ///
-/// Faces are notated as interior paths. A triangular face with a perimeter
-/// formed by vertices $A$, $B$, and $C$ is notated $\overleftrightarrow{\\{A,
-/// B, C\\}}$.
+/// Faces are notated similary to paths. A triangular face with a perimeter
+/// formed by vertices $A$, $B$, and $C$ is notated $\Overrightarrow{\\{A, B,
+/// C\\}}$ (using a double-struck arrow).
 pub struct FaceView<M, G>
 where
     M: Reborrow,
@@ -364,10 +364,10 @@ where
     /// This can be thought of as the opposite of `merge`.
     ///
     /// Returns the inserted arc that spans from the source vertex to the
-    /// destination vertex if successful. If a face $\overleftrightarrow{\\{A,
-    /// B, C, D\\}}$ is split from $A$ to $C$, then it will be decomposed into
-    /// $\overleftrightarrow{\\{A, B, C\\}}$ and $\overleftrightarrow{\\{C, D,
-    /// A\\}}$ and the arc $\overrightarrow{AC}$ will be returned.
+    /// destination vertex if successful. If a face $\Overrightarrow{\\{A, B,
+    /// C, D\\}}$ is split from $A$ to $C$, then it will be decomposed into
+    /// $\Overrightarrow{\\{A, B, C\\}}$ and $\Overrightarrow{\\{C, D, A\\}}$
+    /// and the arc $\overrightarrow{AC}$ will be returned.
     ///
     /// # Errors
     ///
@@ -896,7 +896,7 @@ where
 /// geometry (`InteriorPathView` does not implement `Deref`).
 ///
 /// An interior path with a perimeter formed by vertices $A$, $B$, and $C$ is
-/// notated $\overleftrightarrow{\\{A, B, C\\}}$.
+/// notated $\overrightarrow{\\{A, B, C\\}}$.
 ///
 /// See the module documentation for more information about topological views.
 pub struct InteriorPathView<M, G>

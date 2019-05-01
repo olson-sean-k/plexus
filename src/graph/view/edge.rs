@@ -995,7 +995,9 @@ where
 /// See the module documentation for more information about topological views.
 ///
 /// An edge connecting a vertex $A$ and a vertex $B$ is notated
-/// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
+/// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$ (both representing
+/// the same edge). Typically, edges are described by one of their arcs (e.g.,
+/// "the edge of $\overrightarrow{AB}$").
 pub struct EdgeView<M, G>
 where
     M: Reborrow,
@@ -1101,7 +1103,7 @@ where
         self.reachable_arc().expect_consistent()
     }
 
-    pub fn is_disjoint_edge(&self) -> bool {
+    pub fn is_unbounded_edge(&self) -> bool {
         let arc = self.arc();
         arc.is_boundary_arc() && arc.opposite_arc().is_boundary_arc()
     }

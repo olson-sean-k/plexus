@@ -30,10 +30,10 @@
 //!
 //! Every arc is paired with an _opposite arc_ with an opposing direction.
 //! Given an arc from a vertex $A$ to a vertex $B$, that arc will have an
-//! opposite arc from $B$ to $A$. Such arcs are typically labeled
-//! $\overrightarrow{AB}$ and $\overrightarrow{BA}$. Together, these arcs form
-//! an _edge_, which is not directed. Such an edge is labeled
-//! $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
+//! opposite arc from $B$ to $A$. Such arcs are notated $\overrightarrow{AB}$
+//! and $\overrightarrow{BA}$. Together, these arcs form an _edge_, which is
+//! not directed. An edge and its two arcs are together called a _composite
+//! edge_.
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! A traversal along a series of arcs is a _path_. The path formed by
@@ -42,12 +42,11 @@
 //! face and the face will refer to exactly one of the arcs in the interior
 //! path (this is the leading arc of the face). An arc with no associated face
 //! is known as a _boundary arc_. If both of an edge's arcs are boundary arcs,
-//! then that edge is a _disjoint edge_.
+//! then that edge is an _unbounded edge_.
 //!
 //! A path that terminates is _open_ and a path that forms a loop is _closed_.
-//! Interior paths are always closed. For paths over vertices $A$, $B$, and
-//! $C$, an open path is labeled $\overrightarrow{\\{A, B, C\\}}$ and a closed
-//! path is labeled $\overleftrightarrow{\\{A, B, C\\}}$.
+//! Interior paths are always closed. A path over vertices $A$, $B$, and $C$ is
+//! notated $\overrightarrow{\\{A, B, C\\}}$.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find
