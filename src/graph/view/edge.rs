@@ -33,7 +33,9 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 /// Arcs provide the connectivity information within a `MeshGraph` and are the
 /// primary mechanism for traversing its topology. Moreover, most edge-like
 /// operations are exposed by arcs, because they are directed and therefore can
-/// emit deterministic results (unlike true edges).
+/// emit deterministic results (this is not true of edges).
+///
+/// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
 ///
 /// # Examples
 ///
@@ -675,12 +677,11 @@ where
     ///
     /// Bridging two compatible arcs $\overrightarrow{AB}$ and
     /// $\overrightarrow{CD}$ will result in an interior path
-    /// $\\{\overrightarrow{AB}, \overrightarrow{BC}, \overrightarrow{CD},
-    /// \overrightarrow{DA}\\}$.
+    /// $\overleftrightarrow{\\{A, B, C, D\\}}$.
     ///
     /// Arcs can be bridged within an interior path. The destination arc can be
-    /// chosen by key or index, where an index selects the nth arc from the
-    /// source arc within the interior path.
+    /// chosen by key or index, where an index selects the $n^\text{th}$ arc
+    /// from the source arc within the interior path.
     ///
     /// Returns the inserted face if successful.
     ///
@@ -992,6 +993,9 @@ where
 ///
 /// Provides traversals, queries, and mutations related to edges in a graph.
 /// See the module documentation for more information about topological views.
+///
+/// An edge connecting a vertex $A$ and a vertex $B$ is notated
+/// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
 pub struct EdgeView<M, G>
 where
     M: Reborrow,

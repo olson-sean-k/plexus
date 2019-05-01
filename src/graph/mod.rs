@@ -32,8 +32,8 @@
 //! Given an arc from a vertex $A$ to a vertex $B$, that arc will have an
 //! opposite arc from $B$ to $A$. Such arcs are typically labeled
 //! $\overrightarrow{AB}$ and $\overrightarrow{BA}$. Together, these arcs form
-//! an _edge_, which is not directed. Edges are labeled $AB$ or $BA$ (these
-//! labels denote the same edge).
+//! an _edge_, which is not directed. Such an edge is labeled
+//! $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! A traversal along a series of arcs is a _path_. The path formed by
@@ -43,6 +43,11 @@
 //! path (this is the leading arc of the face). An arc with no associated face
 //! is known as a _boundary arc_. If both of an edge's arcs are boundary arcs,
 //! then that edge is a _disjoint edge_.
+//!
+//! A path that terminates is _open_ and a path that forms a loop is _closed_.
+//! Interior paths are always closed. For paths over vertices $A$, $B$, and
+//! $C$, an open path is labeled $\overrightarrow{\\{A, B, C\\}}$ and a closed
+//! path is labeled $\overleftrightarrow{\\{A, B, C\\}}$.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find

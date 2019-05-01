@@ -31,6 +31,10 @@ use Selector::ByIndex;
 ///
 /// Provides traversals, queries, and mutations related to faces in a graph.
 /// See the module documentation for more information about topological views.
+///
+/// Faces are notated as interior paths. A triangular face with a perimeter
+/// formed by vertices $A$, $B$, and $C$ is notated $\overleftrightarrow{\\{A,
+/// B, C\\}}$.
 pub struct FaceView<M, G>
 where
     M: Reborrow,
@@ -351,16 +355,19 @@ where
         + Mutable<G>,
     G: 'a + Geometry,
 {
-    /// Splits the face by bisecting it with an edge (and arcs) inserted
-    /// between two non-neighboring vertices within the face's perimeter.
+    /// Splits the face by bisecting it with a composite edge inserted between
+    /// two non-neighboring vertices within the face's perimeter.
     ///
-    /// The vertices can be chosen by key or index, where index selects the nth
-    /// vertex within the face's interior path.
+    /// The vertices can be chosen by key or index, where index selects the
+    /// $n^\text{th}$ vertex within the face's interior path.
     ///
     /// This can be thought of as the opposite of `merge`.
     ///
     /// Returns the inserted arc that spans from the source vertex to the
-    /// destination vertex if successful.
+    /// destination vertex if successful. If a face $\overleftrightarrow{\\{A,
+    /// B, C, D\\}}$ is split from $A$ to $C$, then it will be decomposed into
+    /// $\overleftrightarrow{\\{A, B, C\\}}$ and $\overleftrightarrow{\\{C, D,
+    /// A\\}}$ and the arc $\overrightarrow{AC}$ will be returned.
     ///
     /// # Errors
     ///
@@ -423,11 +430,11 @@ where
         .expect_consistent())
     }
 
-    /// Merges the face into a neighboring face over their shared edge (and
-    /// arcs).
+    /// Merges the face into a neighboring face over their shared composite
+    /// edge.
     ///
     /// The neighboring face can be chosen by key or index, where index selects
-    /// the nth neighbor of the face.
+    /// the $n^\text{th}$ neighbor of the face.
     ///
     /// This can be thought of as the opposite of `split`.
     ///
@@ -886,7 +893,10 @@ where
 /// paths may or may not be occupied by faces.
 ///
 /// Interior paths have no associated payload and do not directly expose
-/// geometry.
+/// geometry (`InteriorPathView` does not implement `Deref`).
+///
+/// An interior path with a perimeter formed by vertices $A$, $B$, and $C$ is
+/// notated $\overleftrightarrow{\\{A, B, C\\}}$.
 ///
 /// See the module documentation for more information about topological views.
 pub struct InteriorPathView<M, G>
