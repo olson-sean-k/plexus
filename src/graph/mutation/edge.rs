@@ -19,6 +19,9 @@ use crate::graph::view::ArcView;
 use crate::graph::GraphError;
 use crate::IteratorExt;
 
+pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
+pub type CompositeEdgePayload<G> = (EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>));
+
 pub struct EdgeMutation<G>
 where
     G: Geometry,
@@ -35,7 +38,7 @@ where
         &mut self,
         span: (VertexKey, VertexKey),
         f: F,
-    ) -> Result<(EdgeKey, (ArcKey, ArcKey)), GraphError>
+    ) -> Result<CompositeEdgeKey, GraphError>
     where
         F: Clone + FnOnce() -> G::Arc,
     {
@@ -466,7 +469,7 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeRemoveCache<G>,
-) -> Result<(EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>)), GraphError>
+) -> Result<CompositeEdgePayload<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
