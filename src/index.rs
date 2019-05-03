@@ -83,7 +83,7 @@ where
     type Index = <Polygon<N> as Topological>::Vertex;
 
     fn arity(&self) -> Arity {
-        match self.iter().map(|polygon| polygon.arity().get()).minmax() {
+        match self.iter().map(|polygon| polygon.arity()).minmax() {
             MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
             MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
             _ => Arity::Uniform(0),
@@ -99,7 +99,7 @@ where
     type Index = P::Vertex;
 
     fn arity(&self) -> Arity {
-        Arity::Uniform(P::ARITY.get())
+        Arity::Uniform(P::ARITY)
     }
 }
 

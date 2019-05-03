@@ -904,7 +904,7 @@ where
                 .into_vertices()
                 .into_iter()
                 .map(|index| vertices[index])
-                .collect::<ArrayVec<[_; Quad::<()>::ARITY.get()]>>();
+                .collect::<ArrayVec<[_; Quad::<()>::ARITY]>>();
             mutation.insert_face(&perimeter, Default::default())?;
         }
         mutation.commit()
@@ -946,7 +946,7 @@ where
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
-            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity().get());
+            let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity());
             for index in face.into_vertices() {
                 let index = <usize as NumCast>::from(index).unwrap();
                 perimeter.push(

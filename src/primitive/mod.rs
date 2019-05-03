@@ -67,7 +67,6 @@ use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::Integer;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
-use std::num::NonZeroUsize;
 use std::ops::{Index, Range};
 
 use crate::primitive::decompose::IntoVertices;
@@ -75,13 +74,13 @@ use crate::primitive::decompose::IntoVertices;
 pub trait Topological: Sized {
     type Vertex;
 
-    fn arity(&self) -> NonZeroUsize;
+    fn arity(&self) -> usize;
 }
 
 pub trait Polygonal: Topological {}
 
 pub trait ConstantArity {
-    const ARITY: NonZeroUsize;
+    const ARITY: usize;
 }
 
 pub trait Converged: Topological {
@@ -229,7 +228,7 @@ impl<T> Edge<T> {
 }
 
 impl<T> ConstantArity for Edge<T> {
-    const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
+    const ARITY: usize = 1;
 }
 
 impl<T> Converged for Edge<T>
@@ -281,7 +280,7 @@ impl<T, U> Map<U> for Edge<T> {
 impl<T> Topological for Edge<T> {
     type Vertex = T;
 
-    fn arity(&self) -> NonZeroUsize {
+    fn arity(&self) -> usize {
         Self::ARITY
     }
 }
@@ -311,12 +310,12 @@ impl<T> Triangle<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity().get())
+        Iter::new(self, self.arity())
     }
 }
 
 impl<T> ConstantArity for Triangle<T> {
-    const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+    const ARITY: usize = 3;
 }
 
 impl<T> Converged for Triangle<T>
@@ -373,7 +372,7 @@ impl<T, U> Map<U> for Triangle<T> {
 impl<T> Topological for Triangle<T> {
     type Vertex = T;
 
-    fn arity(&self) -> NonZeroUsize {
+    fn arity(&self) -> usize {
         Self::ARITY
     }
 }
@@ -382,7 +381,7 @@ impl<T> Polygonal for Triangle<T> {}
 
 impl<T> Rotate for Triangle<T> {
     fn rotate(self, n: isize) -> Self {
-        let n = umod(n, Self::ARITY.get() as isize);
+        let n = umod(n, Self::ARITY as isize);
         if n == 1 {
             let Triangle { a, b, c } = self;
             Triangle { b, c, a }
@@ -411,12 +410,12 @@ impl<T> Quad<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity().get())
+        Iter::new(self, self.arity())
     }
 }
 
 impl<T> ConstantArity for Quad<T> {
-    const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(4) };
+    const ARITY: usize = 4;
 }
 
 impl<T> Converged for Quad<T>
@@ -475,7 +474,7 @@ impl<T, U> Map<U> for Quad<T> {
 impl<T> Topological for Quad<T> {
     type Vertex = T;
 
-    fn arity(&self) -> NonZeroUsize {
+    fn arity(&self) -> usize {
         Self::ARITY
     }
 }
@@ -484,7 +483,7 @@ impl<T> Polygonal for Quad<T> {}
 
 impl<T> Rotate for Quad<T> {
     fn rotate(self, n: isize) -> Self {
-        let n = umod(n, Self::ARITY.get() as isize);
+        let n = umod(n, Self::ARITY as isize);
         if n == 1 {
             let Quad { a, b, c, d } = self;
             Quad { b, c, d, a }
@@ -511,7 +510,7 @@ pub enum Polygon<T> {
 
 impl<T> Polygon<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity().get())
+        Iter::new(self, self.arity())
     }
 }
 
@@ -532,12 +531,13 @@ impl<T> FromIterator<T> for Polygon<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        // Using `Arity::ARITY.get()` is cumbersome with `match`; literals are
-        // used here instead for simplicity.
-        let input = input.into_iter().take(4).collect::<ArrayVec<[T; 4]>>();
+        let input = input
+            .into_iter()
+            .take(Quad::<T>::ARITY)
+            .collect::<ArrayVec<[T; 4]>>();
         match input.len() {
-            3 => Polygon::Triangle(Triangle::from_iter(input)),
-            4 => Polygon::Quad(Quad::from_iter(input)),
+            Triangle::<T>::ARITY => Polygon::Triangle(Triangle::from_iter(input)),
+            Quad::<T>::ARITY => Polygon::Quad(Quad::from_iter(input)),
             _ => panic!(),
         }
     }
@@ -574,7 +574,7 @@ impl<T, U> Map<U> for Polygon<T> {
 impl<T> Topological for Polygon<T> {
     type Vertex = T;
 
-    fn arity(&self) -> NonZeroUsize {
+    fn arity(&self) -> usize {
         match *self {
             Polygon::Triangle(..) => Triangle::<T>::ARITY,
             Polygon::Quad(..) => Quad::<T>::ARITY,
