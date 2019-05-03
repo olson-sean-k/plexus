@@ -45,7 +45,7 @@ use std::marker::PhantomData;
 use typenum::NonZero;
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Map, Polygon, Quad, Topological, Triangle, UniformArity};
+use crate::primitive::{ConstantArity, Map, Polygon, Quad, Topological, Triangle};
 use crate::Arity;
 
 pub use typenum::{U3, U4};
@@ -93,7 +93,7 @@ where
 
 impl<P> IndexBuffer<Structured<P>> for Vec<P>
 where
-    P: Topological + UniformArity,
+    P: ConstantArity + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Index = P::Vertex;
@@ -116,7 +116,7 @@ impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    P: UniformArity + IntoVertices + Topological<Vertex = N>,
+    P: ConstantArity + IntoVertices + Topological<Vertex = N>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {

@@ -198,7 +198,7 @@ use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Map, Polygonal, Quad, UniformArity};
+use crate::primitive::{ConstantArity, Map, Polygonal, Quad};
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use Selector::ByIndex;

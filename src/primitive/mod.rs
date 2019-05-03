@@ -80,7 +80,7 @@ pub trait Topological: Sized {
 
 pub trait Polygonal: Topological {}
 
-pub trait UniformArity {
+pub trait ConstantArity {
     const ARITY: NonZeroUsize;
 }
 
@@ -228,7 +228,7 @@ impl<T> Edge<T> {
     }
 }
 
-impl<T> UniformArity for Edge<T> {
+impl<T> ConstantArity for Edge<T> {
     const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
 }
 
@@ -315,7 +315,7 @@ impl<T> Triangle<T> {
     }
 }
 
-impl<T> UniformArity for Triangle<T> {
+impl<T> ConstantArity for Triangle<T> {
     const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
 }
 
@@ -415,7 +415,7 @@ impl<T> Quad<T> {
     }
 }
 
-impl<T> UniformArity for Quad<T> {
+impl<T> ConstantArity for Quad<T> {
     const ARITY: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(4) };
 }
 
