@@ -4,6 +4,9 @@
 //! of geometric and topological data for primitives like cubes and spheres.
 
 use std::ops::Range;
+use theon::space::alias::Vector;
+use theon::space::{EuclideanSpace, FiniteDimensional};
+use typenum::{U2, U3};
 
 use crate::primitive::Polygonal;
 
@@ -59,31 +62,45 @@ pub trait PolygonGenerator {
     fn polygon_count(&self) -> usize;
 }
 
-pub trait NormalGenerator {
+pub trait NormalGenerator<S>
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+{
     type State: Default;
 }
 
-pub trait NormalVertexGenerator: NormalGenerator {
-    type Output;
-
-    fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
+pub trait NormalVertexGenerator<S>: NormalGenerator<S>
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+{
+    fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Vector<S>;
 
     /// Gets the number of unique vertices with normal data that comprise a primitive.
     fn vertex_with_normal_count(&self) -> usize;
 }
 
 /// Functions for generating vertices with normal data.
-pub trait VerticesWithNormal: NormalVertexGenerator + Sized {
-    fn vertices_with_normal(
-        &self,
-    ) -> Generate<Self, Self::State, <Self as NormalVertexGenerator>::Output> {
+pub trait VerticesWithNormal: Sized {
+    fn vertices_with_normal<S>(&self) -> Generate<Self, Self::State, Vector<S>>
+    where
+        Self: NormalVertexGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    {
         self.vertices_with_normal_from(Default::default())
     }
 
-    fn vertices_with_normal_from(
+    fn vertices_with_normal_from<S>(
         &self,
         state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as NormalVertexGenerator>::Output> {
+    ) -> Generate<Self, Self::State, Vector<S>>
+    where
+        Self: NormalVertexGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    {
         Generate::new(
             self,
             state,
@@ -93,16 +110,14 @@ pub trait VerticesWithNormal: NormalVertexGenerator + Sized {
     }
 }
 
-impl<G> VerticesWithNormal for G where G: NormalVertexGenerator + Sized {}
-
-pub trait NormalIndexGenerator: PolygonGenerator + NormalVertexGenerator {
+pub trait NormalIndexGenerator: PolygonGenerator {
     type Output: Polygonal<Vertex = usize>;
 
-    fn index_for_normal(&self, index: usize) -> <Self as NormalIndexGenerator>::Output;
+    fn index_for_normal(&self, index: usize) -> Self::Output;
 }
 
 pub trait IndicesForNormal: NormalIndexGenerator + Sized {
-    fn indices_for_normal(&self) -> Generate<Self, (), <Self as NormalIndexGenerator>::Output> {
+    fn indices_for_normal(&self) -> Generate<Self, (), Self::Output> {
         Generate::new(self, (), self.polygon_count(), |generator, _, index| {
             generator.index_for_normal(index)
         })
@@ -111,24 +126,38 @@ pub trait IndicesForNormal: NormalIndexGenerator + Sized {
 
 impl<G> IndicesForNormal for G where G: NormalIndexGenerator + Sized {}
 
-pub trait NormalPolygonGenerator: PolygonGenerator + NormalGenerator {
-    type Output: Polygonal;
+pub trait NormalPolygonGenerator<S>: PolygonGenerator + NormalGenerator<S>
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+{
+    type Output: Polygonal<Vertex = Vector<S>>;
 
     fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
 }
 
 /// Functions for generating polygons with normal data.
-pub trait PolygonsWithNormal: NormalPolygonGenerator + Sized {
-    fn polygons_with_normal(
+pub trait PolygonsWithNormal: Sized {
+    fn polygons_with_normal<S>(
         &self,
-    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
+    where
+        Self: NormalPolygonGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    {
         self.polygons_with_normal_from(Default::default())
     }
 
-    fn polygons_with_normal_from(
+    fn polygons_with_normal_from<S>(
         &self,
         state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
+    where
+        Self: NormalPolygonGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    {
         Generate::new(
             self,
             state,
@@ -138,23 +167,25 @@ pub trait PolygonsWithNormal: NormalPolygonGenerator + Sized {
     }
 }
 
-impl<G> PolygonsWithNormal for G where G: NormalPolygonGenerator {}
-
-pub trait PositionGenerator {
+pub trait PositionGenerator<S>
+where
+    S: EuclideanSpace,
+{
     type State: Default;
 }
 
-pub trait PositionVertexGenerator: PositionGenerator {
-    type Output;
-
-    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output;
+pub trait PositionVertexGenerator<S>: PositionGenerator<S>
+where
+    S: EuclideanSpace,
+{
+    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S;
 
     /// Gets the number of unique vertices with position data that comprise a primitive.
     fn vertex_with_position_count(&self) -> usize;
 }
 
 /// Functions for generating vertices with position data.
-pub trait VerticesWithPosition: PositionVertexGenerator + Sized {
+pub trait VerticesWithPosition: Sized {
     /// Provides an iterator over the set of unique vertices with position
     /// data.
     ///
@@ -175,9 +206,11 @@ pub trait VerticesWithPosition: PositionVertexGenerator + Sized {
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// ```
-    fn vertices_with_position(
-        &self,
-    ) -> Generate<Self, Self::State, <Self as PositionVertexGenerator>::Output> {
+    fn vertices_with_position<S>(&self) -> Generate<Self, Self::State, S>
+    where
+        Self: PositionVertexGenerator<S>,
+        S: EuclideanSpace,
+    {
         self.vertices_with_position_from(Default::default())
     }
 
@@ -206,10 +239,11 @@ pub trait VerticesWithPosition: PositionVertexGenerator + Sized {
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// ```
-    fn vertices_with_position_from(
-        &self,
-        state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as PositionVertexGenerator>::Output> {
+    fn vertices_with_position_from<S>(&self, state: Self::State) -> Generate<Self, Self::State, S>
+    where
+        Self: PositionVertexGenerator<S>,
+        S: EuclideanSpace,
+    {
         Generate::new(
             self,
             state,
@@ -219,16 +253,14 @@ pub trait VerticesWithPosition: PositionVertexGenerator + Sized {
     }
 }
 
-impl<G> VerticesWithPosition for G where G: PositionVertexGenerator + Sized {}
-
-pub trait PositionIndexGenerator: PolygonGenerator + PositionVertexGenerator {
+pub trait PositionIndexGenerator: PolygonGenerator {
     type Output: Polygonal<Vertex = usize>;
 
-    fn index_for_position(&self, index: usize) -> <Self as PositionIndexGenerator>::Output;
+    fn index_for_position(&self, index: usize) -> Self::Output;
 }
 
 pub trait IndicesForPosition: PositionIndexGenerator + Sized {
-    fn indices_for_position(&self) -> Generate<Self, (), <Self as PositionIndexGenerator>::Output> {
+    fn indices_for_position(&self) -> Generate<Self, (), Self::Output> {
         Generate::new(self, (), self.polygon_count(), |generator, _, index| {
             generator.index_for_position(index)
         })
@@ -237,14 +269,17 @@ pub trait IndicesForPosition: PositionIndexGenerator + Sized {
 
 impl<G> IndicesForPosition for G where G: PositionIndexGenerator + Sized {}
 
-pub trait PositionPolygonGenerator: PolygonGenerator + PositionGenerator {
-    type Output: Polygonal;
+pub trait PositionPolygonGenerator<S>: PolygonGenerator + PositionGenerator<S>
+where
+    S: EuclideanSpace,
+{
+    type Output: Polygonal<Vertex = S>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output;
 }
 
 /// Functions for generating polygons with position data.
-pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
+pub trait PolygonsWithPosition: Sized {
     /// Provides an iterator over the set of unique polygons with position
     /// data.
     ///
@@ -259,9 +294,13 @@ pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     ///     .polygons_with_position()
     ///     .index_vertices::<StructuredN, _>(HashIndexer::default());
     /// ```
-    fn polygons_with_position(
+    fn polygons_with_position<S>(
         &self,
-    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator<S>>::Output>
+    where
+        Self: PositionPolygonGenerator<S>,
+        S: EuclideanSpace,
+    {
         self.polygons_with_position_from(Default::default())
     }
 
@@ -282,10 +321,14 @@ pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     ///     .polygons_with_position_from(Bounds::unit_radius())
     ///     .index_vertices::<Structured4, _>(HashIndexer::default());
     /// ```
-    fn polygons_with_position_from(
+    fn polygons_with_position_from<S>(
         &self,
         state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator<S>>::Output>
+    where
+        Self: PositionPolygonGenerator<S>,
+        S: EuclideanSpace,
+    {
         Generate::new(
             self,
             state,
@@ -295,25 +338,27 @@ pub trait PolygonsWithPosition: PositionPolygonGenerator + Sized {
     }
 }
 
-impl<G> PolygonsWithPosition for G where G: PositionPolygonGenerator {}
-
-pub trait UvMapGenerator {
+pub trait UvMapGenerator<S>
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+{
     type State: Default;
 }
 
-pub trait UvMapPolygonGenerator: PolygonGenerator + UvMapGenerator {
-    type Output: Polygonal;
+pub trait UvMapPolygonGenerator<S>: PolygonGenerator + UvMapGenerator<S>
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+{
+    type Output: Polygonal<Vertex = Vector<S>>;
 
-    fn polygon_with_uv_map_from(
-        &self,
-        state: &Self::State,
-        index: usize,
-    ) -> <Self as UvMapPolygonGenerator>::Output;
+    fn polygon_with_uv_map_from(&self, state: &Self::State, index: usize) -> Self::Output;
 }
 
 /// Functions for generating polygons with UV-mapping (texture coordinate)
 /// data.
-pub trait PolygonsWithUvMap: Sized + UvMapPolygonGenerator {
+pub trait PolygonsWithUvMap: Sized {
     /// Provides an iterator over the set of unique polygons with UV-mapping
     /// data.
     ///
@@ -330,18 +375,28 @@ pub trait PolygonsWithUvMap: Sized + UvMapPolygonGenerator {
     ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
     ///         .index_vertices::<Flat4, _>(HashIndexer::default());
     /// ```
-    fn polygons_with_uv_map(
+    fn polygons_with_uv_map<S>(
         &self,
-    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
+    where
+        Self: UvMapPolygonGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+    {
         self.polygons_with_uv_map_from(Default::default())
     }
 
     /// Provides an iterator over the set of unique polygons with UV-mapping
     /// data using the provided state.
-    fn polygons_with_uv_map_from(
+    fn polygons_with_uv_map_from<S>(
         &self,
         state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator>::Output> {
+    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
+    where
+        Self: UvMapPolygonGenerator<S>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+    {
         Generate::new(
             self,
             state,
@@ -350,5 +405,3 @@ pub trait PolygonsWithUvMap: Sized + UvMapPolygonGenerator {
         )
     }
 }
-
-impl<G> PolygonsWithUvMap for G where G: UvMapPolygonGenerator {}

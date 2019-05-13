@@ -60,7 +60,7 @@
 pub mod cube;
 pub mod decompose;
 pub mod generate;
-pub mod sphere;
+//pub mod sphere; // TODO: Reintroduce this module.
 
 use arrayvec::ArrayVec;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
@@ -70,7 +70,7 @@ use std::marker::PhantomData;
 use std::ops::{Index, Range};
 use theon::Category;
 
-pub use theon::ops::{Map, Reduce, ZipMap};
+pub use theon::ops::{Converged, Map, Reduce, ZipMap};
 
 use crate::primitive::decompose::IntoVertices;
 
@@ -86,15 +86,11 @@ pub trait ConstantArity {
     const ARITY: usize;
 }
 
-// TODO: Move this into the `theon` crate.
-pub trait Converged: Topological {
-    fn converged(value: Self::Vertex) -> Self;
-}
-
 pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
 
+// TODO: Consider moving this functionality into `theon` over categories.
 pub trait Zip {
     type Output: FromIterator<<Self::Output as Topological>::Vertex> + Topological;
 
