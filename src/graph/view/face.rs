@@ -3,10 +3,11 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use theon::space::alias::{Scalar, Vector};
+use theon::space::EuclideanSpace;
 
-use crate::geometry::alias::{Scalar, Vector, VertexPosition};
+use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
-use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};

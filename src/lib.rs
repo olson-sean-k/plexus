@@ -24,6 +24,7 @@ extern crate mint;
 extern crate nalgebra;
 extern crate num;
 extern crate smallvec;
+extern crate theon;
 extern crate typenum;
 
 use std::fmt::Debug;
@@ -78,7 +79,7 @@ pub mod prelude {
         PolygonsWithNormal as _, PolygonsWithPosition as _, PolygonsWithUvMap as _,
         VerticesWithNormal as _, VerticesWithPosition as _,
     };
-    pub use crate::primitive::{Converged as _, Map as _, MapVertices as _, Zip as _};
+    pub use crate::primitive::{Converged as _, MapVertices as _, Zip as _};
     pub use crate::IteratorExt as _;
     pub use crate::{FromRawBuffers as _, FromRawBuffersWithArity as _};
 

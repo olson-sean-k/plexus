@@ -1,56 +1,11 @@
 #![cfg(feature = "geometry-mint")]
 
-// TODO: It is not possible to implement vector space traits for `mint` types,
-//       because they require foreign traits on foreign types.
-// TODO: It could be useful to define more machinery for `mint` types so that
-//       implementing geometric traits becomes easier. For example, zipping and
-//       mapping would reduce repetition.
-
-use decorum::{Finite, NotNan, Ordered, Primitive, R64};
+use decorum::{Finite, NotNan, Ordered, Primitive};
 use mint::{Point2, Point3, Vector2, Vector3};
-use num::{Float, Num, NumCast, ToPrimitive};
-use std::ops::Neg;
+use num::{Float, NumCast, ToPrimitive};
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
-use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::{self, Duplet, Geometry, Triplet};
-
-impl<T> Cross for Vector3<T>
-where
-    T: Clone + Neg<Output = T> + Num,
-{
-    type Output = Self;
-
-    fn cross(self, other: Self) -> Self::Output {
-        Vector3 {
-            x: (self.y.clone() * other.z.clone()) - (self.z.clone() * other.y.clone()),
-            y: -((self.x.clone() * other.z.clone()) - (self.z * other.x.clone())),
-            z: (self.x.clone() * other.y.clone()) - (self.y * other.x),
-        }
-    }
-}
-
-impl<T> Dot for Vector2<T>
-where
-    T: Num,
-{
-    type Output = T;
-
-    fn dot(self, other: Self) -> Self::Output {
-        (self.x * other.x) + (self.y * other.y)
-    }
-}
-
-impl<T> Dot for Vector3<T>
-where
-    T: Num,
-{
-    type Output = T;
-
-    fn dot(self, other: Self) -> Self::Output {
-        (self.x * other.x) + (self.y * other.y) + (self.z * other.z)
-    }
-}
+use crate::geometry::{Duplet, Geometry, Triplet};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -102,35 +57,6 @@ where
             x: T::from(other.0).unwrap(),
             y: T::from(other.1).unwrap(),
             z: T::from(other.2).unwrap(),
-        }
-    }
-}
-
-impl<T> Interpolate for Vector2<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Vector2 {
-            x: geometry::lerp(self.x, other.x, factor),
-            y: geometry::lerp(self.y, other.y, factor),
-        }
-    }
-}
-
-impl<T> Interpolate for Vector3<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Vector3 {
-            x: geometry::lerp(self.x, other.x, factor),
-            y: geometry::lerp(self.y, other.y, factor),
-            z: geometry::lerp(self.z, other.z, factor),
         }
     }
 }
@@ -288,35 +214,6 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-impl<T> Interpolate for Point2<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Point2 {
-            x: geometry::lerp(self.x, other.x, factor),
-            y: geometry::lerp(self.y, other.y, factor),
-        }
-    }
-}
-
-impl<T> Interpolate for Point3<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Point3 {
-            x: geometry::lerp(self.x, other.x, factor),
-            y: geometry::lerp(self.y, other.y, factor),
-            z: geometry::lerp(self.z, other.z, factor),
-        }
-    }
 }
 
 impl<T, U> From<Point2<U>> for Duplet<T>

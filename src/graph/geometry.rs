@@ -52,10 +52,12 @@
 //! # }
 //! ```
 
-use crate::geometry::alias::{Vector, VertexPosition};
+use theon::ops::{Cross, Interpolate, Project};
+use theon::space::alias::Vector;
+use theon::space::{EuclideanSpace, InnerSpace};
+
+use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
-use crate::geometry::ops::{Cross, Interpolate, Normalize, Project};
-use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
 use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -103,9 +105,9 @@ where
         let c = positions
             .next()
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let ab = a.clone() - b.clone();
-        let bc = b.clone() - c.clone();
-        Ok(ab.cross(bc).normalize())
+        let ab = a - b;
+        let bc = b - c;
+        ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
     }
 }
 
@@ -257,18 +259,16 @@ where
             .as_position()
             .clone();
         let c = arc
-            .reachable_opposite_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .reachable_previous_arc()
+            .reachable_next_arc()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry
             .as_position()
             .clone();
-        let ab = a - b.clone();
-        let cb = c.clone() - b.clone();
+        let ab = a - b;
+        let cb = c - b;
         let p = b + ab.project(cb);
-        Ok((p - c).normalize())
+        (p - c).normalize().ok_or_else(|| GraphError::Geometry)
     }
 }

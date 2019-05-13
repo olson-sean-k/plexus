@@ -42,10 +42,11 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use theon::ops::Map;
 use typenum::NonZero;
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Map, Polygon, Quad, Topological, Triangle};
+use crate::primitive::{ConstantArity, Polygon, Quad, Topological, Triangle};
 use crate::Arity;
 
 pub use typenum::{U3, U4};
@@ -513,7 +514,8 @@ impl<R, P, I> ClosedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index>,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
+    P::Output: Topological<Vertex = <Vec<R::Item> as IndexBuffer<R>>::Index>,
     Vec<R::Item>: Push<R, P::Output>,
 {
     fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)

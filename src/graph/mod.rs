@@ -179,12 +179,14 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
+use theon::ops::Map;
+use theon::space::alias::Scalar;
+use theon::space::EuclideanSpace;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::geometry::alias::{Scalar, VertexPosition};
+use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
-use crate::geometry::space::EuclideanSpace;
 use crate::geometry::{Geometry, Triplet};
 use crate::graph::core::alias::OwnedCore;
 use crate::graph::core::{Bind, Core};
@@ -198,7 +200,7 @@ use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Map, Polygonal, Quad};
+use crate::primitive::{ConstantArity, Polygonal, Quad};
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use Selector::ByIndex;
@@ -221,6 +223,8 @@ pub enum GraphError {
     ArityConflict { expected: usize, actual: usize },
     #[fail(display = "arity is non-uniform")]
     ArityNonUniform,
+    #[fail(display = "geometric operation failed")]
+    Geometry,
 }
 
 impl From<BufferError> for GraphError {
@@ -607,7 +611,7 @@ where
             let position = vertex.position().clone();
             positions.insert(
                 vertex.key(),
-                position.clone() + ((vertex.centroid() - position) * factor),
+                position + ((vertex.centroid() - position) * factor),
             );
         }
         for mut vertex in self.orphan_vertices() {

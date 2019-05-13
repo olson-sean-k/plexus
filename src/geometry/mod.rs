@@ -10,35 +10,18 @@
 //! centroids, midpoints, etc.
 
 pub mod convert;
-pub mod ops;
-pub mod query;
-pub mod space;
 
 // Feature modules. These are empty unless `geometry-*` features are enabled.
 mod cgmath;
 mod mint;
 mod nalgebra;
 
-use decorum::{Real, R64};
+use decorum::R64;
 use num::{self, Num, NumCast, One, ToPrimitive, Zero};
-use std::ops::Div;
+use theon;
+use theon::ops::Interpolate;
 
 use crate::geometry::convert::FromGeometry;
-use crate::geometry::ops::Interpolate;
-
-trait Half {
-    fn half() -> Self;
-}
-
-impl<T> Half for T
-where
-    T: Div<T, Output = T> + One + Real,
-{
-    fn half() -> Self {
-        let one = T::one();
-        one / (one + one)
-    }
-}
 
 /// Graph geometry.
 ///
@@ -168,7 +151,10 @@ where
     type Output = Self;
 
     fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Duplet(lerp(self.0, other.0, factor), lerp(self.1, other.1, factor))
+        Duplet(
+            theon::lerp(self.0, other.0, factor),
+            theon::lerp(self.1, other.1, factor),
+        )
     }
 }
 
@@ -228,29 +214,16 @@ where
 
     fn lerp(self, other: Self, factor: R64) -> Self::Output {
         Triplet(
-            lerp(self.0, other.0, factor),
-            lerp(self.1, other.1, factor),
-            lerp(self.2, other.2, factor),
+            theon::lerp(self.0, other.0, factor),
+            theon::lerp(self.1, other.1, factor),
+            theon::lerp(self.2, other.2, factor),
         )
     }
 }
 
-pub fn lerp<T>(a: T, b: T, factor: R64) -> T
-where
-    T: Num + NumCast,
-{
-    let factor = num::clamp(factor, Zero::zero(), One::one());
-    let af = <R64 as NumCast>::from(a).unwrap() * (R64::one() - factor);
-    let bf = <R64 as NumCast>::from(b).unwrap() * factor;
-    <T as NumCast>::from(af + bf).unwrap()
-}
-
 pub mod alias {
     use crate::geometry::convert::AsPosition;
-    use crate::geometry::space::{EuclideanSpace, VectorSpace};
     use crate::geometry::Geometry;
 
-    pub type Scalar<S> = <Vector<S> as VectorSpace>::Scalar;
-    pub type Vector<S> = <S as EuclideanSpace>::Difference;
     pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 }

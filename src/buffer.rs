@@ -86,6 +86,7 @@ use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
+use theon::ops::Map;
 use typenum::{self, NonZero, Unsigned as _};
 
 use crate::geometry::convert::IntoGeometry;
@@ -94,7 +95,7 @@ use crate::index::{
     Indexer, Push, Structured, Structured3, Structured4, StructuredN, U3, U4,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Map, Polygonal, Quad, Topological, Triangle};
+use crate::primitive::{Polygonal, Quad, Topological, Triangle};
 use crate::{Arity, FromRawBuffers};
 
 #[derive(Debug, Fail)]
@@ -313,7 +314,7 @@ where
     ) -> impl Clone + Iterator<Item = <<Structured<P> as Grouping>::Item as Map<G>>::Output>
     where
         G: Clone,
-        <Structured<P> as Grouping>::Item: Map<G>,
+        <Structured<P> as Grouping>::Item: Map<G> + Topological,
         <<Structured<P> as Grouping>::Item as Map<G>>::Output: Clone,
         <<Structured<P> as Grouping>::Item as Topological>::Vertex: ToPrimitive,
     {
@@ -334,9 +335,10 @@ where
         R: Grouping,
         R::Item: Into<<Structured<P> as Grouping>::Item>,
         H: IntoGeometry<G>,
-        <Structured<P> as Grouping>::Item: Copy
-            + Map<Output = <Structured<P> as Grouping>::Item>
-            + Topological<Vertex = P::Vertex>,
+        <Structured<P> as Grouping>::Item:
+            Copy
+                + Map<P::Vertex, Output = <Structured<P> as Grouping>::Item>
+                + Topological<Vertex = P::Vertex>,
     {
         let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
         self.vertices.extend(
@@ -357,7 +359,8 @@ where
 impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index>,
+    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
+    P::Output: Topological<Vertex = <Vec<R::Item> as IndexBuffer<R>>::Index>,
     P::Vertex: IntoGeometry<G>,
     Vec<R::Item>: Push<R, P::Output>,
     Self: FromRawBuffers<R::Item, G>,

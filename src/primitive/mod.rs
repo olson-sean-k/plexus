@@ -68,10 +68,13 @@ use num::Integer;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, Range};
+use theon::Category;
+
+pub use theon::ops::{Map, Reduce, ZipMap};
 
 use crate::primitive::decompose::IntoVertices;
 
-pub trait Topological: Sized {
+pub trait Topological: Category<Object = <Self as Topological>::Vertex> + Sized {
     type Vertex;
 
     fn arity(&self) -> usize;
@@ -83,20 +86,13 @@ pub trait ConstantArity {
     const ARITY: usize;
 }
 
+// TODO: Move this into the `theon` crate.
 pub trait Converged: Topological {
     fn converged(value: Self::Vertex) -> Self;
 }
 
 pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
-}
-
-pub trait Map<U = <Self as Topological>::Vertex>: Topological {
-    type Output: Topological<Vertex = U>;
-
-    fn map<F>(self, f: F) -> Self::Output
-    where
-        F: FnMut(Self::Vertex) -> U;
 }
 
 pub trait Zip {
@@ -227,6 +223,10 @@ impl<T> Edge<T> {
     }
 }
 
+impl<T> Category for Edge<T> {
+    type Object = T;
+}
+
 impl<T> ConstantArity for Edge<T> {
     const ARITY: usize = 1;
 }
@@ -270,18 +270,22 @@ impl<T, U> Map<U> for Edge<T> {
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(T) -> U,
+        F: FnMut(Self::Object) -> U,
     {
         let Edge { a, b } = self;
         Edge::new(f(a), f(b))
     }
 }
 
-impl<T> Topological for Edge<T> {
-    type Vertex = T;
-
-    fn arity(&self) -> usize {
-        Self::ARITY
+impl<T, U> Reduce<T, U> for Edge<T> {
+    fn reduce<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
     }
 }
 
@@ -294,6 +298,25 @@ impl<T> Rotate for Edge<T> {
         else {
             self
         }
+    }
+}
+
+impl<T> Topological for Edge<T> {
+    type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
+}
+
+impl<T, U> ZipMap<U> for Edge<T> {
+    type Output = Edge<U>;
+
+    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
+    where
+        F: FnMut(Self::Object, Self::Object) -> U,
+    {
+        Edge::new(f(self.a, other.a), f(self.b, other.b))
     }
 }
 
@@ -312,6 +335,10 @@ impl<T> Triangle<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self, self.arity())
     }
+}
+
+impl<T> Category for Triangle<T> {
+    type Object = T;
 }
 
 impl<T> ConstantArity for Triangle<T> {
@@ -362,22 +389,26 @@ impl<T, U> Map<U> for Triangle<T> {
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(T) -> U,
+        F: FnMut(Self::Object) -> U,
     {
         let Triangle { a, b, c } = self;
         Triangle::new(f(a), f(b), f(c))
     }
 }
 
-impl<T> Topological for Triangle<T> {
-    type Vertex = T;
+impl<T> Polygonal for Triangle<T> {}
 
-    fn arity(&self) -> usize {
-        Self::ARITY
+impl<T, U> Reduce<T, U> for Triangle<T> {
+    fn reduce<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
     }
 }
-
-impl<T> Polygonal for Triangle<T> {}
 
 impl<T> Rotate for Triangle<T> {
     fn rotate(self, n: isize) -> Self {
@@ -393,6 +424,25 @@ impl<T> Rotate for Triangle<T> {
         else {
             self
         }
+    }
+}
+
+impl<T> Topological for Triangle<T> {
+    type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
+}
+
+impl<T, U> ZipMap<U> for Triangle<T> {
+    type Output = Triangle<U>;
+
+    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
+    where
+        F: FnMut(Self::Object, Self::Object) -> U,
+    {
+        Triangle::new(f(self.a, other.a), f(self.b, other.b), f(self.c, other.c))
     }
 }
 
@@ -412,6 +462,10 @@ impl<T> Quad<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self, self.arity())
     }
+}
+
+impl<T> Category for Quad<T> {
+    type Object = T;
 }
 
 impl<T> ConstantArity for Quad<T> {
@@ -464,22 +518,26 @@ impl<T, U> Map<U> for Quad<T> {
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(T) -> U,
+        F: FnMut(Self::Object) -> U,
     {
         let Quad { a, b, c, d } = self;
         Quad::new(f(a), f(b), f(c), f(d))
     }
 }
 
-impl<T> Topological for Quad<T> {
-    type Vertex = T;
+impl<T> Polygonal for Quad<T> {}
 
-    fn arity(&self) -> usize {
-        Self::ARITY
+impl<T, U> Reduce<T, U> for Quad<T> {
+    fn reduce<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
     }
 }
-
-impl<T> Polygonal for Quad<T> {}
 
 impl<T> Rotate for Quad<T> {
     fn rotate(self, n: isize) -> Self {
@@ -502,6 +560,30 @@ impl<T> Rotate for Quad<T> {
     }
 }
 
+impl<T> Topological for Quad<T> {
+    type Vertex = T;
+
+    fn arity(&self) -> usize {
+        Self::ARITY
+    }
+}
+
+impl<T, U> ZipMap<U> for Quad<T> {
+    type Output = Quad<U>;
+
+    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
+    where
+        F: FnMut(Self::Object, Self::Object) -> U,
+    {
+        Quad::new(
+            f(self.a, other.a),
+            f(self.b, other.b),
+            f(self.c, other.c),
+            f(self.d, other.d),
+        )
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Polygon<T> {
     Triangle(Triangle<T>),
@@ -512,6 +594,15 @@ impl<T> Polygon<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         Iter::new(self, self.arity())
     }
+}
+
+// TODO: This may be absusive of the `Category` trait. Note that at runtime,
+//       two instances of `Polygon<T>` may not be equivalent categories as
+//       their structures may differ (`Triangle` vs.  `Quad`).
+//
+//       Observe that it is not possible to implement `ZipMap`.
+impl<T> Category for Polygon<T> {
+    type Object = T;
 }
 
 impl<T> From<Triangle<T>> for Polygon<T> {
@@ -562,11 +653,34 @@ impl<T, U> Map<U> for Polygon<T> {
 
     fn map<F>(self, f: F) -> Self::Output
     where
-        F: FnMut(T) -> U,
+        F: FnMut(Self::Object) -> U,
     {
         match self {
             Polygon::Triangle(triangle) => Polygon::Triangle(triangle.map(f)),
             Polygon::Quad(quad) => Polygon::Quad(quad.map(f)),
+        }
+    }
+}
+
+impl<T> Polygonal for Polygon<T> {}
+
+impl<T, U> Reduce<T, U> for Polygon<T> {
+    fn reduce<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, T) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
+    }
+}
+
+impl<T> Rotate for Polygon<T> {
+    fn rotate(self, n: isize) -> Self {
+        match self {
+            Polygon::Triangle(triangle) => Polygon::Triangle(triangle.rotate(n)),
+            Polygon::Quad(quad) => Polygon::Quad(quad.rotate(n)),
         }
     }
 }
@@ -578,17 +692,6 @@ impl<T> Topological for Polygon<T> {
         match *self {
             Polygon::Triangle(..) => Triangle::<T>::ARITY,
             Polygon::Quad(..) => Quad::<T>::ARITY,
-        }
-    }
-}
-
-impl<T> Polygonal for Polygon<T> {}
-
-impl<T> Rotate for Polygon<T> {
-    fn rotate(self, n: isize) -> Self {
-        match self {
-            Polygon::Triangle(triangle) => Polygon::Triangle(triangle.rotate(n)),
-            Polygon::Quad(quad) => Polygon::Quad(quad.rotate(n)),
         }
     }
 }

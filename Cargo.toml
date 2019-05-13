@@ -40,9 +40,9 @@ name = "plexus"
 
 [features]
 default = ["geometry-nalgebra"]
-geometry-cgmath = ["cgmath"]
-geometry-mint = ["mint"]
-geometry-nalgebra = ["alga", "nalgebra"]
+geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
+geometry-mint = ["mint", "theon/geometry-mint"]
+geometry-nalgebra = ["alga", "nalgebra", "theon/geometry-nalgebra"]
 
 [dependencies]
 arrayvec = "^0.4.8"
@@ -55,6 +55,7 @@ fool = "0.0.1"
 itertools = "^0.8.0"
 num = "^0.2.0"
 smallvec = "^0.6.9"
+theon = { path = "../theon" }
 typenum = "^1.10.0"
 
 alga = { version = "^0.9.0", optional = true }

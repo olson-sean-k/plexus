@@ -3,10 +3,11 @@ use smallvec::SmallVec;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
+use theon::space::alias::Vector;
+use theon::space::EuclideanSpace;
 
-use crate::geometry::alias::{Vector, VertexPosition};
+use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
-use crate::geometry::space::EuclideanSpace;
 use crate::geometry::Geometry;
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::alias::{OwnedCore, RefCore};

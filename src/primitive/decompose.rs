@@ -6,8 +6,8 @@
 use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
+use theon::ops::Interpolate;
 
-use crate::geometry::ops::Interpolate;
 use crate::primitive::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 
 pub struct Decompose<I, P, Q, R>

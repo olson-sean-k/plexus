@@ -1,46 +1,11 @@
 #![cfg(feature = "geometry-cgmath")]
 
-use cgmath::{self, BaseFloat, BaseNum, Point2, Point3, Vector2, Vector3};
-use decorum::{Finite, NotNan, Ordered, Primitive, Real, R64};
-use num::{Float, Num, NumCast, ToPrimitive};
+use cgmath::{self, Point2, Point3, Vector2, Vector3};
+use decorum::{Finite, NotNan, Ordered, Primitive};
+use num::{Float, NumCast, ToPrimitive};
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
-use crate::geometry::ops::{Cross, Dot, Interpolate};
-use crate::geometry::space::{EuclideanSpace, InnerSpace, VectorSpace};
-use crate::geometry::{self, Duplet, Geometry, Triplet};
-
-impl<T> Cross for Vector3<T>
-where
-    T: BaseFloat,
-{
-    type Output = Self;
-
-    fn cross(self, other: Self) -> Self::Output {
-        Self::cross(self, other)
-    }
-}
-
-impl<T> Dot for Vector2<T>
-where
-    T: BaseFloat,
-{
-    type Output = T;
-
-    fn dot(self, other: Self) -> Self::Output {
-        <Self as cgmath::InnerSpace>::dot(self, other)
-    }
-}
-
-impl<T> Dot for Vector3<T>
-where
-    T: BaseFloat,
-{
-    type Output = T;
-
-    fn dot(self, other: Self) -> Self::Output {
-        <Self as cgmath::InnerSpace>::dot(self, other)
-    }
-}
+use crate::geometry::{Duplet, Geometry, Triplet};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -90,53 +55,6 @@ where
     }
 }
 
-impl<T> InnerSpace for Vector2<T> where T: BaseFloat + Real {}
-
-impl<T> InnerSpace for Vector3<T> where T: BaseFloat + Real {}
-
-impl<T> Interpolate for Vector2<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Vector2::new(
-            geometry::lerp(self.x, other.x, factor),
-            geometry::lerp(self.y, other.y, factor),
-        )
-    }
-}
-
-impl<T> Interpolate for Vector3<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Vector3::new(
-            geometry::lerp(self.x, other.x, factor),
-            geometry::lerp(self.y, other.y, factor),
-            geometry::lerp(self.z, other.z, factor),
-        )
-    }
-}
-
-impl<T> VectorSpace for Vector2<T>
-where
-    T: BaseNum + Real,
-{
-    type Scalar = T;
-}
-
-impl<T> VectorSpace for Vector3<T>
-where
-    T: BaseNum + Real,
-{
-    type Scalar = T;
-}
-
 impl<T> AsPosition for Point2<T> {
     type Target = Self;
 
@@ -158,28 +76,6 @@ impl<T> AsPosition for Point3<T> {
 
     fn as_position_mut(&mut self) -> &mut Self::Target {
         self
-    }
-}
-
-impl<T> EuclideanSpace for Point2<T>
-where
-    T: BaseFloat + BaseNum + Real,
-{
-    type Difference = Vector2<T>;
-
-    fn origin() -> Self {
-        <Self as cgmath::EuclideanSpace>::origin()
-    }
-}
-
-impl<T> EuclideanSpace for Point3<T>
-where
-    T: BaseFloat + BaseNum + Real,
-{
-    type Difference = Vector3<T>;
-
-    fn origin() -> Self {
-        <Self as cgmath::EuclideanSpace>::origin()
     }
 }
 
@@ -277,35 +173,6 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-impl<T> Interpolate for Point2<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Point2::new(
-            geometry::lerp(self.x, other.x, factor),
-            geometry::lerp(self.y, other.y, factor),
-        )
-    }
-}
-
-impl<T> Interpolate for Point3<T>
-where
-    T: Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Point3::new(
-            geometry::lerp(self.x, other.x, factor),
-            geometry::lerp(self.y, other.y, factor),
-            geometry::lerp(self.z, other.z, factor),
-        )
-    }
 }
 
 impl<T, U> From<Point2<U>> for Duplet<T>
