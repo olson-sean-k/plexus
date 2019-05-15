@@ -329,7 +329,7 @@ fn test() {
     let mut graph = Cube::new()
         .polygons_with_position::<Point3<N64>>()
         .triangulate()
-        .collect::<MeshGraph<Point3<N64>>>();
+        .collect::<MeshGraph>();
 
     let cube = Cube::new();
     let (_, _) = primitive::zip_vertices((

@@ -16,13 +16,6 @@ mod cgmath;
 mod mint;
 mod nalgebra;
 
-use decorum::R64;
-use num::{self, Num, NumCast, One, ToPrimitive, Zero};
-use theon;
-use theon::ops::Interpolate;
-
-use crate::geometry::convert::FromGeometry;
-
 /// Graph geometry.
 ///
 /// Specifies the types used to represent geometry for vertices, arcs, edges,
@@ -100,41 +93,7 @@ impl Geometry for () {
     type Face = ();
 }
 
-/// Homogeneous duplet.
-///
-/// Provides basic vertex geometry and a grouping of values emitted by
-/// generators. Conversions into commonly used types from commonly used
-/// libraries are supported. See feature flags.
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Duplet<T>(pub T, pub T);
-
-impl<T> Duplet<T> {
-    pub fn one() -> Self
-    where
-        T: One,
-    {
-        Duplet(One::one(), One::one())
-    }
-
-    pub fn zero() -> Self
-    where
-        T: Zero,
-    {
-        Duplet(Zero::zero(), Zero::zero())
-    }
-}
-
-impl<T, U> FromGeometry<(U, U)> for Duplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: (U, U)) -> Self {
-        Duplet(T::from(other.0).unwrap(), T::from(other.1).unwrap())
-    }
-}
-
-impl<T> Geometry for Duplet<T>
+impl<T> Geometry for (T, T, T)
 where
     T: Clone,
 {
@@ -142,83 +101,6 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-impl<T> Interpolate for Duplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Duplet(
-            theon::lerp(self.0, other.0, factor),
-            theon::lerp(self.1, other.1, factor),
-        )
-    }
-}
-
-/// Homogeneous triplet.
-///
-/// Provides basic vertex geometry and a grouping of values emitted by
-/// generators. Conversions into commonly used types from commonly used
-/// libraries are supported. See feature flags.
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Triplet<T>(pub T, pub T, pub T);
-
-impl<T> Triplet<T> {
-    pub fn one() -> Self
-    where
-        T: One,
-    {
-        Triplet(One::one(), One::one(), One::one())
-    }
-
-    pub fn zero() -> Self
-    where
-        T: Zero,
-    {
-        Triplet(Zero::zero(), Zero::zero(), Zero::zero())
-    }
-}
-
-impl<T, U> FromGeometry<(U, U, U)> for Triplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: (U, U, U)) -> Self {
-        Triplet(
-            T::from(other.0).unwrap(),
-            T::from(other.1).unwrap(),
-            T::from(other.2).unwrap(),
-        )
-    }
-}
-
-impl<T> Geometry for Triplet<T>
-where
-    T: Clone,
-{
-    type Vertex = Self;
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> Interpolate for Triplet<T>
-where
-    T: Copy + Num + NumCast,
-{
-    type Output = Self;
-
-    fn lerp(self, other: Self, factor: R64) -> Self::Output {
-        Triplet(
-            theon::lerp(self.0, other.0, factor),
-            theon::lerp(self.1, other.1, factor),
-            theon::lerp(self.2, other.2, factor),
-        )
-    }
 }
 
 pub mod alias {

@@ -61,12 +61,8 @@ pub mod prelude {
     //!
     //! The `Selector` enum and its variants are re-exported for convenience.
     //! `Selector` is often used when mutating `MeshGraph`s.
-    //!
-    //! The geometric `Duplet` and `Triplet` types are also re-exported. These
-    //! types are emitted by generators and support various conversions.
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
-    pub use crate::geometry::{Duplet, Triplet};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, OpenIndexVertices as _};
     pub use crate::primitive::decompose::{

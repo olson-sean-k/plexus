@@ -171,7 +171,7 @@ pub use self::view::{
 };
 
 use arrayvec::ArrayVec;
-use decorum::R64;
+use decorum::N64;
 use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -187,7 +187,7 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
-use crate::geometry::{Geometry, Triplet};
+use crate::geometry::Geometry;
 use crate::graph::core::alias::OwnedCore;
 use crate::graph::core::{Bind, Core};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
@@ -281,7 +281,7 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 ///
 /// let mut graph = Cube::new()
 ///     .polygons_with_position()
-///     .collect::<MeshGraph<Triplet<_>>>();
+///     .collect::<MeshGraph<_>>();
 /// let abc = graph.faces().nth(0).unwrap().key();
 /// graph
 ///     .face_mut(abc)
@@ -348,7 +348,7 @@ impl<K> From<usize> for Selector<K> {
 /// manipulate topology and geometry in the graph.
 ///
 /// See the module documentation for more details.
-pub struct MeshGraph<G = Triplet<R64>>
+pub struct MeshGraph<G = (N64, N64, N64)>
 where
     G: Geometry,
 {

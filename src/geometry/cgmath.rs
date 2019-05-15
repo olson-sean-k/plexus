@@ -5,7 +5,7 @@ use decorum::{Finite, NotNan, Ordered, Primitive};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::geometry::convert::{AsPosition, FromGeometry};
-use crate::geometry::{Duplet, Geometry, Triplet};
+use crate::geometry::Geometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -14,6 +14,16 @@ where
 {
     fn from_geometry(other: (U, U)) -> Self {
         Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
+    }
+}
+
+impl<T, U> FromGeometry<Vector2<T>> for (U, U)
+where
+    T: ToPrimitive,
+    U: NumCast,
+{
+    fn from_geometry(other: Vector2<T>) -> Self {
+        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
     }
 }
 
@@ -31,26 +41,16 @@ where
     }
 }
 
-impl<T, U> FromGeometry<Duplet<U>> for Vector2<T>
+impl<T, U> FromGeometry<Vector3<T>> for (U, U, U)
 where
-    T: NumCast,
-    U: ToPrimitive,
+    T: ToPrimitive,
+    U: NumCast,
 {
-    fn from_geometry(other: Duplet<U>) -> Self {
-        Vector2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
-    }
-}
-
-impl<T, U> FromGeometry<Triplet<U>> for Vector3<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: Triplet<U>) -> Self {
-        Vector3::new(
-            T::from(other.0).unwrap(),
-            T::from(other.1).unwrap(),
-            T::from(other.2).unwrap(),
+    fn from_geometry(other: Vector3<T>) -> Self {
+        (
+            U::from(other.x).unwrap(),
+            U::from(other.y).unwrap(),
+            U::from(other.z).unwrap(),
         )
     }
 }
@@ -117,6 +117,16 @@ where
     }
 }
 
+impl<T, U> FromGeometry<Point2<T>> for (U, U)
+where
+    T: ToPrimitive,
+    U: NumCast,
+{
+    fn from_geometry(other: Point2<T>) -> Self {
+        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
+    }
+}
+
 impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
 where
     T: NumCast,
@@ -131,26 +141,16 @@ where
     }
 }
 
-impl<T, U> FromGeometry<Duplet<U>> for Point2<T>
+impl<T, U> FromGeometry<Point3<T>> for (U, U, U)
 where
-    T: NumCast,
-    U: ToPrimitive,
+    T: ToPrimitive,
+    U: NumCast,
 {
-    fn from_geometry(other: Duplet<U>) -> Self {
-        Point2::new(T::from(other.0).unwrap(), T::from(other.1).unwrap())
-    }
-}
-
-impl<T, U> FromGeometry<Triplet<U>> for Point3<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from_geometry(other: Triplet<U>) -> Self {
-        Point3::new(
-            T::from(other.0).unwrap(),
-            T::from(other.1).unwrap(),
-            T::from(other.2).unwrap(),
+    fn from_geometry(other: Point3<T>) -> Self {
+        (
+            U::from(other.x).unwrap(),
+            U::from(other.y).unwrap(),
+            U::from(other.z).unwrap(),
         )
     }
 }
@@ -173,100 +173,4 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-impl<T, U> From<Point2<U>> for Duplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from(other: Point2<U>) -> Self {
-        Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-    }
-}
-
-impl<T, U> From<Vector2<U>> for Duplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from(other: Vector2<U>) -> Self {
-        Duplet(T::from(other.x).unwrap(), T::from(other.y).unwrap())
-    }
-}
-
-impl<T, U> Into<Point2<T>> for Duplet<U>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn into(self) -> Point2<T> {
-        Point2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-    }
-}
-
-impl<T, U> Into<Vector2<T>> for Duplet<U>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn into(self) -> Vector2<T> {
-        Vector2::new(T::from(self.0).unwrap(), T::from(self.1).unwrap())
-    }
-}
-
-impl<T, U> From<Point3<U>> for Triplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from(other: Point3<U>) -> Self {
-        Triplet(
-            T::from(other.x).unwrap(),
-            T::from(other.y).unwrap(),
-            T::from(other.z).unwrap(),
-        )
-    }
-}
-
-impl<T, U> From<Vector3<U>> for Triplet<T>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn from(other: Vector3<U>) -> Self {
-        Triplet(
-            T::from(other.x).unwrap(),
-            T::from(other.y).unwrap(),
-            T::from(other.z).unwrap(),
-        )
-    }
-}
-
-impl<T, U> Into<Point3<T>> for Triplet<U>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn into(self) -> Point3<T> {
-        Point3::new(
-            T::from(self.0).unwrap(),
-            T::from(self.1).unwrap(),
-            T::from(self.2).unwrap(),
-        )
-    }
-}
-
-impl<T, U> Into<Vector3<T>> for Triplet<U>
-where
-    T: NumCast,
-    U: ToPrimitive,
-{
-    fn into(self) -> Vector3<T> {
-        Vector3::new(
-            T::from(self.0).unwrap(),
-            T::from(self.1).unwrap(),
-            T::from(self.2).unwrap(),
-        )
-    }
 }
