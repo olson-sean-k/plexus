@@ -6,6 +6,7 @@
 use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
+use theon::convert::IntoObjects;
 use theon::ops::Interpolate;
 
 use crate::primitive::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
@@ -95,6 +96,17 @@ pub trait IntoVertices: Topological {
     fn into_vertices(self) -> Self::Output;
 }
 
+impl<T> IntoVertices for T
+where
+    T: IntoObjects + Topological,
+{
+    type Output = <T as IntoObjects>::Output;
+
+    fn into_vertices(self) -> Self::Output {
+        self.into_objects()
+    }
+}
+
 pub trait IntoEdges: Topological {
     type Output: IntoIterator<Item = Edge<Self::Vertex>>;
 
@@ -115,44 +127,6 @@ pub trait IntoSubdivisions: Polygonal {
 
 pub trait IntoTetrahedrons: Polygonal {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]>;
-}
-
-impl<T> IntoVertices for Edge<T> {
-    type Output = ArrayVec<[Self::Vertex; 2]>;
-
-    fn into_vertices(self) -> Self::Output {
-        let Edge { a, b } = self;
-        ArrayVec::from([a, b])
-    }
-}
-
-impl<T> IntoVertices for Triangle<T> {
-    type Output = ArrayVec<[Self::Vertex; 3]>;
-
-    fn into_vertices(self) -> Self::Output {
-        let Triangle { a, b, c } = self;
-        ArrayVec::from([a, b, c])
-    }
-}
-
-impl<T> IntoVertices for Quad<T> {
-    type Output = ArrayVec<[Self::Vertex; 4]>;
-
-    fn into_vertices(self) -> Self::Output {
-        let Quad { a, b, c, d } = self;
-        ArrayVec::from([a, b, c, d])
-    }
-}
-
-impl<T> IntoVertices for Polygon<T> {
-    type Output = Vec<Self::Vertex>;
-
-    fn into_vertices(self) -> Self::Output {
-        match self {
-            Polygon::Triangle(triangle) => triangle.into_vertices().into_iter().collect(),
-            Polygon::Quad(quad) => quad.into_vertices().into_iter().collect(),
-        }
-    }
 }
 
 impl<T> IntoEdges for Edge<T> {

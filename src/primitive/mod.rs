@@ -65,12 +65,15 @@ pub mod generate;
 use arrayvec::ArrayVec;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::Integer;
+use smallvec::SmallVec;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, Range};
+use theon::convert::{FromObjects, IntoObjects};
 use theon::Category;
 
-pub use theon::ops::{Converged, Map, Reduce, ZipMap};
+pub use theon::ops::{Map, Reduce, ZipMap};
+pub use theon::Converged;
 
 use crate::primitive::decompose::IntoVertices;
 
@@ -90,22 +93,27 @@ pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
 
-// TODO: Consider moving this functionality into `theon` over categories.
 pub trait Zip {
-    type Output: FromIterator<<Self::Output as Topological>::Vertex> + Topological;
+    type Output: FromObjects + Topological;
 
     fn zip(self) -> Self::Output;
 }
-
-macro_rules! zip {
-    (topology => $t:ident, geometries => ($($g:ident),*)) => (
+macro_rules! impl_zip {
+    (category => $c:ident) => (
+        impl_zip!(category => $c, objects => (A, B));
+        impl_zip!(category => $c, objects => (A, B, C));
+        impl_zip!(category => $c, objects => (A, B, C, D));
+        impl_zip!(category => $c, objects => (A, B, C, D, E));
+        impl_zip!(category => $c, objects => (A, B, C, D, E, F));
+    );
+    (category => $c:ident, objects => ($($o:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($g),*> Zip for ($($t<$g>),*) {
-            type Output = $t<($($g),*)>;
+        impl<$($o),*> Zip for ($($c<$o>),*) {
+            type Output = $c<($($o),*)>;
 
             fn zip(self) -> Self::Output {
-                let ($($g,)*) = self;
-                izip!($($g.into_vertices()),*).collect()
+                let ($($o,)*) = self;
+                FromObjects::from_objects(izip!($($o.into_objects()),*)).unwrap()
             }
         }
     );
@@ -241,13 +249,32 @@ impl<T> FromIterator<T> for Edge<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let mut input = input.into_iter();
-        Edge::new(input.next().unwrap(), input.next().unwrap())
+        Edge::from_objects(input).unwrap()
     }
 }
-zip!(topology => Edge, geometries => (A, B));
-zip!(topology => Edge, geometries => (A, B, C));
-zip!(topology => Edge, geometries => (A, B, C, D));
+
+impl<T> FromObjects for Edge<T> {
+    fn from_objects<I>(objects: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Object>,
+    {
+        let mut objects = objects.into_iter().take(2);
+        match (objects.next(), objects.next()) {
+            (Some(a), Some(b)) => Some(Edge::new(a, b)),
+            _ => None,
+        }
+    }
+}
+
+impl<T> IntoObjects for Edge<T> {
+    type Output = ArrayVec<[T; 2]>;
+
+    fn into_objects(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b])
+    }
+}
+
+impl_zip!(category => Edge);
 
 impl<T> Index<usize> for Edge<T> {
     type Output = T;
@@ -355,17 +382,30 @@ impl<T> FromIterator<T> for Triangle<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let mut input = input.into_iter();
-        Triangle::new(
-            input.next().unwrap(),
-            input.next().unwrap(),
-            input.next().unwrap(),
-        )
+        Triangle::from_objects(input).unwrap()
     }
 }
-zip!(topology => Triangle, geometries => (A, B));
-zip!(topology => Triangle, geometries => (A, B, C));
-zip!(topology => Triangle, geometries => (A, B, C, D));
+
+impl<T> FromObjects for Triangle<T> {
+    fn from_objects<I>(objects: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Object>,
+    {
+        let mut objects = objects.into_iter().take(3);
+        match (objects.next(), objects.next(), objects.next()) {
+            (Some(a), Some(b), Some(c)) => Some(Triangle::new(a, b, c)),
+            _ => None,
+        }
+    }
+}
+
+impl<T> IntoObjects for Triangle<T> {
+    type Output = ArrayVec<[T; 3]>;
+
+    fn into_objects(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b, self.c])
+    }
+}
 
 impl<T> Index<usize> for Triangle<T> {
     type Output = T;
@@ -431,6 +471,8 @@ impl<T> Topological for Triangle<T> {
     }
 }
 
+impl_zip!(category => Triangle);
+
 impl<T, U> ZipMap<U> for Triangle<T> {
     type Output = Triangle<U>;
 
@@ -482,18 +524,35 @@ impl<T> FromIterator<T> for Quad<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let mut input = input.into_iter();
-        Quad::new(
-            input.next().unwrap(),
-            input.next().unwrap(),
-            input.next().unwrap(),
-            input.next().unwrap(),
-        )
+        Quad::from_objects(input).unwrap()
     }
 }
-zip!(topology => Quad, geometries => (A, B));
-zip!(topology => Quad, geometries => (A, B, C));
-zip!(topology => Quad, geometries => (A, B, C, D));
+
+impl<T> FromObjects for Quad<T> {
+    fn from_objects<I>(objects: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Object>,
+    {
+        let mut objects = objects.into_iter().take(4);
+        match (
+            objects.next(),
+            objects.next(),
+            objects.next(),
+            objects.next(),
+        ) {
+            (Some(a), Some(b), Some(c), Some(d)) => Some(Quad::new(a, b, c, d)),
+            _ => None,
+        }
+    }
+}
+
+impl<T> IntoObjects for Quad<T> {
+    type Output = ArrayVec<[T; 4]>;
+
+    fn into_objects(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b, self.c, self.d])
+    }
+}
 
 impl<T> Index<usize> for Quad<T> {
     type Output = T;
@@ -564,6 +623,8 @@ impl<T> Topological for Quad<T> {
     }
 }
 
+impl_zip!(category => Quad);
+
 impl<T, U> ZipMap<U> for Quad<T> {
     type Output = Quad<U>;
 
@@ -618,20 +679,26 @@ impl<T> FromIterator<T> for Polygon<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let input = input
+        Polygon::from_objects(input).unwrap()
+    }
+}
+
+impl<T> FromObjects for Polygon<T> {
+    fn from_objects<I>(objects: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Object>,
+    {
+        let objects = objects
             .into_iter()
             .take(Quad::<T>::ARITY)
             .collect::<ArrayVec<[T; 4]>>();
-        match input.len() {
-            Triangle::<T>::ARITY => Polygon::Triangle(Triangle::from_iter(input)),
-            Quad::<T>::ARITY => Polygon::Quad(Quad::from_iter(input)),
-            _ => panic!(),
+        match objects.len() {
+            Triangle::<T>::ARITY => Triangle::from_objects(objects).map(|triangle| triangle.into()),
+            Quad::<T>::ARITY => Quad::from_objects(objects).map(|quad| quad.into()),
+            _ => None,
         }
     }
 }
-zip!(topology => Polygon, geometries => (A, B));
-zip!(topology => Polygon, geometries => (A, B, C));
-zip!(topology => Polygon, geometries => (A, B, C, D));
 
 impl<T> Index<usize> for Polygon<T> {
     type Output = T;
@@ -640,6 +707,17 @@ impl<T> Index<usize> for Polygon<T> {
         match *self {
             Polygon::Triangle(ref triangle) => triangle.index(index),
             Polygon::Quad(ref quad) => quad.index(index),
+        }
+    }
+}
+
+impl<T> IntoObjects for Polygon<T> {
+    type Output = SmallVec<[T; 4]>;
+
+    fn into_objects(self) -> Self::Output {
+        match self {
+            Polygon::Triangle(triangle) => triangle.into_objects().into_iter().collect(),
+            Polygon::Quad(quad) => quad.into_objects().into_iter().collect(),
         }
     }
 }
@@ -691,6 +769,8 @@ impl<T> Topological for Polygon<T> {
         }
     }
 }
+
+impl_zip!(category => Polygon);
 
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.
