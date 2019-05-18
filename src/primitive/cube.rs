@@ -110,7 +110,7 @@ impl Cube {
         Cube
     }
 
-    fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
+    pub fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
         Quad::converged(self.vertex_with_plane(index))
     }
 
@@ -120,11 +120,11 @@ impl Cube {
         })
     }
 
-    fn vertex_with_plane_count(&self) -> usize {
+    pub fn vertex_with_plane_count(&self) -> usize {
         self.polygon_count()
     }
 
-    fn vertex_with_plane(&self, index: usize) -> Plane {
+    pub fn vertex_with_plane(&self, index: usize) -> Plane {
         match index {
             0 => Plane::XY,  // front
             1 => Plane::YZ,  // right

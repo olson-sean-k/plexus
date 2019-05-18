@@ -71,9 +71,9 @@ pub mod prelude {
         Vertices as _,
     };
     pub use crate::primitive::generate::{
-        IndicesForNormal as _, IndicesForPosition as _, PolygonGenerator as _,
-        PolygonsWithNormal as _, PolygonsWithPosition as _, PolygonsWithUvMap as _,
-        VerticesWithNormal as _, VerticesWithPosition as _,
+        IndicesForNormal as _, IndicesForPosition as _, PolygonsWithNormal as _,
+        PolygonsWithPosition as _, PolygonsWithUvMap as _, VerticesWithNormal as _,
+        VerticesWithPosition as _,
     };
     pub use crate::primitive::{Converged as _, MapVertices as _, Zip as _};
     pub use crate::IteratorExt as _;
