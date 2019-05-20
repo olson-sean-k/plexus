@@ -12,8 +12,7 @@ use crate::graph::core::OwnedCore;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::Storage;
+use crate::graph::storage::{AsStorage, Storage};
 use crate::graph::GraphError;
 
 /// Marker trait for graph representations that promise to be in a consistent

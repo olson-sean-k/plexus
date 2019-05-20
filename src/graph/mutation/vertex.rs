@@ -4,10 +4,8 @@ use crate::graph::core::{Bind, Core};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::VertexPayload;
-use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{ArcKey, Storage, VertexKey};
-use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::VertexView;
+use crate::graph::storage::{ArcKey, AsStorage, Storage, VertexKey};
+use crate::graph::view::{FromKeyedSource, VertexView};
 use crate::graph::GraphError;
 
 pub struct VertexMutation<G>

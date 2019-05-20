@@ -184,16 +184,14 @@ use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::geometry::convert::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
-use crate::geometry::Geometry;
-use crate::geometry::VertexPosition;
+use crate::geometry::{
+    AsPosition, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry, VertexPosition,
+};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{OpaqueKey, Storage};
-use crate::graph::view::convert::IntoView;
-use crate::graph::view::OrphanView;
+use crate::graph::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
+use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };

@@ -89,7 +89,7 @@ use std::iter::FromIterator;
 use theon::ops::Map;
 use typenum::{self, NonZero, Unsigned as _};
 
-use crate::geometry::convert::IntoGeometry;
+use crate::geometry::IntoGeometry;
 use crate::index::{
     ClosedIndexVertices, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer,
     Indexer, Push, Structured, Structured3, Structured4, StructuredN, U3, U4,

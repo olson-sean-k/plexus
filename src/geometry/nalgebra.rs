@@ -7,8 +7,7 @@ use nalgebra::base::dimension::DimName;
 use nalgebra::{Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::geometry::convert::{AsPosition, FromGeometry};
-use crate::geometry::Geometry;
+use crate::geometry::{AsPosition, FromGeometry, Geometry};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where

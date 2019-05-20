@@ -1,7 +1,6 @@
 use crate::geometry::Geometry;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::Storage;
+use crate::graph::storage::{AsStorage, AsStorageMut, Storage};
 
 /// A complete core that owns all of its storage.
 pub type OwnedCore<G> = Core<

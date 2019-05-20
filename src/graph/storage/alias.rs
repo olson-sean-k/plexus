@@ -1,7 +1,6 @@
 use crate::geometry::Geometry;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::Storage;
+use crate::graph::storage::{AsStorage, AsStorageMut, Storage};
 
 pub trait AsVertexStorage<G>: AsStorage<VertexPayload<G>>
 where

@@ -6,9 +6,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
-use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
-use crate::geometry::VertexPosition;
+use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
 use crate::graph::mutation::edge::{
@@ -16,11 +14,12 @@ use crate::graph::mutation::edge::{
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
+use crate::graph::storage::{
+    ArcKey, AsStorage, AsStorageMut, EdgeKey, FaceKey, Storage, VertexKey,
+};
 use crate::graph::view::{
-    FaceView, InteriorPathView, OrphanFaceView, OrphanVertexView, OrphanView, VertexView, View,
+    FaceView, FromKeyedSource, InteriorPathView, IntoKeyedSource, IntoView, OrphanFaceView,
+    OrphanVertexView, OrphanView, VertexView, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 

@@ -5,19 +5,18 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 
-use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
 use crate::geometry::VertexPosition;
+use crate::geometry::{AsPosition, Geometry};
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::convert::{FromKeyedSource, IntoView};
-use crate::graph::view::{ArcView, FaceNeighborhood, FaceView, VertexView};
+use crate::graph::storage::{ArcKey, AsStorage, FaceKey, Storage, VertexKey};
+use crate::graph::view::{
+    ArcView, FaceNeighborhood, FaceView, FromKeyedSource, IntoView, VertexView,
+};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 

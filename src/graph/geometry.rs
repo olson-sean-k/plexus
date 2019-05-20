@@ -55,12 +55,10 @@
 use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
 
-use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
-use crate::geometry::VertexPosition;
+use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-use crate::graph::storage::convert::AsStorage;
+use crate::graph::storage::AsStorage;
 use crate::graph::view::{ArcView, EdgeView, FaceView, VertexView};
 use crate::graph::GraphError;
 

@@ -1,9 +1,8 @@
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 
-use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
 use crate::geometry::VertexPosition;
+use crate::geometry::{AsPosition, Geometry};
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
@@ -11,10 +10,8 @@ use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::convert::AsStorage;
-use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::convert::FromKeyedSource;
-use crate::graph::view::ArcView;
+use crate::graph::storage::{ArcKey, AsStorage, EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::view::{ArcView, FromKeyedSource};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 

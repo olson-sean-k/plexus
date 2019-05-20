@@ -1,4 +1,3 @@
-pub mod convert;
 pub mod edge;
 pub mod face;
 pub mod vertex;
@@ -10,13 +9,34 @@ use std::ops::{Deref, DerefMut};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::core::Bind;
 use crate::graph::payload::Payload;
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
+use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::GraphError;
 
 pub use self::edge::{ArcNeighborhood, ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
 pub use self::face::{FaceNeighborhood, FaceView, InteriorPathView, OrphanFaceView};
 pub use self::vertex::{OrphanVertexView, VertexView};
+
+pub trait IntoKeyedSource<T>: Sized {
+    fn into_keyed_source(self) -> T;
+}
+
+pub trait FromKeyedSource<T>: Sized {
+    fn from_keyed_source(source: T) -> Option<Self>;
+}
+
+pub trait IntoView<T>: Sized {
+    fn into_view(self) -> Option<T>;
+}
+
+impl<T, U> IntoView<U> for T
+where
+    T: Sized,
+    U: FromKeyedSource<T>,
+{
+    fn into_view(self) -> Option<U> {
+        U::from_keyed_source(self)
+    }
+}
 
 pub struct View<M, T>
 where

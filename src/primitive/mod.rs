@@ -69,8 +69,7 @@ use smallvec::SmallVec;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, Range};
-use theon::convert::{FromObjects, IntoObjects};
-use theon::Category;
+use theon::{Category, FromObjects, IntoObjects};
 
 pub use theon::ops::{Map, Reduce, ZipMap};
 pub use theon::Converged;

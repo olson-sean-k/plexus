@@ -3,19 +3,18 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::geometry::convert::AsPosition;
-use crate::geometry::Geometry;
-use crate::geometry::VertexPosition;
+use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::VertexCentroid;
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::convert::{AsStorage, AsStorageMut};
-use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::convert::{FromKeyedSource, IntoKeyedSource, IntoView};
-use crate::graph::view::{ArcView, FaceView, OrphanArcView, OrphanFaceView, OrphanView, View};
+use crate::graph::storage::{ArcKey, AsStorage, AsStorageMut, FaceKey, Storage, VertexKey};
+use crate::graph::view::{
+    ArcView, FaceView, FromKeyedSource, IntoKeyedSource, IntoView, OrphanArcView, OrphanFaceView,
+    OrphanView, View,
+};
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
 /// View of a vertex.
