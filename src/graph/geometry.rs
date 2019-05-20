@@ -69,7 +69,9 @@ use theon::space::{EuclideanSpace, InnerSpace, Vector};
 use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
-use crate::graph::view::{ArcView, EdgeView, FaceView, VertexView};
+use crate::graph::view::edge::{ArcView, EdgeView};
+use crate::graph::view::face::FaceView;
+use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
 
 pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;

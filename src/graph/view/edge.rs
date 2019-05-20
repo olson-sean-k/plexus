@@ -16,10 +16,9 @@ use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload}
 use crate::graph::storage::{
     ArcKey, AsStorage, AsStorageMut, EdgeKey, FaceKey, Storage, VertexKey,
 };
-use crate::graph::view::{
-    FaceView, FromKeyedSource, InteriorPathView, IntoKeyedSource, IntoView, OrphanFaceView,
-    OrphanVertexView, OrphanView, VertexView, View,
-};
+use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
+use crate::graph::view::vertex::{OrphanVertexView, VertexView};
+use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 /// View of an arc.

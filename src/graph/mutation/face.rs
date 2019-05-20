@@ -13,9 +13,10 @@ use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::{ArcKey, AsStorage, FaceKey, Storage, VertexKey};
-use crate::graph::view::{
-    ArcView, FaceNeighborhood, FaceView, FromKeyedSource, IntoView, VertexView,
-};
+use crate::graph::view::edge::ArcView;
+use crate::graph::view::face::{FaceNeighborhood, FaceView};
+use crate::graph::view::vertex::VertexView;
+use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
 use crate::IteratorExt;
 

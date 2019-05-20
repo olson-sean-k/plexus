@@ -10,7 +10,8 @@ use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::{ArcKey, AsStorage, EdgeKey, FaceKey, Storage, VertexKey};
-use crate::graph::view::{ArcView, FromKeyedSource};
+use crate::graph::view::edge::ArcView;
+use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
 use crate::IteratorExt;
 

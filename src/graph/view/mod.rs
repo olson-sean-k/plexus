@@ -1,6 +1,6 @@
-mod edge;
-mod face;
-mod vertex;
+pub mod edge;
+pub mod face;
+pub mod vertex;
 
 use either::Either;
 use fool::BoolExt;
@@ -11,10 +11,6 @@ use crate::graph::core::Bind;
 use crate::graph::payload::Payload;
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::GraphError;
-
-pub use self::edge::{ArcNeighborhood, ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
-pub use self::face::{FaceNeighborhood, FaceView, InteriorPathView, OrphanFaceView};
-pub use self::vertex::{OrphanVertexView, VertexView};
 
 pub trait IntoKeyedSource<T>: Sized {
     fn into_keyed_source(self) -> T;

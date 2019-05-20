@@ -156,14 +156,11 @@
 
 mod borrow;
 mod core;
-pub mod geometry;
+mod geometry;
 mod mutation;
 mod payload;
 mod storage;
-pub mod view;
-
-pub use self::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
+mod view;
 
 use arrayvec::ArrayVec;
 use decorum::N64;
@@ -180,14 +177,12 @@ use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::graph::core::{Bind, Core, OwnedCore};
-use crate::graph::geometry::{AsPosition, Geometry, VertexCentroid, VertexPosition};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
-use crate::graph::view::{
-    ArcView, EdgeView, FaceView, IntoView, OrphanArcView, OrphanEdgeView, OrphanFaceView,
-    OrphanVertexView, OrphanView, VertexView,
+use crate::graph::storage::{
+    ArcKey, AsStorage, AsStorageMut, EdgeKey, FaceKey, OpaqueKey, Storage, VertexKey,
 };
+use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };
@@ -197,6 +192,15 @@ use crate::{
     Arity, FromGeometry, FromInteriorGeometry, FromRawBuffers, FromRawBuffersWithArity,
     IntoGeometry,
 };
+
+pub use crate::graph::geometry::{
+    ArcNormal, AsPosition, EdgeMidpoint, FaceCentroid, FaceNormal, Geometry, VertexCentroid,
+    VertexPosition,
+};
+pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
+pub use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
+pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

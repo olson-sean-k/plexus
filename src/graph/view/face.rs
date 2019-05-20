@@ -14,10 +14,9 @@ use crate::graph::mutation::face::{
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{ArcKey, AsStorage, AsStorageMut, FaceKey, Storage, VertexKey};
-use crate::graph::view::{
-    ArcNeighborhood, ArcView, FromKeyedSource, IntoKeyedSource, IntoView, OrphanArcView,
-    OrphanVertexView, OrphanView, VertexView, View,
-};
+use crate::graph::view::edge::{ArcNeighborhood, ArcView, OrphanArcView};
+use crate::graph::view::vertex::{OrphanVertexView, VertexView};
+use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;

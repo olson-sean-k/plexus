@@ -10,10 +10,9 @@ use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::{ArcKey, AsStorage, AsStorageMut, FaceKey, Storage, VertexKey};
-use crate::graph::view::{
-    ArcView, FaceView, FromKeyedSource, IntoKeyedSource, IntoView, OrphanArcView, OrphanFaceView,
-    OrphanView, View,
-};
+use crate::graph::view::edge::{ArcView, OrphanArcView};
+use crate::graph::view::face::{FaceView, OrphanFaceView};
+use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
 /// View of a vertex.
