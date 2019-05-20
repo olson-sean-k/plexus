@@ -16,6 +16,10 @@ mod cgmath;
 mod mint;
 mod nalgebra;
 
+use crate::geometry::convert::AsPosition;
+
+pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
+
 /// Graph geometry.
 ///
 /// Specifies the types used to represent geometry for vertices, arcs, edges,
@@ -101,11 +105,4 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-pub mod alias {
-    use crate::geometry::convert::AsPosition;
-    use crate::geometry::Geometry;
-
-    pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 }

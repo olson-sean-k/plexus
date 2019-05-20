@@ -7,6 +7,7 @@ use std::hash::Hash;
 use crate::graph::payload::Payload;
 use crate::graph::storage::convert::{AsStorage, AsStorageMut, FromInnerKey};
 
+pub mod alias;
 pub mod convert;
 
 pub trait KeySequence: Copy + Default + Sized {

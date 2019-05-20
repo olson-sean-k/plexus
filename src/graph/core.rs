@@ -3,6 +3,21 @@ use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, Verte
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::Storage;
 
+/// A complete core that owns all of its storage.
+pub type OwnedCore<G> = Core<
+    Storage<VertexPayload<G>>,
+    Storage<ArcPayload<G>>,
+    Storage<EdgePayload<G>>,
+    Storage<FacePayload<G>>,
+>;
+/// A complete core with immutable references to all of its storage.
+pub type RefCore<'a, G> = Core<
+    &'a Storage<VertexPayload<G>>,
+    &'a Storage<ArcPayload<G>>,
+    &'a Storage<EdgePayload<G>>,
+    &'a Storage<FacePayload<G>>,
+>;
+
 pub trait Bind<T, M>
 where
     T: Payload,
@@ -231,26 +246,4 @@ where
             faces,
         }
     }
-}
-
-pub mod alias {
-    use super::*;
-
-    use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
-    use crate::graph::storage::Storage;
-
-    /// A complete core that owns all of its storage.
-    pub type OwnedCore<G> = Core<
-        Storage<VertexPayload<G>>,
-        Storage<ArcPayload<G>>,
-        Storage<EdgePayload<G>>,
-        Storage<FacePayload<G>>,
-    >;
-    /// A complete core with immutable references to all of its storage.
-    pub type RefCore<'a, G> = Core<
-        &'a Storage<VertexPayload<G>>,
-        &'a Storage<ArcPayload<G>>,
-        &'a Storage<EdgePayload<G>>,
-        &'a Storage<FacePayload<G>>,
-    >;
 }

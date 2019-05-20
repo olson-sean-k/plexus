@@ -8,10 +8,10 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::geometry::Geometry;
-use crate::graph::core::alias::OwnedCore;
+use crate::graph::core::OwnedCore;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
-use crate::graph::storage::convert::alias::*;
+use crate::graph::storage::alias::*;
 use crate::graph::storage::convert::AsStorage;
 use crate::graph::storage::Storage;
 use crate::graph::GraphError;
@@ -293,19 +293,15 @@ where
     }
 }
 
-pub mod alias {
-    use super::*;
+pub trait Mutable<G>: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>
+where
+    G: Geometry,
+{
+}
 
-    pub trait Mutable<G>: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>
-    where
-        G: Geometry,
-    {
-    }
-
-    impl<T, G> Mutable<G> for T
-    where
-        T: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-        G: Geometry,
-    {
-    }
+impl<T, G> Mutable<G> for T
+where
+    T: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
+    G: Geometry,
+{
 }

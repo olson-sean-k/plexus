@@ -4,8 +4,7 @@
 //! of geometric and topological data for primitives like cubes and spheres.
 
 use std::ops::Range;
-use theon::space::alias::Vector;
-use theon::space::{EuclideanSpace, FiniteDimensional};
+use theon::space::{EuclideanSpace, FiniteDimensional, Vector};
 use typenum::{U2, U3};
 
 use crate::primitive::Polygonal;

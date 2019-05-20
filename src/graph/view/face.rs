@@ -3,20 +3,18 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use theon::space::alias::{Scalar, Vector};
-use theon::space::EuclideanSpace;
+use theon::space::{EuclideanSpace, Scalar, Vector};
 
-use crate::geometry::alias::VertexPosition;
 use crate::geometry::convert::AsPosition;
 use crate::geometry::Geometry;
+use crate::geometry::VertexPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal};
-use crate::graph::mutation::alias::Mutable;
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
-use crate::graph::mutation::{Consistent, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::convert::{AsStorage, AsStorageMut};
 use crate::graph::storage::{ArcKey, FaceKey, Storage, VertexKey};

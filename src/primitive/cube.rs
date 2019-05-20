@@ -20,8 +20,7 @@
 //! ```
 
 use num::{One, Zero};
-use theon::space::alias::{Scalar, Vector};
-use theon::space::{Basis, EuclideanSpace, FiniteDimensional, VectorSpace};
+use theon::space::{Basis, EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
 use typenum::{U2, U3};
 
 use crate::primitive::generate::{
