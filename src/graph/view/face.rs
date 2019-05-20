@@ -5,9 +5,8 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
-use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{FaceCentroid, FaceNormal};
+use crate::graph::geometry::{AsPosition, FaceCentroid, FaceNormal, Geometry, VertexPosition};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,

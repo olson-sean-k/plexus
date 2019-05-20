@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::geometry::Geometry;
 use crate::graph::core::OwnedCore;
+use crate::graph::geometry::Geometry;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;

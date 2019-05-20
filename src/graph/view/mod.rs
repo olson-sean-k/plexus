@@ -1,6 +1,6 @@
-pub mod edge;
-pub mod face;
-pub mod vertex;
+mod edge;
+mod face;
+mod vertex;
 
 use either::Either;
 use fool::BoolExt;

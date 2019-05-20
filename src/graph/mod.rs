@@ -156,19 +156,14 @@
 
 mod borrow;
 mod core;
-mod geometry;
+pub mod geometry;
 mod mutation;
 mod payload;
 mod storage;
-mod view;
+pub mod view;
 
-pub use self::geometry::*;
 pub use self::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use self::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
-pub use self::view::{
-    ArcNeighborhood, ArcView, EdgeView, FaceNeighborhood, FaceView, InteriorPathView,
-    OrphanArcView, OrphanEdgeView, OrphanFaceView, OrphanVertexView, VertexView,
-};
 
 use arrayvec::ArrayVec;
 use decorum::N64;
@@ -184,20 +179,24 @@ use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::geometry::{
-    AsPosition, FromGeometry, FromInteriorGeometry, Geometry, IntoGeometry, VertexPosition,
-};
 use crate::graph::core::{Bind, Core, OwnedCore};
+use crate::graph::geometry::{AsPosition, Geometry, VertexCentroid, VertexPosition};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
-use crate::graph::view::{IntoView, OrphanView};
+use crate::graph::view::{
+    ArcView, EdgeView, FaceView, IntoView, OrphanArcView, OrphanEdgeView, OrphanFaceView,
+    OrphanVertexView, OrphanView, VertexView,
+};
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygonal, Quad};
-use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
+use crate::{
+    Arity, FromGeometry, FromInteriorGeometry, FromRawBuffers, FromRawBuffersWithArity,
+    IntoGeometry,
+};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

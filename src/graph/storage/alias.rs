@@ -1,4 +1,4 @@
-use crate::geometry::Geometry;
+use crate::graph::geometry::Geometry;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, Storage};
 

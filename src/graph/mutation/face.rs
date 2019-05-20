@@ -5,10 +5,9 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 
-use crate::geometry::VertexPosition;
-use crate::geometry::{AsPosition, Geometry};
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
+use crate::graph::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};

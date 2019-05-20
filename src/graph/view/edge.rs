@@ -6,9 +6,8 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
-use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{ArcNormal, EdgeMidpoint};
+use crate::graph::geometry::{ArcNormal, AsPosition, EdgeMidpoint, Geometry, VertexPosition};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };

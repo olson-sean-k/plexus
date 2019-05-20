@@ -3,9 +3,8 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::geometry::{AsPosition, Geometry, VertexPosition};
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::VertexCentroid;
+use crate::graph::geometry::{AsPosition, Geometry, VertexCentroid, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};

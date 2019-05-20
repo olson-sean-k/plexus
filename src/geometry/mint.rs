@@ -4,7 +4,8 @@ use decorum::{Finite, NotNan, Ordered, Primitive};
 use mint::{Point2, Point3, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::geometry::{AsPosition, FromGeometry, Geometry};
+use crate::graph::geometry::{AsPosition, Geometry};
+use crate::FromGeometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where

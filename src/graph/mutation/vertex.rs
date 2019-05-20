@@ -1,6 +1,6 @@
-use crate::geometry::Geometry;
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
+use crate::graph::geometry::Geometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::VertexPayload;
