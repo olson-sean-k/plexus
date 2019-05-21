@@ -60,7 +60,7 @@
 pub mod cube;
 pub mod decompose;
 pub mod generate;
-//pub mod sphere; // TODO: Reintroduce this module.
+pub mod sphere;
 
 use arrayvec::ArrayVec;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.

@@ -43,13 +43,11 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use theon::ops::Map;
-use typenum::NonZero;
+use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygon, Quad, Topological, Triangle};
 use crate::Arity;
-
-pub use typenum::{U3, U4};
 
 pub trait Grouping {
     type Item;
@@ -142,7 +140,7 @@ where
 /// A flat (unstructured) index buffer with a constant arity. Arity is
 /// specified using a type constant from the
 /// [typenum](https://crates.io/crates/typenum) crate. `U3` and `U4` are
-/// re-exported in the `index` module.
+/// re-exported.
 ///
 /// # Examples
 ///
@@ -150,8 +148,9 @@ where
 ///
 /// ```rust
 /// use plexus::buffer::MeshBuffer;
-/// use plexus::index::{Flat, U3};
+/// use plexus::index::Flat;
 /// use plexus::prelude::*;
+/// use plexus::U3;
 ///
 /// let mut buffer = MeshBuffer::<Flat<U3, usize>, Triplet<f64>>::default();
 /// ```

@@ -83,6 +83,8 @@ pub mod prelude {
     pub use Selector::ByKey;
 }
 
+pub use typenum::{U3, U4};
+
 pub enum Arity {
     Uniform(usize),
     NonUniform(usize, usize),

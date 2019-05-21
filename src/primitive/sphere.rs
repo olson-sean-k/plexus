@@ -19,30 +19,37 @@
 //! # }
 //! ```
 
-use decorum::{Real, R64};
+use decorum::Real;
 use num::traits::FloatConst;
-use num::{NumCast, One};
+use num::{NumCast, One, ToPrimitive};
 use std::cmp;
+use theon::space::{Basis, EuclideanSpace, FiniteDimensional, Scalar};
+use typenum::U3;
 
-use crate::geometry::Triplet;
 use crate::primitive::generate::{
-    PolygonGenerator, PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator,
-    PositionVertexGenerator,
+    PolygonGenerator, PolygonsWithPosition, PositionGenerator, PositionIndexGenerator,
+    PositionPolygonGenerator, PositionVertexGenerator, VerticesWithPosition,
 };
 use crate::primitive::{Polygon, Quad, Triangle};
 
 #[derive(Clone, Copy)]
-pub struct Bounds {
-    radius: R64,
+pub struct Bounds<S>
+where
+    S: EuclideanSpace,
+{
+    radius: Scalar<S>,
 }
 
-impl Bounds {
-    pub fn with_radius(radius: R64) -> Self {
+impl<S> Bounds<S>
+where
+    S: EuclideanSpace,
+{
+    pub fn with_radius(radius: Scalar<S>) -> Self {
         Bounds { radius }
     }
 
-    pub fn with_width(width: R64) -> Self {
-        Self::with_radius(width / 2.0)
+    pub fn with_width(width: Scalar<S>) -> Self {
+        Self::with_radius(width / (Scalar::<S>::one() + One::one()))
     }
 
     pub fn unit_radius() -> Self {
@@ -54,7 +61,10 @@ impl Bounds {
     }
 }
 
-impl Default for Bounds {
+impl<S> Default for Bounds<S>
+where
+    S: EuclideanSpace,
+{
     fn default() -> Self {
         Self::unit_radius()
     }
@@ -74,18 +84,23 @@ impl UvSphere {
         }
     }
 
-    fn vertex_with_position_from(
+    fn vertex_with_position_from<S>(
         &self,
-        state: &<Self as PositionGenerator>::State,
+        state: &<Self as PositionGenerator<S>>::State,
         u: usize,
         v: usize,
-    ) -> <Self as PositionVertexGenerator>::Output {
-        let u = (<R64 as NumCast>::from(u).unwrap() / <R64 as NumCast>::from(self.nu).unwrap())
-            * R64::PI()
-            * 2.0;
-        let v = (<R64 as NumCast>::from(v).unwrap() / <R64 as NumCast>::from(self.nv).unwrap())
-            * R64::PI();
-        Triplet(
+    ) -> S
+    where
+        Self: PositionGenerator<S, State = Bounds<S>>,
+        S: EuclideanSpace,
+        <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+        Scalar<S>: FloatConst,
+    {
+        let one = Scalar::<S>::one();
+        let pi = Scalar::<S>::PI();
+        let u = (into_scalar::<_, S>(u) / into_scalar::<_, S>(self.nu)) * pi * (one + one);
+        let v = (into_scalar::<_, S>(v) / into_scalar::<_, S>(self.nv)) * pi;
+        S::from_xyz(
             state.radius * u.cos() * v.sin(),
             state.radius * u.sin() * v.sin(),
             state.radius * v.cos(),
@@ -121,23 +136,31 @@ impl PolygonGenerator for UvSphere {
     }
 }
 
-impl PositionGenerator for UvSphere {
-    type State = Bounds;
+impl<S> PositionGenerator<S> for UvSphere
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+{
+    type State = Bounds<S>;
 }
 
-impl PositionVertexGenerator for UvSphere {
-    type Output = Triplet<R64>;
-
-    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
+impl<S> PositionVertexGenerator<S> for UvSphere
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
+{
+    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S {
+        let count = <Self as PositionVertexGenerator<S>>::vertex_with_position_count(self);
         if index == 0 {
-            self.vertex_with_position_from(state, 0, 0)
+            self.vertex_with_position_from::<S>(state, 0, 0)
         }
-        else if index == self.vertex_with_position_count() - 1 {
-            self.vertex_with_position_from(state, 0, self.nv)
+        else if index == (count - 1) {
+            self.vertex_with_position_from::<S>(state, 0, self.nv)
         }
         else {
             let index = index - 1;
-            self.vertex_with_position_from(state, index % self.nu, (index / self.nu) + 1)
+            self.vertex_with_position_from::<S>(state, index % self.nu, (index / self.nu) + 1)
         }
     }
 
@@ -146,8 +169,13 @@ impl PositionVertexGenerator for UvSphere {
     }
 }
 
-impl PositionPolygonGenerator for UvSphere {
-    type Output = Polygon<Triplet<R64>>;
+impl<S> PositionPolygonGenerator<S> for UvSphere
+where
+    S: EuclideanSpace,
+    <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
+{
+    type Output = Polygon<S>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
@@ -201,7 +229,7 @@ impl PositionPolygonGenerator for UvSphere {
 impl PositionIndexGenerator for UvSphere {
     type Output = Polygon<usize>;
 
-    fn index_for_position(&self, index: usize) -> <Self as PositionIndexGenerator>::Output {
+    fn index_for_position(&self, index: usize) -> Self::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
@@ -222,6 +250,33 @@ impl PositionIndexGenerator for UvSphere {
             ))
         }
     }
+}
+
+impl VerticesWithPosition for UvSphere {}
+
+impl PolygonsWithPosition for UvSphere {}
+
+fn into_scalar<T, S>(value: T) -> Scalar<S>
+where
+    T: ToPrimitive,
+    S: EuclideanSpace,
+{
+    <Scalar<S> as NumCast>::from(value).unwrap()
+}
+
+// TODO: THIS IS A SANITY TEST. Remove this. It allows for a quick check
+//       without needing to refactor all generator code.
+fn test() {
+    use decorum::N64;
+    use nalgebra::Point3;
+
+    use crate::graph::MeshGraph;
+    use crate::prelude::*;
+    use crate::primitive::sphere::UvSphere;
+
+    let mut graph = UvSphere::default()
+        .polygons_with_position::<Point3<N64>>()
+        .collect::<MeshGraph>();
 }
 
 #[cfg(test)]
