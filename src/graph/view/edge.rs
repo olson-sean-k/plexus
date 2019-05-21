@@ -333,11 +333,6 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: Geometry,
 {
-    /// Gets the nieghborhood of the arc.
-    pub fn neighborhood(&self) -> ArcNeighborhood {
-        ArcNeighborhood::from(self.interior_reborrow())
-    }
-
     /// Converts the arc into its source vertex.
     pub fn into_source_vertex(self) -> VertexView<M, G> {
         self.into_reachable_source_vertex().expect_consistent()
@@ -1245,40 +1240,6 @@ where
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
         OrphanView::<EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-/// Keys for topology forming an arc.
-///
-/// An arc neighborhood describes the keys for the arc and its vertices.
-#[derive(Clone, Debug)]
-pub struct ArcNeighborhood {
-    key: ArcKey,
-    vertices: (VertexKey, VertexKey),
-}
-
-impl ArcNeighborhood {
-    pub fn key(&self) -> ArcKey {
-        self.key
-    }
-
-    pub fn vertices(&self) -> (VertexKey, VertexKey) {
-        self.vertices
-    }
-}
-
-impl<M, G> From<ArcView<M, G>> for ArcNeighborhood
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: Geometry,
-{
-    fn from(arc: ArcView<M, G>) -> Self {
-        let key = arc.key();
-        ArcNeighborhood {
-            key,
-            vertices: key.into(),
-        }
     }
 }
 

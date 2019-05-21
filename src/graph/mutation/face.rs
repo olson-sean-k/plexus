@@ -14,7 +14,7 @@ use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::{ArcKey, AsStorage, FaceKey, Storage, VertexKey};
 use crate::graph::view::edge::ArcView;
-use crate::graph::view::face::{FaceNeighborhood, FaceView};
+use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
@@ -452,8 +452,8 @@ pub struct FaceBridgeCache<G>
 where
     G: Geometry,
 {
-    source: FaceNeighborhood,
-    destination: FaceNeighborhood,
+    source: SmallVec<[ArcKey; 4]>,
+    destination: SmallVec<[ArcKey; 4]>,
     cache: (FaceRemoveCache<G>, FaceRemoveCache<G>),
 }
 
@@ -487,8 +487,14 @@ where
             return Err(GraphError::ArityNonUniform);
         }
         Ok(FaceBridgeCache {
-            source: source.neighborhood(),
-            destination: destination.neighborhood(),
+            source: source
+                .reachable_interior_arcs()
+                .map(|arc| arc.key())
+                .collect(),
+            destination: destination
+                .reachable_interior_arcs()
+                .map(|arc| arc.key())
+                .collect(),
             cache,
         })
     }
@@ -635,13 +641,7 @@ where
     // TODO: Is it always correct to reverse the order of the opposite face's
     //       arcs?
     // Re-insert the arcs of the faces and bridge the mutual arcs.
-    for (source, destination) in source
-        .interior_arcs()
-        .iter()
-        .zip(destination.interior_arcs().iter().rev())
-    {
-        let ab = source.key();
-        let cd = destination.key();
+    for (ab, cd) in source.into_iter().zip(destination.into_iter().rev()) {
         let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
         edge::bridge_with_cache(mutation.as_mut(), cache)?;
     }

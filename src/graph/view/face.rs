@@ -14,7 +14,7 @@ use crate::graph::mutation::face::{
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{ArcKey, AsStorage, AsStorageMut, FaceKey, Storage, VertexKey};
-use crate::graph::view::edge::{ArcNeighborhood, ArcView, OrphanArcView};
+use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
@@ -237,10 +237,6 @@ where
         + Consistent,
     G: Geometry,
 {
-    pub fn neighborhood(&self) -> FaceNeighborhood {
-        FaceNeighborhood::from(self.interior_reborrow())
-    }
-
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
@@ -841,42 +837,6 @@ where
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
         OrphanView::<FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FaceNeighborhood {
-    key: FaceKey,
-    arcs: Vec<ArcNeighborhood>,
-}
-
-impl FaceNeighborhood {
-    pub fn key(&self) -> FaceKey {
-        self.key
-    }
-
-    pub fn interior_arcs(&self) -> &[ArcNeighborhood] {
-        self.arcs.as_slice()
-    }
-}
-
-impl<M, G> From<FaceView<M, G>> for FaceNeighborhood
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
-    G: Geometry,
-{
-    fn from(face: FaceView<M, G>) -> Self {
-        FaceNeighborhood {
-            key: face.key(),
-            arcs: face
-                .reachable_interior_arcs()
-                .map(|arc| arc.neighborhood())
-                .collect(),
-        }
     }
 }
 
