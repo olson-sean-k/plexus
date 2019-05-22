@@ -81,8 +81,11 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
@@ -90,8 +93,8 @@ where
     ///
     /// # fn main() {
     /// let mut graph = Cube::new()
-    ///     .polygons_with_position()
-    ///     .collect::<MeshGraph<Point3<f32>>>();
+    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .collect::<MeshGraph<Point3<N64>>>();
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
     ///
@@ -323,13 +326,19 @@ where
     /// Removing a corner from a cube by removing its vertex:
     ///
     /// ```rust,no_run
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
     /// let mut graph = Cube::new()
-    ///     .polygons_with_position()
-    ///     .collect::<MeshGraph<Triplet<_>>>();
+    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let key = graph.vertices().nth(0).unwrap().key();
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
@@ -699,6 +708,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::N64;
     use nalgebra::Point3;
 
     use crate::graph::MeshGraph;
@@ -708,8 +718,8 @@ mod tests {
     #[test]
     fn circulate_over_arcs() {
         let graph = UvSphere::new(4, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f32>>>();
+            .polygons_with_position::<Point3<N64>>() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<Point3<N64>>>();
 
         // All faces should be triangles and all vertices should have 4
         // (incoming) arcs.

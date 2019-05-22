@@ -42,8 +42,11 @@
 //! Generating a flat `MeshBuffer` from a primitive:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
+//! use decorum::N32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer3;
 //! use plexus::prelude::*;
@@ -51,7 +54,7 @@
 //!
 //! # fn main() {
 //! let buffer = UvSphere::new(16, 16)
-//!     .polygons_with_position()
+//!     .polygons_with_position::<Point3<N32>>()
 //!     .triangulate()
 //!     .collect::<MeshBuffer3<u32, Point3<f32>>>();
 //! let indices = buffer.as_index_slice();
@@ -65,19 +68,20 @@
 //! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
-//! use decorum::R64;
+//! #
+//! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
-//! use plexus::index::U4;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
+//! use plexus::U4;
 //!
 //! # fn main() {
 //! let graph = Cube::new()
-//!     .polygons_with_position()
-//!     .collect::<MeshGraph<Point3<R64>>>();
+//!     .polygons_with_position::<Point3<N64>>()
+//!     .collect::<MeshGraph<Point3<N64>>>();
 //! let buffer = graph
-//!     .to_mesh_buffer_by_vertex::<U4, usize, Point3<R64>>()
+//!     .to_mesh_buffer_by_vertex::<U4, usize, Point3<N64>>()
 //!     .unwrap();
 //! # }
 //! ```
@@ -162,10 +166,9 @@ where
     ///
     /// ```rust
     /// use plexus::buffer::MeshBuffer;
-    /// use plexus::geometry::Triplet;
     /// use plexus::index::Flat3;
     ///
-    /// let buffer = MeshBuffer::<Flat3<u32>, Triplet<f64>>::new();
+    /// let buffer = MeshBuffer::<Flat3<u32>, (f64, f64, f64)>::new();
     /// ```
     pub fn new() -> Self {
         Self::default()
@@ -192,10 +195,11 @@ where
     /// Translating the position data in a buffer:
     ///
     /// ```rust
+    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    ///
+    /// use decorum::N64;
     /// use nalgebra::{Point3, Vector3};
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
@@ -203,11 +207,11 @@ where
     ///
     /// # fn main() {
     /// let buffer = UvSphere::new(16, 8)
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<N64>>()
     ///     .triangulate()
     ///     .collect::<MeshBuffer3<usize, Point3<f64>>>();
     /// // Translate the positions.
-    /// let translation = Vector3::new(1.0.into(), 0.0.into(), 0.0.into());
+    /// let translation = Vector3::<f64>::x() * 2.0;
     /// let buffer = buffer.map_vertices_into(|position| position + translation);
     /// # }
     /// ```
@@ -289,7 +293,6 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    ///
     /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBufferN;
@@ -299,7 +302,7 @@ where
     ///
     /// # fn main() {
     /// let buffer = UvSphere::new(8, 8)
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<R64>>()
     ///     .collect::<MeshBufferN<usize, Point3<R64>>>();
     /// let graph = buffer
     ///     .into_polygons()
@@ -415,6 +418,12 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::{Point2, Point3};
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::index::{Flat3, HashIndexer};
     /// use plexus::prelude::*;
@@ -422,11 +431,14 @@ where
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
+    /// type E2 = Point2<N64>;
+    /// type E3 = Point3<N64>;
+    ///
     /// let cube = Cube::new();
     /// let (indices, vertices) = primitive::zip_vertices((
-    ///     cube.polygons_with_position(),
-    ///     cube.polygons_with_normal(),
-    ///     cube.polygons_with_uv_map(),
+    ///     cube.polygons_with_position::<E3>(),
+    ///     cube.polygons_with_normal::<E3>(),
+    ///     cube.polygons_with_uv_map::<E2>(),
     /// ))
     /// .triangulate()
     /// .index_vertices::<Flat3, _>(HashIndexer::default());
@@ -480,6 +492,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBufferN;
     /// use plexus::prelude::*;
@@ -489,9 +502,7 @@ where
     /// let sphere = UvSphere::new(8, 8);
     /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
     ///     sphere.indices_for_position(),
-    ///     sphere
-    ///         .vertices_with_position()
-    ///         .map(|position| -> Point3<f32> { position.into() }),
+    ///     sphere.vertices_with_position::<Point3<f64>>(),
     /// )
     /// .unwrap();
     /// # }
@@ -549,6 +560,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
     /// use plexus::index::Structured3;
@@ -559,7 +571,7 @@ where
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer::<Structured3, _>::from_raw_buffers(
     ///     cube.indices_for_position().triangulate(),
-    ///     cube.vertices_with_position(),
+    ///     cube.vertices_with_position::<Point3<f32>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_flat_index();
@@ -593,6 +605,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
     /// use plexus::index::Structured4;
@@ -603,7 +616,7 @@ where
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer::<Structured4, _>::from_raw_buffers(
     ///     cube.indices_for_position(),
-    ///     cube.vertices_with_position(),
+    ///     cube.vertices_with_position::<Point3<f64>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_flat_index();
@@ -649,6 +662,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
@@ -658,7 +672,7 @@ where
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
     ///     cube.indices_for_position().triangulate().vertices(),
-    ///     cube.vertices_with_position(),
+    ///     cube.vertices_with_position::<Point3<f32>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
@@ -694,6 +708,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer4;
     /// use plexus::prelude::*;
@@ -703,7 +718,7 @@ where
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
     ///     cube.indices_for_position().vertices(),
-    ///     cube.vertices_with_position(),
+    ///     cube.vertices_with_position::<Point3<f64>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
@@ -728,21 +743,25 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::N64;
     use nalgebra::Point3;
+    use typenum::U3;
 
     use crate::buffer::{MeshBuffer, MeshBuffer3, MeshBufferN};
     use crate::graph::MeshGraph;
-    use crate::index::{Structured4, StructuredN, U3};
+    use crate::index::{Structured4, StructuredN};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::sphere::UvSphere;
 
+    type E3 = Point3<N64>;
+
     #[test]
     fn collect_topology_into_flat_buffer() {
         let buffer = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
             .triangulate()
-            .collect::<MeshBuffer3<u32, Point3<f32>>>();
+            .collect::<MeshBuffer3<u32, Point3<f64>>>();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -751,8 +770,8 @@ mod tests {
     #[test]
     fn collect_topology_into_structured_buffer() {
         let buffer = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshBufferN<u32, Point3<f32>>>();
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .collect::<MeshBufferN<u32, Point3<f64>>>();
 
         assert_eq!(6, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -761,12 +780,12 @@ mod tests {
     #[test]
     fn append_structured_buffers() {
         let mut buffer = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshBuffer<StructuredN<u32>, Point3<f32>>>();
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .collect::<MeshBuffer<StructuredN<u32>, Point3<f64>>>();
         buffer.append(
             &mut Cube::new()
-                .polygons_with_position() // 6 quads, 24 vertices.
-                .collect::<MeshBuffer<Structured4<u32>, Point3<f32>>>(),
+                .polygons_with_position::<E3>() // 6 quads, 24 vertices.
+                .collect::<MeshBuffer<Structured4<u32>, Point3<f64>>>(),
         );
 
         assert_eq!(12, buffer.as_index_slice().len());
@@ -776,10 +795,10 @@ mod tests {
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f32>>>();
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_vertex::<U3, u32, Point3<f32>>()
+            .to_mesh_buffer_by_vertex::<U3, u32, Point3<f64>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
@@ -789,10 +808,10 @@ mod tests {
     #[test]
     fn convert_mesh_to_buffer_by_face() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f32>>>();
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_face::<U3, u32, Point3<f32>>()
+            .to_mesh_buffer_by_face::<U3, u32, Point3<f64>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());

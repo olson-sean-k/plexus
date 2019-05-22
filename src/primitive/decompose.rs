@@ -47,15 +47,23 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
     /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
+    /// # fn main() {
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<N64>>()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
     ///     .index_vertices::<Flat4, _>(HashIndexer::default());
+    /// # }
     /// ```
     pub fn remap(self, n: usize) -> Decompose<impl Iterator<Item = P>, P, P, R> {
         let Decompose { input, output, f } = self;

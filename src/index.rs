@@ -23,16 +23,24 @@
 //! # Examples
 //!
 //! ```rust
+//! # extern crate decorum;
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! #
+//! use decorum::N64;
+//! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer3;
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //!
+//! # fn main() {
 //! let (indices, positions) = Cube::new()
-//!     .polygons_with_position()
+//!     .polygons_with_position::<Point3<N64>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
+//! # }
 //! ```
 
 use itertools::{Itertools, MinMaxResult};
@@ -139,8 +147,8 @@ where
 ///
 /// A flat (unstructured) index buffer with a constant arity. Arity is
 /// specified using a type constant from the
-/// [typenum](https://crates.io/crates/typenum) crate. `U3` and `U4` are
-/// re-exported.
+/// [typenum](https://crates.io/crates/typenum) crate. Several type constants
+/// like `U3` and `U4` are re-exported.
 ///
 /// # Examples
 ///
@@ -152,7 +160,7 @@ where
 /// use plexus::prelude::*;
 /// use plexus::U3;
 ///
-/// let mut buffer = MeshBuffer::<Flat<U3, usize>, Triplet<f64>>::default();
+/// let mut buffer = MeshBuffer::<Flat<U3, usize>, (f64, f64, f64)>::default();
 /// ```
 #[derive(Debug)]
 pub struct Flat<A = U3, N = usize>
@@ -194,7 +202,7 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 /// use plexus::prelude::*;
 /// use plexus::primitive::Polygon;
 ///
-/// let mut buffer = MeshBuffer::<Structured<Polygon<usize>>, Triplet<f64>>::default();
+/// let mut buffer = MeshBuffer::<Structured<Polygon<usize>>, (f64, f64, f64)>::default();
 /// ```
 #[derive(Debug)]
 pub struct Structured<P = Polygon<usize>>
@@ -249,24 +257,30 @@ where
 ///
 /// The vertex key data must be hashable (implement `Hash`). Most vertex data
 /// includes floating-point values (i.e., `f32` or `f64`), which do not
-/// implement `Hash`. To avoid problems with hashing, primitive generators emit
-/// wrapper types (see `R32` and `R64`) that provide hashable floating-point
-/// values, so this indexer can typically be used without any additional work.
-///
-/// See the [decorum](https://crates.io/crates/decorum) crate for more about
-/// hashable floating-point values.
+/// implement `Hash`. To avoid problems with hashing, the
+/// [decorum](https://crates.io/crates/decorum) crate can be used together with
+/// geometric types. The `Finite` and `NotNan` types are particularly useful
+/// for this and will panic if illegal values result from a computation.
 ///
 /// # Examples
 ///
 /// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 ///
+/// # fn main() {
 /// let (indices, positions) = Cube::new()
-///     .polygons_with_position()
+///     .polygons_with_position::<Point3<N64>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
+/// # }
 /// ```
 pub struct HashIndexer<T, K>
 where
@@ -339,14 +353,20 @@ where
 /// # Examples
 ///
 /// ```rust
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use nalgebra::Point3;
 /// use plexus::index::{Flat3, LruIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
 ///
+/// # fn main() {
 /// let (indices, positions) = UvSphere::new(8, 8)
-///     .polygons_with_position()
+///     .polygons_with_position::<Point3<f64>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(64));
+/// # }
 /// ```
 pub struct LruIndexer<T, K>
 where
@@ -450,10 +470,17 @@ where
 /// (position, normal, etc.), this can be more efficient.
 ///
 /// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
 ///
+/// # fn main() {
 /// // Detailed UV-sphere.
 /// let sphere = UvSphere::new(64, 32);
 ///
@@ -463,14 +490,15 @@ where
 ///         .indices_for_position()
 ///         .triangulate()
 ///         .collect::<Vec<_>>(),
-///     sphere.vertices_with_position().collect::<Vec<_>>(),
+///     sphere.vertices_with_position::<Point3<N64>>().collect::<Vec<_>>(),
 /// );
 ///
 /// // Using an indexer is less efficient.
 /// let (indices, positions) = sphere
-///     .polygons_with_position()
+///     .polygons_with_position::<Point3<N64>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
+/// # }
 /// ```
 pub trait ClosedIndexVertices<R, P>: Sized
 where
@@ -490,16 +518,24 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
     /// use plexus::index::{HashIndexer, Structured3};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     ///
+    /// # fn main() {
     /// // `indices` contains `Triangle`s with index data.
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<N64>>()
     ///     .subdivide()
     ///     .triangulate()
     ///     .index_vertices::<Structured3, _>(HashIndexer::default());
+    /// # }
     /// ```
     fn index_vertices<N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
@@ -607,8 +643,11 @@ where
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
+    /// use decorum::N32;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
@@ -617,7 +656,7 @@ where
     ///
     /// # fn main() {
     /// let graph = Cube::new()
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<N32>>()
     ///     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
     ///     .unwrap();
     /// # }

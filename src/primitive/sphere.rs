@@ -3,8 +3,11 @@
 //! # Examples
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
+//! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::index::HashIndexer;
@@ -12,9 +15,9 @@
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let graph = UvSphere::new(16, 8)
-//!     .polygons_with_position()
-//!     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
+//! let mut graph = UvSphere::new(16, 8)
+//!     .polygons_with_position::<Point3<N64>>()
+//!     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
 //!     .unwrap();
 //! # }
 //! ```
@@ -264,35 +267,23 @@ where
     <Scalar<S> as NumCast>::from(value).unwrap()
 }
 
-// TODO: THIS IS A SANITY TEST. Remove this. It allows for a quick check
-//       without needing to refactor all generator code.
-fn test() {
-    use decorum::N64;
-    use nalgebra::Point3;
-
-    use crate::graph::MeshGraph;
-    use crate::prelude::*;
-    use crate::primitive::sphere::UvSphere;
-
-    let mut graph = UvSphere::default()
-        .polygons_with_position::<Point3<N64>>()
-        .collect::<MeshGraph>();
-}
-
 #[cfg(test)]
 mod tests {
+    use nalgebra::Point3;
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
     use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
 
+    type E3 = Point3<f64>;
+
     #[test]
     fn vertex_count() {
         assert_eq!(
             5,
             UvSphere::new(3, 2)
-                .vertices_with_position() // 5 conjoint vertices.
+                .vertices_with_position::<E3>() // 5 conjoint vertices.
                 .count()
         );
     }
@@ -302,7 +293,7 @@ mod tests {
         assert_eq!(
             18,
             UvSphere::new(3, 2)
-                .polygons_with_position() // 6 triangles, 18 vertices.
+                .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
                 .vertices()
                 .count()
         );

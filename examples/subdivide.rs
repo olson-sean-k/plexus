@@ -3,12 +3,9 @@ extern crate decorum;
 extern crate nalgebra;
 extern crate plexus;
 
-use decorum::R64;
+use decorum::N64;
 use nalgebra::Point2;
-use plexus::geometry::alias::VertexPosition;
-use plexus::geometry::convert::AsPosition;
-use plexus::geometry::Geometry;
-use plexus::graph::{EdgeMidpoint, FaceView, MeshGraph};
+use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, Geometry, MeshGraph, VertexPosition};
 use plexus::prelude::*;
 use plexus::primitive::Triangle;
 use smallvec::SmallVec;
@@ -38,7 +35,7 @@ where
 
 fn main() {
     // Create a graph from a right triangle.
-    let mut graph = MeshGraph::<Point2<R64>>::from_raw_buffers(
+    let mut graph = MeshGraph::<Point2<N64>>::from_raw_buffers(
         vec![Triangle::new(0usize, 1, 2)],
         vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
     )

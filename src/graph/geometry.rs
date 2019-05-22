@@ -1,17 +1,24 @@
-//! Higher order geometric traits.
+//! Geometric traits.
 //!
-//! This module defines higher order traits for operations on a graph. It also
-//! provides aliases for geometric types to improve readability of type
-//! constraints. These traits can be used as contraints to prove to the
-//! compiler that certain operations are supported without specifying
-//! complicated relationships.
+//! This module provides traits that specify the geometry of `MeshGraph`s and
+//! express the spatial operations supported by that geometry. The most basic
+//! and only required trait is `Geometry`, which uses associated types to
+//! specify the type of the `geometry` field in the payloads for vertices,
+//! arcs, edges, and faces in a graph.
 //!
-//! The traits in this module have blanket implementations that apply when
-//! certain geometric and operational traits are implemented. For example, if a
-//! type implements `AsPosition` and the `Output` type of that implementation
-//! also implements `Cross` and `Normalize`, then a `Geometry` using that type
-//! as its `Vertex` attribute will likely implement the `FaceNormal` trait in
-//! this module.
+//! To support useful spatial operations, types that implement `Geometry` may
+//! also implement `AsPosition`. The `AsPosition` trait exposes positional data
+//! in vertices. If that positional data also implements spatial traits from
+//! the [theon](https://crates.io/crates/theon) crate, then spatial operations
+//! will be enabled, such as `smooth`, `split_at_midpoint`, and
+//! `poke_with_offset`.
+//!
+//! This module also defines traits that define the capabilities of geometry in
+//! a `MeshGraph`. These traits enable generic code without the need to express
+//! complicated relationships between types representing a Euclidean space. For
+//! example, the `FaceCentroid` trait is defined for `Geometry` types that
+//! expose positional data that implements the necessary traits to compute the
+//! centroid of a face.
 //!
 //! # Examples
 //!
@@ -21,10 +28,8 @@
 //! ```rust
 //! # extern crate plexus;
 //! # extern crate smallvec;
-//! use plexus::geometry::alias::VertexPosition;
-//! use plexus::geometry::convert::AsPosition;
-//! use plexus::geometry::Geometry;
-//! use plexus::graph::{EdgeMidpoint, FaceView, MeshGraph};
+//! #
+//! use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, Geometry, MeshGraph, VertexPosition};
 //! use plexus::prelude::*;
 //! use smallvec::SmallVec;
 //!
@@ -51,17 +56,8 @@
 //! }
 //! # }
 //! ```
-//!
-//! Geometric traits and primitives.
-//!
-//! These traits are used to support geometric operations in generators and
-//! graphs. Implementing these traits implicitly implements internal traits,
-//! which in turn enable geometric features.
-//!
-//! To use types as geometry in a `MeshGraph` only requires implementing the
-//! `Geometry` trait. Implementing operations like `Cross` and `Normalize` for
-//! the `Vertex` attribute enables geometric features like extrusion,
-//! centroids, midpoints, etc.
+
+// TODO: Integrate this module documentation into the `graph` module.
 
 use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
@@ -83,8 +79,7 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 /// geometry at all.
 ///
 /// Geometry is vertex-based. Geometric operations depend on understanding the
-/// positional data in vertices, and operational traits mostly apply to such
-/// positional data.
+/// positional data in vertices exposed by the `AsPosition` trait.
 ///
 /// # Examples
 ///
@@ -93,31 +88,31 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 /// # extern crate nalgebra;
 /// # extern crate num;
 /// # extern crate plexus;
-/// use decorum::R64;
+/// #
+/// use decorum::N64;
 /// use nalgebra::{Point3, Vector4};
-/// use num::One;
-/// use plexus::geometry::convert::{AsPosition, IntoGeometry};
-/// use plexus::geometry::Geometry;
-/// use plexus::graph::MeshGraph;
+/// use num::Zero;
+/// use plexus::graph::{AsPosition, Geometry, MeshGraph};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
+/// use plexus::IntoGeometry;
 ///
-/// // Vertex-only geometry with a position and color.
+/// // Vertex-only geometry with position and color data.
 /// #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-/// pub struct VertexGeometry {
-///     pub position: Point3<R64>,
-///     pub color: Vector4<R64>,
+/// pub struct Vertex {
+///     pub position: Point3<N64>,
+///     pub color: Vector4<N64>,
 /// }
 ///
-/// impl Geometry for VertexGeometry {
+/// impl Geometry for Vertex {
 ///     type Vertex = Self;
 ///     type Arc = ();
 ///     type Edge = ();
 ///     type Face = ();
 /// }
 ///
-/// impl AsPosition for VertexGeometry {
-///     type Target = Point3<R64>;
+/// impl AsPosition for Vertex {
+///     type Target = Point3<N64>;
 ///
 ///     fn as_position(&self) -> &Self::Target {
 ///         &self.position
@@ -131,12 +126,12 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 /// # fn main() {
 /// // Create a mesh from a sphere primitive and map the geometry data.
 /// let mut graph = UvSphere::new(8, 8)
-///     .polygons_with_position()
-///     .map_vertices(|position| VertexGeometry {
-///         position: position.into_geometry(),
-///         color: Vector4::new(One::one(), One::one(), One::one(), One::one()),
+///     .polygons_with_position::<Point3<N64>>()
+///     .map_vertices(|position| Vertex {
+///         position,
+///         color: Zero::zero(),
 ///     })
-///     .collect::<MeshGraph<VertexGeometry>>();
+///     .collect::<MeshGraph<Vertex>>();
 /// # }
 /// ```
 pub trait Geometry: Sized {
@@ -163,11 +158,12 @@ where
     type Face = ();
 }
 
-/// Exposes a reference to positional vertex data.
+/// Exposes positional data in vertex geometry.
 ///
 /// To enable geometric features, this trait must be implemented for the type
 /// representing vertex data. Additionally, geometric operations should be
-/// implemented for the `Target` type.
+/// implemented for the `Target` type. See the
+/// [theon](https://crates.io/crates/theon) crate.
 pub trait AsPosition {
     type Target;
 

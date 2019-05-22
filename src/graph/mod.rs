@@ -89,34 +89,40 @@
 //! Generating a mesh from a UV-sphere:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
+//! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let mut graph = UvSphere::new(16, 16)
-//!     .polygons_with_position()
-//!     .collect::<MeshGraph<Point3<f32>>>();
+//! let mut graph = UvSphere::default()
+//!     .polygons_with_position::<Point3<N64>>()
+//!     .collect::<MeshGraph<Point3<N64>>>();
 //! # }
 //! ```
 //!
 //! Extruding a face in a mesh:
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
+//! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
-//! let mut graph = UvSphere::new(16, 16)
-//!     .polygons_with_position()
-//!     .collect::<MeshGraph<Point3<f32>>>();
+//! let mut graph = UvSphere::new(8, 8)
+//!     .polygons_with_position::<Point3<N64>>()
+//!     .collect::<MeshGraph<Point3<N64>>>();
 //! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
 //! let face = graph.face_mut(key).unwrap().extrude(1.0); // Extrude the face.
 //! # }
@@ -127,13 +133,14 @@
 //! ```rust
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
 //! use nalgebra::Point2;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::Quad;
 //!
 //! # fn main() {
-//! let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers(
+//! let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
 //!     vec![Quad::new(0u32, 1, 2, 3)],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //! )
@@ -179,9 +186,7 @@ use crate::buffer::{BufferError, MeshBuffer};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{
-    ArcKey, AsStorage, AsStorageMut, EdgeKey, FaceKey, OpaqueKey, Storage, VertexKey,
-};
+use crate::graph::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
 use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
@@ -198,6 +203,7 @@ pub use crate::graph::geometry::{
     VertexPosition,
 };
 pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+pub use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
 pub use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
 pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
@@ -274,19 +280,27 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// Splitting a face by index (of its contained vertices):
 ///
 /// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 ///
+/// # fn main() {
 /// let mut graph = Cube::new()
-///     .polygons_with_position()
-///     .collect::<MeshGraph<_>>();
-/// let abc = graph.faces().nth(0).unwrap().key();
+///     .polygons_with_position::<Point3<N64>>()
+///     .collect::<MeshGraph<Point3<N64>>>();
+/// let key = graph.faces().nth(0).unwrap().key();
 /// graph
-///     .face_mut(abc)
+///     .face_mut(key)
 ///     .unwrap()
 ///     .split(ByIndex(0), ByIndex(2))
 ///     .unwrap();
+/// # }
 /// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Selector<K> {
@@ -407,6 +421,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point2;
     /// use plexus::buffer::MeshBuffer;
     /// use plexus::graph::MeshGraph;
@@ -986,6 +1001,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::index::{Flat3, LruIndexer};
@@ -994,7 +1010,7 @@ where
     ///
     /// # fn main() {
     /// let (indices, positions) = UvSphere::new(16, 16)
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<f64>>()
     ///     .triangulate()
     ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(256));
     /// let mut graph =
@@ -1057,20 +1073,22 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::N64;
     use nalgebra::{Point3, Vector3};
     use num::Zero;
+    use typenum::U3;
 
-    use crate::geometry::Geometry;
-    use crate::graph::{GraphError, MeshGraph};
-    use crate::index::U3;
+    use crate::graph::{Geometry, GraphError, MeshGraph};
     use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
+
+    type E3 = Point3<N64>;
 
     #[test]
     fn collect_topology_into_mesh() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f32>>>();
+            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<Point3<f64>>>();
 
         assert_eq!(5, graph.vertex_count());
         assert_eq!(18, graph.arc_count());
@@ -1080,8 +1098,8 @@ mod tests {
     #[test]
     fn iterate_mesh_topology() {
         let mut graph = UvSphere::new(4, 2)
-            .polygons_with_position() // 8 triangles, 24 vertices.
-            .collect::<MeshGraph<Point3<f32>>>();
+            .polygons_with_position::<E3>() // 8 triangles, 24 vertices.
+            .collect::<MeshGraph<Point3<f64>>>();
 
         assert_eq!(6, graph.vertices().count());
         assert_eq!(24, graph.arcs().count());
@@ -1100,9 +1118,9 @@ mod tests {
     #[test]
     fn non_manifold_error_deferred() {
         let graph = UvSphere::new(32, 32)
-            .polygons_with_position()
+            .polygons_with_position::<E3>()
             .triangulate()
-            .collect::<MeshGraph<Point3<f32>>>();
+            .collect::<MeshGraph<Point3<f64>>>();
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
         graph
@@ -1131,16 +1149,16 @@ mod tests {
         struct ValueGeometry;
 
         impl Geometry for ValueGeometry {
-            type Vertex = Point3<f32>;
+            type Vertex = Point3<f64>;
             type Arc = ();
             type Edge = ();
-            type Face = f32;
+            type Face = f64;
         }
 
         // Create a mesh with a floating point value associated with each face.
         // Use a mutable iterator to write to the geometry of each face.
         let mut graph = UvSphere::new(4, 4)
-            .polygons_with_position()
+            .polygons_with_position::<E3>()
             .collect::<MeshGraph<ValueGeometry>>();
         let value = 3.14;
         for mut face in graph.orphan_faces() {

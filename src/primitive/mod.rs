@@ -1,18 +1,13 @@
 //! Primitive topological structures.
 //!
 //! This module provides primitives that can be composed to form more complex
-//! structures.  For example, primitives are used by generators, iterator
-//! expressions, and index buffers.
+//! structures. This includes simple topological structures like `Triangles`,
+//! generators that form shapes from those structures, and iterator expressions
+//! that compose and decompose streams.
 //!
-//! Much functionality in this module are exposed via traits.  Many of these
+//! Much functionality in this module is exposed via traits. Many of these
 //! traits are included in the `prelude` module, and it is highly recommended
 //! to import the `prelude`'s contents as seen in the examples.
-//!
-//! Traits implemented by generators expose verbose function names like
-//! `polygons_with_uv_map` or `vertices_with_position` to avoid ambiguity.
-//! This is a somewhat unorthodox use of the term "with" in Rust function
-//! names, but the alternatives are much less clear, especially when other
-//! similar function names exist in the same crate.
 //!
 //! # Examples
 //!
@@ -21,6 +16,7 @@
 //! ```rust
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
 //! use nalgebra::Point3;
 //! use plexus::prelude::*;
 //! use plexus::primitive::sphere::UvSphere;
@@ -28,13 +24,10 @@
 //! # fn main() {
 //! let sphere = UvSphere::new(16, 16);
 //! // Generate the unique set of positional vertices.
-//! // Convert the position data into `Point3<f32>` and collect it into a buffer.
 //! let positions = sphere
-//!     .vertices_with_position()
-//!     .map(|position| -> Point3<f32> { position.into() })
+//!     .vertices_with_position::<Point3<f64>>()
 //!     .collect::<Vec<_>>();
 //! // Generate polygons indexing the unique set of positional vertices.
-//! // These indeces depend on the attribute (position, normal, etc.).
 //! // Decompose the indexing polygons into triangles and vertices and then collect
 //! // the index data into a buffer.
 //! let indices = sphere
@@ -47,14 +40,22 @@
 //! Generating position data for a cube using an indexer:
 //!
 //! ```rust
+//! # extern crate decorum;
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! #
+//! use decorum::N64;
+//! use nalgebra::Point3;
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::{Bounds, Cube};
 //!
+//! # fn main() {
 //! let (indices, positions) = Cube::new()
-//!     .polygons_with_position_from(Bounds::unit_radius())
+//!     .polygons_with_position_from::<Point3<N64>>(Bounds::unit_radius())
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
+//! # }
 //! ```
 
 pub mod cube;
@@ -784,28 +785,37 @@ impl_zip!(category => Polygon);
 ///
 /// ```rust
 /// # extern crate decorum;
+/// # extern crate nalgebra;
 /// # extern crate num;
 /// # extern crate plexus;
+/// # extern crate theon;
 /// #
-/// use decorum::R64;
+/// use decorum::{N64, R64};
+/// use nalgebra::{Point2, Point3, Vector4};
+/// # use num::Zero;
 /// use plexus::prelude::*;
 /// use plexus::primitive;
 /// use plexus::primitive::cube::Cube;
+/// use theon::space::Vector;
 ///
-/// fn map_uv_to_color(uv: &Duplet<R64>) -> Triplet<R64> {
-/// #     use num::One;
-/// #     Triplet(One::one(), One::one(), One::one())
+/// # fn main() {
+/// type E2 = Point2<N64>;
+/// type E3 = Point3<N64>;
+///
+/// fn map_uv_to_rgb(uv: &Vector<E2>) -> Vector4<R64> {
+/// #   Zero::zero()
 ///     // ...
 /// }
 ///
-/// # fn main() {
 /// let cube = Cube::new();
-/// let polygons =
-///     // Zip positions and texture coordinates into each vertex.
-///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
-///         .map_vertices(|(position, uv)| (position, uv, map_uv_to_color(&uv)))
-///         .triangulate()
-///         .collect::<Vec<_>>();
+/// // Zip positions and texture coordinates into each vertex.
+/// let polygons = primitive::zip_vertices((
+///     cube.polygons_with_position::<E3>(),
+///     cube.polygons_with_uv_map::<E2>(),
+/// ))
+///     .map_vertices(|(position, uv)| (position, uv, map_uv_to_rgb(&uv)))
+///     .triangulate()
+///     .collect::<Vec<_>>();
 /// # }
 /// ```
 pub fn zip_vertices<T, U>(

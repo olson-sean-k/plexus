@@ -55,9 +55,7 @@ where
     }
 }
 
-/// Polygon generating primitive.
 pub trait PolygonGenerator {
-    /// Gets the number of unique polygons that comprise a primitive.
     fn polygon_count(&self) -> usize;
 }
 
@@ -194,16 +192,25 @@ pub trait VerticesWithPosition: Sized {
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point3;
     /// use plexus::prelude::*;
     /// use plexus::primitive::sphere::UvSphere;
     ///
+    /// # fn main() {
     /// let sphere = UvSphere::new(8, 8);
-    /// let vertices = sphere.vertices_with_position().collect::<Vec<_>>();
+    ///
+    /// let positions = sphere
+    ///     .vertices_with_position::<Point3<f64>>()
+    ///     .collect::<Vec<_>>();
     /// let indices = sphere
     ///     .indices_for_position()
     ///     .triangulate()
     ///     .vertices()
     ///     .collect::<Vec<_>>();
+    /// # }
     /// ```
     fn vertices_with_position<S>(&self) -> Generate<Self, Self::State, S>
     where
@@ -225,18 +232,25 @@ pub trait VerticesWithPosition: Sized {
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point3;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::{Bounds, Cube};
     ///
+    /// # fn main() {
     /// let cube = Cube::new();
-    /// let vertices = cube
-    ///     .vertices_with_position_from(Bounds::with_width(3.0.into()))
+    ///
+    /// let positions = cube
+    ///     .vertices_with_position_from::<Point3<f64>>(Bounds::with_width(3.0))
     ///     .collect::<Vec<_>>();
     /// let indices = cube
     ///     .indices_for_position()
     ///     .triangulate()
     ///     .vertices()
     ///     .collect::<Vec<_>>();
+    /// # }
     /// ```
     fn vertices_with_position_from<S>(&self, state: Self::State) -> Generate<Self, Self::State, S>
     where
@@ -285,13 +299,21 @@ pub trait PolygonsWithPosition: Sized {
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
     /// use plexus::index::{HashIndexer, StructuredN};
     /// use plexus::prelude::*;
     /// use plexus::primitive::sphere::UvSphere;
     ///
+    /// # fn main() {
     /// let (indices, positions) = UvSphere::new(8, 8)
-    ///     .polygons_with_position()
+    ///     .polygons_with_position::<Point3<N64>>()
     ///     .index_vertices::<StructuredN, _>(HashIndexer::default());
+    /// # }
     /// ```
     fn polygons_with_position<S>(
         &self,
@@ -312,13 +334,21 @@ pub trait PolygonsWithPosition: Sized {
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
     /// use plexus::index::{HashIndexer, Structured4};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::{Bounds, Cube};
     ///
+    /// # fn main() {
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position_from(Bounds::unit_radius())
+    ///     .polygons_with_position_from::<Point3<N64>>(Bounds::unit_radius())
     ///     .index_vertices::<Structured4, _>(HashIndexer::default());
+    /// # }
     /// ```
     fn polygons_with_position_from<S>(
         &self,
@@ -364,15 +394,28 @@ pub trait PolygonsWithUvMap: Sized {
     /// # Examples
     ///
     /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::{Point2, Point3};
     /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
     ///
+    /// # fn main() {
+    /// type E2 = Point2<N64>;
+    /// type E3 = Point3<N64>;
+    ///
     /// let cube = Cube::new();
-    /// let (indices, positions) =
-    ///     primitive::zip_vertices((cube.polygons_with_position(), cube.polygons_with_uv_map()))
-    ///         .index_vertices::<Flat4, _>(HashIndexer::default());
+    /// let (indices, positions) = primitive::zip_vertices((
+    ///     cube.polygons_with_position::<E3>(),
+    ///     cube.polygons_with_uv_map::<E2>(),
+    /// ))
+    /// .index_vertices::<Flat4, _>(HashIndexer::default());
+    /// # }
     /// ```
     fn polygons_with_uv_map<S>(
         &self,

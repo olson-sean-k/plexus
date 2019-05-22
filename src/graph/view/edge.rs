@@ -38,14 +38,21 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 /// Traversing a graph of a cube via its arcs to find an opposing face:
 ///
 /// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
 /// use plexus::graph::MeshGraph;
 /// use plexus::index::HashIndexer;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 ///
+/// # fn main() {
 /// let mut graph = Cube::new()
-///     .polygons_with_position()
-///     .collect_with_indexer::<MeshGraph<Triplet<_>>, _>(HashIndexer::default())
+///     .polygons_with_position::<Point3<N64>>()
+///     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
 ///     .unwrap();
 ///
 /// let face = graph.faces().nth(0).unwrap();
@@ -57,6 +64,7 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 ///     .into_opposite_arc()
 ///     .into_face()
 ///     .unwrap();
+/// # }
 /// ```
 pub struct ArcView<M, G>
 where
@@ -126,12 +134,13 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     ///
     /// # fn main() {
-    /// let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+    /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers_with_arity(
     ///     vec![0u32, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     ///     4,
@@ -567,8 +576,7 @@ where
     /// Split an edge in a graph with weighted vertices:
     ///
     /// ```rust
-    /// use plexus::geometry::Geometry;
-    /// use plexus::graph::MeshGraph;
+    /// use plexus::graph::{Geometry, MeshGraph};
     /// use plexus::prelude::*;
     /// use plexus::primitive::Triangle;
     ///
@@ -628,6 +636,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
@@ -689,12 +698,12 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point2;
-    /// use plexus::geometry::convert::IntoGeometry;
-    /// use plexus::geometry::Geometry;
-    /// use plexus::graph::{MeshGraph, VertexKey, VertexView};
+    /// use plexus::graph::{Geometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::Quad;
+    /// use plexus::IntoGeometry;
     ///
     /// # fn main() {
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>
@@ -781,6 +790,7 @@ where
     /// ```rust
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// #
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
@@ -1440,14 +1450,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    use decorum::N64;
     use nalgebra::{Point2, Point3};
 
-    use crate::geometry::convert::IntoGeometry;
-    use crate::geometry::Geometry;
-    use crate::graph::{ArcKey, MeshGraph, VertexView};
+    use crate::graph::{ArcKey, Geometry, MeshGraph, VertexView};
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
+    use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where
@@ -1532,9 +1542,9 @@ mod tests {
     #[test]
     fn split_edge() {
         let (indices, vertices) = Cube::new()
-            .polygons_with_position() // 6 quads, 24 vertices.
+            .polygons_with_position::<Point3<N64>>() // 6 quads, 24 vertices.
             .index_vertices::<Structured4, _>(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers(indices, vertices).unwrap();
+        let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
         let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
 

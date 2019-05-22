@@ -3,19 +3,20 @@
 //! # Examples
 //!
 //! ```rust
+//! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
+//! #
+//! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
-//! use plexus::index::HashIndexer;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //!
 //! # fn main() {
-//! let graph = Cube::new()
-//!     .polygons_with_position()
-//!     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
-//!     .unwrap();
+//! let mut graph = Cube::new()
+//!     .polygons_with_position::<Point3<N64>>()
+//!     .collect::<MeshGraph<Point3<N64>>>();
 //! # }
 //! ```
 
@@ -312,29 +313,3 @@ impl VerticesWithPosition for Cube {}
 impl PolygonsWithNormal for Cube {}
 impl PolygonsWithPosition for Cube {}
 impl PolygonsWithUvMap for Cube {}
-
-// TODO: THIS IS A SANITY TEST. Remove this. It allows for a quick check
-//       without needing to refactor all generator code.
-fn test() {
-    use decorum::N64;
-    use nalgebra::Point3;
-
-    use crate::graph::MeshGraph;
-    use crate::index::{Flat3, HashIndexer};
-    use crate::prelude::*;
-    use crate::primitive;
-    use crate::primitive::cube::Cube;
-
-    let mut graph = Cube::new()
-        .polygons_with_position::<Point3<N64>>()
-        .triangulate()
-        .collect::<MeshGraph>();
-
-    let cube = Cube::new();
-    let (_, _) = primitive::zip_vertices((
-        cube.polygons_with_position::<Point3<N64>>(),
-        cube.polygons_with_normal::<Point3<N64>>(),
-    ))
-    .triangulate()
-    .index_vertices::<Flat3, _>(HashIndexer::default());
-}

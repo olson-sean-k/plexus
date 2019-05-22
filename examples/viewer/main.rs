@@ -15,13 +15,13 @@ mod camera;
 mod pipeline;
 mod renderer;
 
+use decorum::N32;
 use glutin::{
     ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
 };
 use nalgebra::{Matrix4, Point3};
 use plexus::buffer::MeshBuffer3;
-use plexus::geometry::Geometry;
-use plexus::graph::MeshGraph;
+use plexus::graph::{Geometry, MeshGraph};
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
@@ -40,7 +40,7 @@ impl Geometry for FaceColorGeometry {
 
 fn new_mesh_buffer() -> MeshBuffer3<u32, Vertex> {
     let mut graph = UvSphere::new(32, 16)
-        .polygons_with_position_from(Bounds::unit_radius())
+        .polygons_with_position_from::<Point3<N32>>(Bounds::unit_radius())
         .collect::<MeshGraph<FaceColorGeometry>>();
     for mut face in graph.orphan_faces() {
         face.geometry = Color4::random();
