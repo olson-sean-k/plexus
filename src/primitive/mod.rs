@@ -70,14 +70,14 @@ use smallvec::SmallVec;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, Range};
-use theon::{Category, FromObjects, IntoObjects};
+use theon::{Composite, FromItems, IntoItems};
 
 pub use theon::ops::{Map, Reduce, ZipMap};
 pub use theon::Converged;
 
 use crate::primitive::decompose::IntoVertices;
 
-pub trait Topological: Category<Object = <Self as Topological>::Vertex> + Sized {
+pub trait Topological: Composite<Item = <Self as Topological>::Vertex> + Sized {
     type Vertex;
 
     fn arity(&self) -> usize;
@@ -94,26 +94,26 @@ pub trait Rotate {
 }
 
 pub trait Zip {
-    type Output: FromObjects + Topological;
+    type Output: FromItems + Topological;
 
     fn zip(self) -> Self::Output;
 }
 macro_rules! impl_zip {
-    (category => $c:ident) => (
-        impl_zip!(category => $c, objects => (A, B));
-        impl_zip!(category => $c, objects => (A, B, C));
-        impl_zip!(category => $c, objects => (A, B, C, D));
-        impl_zip!(category => $c, objects => (A, B, C, D, E));
-        impl_zip!(category => $c, objects => (A, B, C, D, E, F));
+    (composite => $c:ident) => (
+        impl_zip!(composite => $c, items => (A, B));
+        impl_zip!(composite => $c, items => (A, B, C));
+        impl_zip!(composite => $c, items => (A, B, C, D));
+        impl_zip!(composite => $c, items => (A, B, C, D, E));
+        impl_zip!(composite => $c, items => (A, B, C, D, E, F));
     );
-    (category => $c:ident, objects => ($($o:ident),*)) => (
+    (composite => $c:ident, items => ($($o:ident),*)) => (
         #[allow(non_snake_case)]
         impl<$($o),*> Zip for ($($c<$o>),*) {
             type Output = $c<($($o),*)>;
 
             fn zip(self) -> Self::Output {
                 let ($($o,)*) = self;
-                FromObjects::from_objects(izip!($($o.into_objects()),*)).unwrap()
+                FromItems::from_items(izip!($($o.into_items()),*)).unwrap()
             }
         }
     );
@@ -227,8 +227,8 @@ impl<T> Edge<T> {
     }
 }
 
-impl<T> Category for Edge<T> {
-    type Object = T;
+impl<T> Composite for Edge<T> {
+    type Item = T;
 }
 
 impl<T> ConstantArity for Edge<T> {
@@ -244,37 +244,27 @@ where
     }
 }
 
-impl<T> FromIterator<T> for Edge<T> {
-    fn from_iter<I>(input: I) -> Self
+impl<T> FromItems for Edge<T> {
+    fn from_items<I>(items: I) -> Option<Self>
     where
-        I: IntoIterator<Item = T>,
+        I: IntoIterator<Item = Self::Item>,
     {
-        Edge::from_objects(input).unwrap()
-    }
-}
-
-impl<T> FromObjects for Edge<T> {
-    fn from_objects<I>(objects: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Object>,
-    {
-        let mut objects = objects.into_iter().take(2);
-        match (objects.next(), objects.next()) {
+        let mut items = items.into_iter().take(2);
+        match (items.next(), items.next()) {
             (Some(a), Some(b)) => Some(Edge::new(a, b)),
             _ => None,
         }
     }
 }
 
-impl<T> IntoObjects for Edge<T> {
-    type Output = ArrayVec<[T; 2]>;
-
-    fn into_objects(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b])
+impl<T> FromIterator<T> for Edge<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Edge::from_items(input).unwrap()
     }
 }
-
-impl_zip!(category => Edge);
 
 impl<T> Index<usize> for Edge<T> {
     type Output = T;
@@ -288,22 +278,30 @@ impl<T> Index<usize> for Edge<T> {
     }
 }
 
+impl<T> IntoItems for Edge<T> {
+    type Output = ArrayVec<[T; 2]>;
+
+    fn into_items(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b])
+    }
+}
+
 impl<T, U> Map<U> for Edge<T> {
     type Output = Edge<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object) -> U,
+        F: FnMut(Self::Item) -> U,
     {
         let Edge { a, b } = self;
         Edge::new(f(a), f(b))
     }
 }
 
-impl<T, U> Reduce<T, U> for Edge<T> {
+impl<T, U> Reduce<U> for Edge<T> {
     fn reduce<F>(self, mut seed: U, mut f: F) -> U
     where
-        F: FnMut(U, T) -> U,
+        F: FnMut(U, Self::Item) -> U,
     {
         for vertex in self.into_vertices() {
             seed = f(seed, vertex);
@@ -332,12 +330,14 @@ impl<T> Topological for Edge<T> {
     }
 }
 
+impl_zip!(composite => Edge);
+
 impl<T, U> ZipMap<U> for Edge<T> {
     type Output = Edge<U>;
 
     fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object, Self::Object) -> U,
+        F: FnMut(Self::Item, Self::Item) -> U,
     {
         Edge::new(f(self.a, other.a), f(self.b, other.b))
     }
@@ -360,8 +360,8 @@ impl<T> Triangle<T> {
     }
 }
 
-impl<T> Category for Triangle<T> {
-    type Object = T;
+impl<T> Composite for Triangle<T> {
+    type Item = T;
 }
 
 impl<T> ConstantArity for Triangle<T> {
@@ -377,33 +377,25 @@ where
     }
 }
 
-impl<T> FromIterator<T> for Triangle<T> {
-    fn from_iter<I>(input: I) -> Self
+impl<T> FromItems for Triangle<T> {
+    fn from_items<I>(items: I) -> Option<Self>
     where
-        I: IntoIterator<Item = T>,
+        I: IntoIterator<Item = Self::Item>,
     {
-        Triangle::from_objects(input).unwrap()
-    }
-}
-
-impl<T> FromObjects for Triangle<T> {
-    fn from_objects<I>(objects: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Object>,
-    {
-        let mut objects = objects.into_iter().take(3);
-        match (objects.next(), objects.next(), objects.next()) {
+        let mut items = items.into_iter().take(3);
+        match (items.next(), items.next(), items.next()) {
             (Some(a), Some(b), Some(c)) => Some(Triangle::new(a, b, c)),
             _ => None,
         }
     }
 }
 
-impl<T> IntoObjects for Triangle<T> {
-    type Output = ArrayVec<[T; 3]>;
-
-    fn into_objects(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b, self.c])
+impl<T> FromIterator<T> for Triangle<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Triangle::from_items(input).unwrap()
     }
 }
 
@@ -420,12 +412,20 @@ impl<T> Index<usize> for Triangle<T> {
     }
 }
 
+impl<T> IntoItems for Triangle<T> {
+    type Output = ArrayVec<[T; 3]>;
+
+    fn into_items(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b, self.c])
+    }
+}
+
 impl<T, U> Map<U> for Triangle<T> {
     type Output = Triangle<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object) -> U,
+        F: FnMut(Self::Item) -> U,
     {
         let Triangle { a, b, c } = self;
         Triangle::new(f(a), f(b), f(c))
@@ -434,10 +434,10 @@ impl<T, U> Map<U> for Triangle<T> {
 
 impl<T> Polygonal for Triangle<T> {}
 
-impl<T, U> Reduce<T, U> for Triangle<T> {
+impl<T, U> Reduce<U> for Triangle<T> {
     fn reduce<F>(self, mut seed: U, mut f: F) -> U
     where
-        F: FnMut(U, T) -> U,
+        F: FnMut(U, Self::Item) -> U,
     {
         for vertex in self.into_vertices() {
             seed = f(seed, vertex);
@@ -471,14 +471,14 @@ impl<T> Topological for Triangle<T> {
     }
 }
 
-impl_zip!(category => Triangle);
+impl_zip!(composite => Triangle);
 
 impl<T, U> ZipMap<U> for Triangle<T> {
     type Output = Triangle<U>;
 
     fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object, Self::Object) -> U,
+        F: FnMut(Self::Item, Self::Item) -> U,
     {
         Triangle::new(f(self.a, other.a), f(self.b, other.b), f(self.c, other.c))
     }
@@ -502,8 +502,8 @@ impl<T> Quad<T> {
     }
 }
 
-impl<T> Category for Quad<T> {
-    type Object = T;
+impl<T> Composite for Quad<T> {
+    type Item = T;
 }
 
 impl<T> ConstantArity for Quad<T> {
@@ -519,38 +519,25 @@ where
     }
 }
 
-impl<T> FromIterator<T> for Quad<T> {
-    fn from_iter<I>(input: I) -> Self
+impl<T> FromItems for Quad<T> {
+    fn from_items<I>(items: I) -> Option<Self>
     where
-        I: IntoIterator<Item = T>,
+        I: IntoIterator<Item = Self::Item>,
     {
-        Quad::from_objects(input).unwrap()
-    }
-}
-
-impl<T> FromObjects for Quad<T> {
-    fn from_objects<I>(objects: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Object>,
-    {
-        let mut objects = objects.into_iter().take(4);
-        match (
-            objects.next(),
-            objects.next(),
-            objects.next(),
-            objects.next(),
-        ) {
+        let mut items = items.into_iter().take(4);
+        match (items.next(), items.next(), items.next(), items.next()) {
             (Some(a), Some(b), Some(c), Some(d)) => Some(Quad::new(a, b, c, d)),
             _ => None,
         }
     }
 }
 
-impl<T> IntoObjects for Quad<T> {
-    type Output = ArrayVec<[T; 4]>;
-
-    fn into_objects(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b, self.c, self.d])
+impl<T> FromIterator<T> for Quad<T> {
+    fn from_iter<I>(input: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Quad::from_items(input).unwrap()
     }
 }
 
@@ -568,12 +555,20 @@ impl<T> Index<usize> for Quad<T> {
     }
 }
 
+impl<T> IntoItems for Quad<T> {
+    type Output = ArrayVec<[T; 4]>;
+
+    fn into_items(self) -> Self::Output {
+        ArrayVec::from([self.a, self.b, self.c, self.d])
+    }
+}
+
 impl<T, U> Map<U> for Quad<T> {
     type Output = Quad<U>;
 
     fn map<F>(self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object) -> U,
+        F: FnMut(Self::Item) -> U,
     {
         let Quad { a, b, c, d } = self;
         Quad::new(f(a), f(b), f(c), f(d))
@@ -582,10 +577,10 @@ impl<T, U> Map<U> for Quad<T> {
 
 impl<T> Polygonal for Quad<T> {}
 
-impl<T, U> Reduce<T, U> for Quad<T> {
+impl<T, U> Reduce<U> for Quad<T> {
     fn reduce<F>(self, mut seed: U, mut f: F) -> U
     where
-        F: FnMut(U, T) -> U,
+        F: FnMut(U, Self::Item) -> U,
     {
         for vertex in self.into_vertices() {
             seed = f(seed, vertex);
@@ -623,14 +618,14 @@ impl<T> Topological for Quad<T> {
     }
 }
 
-impl_zip!(category => Quad);
+impl_zip!(composite => Quad);
 
 impl<T, U> ZipMap<U> for Quad<T> {
     type Output = Quad<U>;
 
     fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
     where
-        F: FnMut(Self::Object, Self::Object) -> U,
+        F: FnMut(Self::Item, Self::Item) -> U,
     {
         Quad::new(
             f(self.a, other.a),
@@ -653,13 +648,8 @@ impl<T> Polygon<T> {
     }
 }
 
-// TODO: This may be absusive of the `Category` trait. Note that at runtime,
-//       two instances of `Polygon<T>` may not be equivalent categories as
-//       their structures may differ (`Triangle` vs.  `Quad`).
-//
-//       Observe that it is not possible to implement `ZipMap`.
-impl<T> Category for Polygon<T> {
-    type Object = T;
+impl<T> Composite for Polygon<T> {
+    type Item = T;
 }
 
 impl<T> From<Triangle<T>> for Polygon<T> {
@@ -674,29 +664,29 @@ impl<T> From<Quad<T>> for Polygon<T> {
     }
 }
 
+impl<T> FromItems for Polygon<T> {
+    fn from_items<I>(items: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Item>,
+    {
+        let items = items
+            .into_iter()
+            .take(Quad::<T>::ARITY)
+            .collect::<ArrayVec<[T; 4]>>();
+        match items.len() {
+            Triangle::<T>::ARITY => Triangle::from_items(items).map(|triangle| triangle.into()),
+            Quad::<T>::ARITY => Quad::from_items(items).map(|quad| quad.into()),
+            _ => None,
+        }
+    }
+}
+
 impl<T> FromIterator<T> for Polygon<T> {
     fn from_iter<I>(input: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
-        Polygon::from_objects(input).unwrap()
-    }
-}
-
-impl<T> FromObjects for Polygon<T> {
-    fn from_objects<I>(objects: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Object>,
-    {
-        let objects = objects
-            .into_iter()
-            .take(Quad::<T>::ARITY)
-            .collect::<ArrayVec<[T; 4]>>();
-        match objects.len() {
-            Triangle::<T>::ARITY => Triangle::from_objects(objects).map(|triangle| triangle.into()),
-            Quad::<T>::ARITY => Quad::from_objects(objects).map(|quad| quad.into()),
-            _ => None,
-        }
+        Polygon::from_items(input).unwrap()
     }
 }
 
@@ -711,13 +701,13 @@ impl<T> Index<usize> for Polygon<T> {
     }
 }
 
-impl<T> IntoObjects for Polygon<T> {
+impl<T> IntoItems for Polygon<T> {
     type Output = SmallVec<[T; 4]>;
 
-    fn into_objects(self) -> Self::Output {
+    fn into_items(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => triangle.into_objects().into_iter().collect(),
-            Polygon::Quad(quad) => quad.into_objects().into_iter().collect(),
+            Polygon::Triangle(triangle) => triangle.into_items().into_iter().collect(),
+            Polygon::Quad(quad) => quad.into_items().into_iter().collect(),
         }
     }
 }
@@ -727,7 +717,7 @@ impl<T, U> Map<U> for Polygon<T> {
 
     fn map<F>(self, f: F) -> Self::Output
     where
-        F: FnMut(Self::Object) -> U,
+        F: FnMut(Self::Item) -> U,
     {
         match self {
             Polygon::Triangle(triangle) => Polygon::Triangle(triangle.map(f)),
@@ -738,10 +728,10 @@ impl<T, U> Map<U> for Polygon<T> {
 
 impl<T> Polygonal for Polygon<T> {}
 
-impl<T, U> Reduce<T, U> for Polygon<T> {
+impl<T, U> Reduce<U> for Polygon<T> {
     fn reduce<F>(self, mut seed: U, mut f: F) -> U
     where
-        F: FnMut(U, T) -> U,
+        F: FnMut(U, Self::Item) -> U,
     {
         for vertex in self.into_vertices() {
             seed = f(seed, vertex);
@@ -770,7 +760,7 @@ impl<T> Topological for Polygon<T> {
     }
 }
 
-impl_zip!(category => Polygon);
+impl_zip!(composite => Polygon);
 
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.

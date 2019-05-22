@@ -26,7 +26,7 @@ use decorum::Real;
 use num::traits::FloatConst;
 use num::{NumCast, One, ToPrimitive};
 use std::cmp;
-use theon::space::{Basis, EuclideanSpace, FiniteDimensional, Scalar};
+use theon::space::{EuclideanSpace, FiniteDimensional, Scalar};
 use typenum::U3;
 
 use crate::primitive::generate::{
@@ -95,8 +95,7 @@ impl UvSphere {
     ) -> S
     where
         Self: PositionGenerator<S, State = Bounds<S>>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
         Scalar<S>: FloatConst,
     {
         let one = Scalar::<S>::one();
@@ -141,16 +140,14 @@ impl PolygonGenerator for UvSphere {
 
 impl<S> PositionGenerator<S> for UvSphere
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = Bounds<S>;
 }
 
 impl<S> PositionVertexGenerator<S> for UvSphere
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
     Scalar<S>: FloatConst,
 {
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S {
@@ -174,8 +171,7 @@ where
 
 impl<S> PositionPolygonGenerator<S> for UvSphere
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: Basis + FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
     Scalar<S>: FloatConst,
 {
     type Output = Polygon<S>;

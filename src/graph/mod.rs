@@ -179,6 +179,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use theon::ops::Map;
+use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
@@ -585,6 +586,18 @@ where
             .iter_mut()
             .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
             .map(|view| view.into())
+    }
+
+    /// Gets an axis-aligned bounding box that encloses the mesh.
+    pub fn aabb(&self) -> Aabb<VertexPosition<G>>
+    where
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
+    {
+        Aabb::from_points(
+            self.vertices()
+                .map(|vertex| vertex.geometry.as_position().clone()),
+        )
     }
 
     /// Gets the arity of the graph.

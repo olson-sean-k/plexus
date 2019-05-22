@@ -45,9 +45,7 @@ pub enum Plane {
 impl Plane {
     pub fn normal<S>(&self) -> Vector<S>
     where
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
-        Vector<S>: Basis,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         match *self {
             Plane::XY => Vector::<S>::z(),   // front
@@ -160,17 +158,14 @@ impl PolygonGenerator for Cube {
 
 impl<S> NormalGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = ();
 }
 
 impl<S> NormalVertexGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
-    Vector<S>: Basis,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     fn vertex_with_normal_from(&self, _: &Self::State, index: usize) -> Vector<S> {
         // There is a unique normal for each face (plane).
@@ -184,9 +179,7 @@ where
 
 impl<S> NormalPolygonGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
-    Vector<S>: Basis,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type Output = Quad<Vector<S>>;
 
@@ -207,17 +200,14 @@ impl NormalIndexGenerator for Cube {
 
 impl<S> PositionGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = Bounds<S>;
 }
 
 impl<S> PositionVertexGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
-    Vector<S>: Basis,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S {
         let x = if index & 0b100 == 0b100 {
@@ -248,9 +238,7 @@ where
 
 impl<S> PositionPolygonGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
-    Vector<S>: Basis,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type Output = Quad<S>;
 
@@ -279,17 +267,15 @@ impl PositionIndexGenerator for Cube {
 
 impl<S> UvMapGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+    S: EuclideanSpace + FiniteDimensional<N = U2>,
 {
     type State = ();
 }
 
 impl<S> UvMapPolygonGenerator<S> for Cube
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
-    Vector<S>: Basis + Converged,
+    S: EuclideanSpace + FiniteDimensional<N = U2>,
+    Vector<S>: Converged,
 {
     type Output = Quad<Vector<S>>;
 

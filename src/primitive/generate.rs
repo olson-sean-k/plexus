@@ -61,16 +61,14 @@ pub trait PolygonGenerator {
 
 pub trait NormalGenerator<S>
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State: Default;
 }
 
 pub trait NormalVertexGenerator<S>: NormalGenerator<S>
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Vector<S>;
 
@@ -83,8 +81,7 @@ pub trait VerticesWithNormal: Sized {
     fn vertices_with_normal<S>(&self) -> Generate<Self, Self::State, Vector<S>>
     where
         Self: NormalVertexGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         self.vertices_with_normal_from(Default::default())
     }
@@ -95,8 +92,7 @@ pub trait VerticesWithNormal: Sized {
     ) -> Generate<Self, Self::State, Vector<S>>
     where
         Self: NormalVertexGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         Generate::new(
             self,
@@ -125,8 +121,7 @@ impl<G> IndicesForNormal for G where G: NormalIndexGenerator + Sized {}
 
 pub trait NormalPolygonGenerator<S>: PolygonGenerator + NormalGenerator<S>
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type Output: Polygonal<Vertex = Vector<S>>;
 
@@ -140,8 +135,7 @@ pub trait PolygonsWithNormal: Sized {
     ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
     where
         Self: NormalPolygonGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         self.polygons_with_normal_from(Default::default())
     }
@@ -152,8 +146,7 @@ pub trait PolygonsWithNormal: Sized {
     ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
     where
         Self: NormalPolygonGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U3>,
+        S: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         Generate::new(
             self,
@@ -369,16 +362,14 @@ pub trait PolygonsWithPosition: Sized {
 
 pub trait UvMapGenerator<S>
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+    S: EuclideanSpace + FiniteDimensional<N = U2>,
 {
     type State: Default;
 }
 
 pub trait UvMapPolygonGenerator<S>: PolygonGenerator + UvMapGenerator<S>
 where
-    S: EuclideanSpace,
-    <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+    S: EuclideanSpace + FiniteDimensional<N = U2>,
 {
     type Output: Polygonal<Vertex = Vector<S>>;
 
@@ -422,8 +413,7 @@ pub trait PolygonsWithUvMap: Sized {
     ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
     where
         Self: UvMapPolygonGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+        S: EuclideanSpace + FiniteDimensional<N = U2>,
     {
         self.polygons_with_uv_map_from(Default::default())
     }
@@ -436,8 +426,7 @@ pub trait PolygonsWithUvMap: Sized {
     ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
     where
         Self: UvMapPolygonGenerator<S>,
-        S: EuclideanSpace,
-        <S as EuclideanSpace>::CoordinateSpace: FiniteDimensional<N = U2>,
+        S: EuclideanSpace + FiniteDimensional<N = U2>,
     {
         Generate::new(
             self,

@@ -7,7 +7,7 @@ use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
 use theon::ops::Interpolate;
-use theon::IntoObjects;
+use theon::IntoItems;
 
 use crate::primitive::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
 
@@ -106,12 +106,12 @@ pub trait IntoVertices: Topological {
 
 impl<T> IntoVertices for T
 where
-    T: IntoObjects + Topological,
+    T: IntoItems + Topological,
 {
-    type Output = <T as IntoObjects>::Output;
+    type Output = <T as IntoItems>::Output;
 
     fn into_vertices(self) -> Self::Output {
-        self.into_objects()
+        self.into_items()
     }
 }
 
