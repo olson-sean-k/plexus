@@ -29,7 +29,7 @@
 //! # extern crate plexus;
 //! # extern crate smallvec;
 //! #
-//! use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, Geometry, MeshGraph, VertexPosition};
+//! use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 //! use plexus::prelude::*;
 //! use smallvec::SmallVec;
 //!
@@ -37,7 +37,7 @@
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
 //! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
 //! where
-//!     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
+//!     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + GraphGeometry,
 //!     G::Vertex: AsPosition,
 //! {
 //!     let arity = face.arity();
@@ -70,7 +70,7 @@ use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
 
-pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
+pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Target;
 
 /// Graph geometry.
 ///
@@ -92,7 +92,7 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 /// use decorum::N64;
 /// use nalgebra::{Point3, Vector4};
 /// use num::Zero;
-/// use plexus::graph::{AsPosition, Geometry, MeshGraph};
+/// use plexus::graph::{AsPosition, GraphGeometry, MeshGraph};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
 /// use plexus::IntoGeometry;
@@ -104,7 +104,7 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 ///     pub color: Vector4<N64>,
 /// }
 ///
-/// impl Geometry for Vertex {
+/// impl GraphGeometry for Vertex {
 ///     type Vertex = Self;
 ///     type Arc = ();
 ///     type Edge = ();
@@ -134,21 +134,21 @@ pub type VertexPosition<G> = <<G as Geometry>::Vertex as AsPosition>::Target;
 ///     .collect::<MeshGraph<Vertex>>();
 /// # }
 /// ```
-pub trait Geometry: Sized {
+pub trait GraphGeometry: Sized {
     type Vertex: Clone;
     type Arc: Clone + Default;
     type Edge: Clone + Default;
     type Face: Clone + Default;
 }
 
-impl Geometry for () {
+impl GraphGeometry for () {
     type Vertex = ();
     type Arc = ();
     type Edge = ();
     type Face = ();
 }
 
-impl<T> Geometry for (T, T, T)
+impl<T> GraphGeometry for (T, T, T)
 where
     T: Clone,
 {
@@ -171,7 +171,7 @@ pub trait AsPosition {
     fn as_position_mut(&mut self) -> &mut Self::Target;
 }
 
-pub trait FaceNormal: Geometry {
+pub trait FaceNormal: GraphGeometry {
     type Normal;
 
     fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
@@ -184,7 +184,7 @@ pub trait FaceNormal: Geometry {
 
 impl<G> FaceNormal for G
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: AsPosition,
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
@@ -217,7 +217,7 @@ where
     }
 }
 
-pub trait VertexCentroid: Geometry {
+pub trait VertexCentroid: GraphGeometry {
     type Centroid;
 
     fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
@@ -228,7 +228,7 @@ pub trait VertexCentroid: Geometry {
 
 impl<G> VertexCentroid for G
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: AsPosition,
     VertexPosition<G>: EuclideanSpace,
 {
@@ -249,7 +249,7 @@ where
     }
 }
 
-pub trait FaceCentroid: Geometry {
+pub trait FaceCentroid: GraphGeometry {
     type Centroid;
 
     fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
@@ -262,7 +262,7 @@ pub trait FaceCentroid: Geometry {
 
 impl<G> FaceCentroid for G
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: AsPosition,
     VertexPosition<G>: EuclideanSpace,
 {
@@ -283,7 +283,7 @@ where
     }
 }
 
-pub trait EdgeMidpoint: Geometry {
+pub trait EdgeMidpoint: GraphGeometry {
     type Midpoint;
 
     fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
@@ -296,7 +296,7 @@ pub trait EdgeMidpoint: Geometry {
 
 impl<G> EdgeMidpoint for G
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: AsPosition,
     VertexPosition<G>: EuclideanSpace + Interpolate<Output = VertexPosition<G>>,
 {
@@ -329,7 +329,7 @@ where
     }
 }
 
-pub trait ArcNormal: Geometry {
+pub trait ArcNormal: GraphGeometry {
     type Normal;
 
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
@@ -340,7 +340,7 @@ pub trait ArcNormal: Geometry {
 
 impl<G> ArcNormal for G
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: AsPosition,
     Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,

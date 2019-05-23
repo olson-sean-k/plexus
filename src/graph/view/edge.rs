@@ -7,7 +7,7 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{ArcNormal, AsPosition, EdgeMidpoint, Geometry, VertexPosition};
+use crate::graph::geometry::{ArcNormal, AsPosition, EdgeMidpoint, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
@@ -70,7 +70,7 @@ pub struct ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     inner: View<M, ArcPayload<G>>,
 }
@@ -79,7 +79,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, ArcPayload<G>> {
         let ArcView { inner, .. } = self;
@@ -107,7 +107,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn interior_reborrow_mut(&mut self) -> ArcView<&mut M::Target, G> {
         self.inner.interior_reborrow_mut().into()
@@ -117,7 +117,7 @@ where
 impl<'a, M, G> ArcView<&'a mut M, G>
 where
     M: 'a + AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanArcView<'a, G> {
@@ -192,7 +192,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_boundary_arc(self) -> Option<Self> {
         if self.is_boundary_arc() {
@@ -251,7 +251,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Converts the arc into its interior path.
     pub fn into_interior_path(self) -> InteriorPathView<M, G> {
@@ -311,7 +311,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
         let (key, _) = self.key().into();
@@ -340,7 +340,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Converts the arc into its source vertex.
     pub fn into_source_vertex(self) -> VertexView<M, G> {
@@ -368,7 +368,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
         let inner = self.into_inner();
@@ -386,7 +386,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Converts the arc into its edge.
     pub fn into_edge(self) -> EdgeView<M, G> {
@@ -404,7 +404,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_face(self) -> Option<FaceView<M, G>> {
         let inner = self.into_inner();
@@ -422,7 +422,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Converts the arc into its face.
     ///
@@ -444,7 +444,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn reachable_vertices(
         &self,
@@ -457,7 +457,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Gets an iterator of views over the vertices connected by the arc.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
@@ -471,7 +471,7 @@ where
     M: Reborrow + ReborrowMut,
     M::Target:
         AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn reachable_orphan_vertices(
         &mut self,
@@ -487,7 +487,7 @@ where
         + AsStorage<VertexPayload<G>>
         + AsStorageMut<VertexPayload<G>>
         + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the vertices connected by the
     /// arc.
@@ -501,7 +501,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn reachable_faces(
         &self,
@@ -514,7 +514,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Gets an iterator of views over the faces connected to the arc.
     pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
@@ -527,7 +527,7 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn reachable_orphan_faces(
         &mut self,
@@ -543,7 +543,7 @@ where
         + AsStorage<FacePayload<G>>
         + AsStorageMut<FacePayload<G>>
         + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
@@ -559,7 +559,7 @@ where
         + AsStorage<VertexPayload<G>>
         + Default
         + Mutable<G>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     /// Splits a composite edge into two neighboring edges that share a vertex.
     ///
@@ -576,13 +576,13 @@ where
     /// Split an edge in a graph with weighted vertices:
     ///
     /// ```rust
-    /// use plexus::graph::{Geometry, MeshGraph};
+    /// use plexus::graph::{GraphGeometry, MeshGraph};
     /// use plexus::prelude::*;
     /// use plexus::primitive::Triangle;
     ///
     /// pub enum Weight {}
     ///
-    /// impl Geometry for Weight {
+    /// impl GraphGeometry for Weight {
     ///     type Vertex = f64;
     ///     type Arc = ();
     ///     type Edge = ();
@@ -700,7 +700,7 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point2;
-    /// use plexus::graph::{Geometry, MeshGraph, VertexKey, VertexView};
+    /// use plexus::graph::{GraphGeometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::Quad;
     /// use plexus::IntoGeometry;
@@ -710,7 +710,7 @@ where
     /// where
     ///     I: IntoIterator<Item = VertexView<&'a MeshGraph<G>, G>>,
     ///     T: Copy + IntoGeometry<G::Vertex>,
-    ///     G: 'a + Geometry,
+    ///     G: 'a + GraphGeometry,
     ///     G::Vertex: PartialEq,
     /// {
     ///     input
@@ -855,7 +855,7 @@ where
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
         + Consistent,
-    G: Geometry + ArcNormal,
+    G: GraphGeometry + ArcNormal,
 {
     pub fn normal(&self) -> G::Normal {
         G::normal(self.interior_reborrow()).expect_consistent()
@@ -866,7 +866,7 @@ impl<M, G> Clone for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
     View<M, ArcPayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
@@ -880,7 +880,7 @@ impl<M, G> Copy for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
     View<M, ArcPayload<G>>: Copy,
 {
 }
@@ -889,7 +889,7 @@ impl<M, G> Deref for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Target = ArcPayload<G>;
 
@@ -902,7 +902,7 @@ impl<M, G> DerefMut for ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
     M::Target: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -913,7 +913,7 @@ impl<M, G> From<View<M, ArcPayload<G>>> for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(view: View<M, ArcPayload<G>>) -> Self {
         ArcView { inner: view }
@@ -924,7 +924,7 @@ impl<M, G> FromKeyedSource<(ArcKey, M)> for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
         View::<_, ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
@@ -937,14 +937,14 @@ where
 /// for more information about topological views.
 pub struct OrphanArcView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     inner: OrphanView<'a, ArcPayload<G>>,
 }
 
 impl<'a, G> OrphanArcView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     pub fn key(&self) -> ArcKey {
         self.inner.key()
@@ -953,7 +953,7 @@ where
 
 impl<'a, G> Deref for OrphanArcView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Target = ArcPayload<G>;
 
@@ -964,7 +964,7 @@ where
 
 impl<'a, G> DerefMut for OrphanArcView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -973,7 +973,7 @@ where
 
 impl<'a, G> From<OrphanView<'a, ArcPayload<G>>> for OrphanArcView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn from(view: OrphanView<'a, ArcPayload<G>>) -> Self {
         OrphanArcView { inner: view }
@@ -983,7 +983,7 @@ where
 impl<'a, M, G> FromKeyedSource<(ArcKey, &'a mut M)> for OrphanArcView<'a, G>
 where
     M: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
         OrphanView::<ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
@@ -1003,7 +1003,7 @@ pub struct EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     inner: View<M, EdgePayload<G>>,
 }
@@ -1012,7 +1012,7 @@ impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, EdgePayload<G>> {
         let EdgeView { inner, .. } = self;
@@ -1032,7 +1032,7 @@ where
 impl<'a, M, G> EdgeView<&'a mut M, G>
 where
     M: 'a + AsStorage<EdgePayload<G>> + AsStorageMut<EdgePayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
     pub fn into_orphan(self) -> OrphanEdgeView<'a, G> {
@@ -1077,7 +1077,7 @@ impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
@@ -1094,7 +1094,7 @@ impl<M, G> EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + Consistent,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn into_arc(self) -> ArcView<M, G> {
         self.into_reachable_arc().expect_consistent()
@@ -1118,7 +1118,7 @@ where
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
         + Consistent,
-    G: EdgeMidpoint + Geometry,
+    G: EdgeMidpoint + GraphGeometry,
 {
     pub fn midpoint(&self) -> G::Midpoint {
         G::midpoint(self.interior_reborrow()).expect_consistent()
@@ -1129,7 +1129,7 @@ impl<M, G> Clone for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
     View<M, EdgePayload<G>>: Clone,
 {
     fn clone(&self) -> Self {
@@ -1143,7 +1143,7 @@ impl<M, G> Copy for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
     View<M, EdgePayload<G>>: Copy,
 {
 }
@@ -1152,7 +1152,7 @@ impl<M, G> Deref for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Target = EdgePayload<G>;
 
@@ -1165,7 +1165,7 @@ impl<M, G> DerefMut for EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
     M::Target: AsStorage<EdgePayload<G>> + AsStorageMut<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -1176,7 +1176,7 @@ impl<M, G> From<View<M, EdgePayload<G>>> for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(view: View<M, EdgePayload<G>>) -> Self {
         EdgeView { inner: view }
@@ -1187,7 +1187,7 @@ impl<M, G> FromKeyedSource<(EdgeKey, M)> for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
         View::<_, EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
@@ -1200,14 +1200,14 @@ where
 /// for more information about topological views.
 pub struct OrphanEdgeView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     inner: OrphanView<'a, EdgePayload<G>>,
 }
 
 impl<'a, G> OrphanEdgeView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     pub fn key(&self) -> EdgeKey {
         self.inner.key()
@@ -1216,7 +1216,7 @@ where
 
 impl<'a, G> Deref for OrphanEdgeView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Target = EdgePayload<G>;
 
@@ -1227,7 +1227,7 @@ where
 
 impl<'a, G> DerefMut for OrphanEdgeView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -1236,7 +1236,7 @@ where
 
 impl<'a, G> From<OrphanView<'a, EdgePayload<G>>> for OrphanEdgeView<'a, G>
 where
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn from(view: OrphanView<'a, EdgePayload<G>>) -> Self {
         OrphanEdgeView { inner: view }
@@ -1246,7 +1246,7 @@ where
 impl<'a, M, G> FromKeyedSource<(EdgeKey, &'a mut M)> for OrphanEdgeView<'a, G>
 where
     M: AsStorage<EdgePayload<G>> + AsStorageMut<EdgePayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
         OrphanView::<EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
@@ -1257,7 +1257,7 @@ struct VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     storage: M,
     input: <ArrayVec<[VertexKey; 2]> as IntoIterator>::IntoIter,
@@ -1268,7 +1268,7 @@ impl<M, G> VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn next(&mut self) -> Option<VertexKey> {
         self.input.next()
@@ -1279,7 +1279,7 @@ impl<M, G> From<ArcView<M, G>> for VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(arc: ArcView<M, G>) -> Self {
         let (a, b) = arc.key().into();
@@ -1296,7 +1296,7 @@ impl<M, G> Clone for VertexCirculator<M, G>
 where
     M: Clone + Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn clone(&self) -> Self {
         VertexCirculator {
@@ -1310,7 +1310,7 @@ where
 impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
 where
     M: 'a + AsStorage<VertexPayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Item = VertexView<&'a M, G>;
 
@@ -1326,7 +1326,7 @@ where
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
 where
     M: 'a + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Item = OrphanVertexView<'a, G>;
 
@@ -1350,7 +1350,7 @@ struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     storage: M,
     input: <ArrayVec<[FaceKey; 2]> as IntoIterator>::IntoIter,
@@ -1361,7 +1361,7 @@ impl<M, G> FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
         self.input.next()
@@ -1372,7 +1372,7 @@ impl<M, G> Clone for FaceCirculator<M, G>
 where
     M: Clone + Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn clone(&self) -> Self {
         FaceCirculator {
@@ -1387,7 +1387,7 @@ impl<M, G> From<ArcView<M, G>> for FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(arc: ArcView<M, G>) -> Self {
         let input = arc
@@ -1412,7 +1412,7 @@ where
 impl<'a, M, G> Iterator for FaceCirculator<&'a M, G>
 where
     M: 'a + AsStorage<FacePayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Item = FaceView<&'a M, G>;
 
@@ -1428,7 +1428,7 @@ where
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
 where
     M: 'a + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Item = OrphanFaceView<'a, G>;
 
@@ -1453,7 +1453,7 @@ mod tests {
     use decorum::N64;
     use nalgebra::{Point2, Point3};
 
-    use crate::graph::{ArcKey, Geometry, MeshGraph, VertexView};
+    use crate::graph::{ArcKey, GraphGeometry, MeshGraph, VertexView};
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
@@ -1461,7 +1461,7 @@ mod tests {
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where
-        G: Geometry,
+        G: GraphGeometry,
         G::Vertex: PartialEq,
         T: IntoGeometry<G::Vertex>,
     {
@@ -1470,7 +1470,7 @@ mod tests {
             geometry: T,
         ) -> Option<VertexView<&MeshGraph<G>, G>>
         where
-            G: Geometry,
+            G: GraphGeometry,
             G::Vertex: PartialEq,
             T: IntoGeometry<G::Vertex>,
         {

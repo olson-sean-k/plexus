@@ -80,7 +80,7 @@ geometric operations become available.
 ```rust
 use decorum::N64;
 use nalgebra::{Point3, Vector3};
-use plexus::graph::{AsPosition, Geometry};
+use plexus::graph::{AsPosition, GraphGeometry};
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Vertex {
@@ -88,7 +88,7 @@ pub struct Vertex {
     pub normal: Vector3<N64>,
 }
 
-impl Geometry for Vertex {
+impl GraphGeometry for Vertex {
     type Vertex = Self;
     type Arc = ();
     type Edge = ();

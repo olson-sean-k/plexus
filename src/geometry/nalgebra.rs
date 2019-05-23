@@ -7,7 +7,7 @@ use nalgebra::base::dimension::DimName;
 use nalgebra::{Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::graph::{AsPosition, Geometry};
+use crate::graph::{AsPosition, GraphGeometry};
 use crate::FromGeometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<T, D> Geometry for Point<T, D>
+impl<T, D> GraphGeometry for Point<T, D>
 where
     T: Scalar,
     D: DimName,

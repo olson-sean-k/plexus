@@ -3,7 +3,7 @@ use theon::space::{EuclideanSpace, Vector};
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
-use crate::graph::geometry::{AsPosition, Geometry, VertexPosition};
+use crate::graph::geometry::{AsPosition, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
@@ -20,7 +20,7 @@ pub type CompositeEdgePayload<G> = (EdgePayload<G>, (ArcPayload<G>, ArcPayload<G
 
 pub struct EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     mutation: VertexMutation<G>,
     storage: (Storage<ArcPayload<G>>, Storage<EdgePayload<G>>),
@@ -28,7 +28,7 @@ where
 
 impl<G> EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn get_or_insert_edge_with<F>(
         &mut self,
@@ -44,7 +44,7 @@ where
             f: F,
         ) -> (Option<EdgeKey>, ArcKey)
         where
-            G: Geometry,
+            G: GraphGeometry,
             F: FnOnce() -> G::Arc,
         {
             let (a, _) = span;
@@ -134,7 +134,7 @@ where
 
 impl<G> AsStorage<ArcPayload<G>> for EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         &self.storage.0
@@ -143,7 +143,7 @@ where
 
 impl<G> AsStorage<EdgePayload<G>> for EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         &self.storage.1
@@ -152,7 +152,7 @@ where
 
 impl<G> Mutate for EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Mutant =
         Core<Storage<VertexPayload<G>>, Storage<ArcPayload<G>>, Storage<EdgePayload<G>>, ()>;
@@ -181,7 +181,7 @@ where
 
 impl<G> Deref for EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Target = VertexMutation<G>;
 
@@ -192,7 +192,7 @@ where
 
 impl<G> DerefMut for EdgeMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
@@ -201,7 +201,7 @@ where
 
 struct ArcRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     ab: ArcKey,
     xa: Option<ArcKey>,
@@ -211,7 +211,7 @@ where
 
 impl<G> ArcRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
@@ -248,7 +248,7 @@ where
 
 pub struct EdgeRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     a: VertexKey,
     b: VertexKey,
@@ -259,7 +259,7 @@ where
 
 impl<G> EdgeRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
@@ -289,7 +289,7 @@ where
 
 pub struct EdgeSplitCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     a: VertexKey,
     b: VertexKey,
@@ -301,7 +301,7 @@ where
 
 impl<G> EdgeSplitCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, ab: ArcKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
@@ -337,7 +337,7 @@ where
 
 pub struct ArcBridgeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     a: VertexKey,
     b: VertexKey,
@@ -349,7 +349,7 @@ where
 
 impl<G> ArcBridgeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
     where
@@ -408,7 +408,7 @@ where
 
 pub struct ArcExtrudeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     ab: ArcKey,
     vertices: (G::Vertex, G::Vertex),
@@ -417,7 +417,7 @@ where
 
 impl<G> ArcExtrudeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(
         storage: M,
@@ -469,7 +469,7 @@ pub fn remove_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn remove_arc_with_cache<M, N, G>(
         mut mutation: N,
@@ -478,7 +478,7 @@ where
     where
         N: AsMut<Mutation<M, G>>,
         M: Mutable<G>,
-        G: Geometry,
+        G: GraphGeometry,
     {
         let ArcRemoveCache { ab, cache, .. } = cache;
         if let Some(cache) = cache {
@@ -536,13 +536,13 @@ pub fn split_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<ArcPayload<G>, GraphError>
     where
         N: AsMut<Mutation<M, G>>,
         M: Mutable<G>,
-        G: Geometry,
+        G: GraphGeometry,
     {
         let (a, _) = ab.into();
         mutation.as_mut().disconnect_outgoing_arc(a)?;
@@ -566,7 +566,7 @@ where
     where
         N: AsMut<Mutation<M, G>>,
         M: Mutable<G>,
-        G: Geometry,
+        G: GraphGeometry,
     {
         // Remove the arc and insert two truncated arcs in its place.
         let ArcPayload {
@@ -632,7 +632,7 @@ pub fn bridge_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let ArcBridgeCache {
         a,
@@ -653,7 +653,7 @@ pub fn extrude_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let ArcExtrudeCache {
         ab, vertices, arc, ..

@@ -5,14 +5,14 @@ extern crate plexus;
 
 use decorum::N64;
 use nalgebra::Point2;
-use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, Geometry, MeshGraph, VertexPosition};
+use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 use plexus::prelude::*;
 use plexus::primitive::Triangle;
 use smallvec::SmallVec;
 
 pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
 where
-    G: EdgeMidpoint<Midpoint = VertexPosition<G>> + Geometry,
+    G: EdgeMidpoint<Midpoint = VertexPosition<G>> + GraphGeometry,
     G::Vertex: AsPosition,
 {
     // Split each edge, stashing the vertex key and moving to the next arc.

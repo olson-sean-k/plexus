@@ -21,7 +21,7 @@ use glutin::{
 };
 use nalgebra::{Matrix4, Point3};
 use plexus::buffer::MeshBuffer3;
-use plexus::graph::{Geometry, MeshGraph};
+use plexus::graph::{GraphGeometry, MeshGraph};
 use plexus::prelude::*;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
@@ -31,7 +31,7 @@ use crate::renderer::{GlutinRenderer, Renderer};
 
 struct FaceColorGeometry;
 
-impl Geometry for FaceColorGeometry {
+impl GraphGeometry for FaceColorGeometry {
     type Vertex = Point3<f32>;
     type Arc = ();
     type Edge = ();

@@ -1,4 +1,4 @@
-use crate::graph::geometry::Geometry;
+use crate::graph::geometry::GraphGeometry;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, Storage};
 
@@ -81,7 +81,7 @@ impl<V, A, E, F> Core<V, A, E, F> {
 impl<V, A, E, F, G> AsStorage<VertexPayload<G>> for Core<V, A, E, F>
 where
     V: AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.vertices.as_storage()
@@ -91,7 +91,7 @@ where
 impl<V, A, E, F, G> AsStorage<ArcPayload<G>> for Core<V, A, E, F>
 where
     A: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.arcs.as_storage()
@@ -101,7 +101,7 @@ where
 impl<V, A, E, F, G> AsStorage<EdgePayload<G>> for Core<V, A, E, F>
 where
     E: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         self.edges.as_storage()
@@ -111,7 +111,7 @@ where
 impl<V, A, E, F, G> AsStorage<FacePayload<G>> for Core<V, A, E, F>
 where
     F: AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.faces.as_storage()
@@ -121,7 +121,7 @@ where
 impl<V, A, E, F, G> AsStorageMut<VertexPayload<G>> for Core<V, A, E, F>
 where
     V: AsStorageMut<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
         self.vertices.as_storage_mut()
@@ -131,7 +131,7 @@ where
 impl<V, A, E, F, G> AsStorageMut<ArcPayload<G>> for Core<V, A, E, F>
 where
     A: AsStorageMut<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
         self.arcs.as_storage_mut()
@@ -141,7 +141,7 @@ where
 impl<V, A, E, F, G> AsStorageMut<EdgePayload<G>> for Core<V, A, E, F>
 where
     E: AsStorageMut<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
         self.edges.as_storage_mut()
@@ -151,7 +151,7 @@ where
 impl<V, A, E, F, G> AsStorageMut<FacePayload<G>> for Core<V, A, E, F>
 where
     F: AsStorageMut<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
         self.faces.as_storage_mut()
@@ -161,7 +161,7 @@ where
 impl<V, A, E, F, G> Bind<VertexPayload<G>, V> for Core<(), A, E, F>
 where
     V: AsStorage<VertexPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
@@ -181,7 +181,7 @@ where
 impl<V, A, E, F, G> Bind<ArcPayload<G>, A> for Core<V, (), E, F>
 where
     A: AsStorage<ArcPayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
@@ -204,7 +204,7 @@ where
 impl<V, A, E, F, G> Bind<EdgePayload<G>, E> for Core<V, A, (), F>
 where
     E: AsStorage<EdgePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
@@ -227,7 +227,7 @@ where
 impl<V, A, E, F, G> Bind<FacePayload<G>, F> for Core<V, A, E, ()>
 where
     F: AsStorage<FacePayload<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 

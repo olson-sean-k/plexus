@@ -4,7 +4,7 @@ use cgmath::{self, Point2, Point3, Vector2, Vector3};
 use decorum::{Finite, NotNan, Ordered, Primitive};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::graph::{AsPosition, Geometry};
+use crate::graph::{AsPosition, GraphGeometry};
 use crate::FromGeometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
@@ -155,7 +155,7 @@ where
     }
 }
 
-impl<T> Geometry for Point2<T>
+impl<T> GraphGeometry for Point2<T>
 where
     T: Clone,
 {
@@ -165,7 +165,7 @@ where
     type Face = ();
 }
 
-impl<T> Geometry for Point3<T>
+impl<T> GraphGeometry for Point3<T>
 where
     T: Clone,
 {

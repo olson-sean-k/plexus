@@ -1,6 +1,6 @@
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
-use crate::graph::geometry::Geometry;
+use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::VertexPayload;
@@ -11,14 +11,14 @@ use crate::graph::GraphError;
 
 pub struct VertexMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     storage: Storage<VertexPayload<G>>,
 }
 
 impl<G> VertexMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.storage.insert(VertexPayload::new(geometry))
@@ -41,7 +41,7 @@ where
 
 impl<G> AsStorage<VertexPayload<G>> for VertexMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         &self.storage
@@ -50,7 +50,7 @@ where
 
 impl<G> Mutate for VertexMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Mutant = Core<Storage<VertexPayload<G>>, (), (), ()>;
     type Error = GraphError;
@@ -70,14 +70,14 @@ where
 
 pub struct VertexRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     cache: Vec<EdgeRemoveCache<G>>,
 }
 
 impl<G> VertexRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, a: VertexKey) -> Result<Self, GraphError>
     where
@@ -95,7 +95,7 @@ pub fn remove_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let VertexRemoveCache { cache } = cache;
     for cache in cache {

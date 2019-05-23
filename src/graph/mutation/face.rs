@@ -7,7 +7,7 @@ use theon::space::{EuclideanSpace, Vector};
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
-use crate::graph::geometry::{AsPosition, Geometry, VertexPosition};
+use crate::graph::geometry::{AsPosition, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
@@ -22,7 +22,7 @@ use crate::IteratorExt;
 
 pub struct FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     mutation: EdgeMutation<G>,
     storage: Storage<FacePayload<G>>,
@@ -30,7 +30,7 @@ where
 
 impl<G> FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn core(&self) -> RefCore<G> {
         Core::empty()
@@ -161,7 +161,7 @@ where
 
 impl<G> AsStorage<FacePayload<G>> for FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<FacePayload<G>> {
         &self.storage
@@ -170,7 +170,7 @@ where
 
 impl<G> Mutate for FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Mutant = OwnedCore<G>;
     type Error = GraphError;
@@ -203,7 +203,7 @@ where
 
 impl<G> Deref for FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Target = EdgeMutation<G>;
 
@@ -214,7 +214,7 @@ where
 
 impl<G> DerefMut for FaceMutation<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
@@ -223,7 +223,7 @@ where
 
 pub struct FaceInsertCache<'a, G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     vertices: &'a [VertexKey],
     connectivity: (
@@ -235,7 +235,7 @@ where
 
 impl<'a, G> FaceInsertCache<'a, G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(
         storage: M,
@@ -312,7 +312,7 @@ where
 
 pub struct FaceRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     abc: FaceKey,
     arcs: Vec<ArcKey>,
@@ -321,7 +321,7 @@ where
 
 impl<G> FaceRemoveCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     // TODO: Should this require consistency?
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
@@ -345,7 +345,7 @@ where
 
 pub struct FaceSplitCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     cache: FaceRemoveCache<G>,
     left: Vec<VertexKey>,
@@ -355,7 +355,7 @@ where
 
 impl<G> FaceSplitCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(
         storage: M,
@@ -415,7 +415,7 @@ where
 
 pub struct FacePokeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     vertices: Vec<VertexKey>,
     geometry: G::Vertex,
@@ -424,7 +424,7 @@ where
 
 impl<G> FacePokeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(storage: M, abc: FaceKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
@@ -450,7 +450,7 @@ where
 
 pub struct FaceBridgeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     source: SmallVec<[ArcKey; 4]>,
     destination: SmallVec<[ArcKey; 4]>,
@@ -459,7 +459,7 @@ where
 
 impl<G> FaceBridgeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(
         storage: M,
@@ -502,7 +502,7 @@ where
 
 pub struct FaceExtrudeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     sources: Vec<VertexKey>,
     destinations: Vec<G::Vertex>,
@@ -511,7 +511,7 @@ where
 }
 impl<G> FaceExtrudeCache<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn snapshot<M>(
         storage: M,
@@ -558,7 +558,7 @@ pub fn remove_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let FaceRemoveCache { abc, arcs, .. } = cache;
     mutation.as_mut().disconnect_face_interior(&arcs)?;
@@ -577,7 +577,7 @@ pub fn split_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let FaceSplitCache {
         cache,
@@ -603,7 +603,7 @@ pub fn poke_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let FacePokeCache {
         vertices,
@@ -627,7 +627,7 @@ pub fn bridge_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let FaceBridgeCache {
         source,
@@ -656,7 +656,7 @@ pub fn extrude_with_cache<M, N, G>(
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     let FaceExtrudeCache {
         sources,

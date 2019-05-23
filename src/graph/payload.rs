@@ -5,7 +5,7 @@
 //! `Deref` implementations in views. Most notably, user geometry is exposed
 //! via the `geometry` field.
 
-use crate::graph::geometry::Geometry;
+use crate::graph::geometry::GraphGeometry;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 use crate::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 
@@ -21,7 +21,7 @@ pub trait Payload {
 #[derive(Clone, Derivative)]
 pub struct VertexPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Vertex,
@@ -30,7 +30,7 @@ where
 
 impl<G> VertexPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
         VertexPayload {
@@ -42,9 +42,9 @@ where
 
 impl<G, H> FromInteriorGeometry<VertexPayload<H>> for VertexPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: FromGeometry<H::Vertex>,
-    H: Geometry,
+    H: GraphGeometry,
 {
     fn from_interior_geometry(vertex: VertexPayload<H>) -> Self {
         VertexPayload {
@@ -56,7 +56,7 @@ where
 
 impl<G> Payload for VertexPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Key = VertexKey;
     type Attribute = G::Vertex;
@@ -78,7 +78,7 @@ where
 #[derive(Clone, Derivative)]
 pub struct ArcPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Arc,
@@ -90,7 +90,7 @@ where
 
 impl<G> ArcPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
         ArcPayload {
@@ -105,9 +105,9 @@ where
 
 impl<G, H> FromInteriorGeometry<ArcPayload<H>> for ArcPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Arc: FromGeometry<H::Arc>,
-    H: Geometry,
+    H: GraphGeometry,
 {
     fn from_interior_geometry(arc: ArcPayload<H>) -> Self {
         ArcPayload {
@@ -122,7 +122,7 @@ where
 
 impl<G> Payload for ArcPayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Key = ArcKey;
     type Attribute = G::Arc;
@@ -135,7 +135,7 @@ where
 #[derive(Clone, Derivative)]
 pub struct EdgePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Edge,
@@ -144,7 +144,7 @@ where
 
 impl<G> EdgePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
         EdgePayload { geometry, arc }
@@ -153,9 +153,9 @@ where
 
 impl<G, H> FromInteriorGeometry<EdgePayload<H>> for EdgePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Edge: FromGeometry<H::Edge>,
-    H: Geometry,
+    H: GraphGeometry,
 {
     fn from_interior_geometry(edge: EdgePayload<H>) -> Self {
         EdgePayload {
@@ -167,7 +167,7 @@ where
 
 impl<G> Payload for EdgePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Key = EdgeKey;
     type Attribute = G::Edge;
@@ -180,7 +180,7 @@ where
 #[derive(Clone, Derivative)]
 pub struct FacePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Face,
@@ -189,7 +189,7 @@ where
 
 impl<G> FacePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
         FacePayload { geometry, arc }
@@ -198,9 +198,9 @@ where
 
 impl<G, H> FromInteriorGeometry<FacePayload<H>> for FacePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Face: FromGeometry<H::Face>,
-    H: Geometry,
+    H: GraphGeometry,
 {
     fn from_interior_geometry(face: FacePayload<H>) -> Self {
         FacePayload {
@@ -212,7 +212,7 @@ where
 
 impl<G> Payload for FacePayload<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Key = FaceKey;
     type Attribute = G::Face;

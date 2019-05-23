@@ -8,7 +8,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use crate::graph::core::OwnedCore;
-use crate::graph::geometry::Geometry;
+use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
@@ -63,7 +63,7 @@ pub struct Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     mutation: Option<(&'a mut M, N)>,
     phantom: PhantomData<G>,
@@ -73,7 +73,7 @@ impl<'a, M, N, G> Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     pub fn replace(container: <Self as Mutate>::Mutant, replacement: M) -> Self {
         let mutant = mem::replace(container, replacement);
@@ -103,7 +103,7 @@ where
 impl<'a, M, G> AsRef<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
 where
     M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_ref(&self) -> &Mutation<M, G> {
         &self.mutation.as_ref().unwrap().1
@@ -113,7 +113,7 @@ where
 impl<'a, M, G> AsMut<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
 where
     M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_mut(&mut self) -> &mut Mutation<M, G> {
         &mut self.mutation.as_mut().unwrap().1
@@ -124,7 +124,7 @@ impl<'a, M, N, G> Deref for Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Target = N;
 
@@ -137,7 +137,7 @@ impl<'a, M, N, G> DerefMut for Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation.as_mut().unwrap().1
@@ -148,7 +148,7 @@ impl<'a, M, N, G> Drop for Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     fn drop(&mut self) {
         self.drain_and_abort();
@@ -159,7 +159,7 @@ impl<'a, M, N, G> Mutate for Replace<'a, M, N, G>
 where
     M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     N: Mutate<Mutant = M>,
-    G: 'a + Geometry,
+    G: 'a + GraphGeometry,
 {
     type Mutant = &'a mut M;
     type Error = <N as Mutate>::Error;
@@ -184,7 +184,7 @@ where
 pub struct Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     mutation: FaceMutation<G>,
     phantom: PhantomData<M>,
@@ -193,7 +193,7 @@ where
 impl<M, G> Mutation<M, G>
 where
     M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     pub fn replace(container: &mut M, replacement: M) -> Replace<M, Self, G> {
         Replace::replace(container, replacement)
@@ -203,7 +203,7 @@ where
 impl<M, G> AsRef<Self> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_ref(&self) -> &Self {
         self
@@ -213,7 +213,7 @@ where
 impl<M, G> AsMut<Self> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
@@ -223,7 +223,7 @@ where
 impl<M, G> AsStorage<ArcPayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.mutation.as_arc_storage()
@@ -233,7 +233,7 @@ where
 impl<M, G> AsStorage<FacePayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.mutation.as_face_storage()
@@ -243,7 +243,7 @@ where
 impl<M, G> AsStorage<VertexPayload<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.mutation.as_vertex_storage()
@@ -253,7 +253,7 @@ where
 impl<M, G> Deref for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Target = FaceMutation<G>;
 
@@ -265,7 +265,7 @@ where
 impl<M, G> DerefMut for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mutation
@@ -275,7 +275,7 @@ where
 impl<M, G> Mutate for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     type Mutant = M;
     type Error = GraphError;
@@ -294,13 +294,13 @@ where
 
 pub trait Mutable<G>: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
 }
 
 impl<T, G> Mutable<G> for T
 where
     T: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: Geometry,
+    G: GraphGeometry,
 {
 }

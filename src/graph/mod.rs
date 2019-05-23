@@ -200,7 +200,7 @@ use crate::{
 };
 
 pub use crate::graph::geometry::{
-    ArcNormal, AsPosition, EdgeMidpoint, FaceCentroid, FaceNormal, Geometry, VertexCentroid,
+    ArcNormal, AsPosition, EdgeMidpoint, FaceCentroid, FaceNormal, GraphGeometry, VertexCentroid,
     VertexPosition,
 };
 pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -364,14 +364,14 @@ impl<K> From<usize> for Selector<K> {
 /// See the module documentation for more details.
 pub struct MeshGraph<G = (N64, N64, N64)>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     core: OwnedCore<G>,
 }
 
 impl<G> MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     /// Creates an empty `MeshGraph`.
     ///
@@ -778,7 +778,7 @@ where
 
 impl<G> AsStorage<VertexPayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<VertexPayload<G>> {
         self.core.as_vertex_storage()
@@ -787,7 +787,7 @@ where
 
 impl<G> AsStorage<ArcPayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<ArcPayload<G>> {
         self.core.as_arc_storage()
@@ -796,7 +796,7 @@ where
 
 impl<G> AsStorage<EdgePayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<EdgePayload<G>> {
         self.core.as_edge_storage()
@@ -805,7 +805,7 @@ where
 
 impl<G> AsStorage<FacePayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<FacePayload<G>> {
         self.core.as_face_storage()
@@ -814,7 +814,7 @@ where
 
 impl<G> AsStorageMut<VertexPayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
         self.core.as_vertex_storage_mut()
@@ -823,7 +823,7 @@ where
 
 impl<G> AsStorageMut<ArcPayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
         self.core.as_arc_storage_mut()
@@ -832,7 +832,7 @@ where
 
 impl<G> AsStorageMut<EdgePayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
         self.core.as_edge_storage_mut()
@@ -841,18 +841,18 @@ where
 
 impl<G> AsStorageMut<FacePayload<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
         self.core.as_face_storage_mut()
     }
 }
 
-impl<G> Consistent for MeshGraph<G> where G: Geometry {}
+impl<G> Consistent for MeshGraph<G> where G: GraphGeometry {}
 
 impl<G> Default for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn default() -> Self {
         // Because `default` is likely to be used in more generic contexts,
@@ -866,7 +866,7 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     H: Clone + IntoGeometry<G::Vertex>,
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(buffer: MeshBuffer<Flat<A, N>, H>) -> Self {
         MeshGraph::from_mesh_buffer(buffer).unwrap_or_else(|_| Self::default())
@@ -875,7 +875,7 @@ where
 
 impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn from(core: OwnedCore<G>) -> Self {
         MeshGraph { core }
@@ -884,12 +884,12 @@ where
 
 impl<G, H> FromInteriorGeometry<MeshGraph<H>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     G::Vertex: FromGeometry<H::Vertex>,
     G::Arc: FromGeometry<H::Arc>,
     G::Edge: FromGeometry<H::Edge>,
     G::Face: FromGeometry<H::Face>,
-    H: Geometry,
+    H: GraphGeometry,
 {
     fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
         let MeshGraph { core, .. } = graph;
@@ -908,7 +908,7 @@ where
 
 impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     P: Map<usize> + Polygonal,
     P::Output: IntoVertices + Polygonal<Vertex = usize>,
     P::Vertex: IntoGeometry<G::Vertex>,
@@ -944,7 +944,7 @@ where
 
 impl<G, P> FromIterator<P> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
     P: Polygonal,
     P::Vertex: Clone + Eq + Hash + IntoGeometry<G::Vertex>,
     Self: FromIndexer<P, P>,
@@ -961,7 +961,7 @@ impl<P, G, H> FromRawBuffers<P, H> for MeshGraph<G>
 where
     P: IntoVertices + Polygonal,
     P::Vertex: Integer + ToPrimitive + Unsigned,
-    G: Geometry,
+    G: GraphGeometry,
     H: IntoGeometry<G::Vertex>,
 {
     type Error = GraphError;
@@ -995,7 +995,7 @@ where
 impl<N, G, H> FromRawBuffersWithArity<N, H> for MeshGraph<G>
 where
     N: Integer + ToPrimitive + Unsigned,
-    G: Geometry,
+    G: GraphGeometry,
     H: IntoGeometry<G::Vertex>,
 {
     type Error = GraphError;
@@ -1076,7 +1076,7 @@ where
 
 impl<G> Into<OwnedCore<G>> for MeshGraph<G>
 where
-    G: Geometry,
+    G: GraphGeometry,
 {
     fn into(self) -> OwnedCore<G> {
         let MeshGraph { core, .. } = self;
@@ -1091,7 +1091,7 @@ mod tests {
     use num::Zero;
     use typenum::U3;
 
-    use crate::graph::{Geometry, GraphError, MeshGraph};
+    use crate::graph::{GraphError, GraphGeometry, MeshGraph};
     use crate::prelude::*;
     use crate::primitive::sphere::UvSphere;
 
@@ -1161,7 +1161,7 @@ mod tests {
     fn read_write_geometry_ref() {
         struct ValueGeometry;
 
-        impl Geometry for ValueGeometry {
+        impl GraphGeometry for ValueGeometry {
             type Vertex = Point3<f64>;
             type Arc = ();
             type Edge = ();
