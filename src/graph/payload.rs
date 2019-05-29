@@ -5,9 +5,9 @@
 //! `Deref` implementations in views. Most notably, user geometry is exposed
 //! via the `geometry` field.
 
+use crate::geometry::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
-use crate::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 
 pub trait Payload {
     type Key: OpaqueKey;

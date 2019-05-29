@@ -5,8 +5,9 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
+use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{AsPosition, FaceCentroid, FaceNormal, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{FaceCentroid, FaceNormal, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
@@ -554,7 +555,8 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point3;
-    /// use plexus::graph::{AsPosition, MeshGraph};
+    /// use plexus::geometry::AsPosition;
+    /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::Triangle;
     ///

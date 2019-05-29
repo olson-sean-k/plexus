@@ -5,7 +5,8 @@ extern crate plexus;
 
 use decorum::N64;
 use nalgebra::Point2;
-use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
+use plexus::geometry::AsPosition;
+use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 use plexus::prelude::*;
 use plexus::primitive::Triangle;
 use smallvec::SmallVec;

@@ -30,7 +30,7 @@ extern crate typenum;
 use std::fmt::Debug;
 
 pub mod buffer;
-mod geometry;
+pub mod geometry;
 pub mod graph;
 pub mod index;
 pub mod primitive;
@@ -63,6 +63,7 @@ pub mod prelude {
     //! `Selector` is often used when mutating `MeshGraph`s.
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
+    pub use crate::geometry::{FromGeometry as _, IntoGeometry as _};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, OpenIndexVertices as _};
     pub use crate::primitive::decompose::{
@@ -88,46 +89,6 @@ pub use typenum::{U2, U3, U4};
 pub enum Arity {
     Uniform(usize),
     NonUniform(usize, usize),
-}
-
-pub trait FromGeometry<T> {
-    fn from_geometry(other: T) -> Self;
-}
-
-impl<T> FromGeometry<T> for T {
-    fn from_geometry(other: T) -> Self {
-        other
-    }
-}
-
-pub trait IntoGeometry<T> {
-    fn into_geometry(self) -> T;
-}
-
-impl<T, U> IntoGeometry<U> for T
-where
-    U: FromGeometry<T>,
-{
-    fn into_geometry(self) -> U {
-        U::from_geometry(self)
-    }
-}
-
-pub trait FromInteriorGeometry<T> {
-    fn from_interior_geometry(other: T) -> Self;
-}
-
-pub trait IntoInteriorGeometry<T> {
-    fn into_interior_geometry(self) -> T;
-}
-
-impl<T, U> IntoInteriorGeometry<U> for T
-where
-    U: FromInteriorGeometry<T>,
-{
-    fn into_interior_geometry(self) -> U {
-        U::from_interior_geometry(self)
-    }
 }
 
 pub trait FromRawBuffers<N, G>: Sized {

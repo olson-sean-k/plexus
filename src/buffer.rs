@@ -93,13 +93,14 @@ use std::iter::FromIterator;
 use theon::ops::Map;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
+use crate::geometry::IntoGeometry;
 use crate::index::{
     ClosedIndexVertices, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer,
     Indexer, Push, Structured, Structured3, Structured4, StructuredN,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygonal, Quad, Topological, Triangle};
-use crate::{Arity, FromRawBuffers, IntoGeometry};
+use crate::{Arity, FromRawBuffers};
 
 #[derive(Debug, Fail)]
 pub enum BufferError {

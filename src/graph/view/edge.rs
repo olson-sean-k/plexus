@@ -6,8 +6,9 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
+use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{ArcNormal, AsPosition, EdgeMidpoint, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{ArcNormal, EdgeMidpoint, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
@@ -700,10 +701,10 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point2;
+    /// use plexus::geometry::IntoGeometry;
     /// use plexus::graph::{GraphGeometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::Quad;
-    /// use plexus::IntoGeometry;
     ///
     /// # fn main() {
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>
@@ -1453,11 +1454,11 @@ mod tests {
     use decorum::N64;
     use nalgebra::{Point2, Point3};
 
+    use crate::geometry::IntoGeometry;
     use crate::graph::{ArcKey, GraphGeometry, MeshGraph, VertexView};
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
-    use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where

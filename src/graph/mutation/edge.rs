@@ -1,9 +1,10 @@
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 
+use crate::geometry::AsPosition;
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
-use crate::graph::geometry::{AsPosition, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};

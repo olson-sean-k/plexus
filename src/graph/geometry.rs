@@ -29,7 +29,8 @@
 //! # extern crate plexus;
 //! # extern crate smallvec;
 //! #
-//! use plexus::graph::{AsPosition, EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
+//! use plexus::geometry::AsPosition;
+//! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 //! use plexus::prelude::*;
 //! use smallvec::SmallVec;
 //!
@@ -62,6 +63,7 @@
 use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
 
+use crate::geometry::AsPosition;
 use crate::graph::borrow::Reborrow;
 use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
@@ -92,10 +94,10 @@ pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Targe
 /// use decorum::N64;
 /// use nalgebra::{Point3, Vector4};
 /// use num::Zero;
-/// use plexus::graph::{AsPosition, GraphGeometry, MeshGraph};
+/// use plexus::geometry::{AsPosition, IntoGeometry};
+/// use plexus::graph::{GraphGeometry, MeshGraph};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::IntoGeometry;
 ///
 /// // Vertex-only geometry with position and color data.
 /// #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -156,19 +158,6 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
-}
-
-/// Exposes positional data in vertex geometry.
-///
-/// To enable geometric features, this trait must be implemented for the type
-/// representing vertex data. Additionally, geometric operations should be
-/// implemented for the `Target` type. See the
-/// [theon](https://crates.io/crates/theon) crate.
-pub trait AsPosition {
-    type Target;
-
-    fn as_position(&self) -> &Self::Target;
-    fn as_position_mut(&mut self) -> &mut Self::Target;
 }
 
 pub trait FaceNormal: GraphGeometry {

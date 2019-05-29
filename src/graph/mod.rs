@@ -184,6 +184,7 @@ use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
+use crate::geometry::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
@@ -194,13 +195,10 @@ use crate::index::{
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygonal, Quad};
-use crate::{
-    Arity, FromGeometry, FromInteriorGeometry, FromRawBuffers, FromRawBuffersWithArity,
-    IntoGeometry,
-};
+use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use crate::graph::geometry::{
-    ArcNormal, AsPosition, EdgeMidpoint, FaceCentroid, FaceNormal, GraphGeometry, VertexCentroid,
+    ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, GraphGeometry, VertexCentroid,
     VertexPosition,
 };
 pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
