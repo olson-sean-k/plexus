@@ -55,12 +55,17 @@ fool = "0.0.1"
 itertools = "^0.8.0"
 num = "^0.2.0"
 smallvec = "^0.6.9"
-theon = { git = "https://github.com/olson-sean-k/theon.git", rev = "20b465ed476b2a4a1a64cef679b03625574c4ac6" }
 typenum = "^1.10.0"
 
 cgmath = { version = "^0.17.0", optional = true }
 mint = { version = "^0.5.0", optional = true }
 nalgebra = { version = "^0.18.0", optional = true }
+
+[dependencies.theon]
+git = "https://github.com/olson-sean-k/theon.git"
+rev = "ab0b6dfe14ddb610ef04cacc04dd7c72f0e0e98a"
+default-features = false
+features = ["array"]
 
 [dev-dependencies]
 gfx = "0.18.0"
