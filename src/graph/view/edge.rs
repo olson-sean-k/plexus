@@ -552,6 +552,23 @@ where
     }
 }
 
+impl<M, G> ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>
+        + AsStorage<FacePayload<G>>
+        + AsStorage<VertexPayload<G>>
+        + Consistent,
+    G: ArcNormal,
+{
+    pub fn normal(&self) -> G::Normal
+    where
+        G: GraphGeometry,
+    {
+        G::normal(self.interior_reborrow()).expect_consistent()
+    }
+}
+
 impl<'a, M, G> ArcView<&'a mut M, G>
 where
     M: AsStorage<ArcPayload<G>>
@@ -849,20 +866,6 @@ where
     }
 }
 
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
-    G: GraphGeometry + ArcNormal,
-{
-    pub fn normal(&self) -> G::Normal {
-        G::normal(self.interior_reborrow()).expect_consistent()
-    }
-}
-
 impl<M, G> Clone for ArcView<M, G>
 where
     M: Reborrow,
@@ -1119,9 +1122,12 @@ where
         + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
         + Consistent,
-    G: EdgeMidpoint + GraphGeometry,
+    G: GraphGeometry,
 {
-    pub fn midpoint(&self) -> G::Midpoint {
+    pub fn midpoint(&self) -> G::Midpoint
+    where
+        G: EdgeMidpoint,
+    {
         G::midpoint(self.interior_reborrow()).expect_consistent()
     }
 }

@@ -371,9 +371,12 @@ impl<M, G> VertexView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: GraphGeometry + VertexCentroid,
+    G: GraphGeometry,
 {
-    pub fn centroid(&self) -> G::Centroid {
+    pub fn centroid(&self) -> G::Centroid
+    where
+        G: VertexCentroid,
+    {
         G::centroid(self.interior_reborrow()).expect_consistent()
     }
 }
@@ -464,6 +467,16 @@ where
 {
     pub fn key(&self) -> VertexKey {
         self.inner.key()
+    }
+}
+
+impl<'a, G> OrphanVertexView<'a, G>
+where
+    G: 'a + GraphGeometry,
+    G::Vertex: AsPosition,
+{
+    pub fn position(&self) -> &VertexPosition<G> {
+        self.inner.geometry.as_position()
     }
 }
 

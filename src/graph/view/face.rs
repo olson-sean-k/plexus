@@ -3,11 +3,13 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use theon::space::{EuclideanSpace, Scalar, Vector};
+use theon::query::{Intersection, Line, Plane};
+use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
+use typenum::U3;
 
 use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{FaceCentroid, FaceNormal, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
@@ -245,6 +247,27 @@ where
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         self.reachable_vertices()
     }
+
+    pub fn centroid(&self) -> G::Centroid
+    where
+        G: FaceCentroid,
+    {
+        G::centroid(self.interior_reborrow()).expect_consistent()
+    }
+
+    pub fn normal(&self) -> G::Normal
+    where
+        G: FaceNormal,
+    {
+        G::normal(self.interior_reborrow()).expect_consistent()
+    }
+
+    pub fn plane(&self) -> Result<G::Plane, GraphError>
+    where
+        G: FacePlane,
+    {
+        G::plane(self.interior_reborrow())
+    }
 }
 
 /// Reachable API.
@@ -336,6 +359,39 @@ where
     /// Gets an iterator of orphan views over the vertices that form the face.
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         self.reachable_orphan_vertices()
+    }
+
+    /// Flattens the face by translating the positions of all vertices into a
+    /// best-fit plane.
+    ///
+    /// Returns an error if a best-fit plane could not be computed or positions
+    /// could not be translated into the plane.
+    pub fn flatten(&mut self) -> Result<(), GraphError>
+    where
+        G: FacePlane<Plane = Plane<VertexPosition<G>>>,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
+    {
+        if self.arity() == 3 {
+            return Ok(());
+        }
+        let plane = self.plane()?;
+        for mut vertex in self.orphan_vertices() {
+            let position = vertex.position().clone();
+            let line = Line::<VertexPosition<G>> {
+                origin: position,
+                direction: plane.normal,
+            };
+            // TODO: If the intersection yields no result, then this may fail
+            //       after mutating positions in the graph. Consider using
+            //       read/write stages to avoid partial completion.
+            let distance = plane
+                .intersection(&line)
+                .ok_or_else(|| GraphError::Geometry)?;
+            let translation = line.direction.get().clone() * distance;
+            *vertex.geometry.as_position_mut() = position + translation;
+        }
+        Ok(())
     }
 }
 
@@ -687,34 +743,6 @@ where
                 .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
         })()
         .expect_consistent()
-    }
-}
-
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
-    G: FaceCentroid + GraphGeometry,
-{
-    pub fn centroid(&self) -> G::Centroid {
-        G::centroid(self.interior_reborrow()).expect_consistent()
-    }
-}
-
-impl<M, G> FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
-    G: FaceNormal + GraphGeometry,
-{
-    pub fn normal(&self) -> G::Normal {
-        G::normal(self.interior_reborrow()).expect_consistent()
     }
 }
 

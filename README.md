@@ -71,16 +71,17 @@ merging and splitting.
 
 ## Geometric Traits
 
-Plexus provides optional traits to support vertex-based spatial operations. For
-graphs in particular, Plexus provides traits to expose positional data in
-vertices. The [`theon`](https://crates.io/crates/theon) crate is used to
-abstract Euclidean spaces and if positional data supports these traits, then
-geometric operations become available.
+Plexus provides optional traits to support vertex-based spatial operations by
+exposing positional data in vertices. The
+[`theon`](https://crates.io/crates/theon) crate is used to abstract Euclidean
+spaces and if positional data supports these traits, then geometric operations
+become available.
 
 ```rust
 use decorum::N64;
 use nalgebra::{Point3, Vector3};
-use plexus::graph::{AsPosition, GraphGeometry};
+use plexus::geometry::AsPosition;
+use plexus::graph::GraphGeometry;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Vertex {
@@ -112,7 +113,7 @@ By implementing `AsPosition` to expose positional data from vertices in a
 graph, spatial operations like computation of normals, smoothing, and
 topological mutations like poking faces become available. `MeshGraph` also
 provides purely topological operations that allow user code to specify
-arbitrary geometries.
+arbitrary geometries without requiring these traits.
 
 Geometric traits are optionally implemented for types in the
 [`cgmath`](https://crates.io/crates/cgmath),
@@ -120,11 +121,11 @@ Geometric traits are optionally implemented for types in the
 [`nalgebra`](https://crates.io/crates/nalgebra) crates by enabling Cargo
 features.
 
-| Feature             | Default | Crate      | Support  |
-|---------------------|---------|------------|----------|
-| `geometry-cgmath`   | No      | `cgmath`   | Complete |
-| `geometry-mint`     | No      | `mint`     | Partial  |
-| `geometry-nalgebra` | Yes     | `nalgebra` | Complete |
+| Feature             | Default | Crate      |
+|---------------------|---------|------------|
+| `geometry-cgmath`   | No      | `cgmath`   |
+| `geometry-mint`     | No      | `mint`     |
+| `geometry-nalgebra` | Yes     | `nalgebra` |
 
 If using one of the supported crates, it is highly recommended to enable the
 corresponding feature.

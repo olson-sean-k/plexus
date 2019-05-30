@@ -63,7 +63,7 @@ nalgebra = { version = "^0.18.0", optional = true }
 
 [dependencies.theon]
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "ab0b6dfe14ddb610ef04cacc04dd7c72f0e0e98a"
+rev = "85465ecb902aaa1a74796f3260e974a37c70e893"
 default-features = false
 features = ["array"]
 

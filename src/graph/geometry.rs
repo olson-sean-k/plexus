@@ -61,6 +61,7 @@
 // TODO: Integrate this module documentation into the `graph` module.
 
 use theon::ops::{Cross, Interpolate, Project};
+use theon::query::Plane;
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
 
 use crate::geometry::AsPosition;
@@ -272,6 +273,17 @@ where
     }
 }
 
+pub trait FacePlane: GraphGeometry {
+    type Plane;
+
+    fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
+}
+
 pub trait EdgeMidpoint: GraphGeometry {
     type Midpoint;
 
@@ -365,5 +377,43 @@ where
         let cb = c - b;
         let p = b + ab.project(cb);
         (p - c).normalize().ok_or_else(|| GraphError::Geometry)
+    }
+}
+
+// TODO: The `array` feature only supports Linux. See
+//       https://github.com/olson-sean-k/theon/issues/1
+#[cfg(target_os = "linux")]
+mod array {
+    use super::*;
+
+    use smallvec::SmallVec;
+    use theon::array::ArrayScalar;
+    use theon::space::{FiniteDimensional, Scalar};
+    use theon::{FromItems, IntoItems};
+    use typenum::U3; // TODO: Maybe theon should re-export these types?
+
+    impl<G> FacePlane for G
+    where
+        G: GraphGeometry,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
+        Scalar<VertexPosition<G>>: ArrayScalar,
+        Vector<VertexPosition<G>>: FromItems + IntoItems,
+    {
+        type Plane = Plane<VertexPosition<G>>;
+
+        fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
+        where
+            M: Reborrow,
+            M::Target: AsStorage<ArcPayload<Self>>
+                + AsStorage<FacePayload<Self>>
+                + AsStorage<VertexPayload<Self>>,
+        {
+            let points = face
+                .reachable_vertices()
+                .map(|vertex| vertex.geometry.as_position().clone())
+                .collect::<SmallVec<[_; 4]>>();
+            Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
+        }
     }
 }
