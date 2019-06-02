@@ -198,7 +198,7 @@ use crate::primitive::{ConstantArity, Polygonal, Quad};
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use crate::graph::geometry::{
-    ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, GraphGeometry, VertexCentroid,
+    ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexPosition,
 };
 pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};

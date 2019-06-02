@@ -61,7 +61,6 @@
 // TODO: Integrate this module documentation into the `graph` module.
 
 use theon::ops::{Cross, Interpolate, Project};
-use theon::query::Plane;
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
 
 use crate::geometry::AsPosition;
@@ -388,6 +387,7 @@ mod array {
 
     use smallvec::SmallVec;
     use theon::array::ArrayScalar;
+    use theon::query::Plane;
     use theon::space::{FiniteDimensional, Scalar};
     use theon::{FromItems, IntoItems};
     use typenum::U3; // TODO: Maybe theon should re-export these types?
