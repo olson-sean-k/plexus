@@ -157,7 +157,7 @@ where
 
 impl<T> GraphGeometry for Point2<T>
 where
-    T: Clone,
+    Self: Copy,
 {
     type Vertex = Self;
     type Arc = ();
@@ -167,7 +167,7 @@ where
 
 impl<T> GraphGeometry for Point3<T>
 where
-    T: Clone,
+    Self: Copy,
 {
     type Vertex = Self;
     type Arc = ();

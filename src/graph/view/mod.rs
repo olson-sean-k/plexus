@@ -8,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::core::Bind;
-use crate::graph::payload::Payload;
+use crate::graph::storage::payload::Payload;
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::GraphError;
 

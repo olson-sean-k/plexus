@@ -10,9 +10,9 @@ use std::ops::{Deref, DerefMut};
 use crate::graph::core::OwnedCore;
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::face::FaceMutation;
-use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{AsStorage, Storage};
+use crate::graph::storage::payload::{ArcPayload, FacePayload, VertexPayload};
+use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::GraphError;
 
 /// Marker trait for graph representations that promise to be in a consistent
@@ -225,7 +225,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
         self.mutation.as_arc_storage()
     }
 }
@@ -235,7 +235,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
         self.mutation.as_face_storage()
     }
 }
@@ -245,7 +245,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
         self.mutation.as_vertex_storage()
     }
 }

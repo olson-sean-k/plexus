@@ -65,7 +65,7 @@ use theon::space::{EuclideanSpace, InnerSpace, Vector};
 
 use crate::geometry::AsPosition;
 use crate::graph::borrow::Reborrow;
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, EdgeView};
 use crate::graph::view::face::FaceView;
@@ -74,6 +74,8 @@ use crate::graph::GraphError;
 
 pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Target;
 
+// TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
+//       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
 /// Graph geometry.
 ///
 /// Specifies the types used to represent geometry for vertices, arcs, edges,
@@ -137,10 +139,10 @@ pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Targe
 /// # }
 /// ```
 pub trait GraphGeometry: Sized {
-    type Vertex: Clone;
-    type Arc: Clone + Default;
-    type Edge: Clone + Default;
-    type Face: Clone + Default;
+    type Vertex: Copy;
+    type Arc: Copy + Default;
+    type Edge: Copy + Default;
+    type Face: Copy + Default;
 }
 
 impl GraphGeometry for () {
@@ -152,7 +154,7 @@ impl GraphGeometry for () {
 
 impl<T> GraphGeometry for (T, T, T)
 where
-    T: Clone,
+    T: Copy,
 {
     type Vertex = Self;
     type Arc = ();

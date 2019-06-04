@@ -8,9 +8,10 @@ use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{ArcKey, AsStorage, EdgeKey, FaceKey, Storage, VertexKey};
+use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
+use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
@@ -24,7 +25,7 @@ where
     G: GraphGeometry,
 {
     mutation: VertexMutation<G>,
-    storage: (Storage<ArcPayload<G>>, Storage<EdgePayload<G>>),
+    storage: (StorageProxy<ArcPayload<G>>, StorageProxy<EdgePayload<G>>),
 }
 
 impl<G> EdgeMutation<G>
@@ -54,10 +55,7 @@ where
                 (arc.edge, ab)
             }
             else {
-                mutation
-                    .storage
-                    .0
-                    .insert_with_key(&ab, ArcPayload::new(f()));
+                mutation.storage.0.insert_with_key(ab, ArcPayload::new(f()));
                 let _ = mutation.connect_outgoing_arc(a, ab);
                 (None, ab)
             }
@@ -137,7 +135,7 @@ impl<G> AsStorage<ArcPayload<G>> for EdgeMutation<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
         &self.storage.0
     }
 }
@@ -146,7 +144,7 @@ impl<G> AsStorage<EdgePayload<G>> for EdgeMutation<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<EdgePayload<G>> {
         &self.storage.1
     }
 }
@@ -155,8 +153,12 @@ impl<G> Mutate for EdgeMutation<G>
 where
     G: GraphGeometry,
 {
-    type Mutant =
-        Core<Storage<VertexPayload<G>>, Storage<ArcPayload<G>>, Storage<EdgePayload<G>>, ()>;
+    type Mutant = Core<
+        StorageProxy<VertexPayload<G>>,
+        StorageProxy<ArcPayload<G>>,
+        StorageProxy<EdgePayload<G>>,
+        (),
+    >;
     type Error = GraphError;
 
     fn mutate(mutant: Self::Mutant) -> Self {

@@ -1,20 +1,22 @@
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload};
-use crate::graph::storage::{AsStorage, AsStorageMut, Storage};
+use crate::graph::storage::payload::{
+    ArcPayload, EdgePayload, FacePayload, Payload, VertexPayload,
+};
+use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
 /// A complete core that owns all of its storage.
 pub type OwnedCore<G> = Core<
-    Storage<VertexPayload<G>>,
-    Storage<ArcPayload<G>>,
-    Storage<EdgePayload<G>>,
-    Storage<FacePayload<G>>,
+    StorageProxy<VertexPayload<G>>,
+    StorageProxy<ArcPayload<G>>,
+    StorageProxy<EdgePayload<G>>,
+    StorageProxy<FacePayload<G>>,
 >;
 /// A complete core with immutable references to all of its storage.
 pub type RefCore<'a, G> = Core<
-    &'a Storage<VertexPayload<G>>,
-    &'a Storage<ArcPayload<G>>,
-    &'a Storage<EdgePayload<G>>,
-    &'a Storage<FacePayload<G>>,
+    &'a StorageProxy<VertexPayload<G>>,
+    &'a StorageProxy<ArcPayload<G>>,
+    &'a StorageProxy<EdgePayload<G>>,
+    &'a StorageProxy<FacePayload<G>>,
 >;
 
 pub trait Bind<T, M>
@@ -83,7 +85,7 @@ where
     V: AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
         self.vertices.as_storage()
     }
 }
@@ -93,7 +95,7 @@ where
     A: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
         self.arcs.as_storage()
     }
 }
@@ -103,7 +105,7 @@ where
     E: AsStorage<EdgePayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<EdgePayload<G>> {
         self.edges.as_storage()
     }
 }
@@ -113,7 +115,7 @@ where
     F: AsStorage<FacePayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
         self.faces.as_storage()
     }
 }
@@ -123,7 +125,7 @@ where
     V: AsStorageMut<VertexPayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<VertexPayload<G>> {
         self.vertices.as_storage_mut()
     }
 }
@@ -133,7 +135,7 @@ where
     A: AsStorageMut<ArcPayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<ArcPayload<G>> {
         self.arcs.as_storage_mut()
     }
 }
@@ -143,7 +145,7 @@ where
     E: AsStorageMut<EdgePayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<EdgePayload<G>> {
         self.edges.as_storage_mut()
     }
 }
@@ -153,7 +155,7 @@ where
     F: AsStorageMut<FacePayload<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<FacePayload<G>> {
         self.faces.as_storage_mut()
     }
 }

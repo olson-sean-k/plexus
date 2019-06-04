@@ -1,35 +1,36 @@
-//! Storage for topological data in a mesh.
+//! Storage for topological and payload data in a graph.
+//!
+//! Graphs abstract their storage behind `StorageProxy` and the `AsStorage`
+//! trait. This allows internal APIs to manipulate graphs represented using
+//! different types (e.g., `Core`) and to operate on individual storage
+//! instances. In particular, the `mutation` module's API takes advantage of
+//! this to decompose, mutate, and recompose graphs.
+//!
+//! `StorageProxy` supports different container types. Slot maps are used for
+//! most data, but hash maps are used for arcs. This allows for $O(1)$ queries
+//! for arcs, which is a core design assumption of `MeshGraph`.
 
 use fnv::FnvBuildHasher;
+use slotmap::hop::HopSlotMap;
+use slotmap::Key as SlotKey;
 use std::collections::HashMap;
-use std::hash::Hash;
+use std::hash::{BuildHasher, Hash};
 
-use crate::graph::payload::Payload;
+use crate::graph::storage::key::{InnerKey, OpaqueKey};
+use crate::graph::storage::payload::Payload;
 
 pub mod alias;
+pub mod key;
+pub mod payload;
 
-pub trait FromInnerKey<K> {
-    fn from_inner_key(key: K) -> Self;
-}
-
-pub trait IntoOpaqueKey<K> {
-    fn into_opaque_key(self) -> K;
-}
-
-impl<K, I> IntoOpaqueKey<I> for K
-where
-    I: FromInnerKey<K>,
-{
-    fn into_opaque_key(self) -> I {
-        I::from_inner_key(self)
-    }
-}
+pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Payload>::Key>, T>;
+pub type HashStorage<T> = HashMap<InnerKey<<T as Payload>::Key>, T, FnvBuildHasher>;
 
 pub trait AsStorage<T>
 where
     T: Payload,
 {
-    fn as_storage(&self) -> &Storage<T>;
+    fn as_storage(&self) -> &StorageProxy<T>;
 }
 
 impl<'a, T, U> AsStorage<T> for &'a U
@@ -37,7 +38,7 @@ where
     T: Payload,
     U: AsStorage<T>,
 {
-    fn as_storage(&self) -> &Storage<T> {
+    fn as_storage(&self) -> &StorageProxy<T> {
         <U as AsStorage<T>>::as_storage(self)
     }
 }
@@ -47,7 +48,7 @@ where
     T: Payload,
     U: AsStorage<T>,
 {
-    fn as_storage(&self) -> &Storage<T> {
+    fn as_storage(&self) -> &StorageProxy<T> {
         <U as AsStorage<T>>::as_storage(self)
     }
 }
@@ -56,7 +57,7 @@ pub trait AsStorageMut<T>
 where
     T: Payload,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<T>;
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<T>;
 }
 
 impl<'a, T, U> AsStorageMut<T> for &'a mut U
@@ -64,248 +65,268 @@ where
     T: Payload,
     U: AsStorageMut<T>,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<T> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<T> {
         <U as AsStorageMut<T>>::as_storage_mut(self)
     }
 }
 
-pub trait KeySequence: Copy + Default + Sized {
-    fn next_key(self) -> Self;
-}
-
-impl KeySequence for () {
-    fn next_key(self) -> Self {}
-}
-
-impl KeySequence for u64 {
-    fn next_key(self) -> Self {
-        self + 1
-    }
-}
-
-pub trait OpaqueKey: Copy + Eq + Hash + Sized {
-    type Sequence: KeySequence;
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct VertexKey(u64);
-
-impl FromInnerKey<u64> for VertexKey {
-    fn from_inner_key(inner: u64) -> Self {
-        VertexKey(inner)
-    }
-}
-
-impl KeySequence for VertexKey {
-    fn next_key(self) -> Self {
-        let VertexKey(inner) = self;
-        VertexKey(inner.next_key())
-    }
-}
-
-impl OpaqueKey for VertexKey {
-    type Sequence = Self;
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct ArcKey(VertexKey, VertexKey);
-
-impl ArcKey {
-    pub(in crate::graph) fn opposite(self) -> ArcKey {
-        let (a, b) = self.into();
-        (b, a).into()
-    }
-}
-
-impl From<(VertexKey, VertexKey)> for ArcKey {
-    fn from(key: (VertexKey, VertexKey)) -> Self {
-        ArcKey(key.0, key.1)
-    }
-}
-
-impl Into<(VertexKey, VertexKey)> for ArcKey {
-    fn into(self) -> (VertexKey, VertexKey) {
-        (self.0, self.1)
-    }
-}
-
-impl OpaqueKey for ArcKey {
-    type Sequence = ();
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct EdgeKey(u64);
-
-impl FromInnerKey<u64> for EdgeKey {
-    fn from_inner_key(inner: u64) -> Self {
-        EdgeKey(inner)
-    }
-}
-
-impl KeySequence for EdgeKey {
-    fn next_key(self) -> Self {
-        let EdgeKey(inner) = self;
-        EdgeKey(inner.next_key())
-    }
-}
-
-impl OpaqueKey for EdgeKey {
-    type Sequence = Self;
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct FaceKey(u64);
-
-impl FromInnerKey<u64> for FaceKey {
-    fn from_inner_key(inner: u64) -> Self {
-        FaceKey(inner)
-    }
-}
-
-impl KeySequence for FaceKey {
-    fn next_key(self) -> Self {
-        let FaceKey(inner) = self;
-        FaceKey(inner.next_key())
-    }
-}
-
-impl OpaqueKey for FaceKey {
-    type Sequence = Self;
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum Key {
-    Vertex(VertexKey),
-    Edge(ArcKey),
-    Face(FaceKey),
-}
-
-impl From<VertexKey> for Key {
-    fn from(key: VertexKey) -> Self {
-        Key::Vertex(key)
-    }
-}
-
-impl From<ArcKey> for Key {
-    fn from(key: ArcKey) -> Self {
-        Key::Edge(key)
-    }
-}
-
-impl From<FaceKey> for Key {
-    fn from(key: FaceKey) -> Self {
-        Key::Face(key)
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct Storage<T>
+// TODO: Avoid boxing when GATs are stabilized. See
+//       https://github.com/rust-lang/rust/issues/44265
+pub trait Sequence<T>
 where
     T: Payload,
 {
-    sequence: <<T as Payload>::Key as OpaqueKey>::Sequence,
-    hash: HashMap<T::Key, T, FnvBuildHasher>,
+    fn len(&self) -> usize;
+
+    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a>;
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a>;
+
+    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a>;
 }
 
-impl<T> Storage<T>
+pub trait Get<T>
+where
+    T: Payload,
+{
+    fn get(&self, key: &T::Key) -> Option<&T>;
+
+    fn get_mut(&mut self, key: &T::Key) -> Option<&mut T>;
+}
+
+pub trait Remove<T>
+where
+    T: Payload,
+{
+    fn remove(&mut self, key: &T::Key) -> Option<T>;
+}
+
+pub trait Insert<T>
+where
+    T: Payload,
+{
+    fn insert(&mut self, payload: T) -> T::Key;
+}
+
+pub trait InsertWithKey<T>
+where
+    T: Payload,
+{
+    fn insert_with_key(&mut self, key: T::Key, payload: T) -> Option<T>;
+}
+
+impl<T, H> Get<T> for HashMap<InnerKey<T::Key>, T, H>
+where
+    T: Payload,
+    H: BuildHasher + Default,
+    InnerKey<T::Key>: Eq + Hash,
+{
+    fn get(&self, key: &T::Key) -> Option<&T> {
+        self.get(&key.into_inner())
+    }
+
+    fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
+        self.get_mut(&key.into_inner())
+    }
+}
+
+impl<T, H> Sequence<T> for HashMap<InnerKey<T::Key>, T, H>
+where
+    T: Payload,
+    H: BuildHasher + Default,
+    InnerKey<T::Key>: Eq + Hash,
+{
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|(key, payload)| (T::Key::from_inner(*key), payload)),
+        )
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a> {
+        Box::new(
+            self.iter_mut()
+                .map(|(key, payload)| (T::Key::from_inner(*key), payload)),
+        )
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a> {
+        Box::new(self.keys().map(|key| T::Key::from_inner(*key)))
+    }
+}
+
+impl<T, H> Remove<T> for HashMap<InnerKey<T::Key>, T, H>
+where
+    T: Payload,
+    H: BuildHasher + Default,
+    InnerKey<T::Key>: Eq + Hash,
+{
+    fn remove(&mut self, key: &T::Key) -> Option<T> {
+        self.remove(&key.into_inner())
+    }
+}
+
+impl<T, H> InsertWithKey<T> for HashMap<InnerKey<T::Key>, T, H>
+where
+    T: Payload,
+    H: BuildHasher + Default,
+    InnerKey<T::Key>: Eq + Hash,
+{
+    fn insert_with_key(&mut self, key: T::Key, payload: T) -> Option<T> {
+        self.insert(key.into_inner(), payload)
+    }
+}
+
+impl<T> Get<T> for HopSlotMap<InnerKey<T::Key>, T>
+where
+    T: Payload,
+    InnerKey<T::Key>: SlotKey,
+{
+    fn get(&self, key: &T::Key) -> Option<&T> {
+        self.get(key.into_inner())
+    }
+
+    fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
+        self.get_mut(key.into_inner())
+    }
+}
+
+impl<T> Sequence<T> for HopSlotMap<InnerKey<T::Key>, T>
+where
+    T: Payload,
+    InnerKey<T::Key>: SlotKey,
+{
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|(key, payload)| (T::Key::from_inner(key), payload)),
+        )
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a> {
+        Box::new(
+            self.iter_mut()
+                .map(|(key, payload)| (T::Key::from_inner(key), payload)),
+        )
+    }
+
+    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a> {
+        Box::new(self.keys().map(|key| T::Key::from_inner(key)))
+    }
+}
+
+impl<T> Remove<T> for HopSlotMap<InnerKey<T::Key>, T>
+where
+    T: Payload,
+    InnerKey<T::Key>: SlotKey,
+{
+    fn remove(&mut self, key: &T::Key) -> Option<T> {
+        self.remove(key.into_inner())
+    }
+}
+
+impl<T> Insert<T> for HopSlotMap<InnerKey<T::Key>, T>
+where
+    T: Payload,
+    InnerKey<T::Key>: SlotKey,
+{
+    fn insert(&mut self, payload: T) -> T::Key {
+        T::Key::from_inner(self.insert(payload))
+    }
+}
+
+// TODO: The `FromInteriorGeometry` trait is far less useful without being able
+//       to map over storage. Implement mapping or consider removing
+//       `FromInteriorGeometry` and its related traits.
+#[derive(Clone, Default)]
+pub struct StorageProxy<T>
+where
+    T: Payload,
+{
+    inner: T::Storage,
+}
+
+impl<T> StorageProxy<T>
 where
     T: Payload,
 {
     pub fn new() -> Self {
-        Storage {
-            sequence: Default::default(),
-            hash: HashMap::default(),
-        }
-    }
-
-    // This function isn't strictly necessary, because `HashMap::new` begins
-    // with a capacity of zero and does not allocate (and is used in
-    // `Storage::new`). However, `Storage` abstracts its underlying data
-    // structure, so the notion of an unallocated and empty container is
-    // explicit.
-    pub fn empty() -> Self {
-        Self::new()
-    }
-
-    pub fn map_values_into<U, F>(self, mut f: F) -> Storage<U>
-    where
-        U: Payload<Key = T::Key>,
-        F: FnMut(T) -> U,
-    {
-        let mut hash = HashMap::default();
-        for (key, value) in self.hash {
-            hash.insert(key, f(value));
-        }
-        Storage {
-            sequence: self.sequence,
-            hash,
+        StorageProxy {
+            inner: Default::default(),
         }
     }
 
     pub fn len(&self) -> usize {
-        self.hash.len()
+        self.inner.len()
     }
 
-    pub fn iter(&self) -> impl Clone + Iterator<Item = (&T::Key, &T)> {
-        self.hash.iter()
+    // TODO: Return `Clone + Iterator`.
+    pub fn iter(&self) -> impl Iterator<Item = (T::Key, &T)> {
+        self.inner.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&T::Key, &mut T)> {
-        self.hash.iter_mut()
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (T::Key, &mut T)> {
+        self.inner.iter_mut()
     }
 
-    pub fn keys(&self) -> impl Clone + Iterator<Item = &T::Key> {
-        self.hash.keys()
+    // TODO: Return `Clone + Iterator`.
+    pub fn keys<'a>(&'a self) -> impl Iterator<Item = T::Key> + 'a {
+        self.inner.keys()
     }
 
     pub fn contains_key(&self, key: &T::Key) -> bool {
-        self.hash.contains_key(key)
+        self.inner.get(key).is_some()
     }
 
     pub fn get(&self, key: &T::Key) -> Option<&T> {
-        self.hash.get(key)
+        self.inner.get(key)
     }
 
     pub fn get_mut(&mut self, key: &T::Key) -> Option<&mut T> {
-        self.hash.get_mut(key)
+        self.inner.get_mut(key)
     }
 
-    pub fn insert_with_key(&mut self, key: &T::Key, item: T) -> Option<T> {
-        self.hash.insert(*key, item)
+    pub fn insert(&mut self, payload: T) -> T::Key
+    where
+        T::Storage: Insert<T>,
+    {
+        self.inner.insert(payload)
+    }
+
+    pub fn insert_with_key(&mut self, key: T::Key, payload: T) -> Option<T>
+    where
+        T::Storage: InsertWithKey<T>,
+    {
+        self.inner.insert_with_key(key, payload)
     }
 
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
-        self.hash.remove(key)
+        self.inner.remove(key)
     }
 }
 
-impl<T> Storage<T>
-where
-    T: Payload,
-    T::Key: KeySequence + OpaqueKey<Sequence = T::Key>,
-{
-    pub fn insert(&mut self, item: T) -> T::Key {
-        let key = self.sequence;
-        self.hash.insert(key, item);
-        self.sequence = self.sequence.next_key();
-        key
-    }
-}
-
-impl<T> AsStorage<T> for Storage<T>
+impl<T> AsStorage<T> for StorageProxy<T>
 where
     T: Payload,
 {
-    fn as_storage(&self) -> &Storage<T> {
+    fn as_storage(&self) -> &StorageProxy<T> {
         self
     }
 }
 
-impl<T> AsStorageMut<T> for Storage<T>
+impl<T> AsStorageMut<T> for StorageProxy<T>
 where
     T: Payload,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<T> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<T> {
         self
     }
 }

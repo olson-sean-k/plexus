@@ -54,6 +54,7 @@ fnv = "^1.0.6"
 fool = "0.0.1"
 itertools = "^0.8.0"
 num = "^0.2.0"
+slotmap = "^0.3.0"
 smallvec = "^0.6.9"
 typenum = "^1.10.0"
 

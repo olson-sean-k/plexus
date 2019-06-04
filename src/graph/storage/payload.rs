@@ -1,24 +1,32 @@
 //! Graph payloads.
 //!
 //! This module provides types that store the user geometry and connectivity of
-//! graphs. A limited subset of fields from these types are exposed via
-//! `Deref` implementations in views. Most notably, user geometry is exposed
-//! via the `geometry` field.
+//! graphs. A limited subset of fields from these types are exposed via `Deref`
+//! implementations in views. Most notably, user geometry is exposed via the
+//! `geometry` field.
+//!
+//! These types are stored using the `storage` module and `StorageProxy`.
 
 use crate::geometry::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
+use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
+use crate::graph::storage::{Get, HashStorage, Remove, Sequence, SlotStorage};
 
-pub trait Payload {
+pub trait Payload: Copy + Sized {
     type Key: OpaqueKey;
     type Attribute: Clone;
+
+    // This associated type allows `Payload`s to specify what underlying
+    // type is used to support their `StorageProxy` implementation. This
+    // greatly reduces trait complexity for `StorageProxy` and `AsStorage`.
+    type Storage: Default + Get<Self> + Remove<Self> + Sequence<Self>;
 }
 
 /// Vertex payload.
 ///
-/// Contains the vertex attribute of a graph's `Geometry`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
+/// Contains the vertex attribute of `GraphGeometry`.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
 pub struct VertexPayload<G>
 where
     G: GraphGeometry,
@@ -60,6 +68,7 @@ where
 {
     type Key = VertexKey;
     type Attribute = G::Vertex;
+    type Storage = SlotStorage<Self>;
 }
 
 // Unlike other topological structures, the vertex connectivity of arcs is
@@ -73,9 +82,9 @@ where
 // vertex key or opposite arc key, as these would be redundant.
 /// Arc payload.
 ///
-/// Contains the arc attribute of a graph's `Geometry`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
+/// Contains the arc attribute of `GraphGeometry`.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
 pub struct ArcPayload<G>
 where
     G: GraphGeometry,
@@ -126,13 +135,14 @@ where
 {
     type Key = ArcKey;
     type Attribute = G::Arc;
+    type Storage = HashStorage<Self>;
 }
 
 /// Edge payload.
 ///
-/// Contains the edge attribute of a graph's `Geometry`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
+/// Contains the edge attribute of `GraphGeometry`.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
 pub struct EdgePayload<G>
 where
     G: GraphGeometry,
@@ -171,13 +181,14 @@ where
 {
     type Key = EdgeKey;
     type Attribute = G::Edge;
+    type Storage = SlotStorage<Self>;
 }
 
 /// Face payload.
 ///
-/// Contains the face attribute of a graph's `Geometry`.
-#[derivative(Debug, Hash)]
-#[derive(Clone, Derivative)]
+/// Contains the face attribute of `GraphGeometry`.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
 pub struct FacePayload<G>
 where
     G: GraphGeometry,
@@ -216,4 +227,5 @@ where
 {
     type Key = FaceKey;
     type Attribute = G::Face;
+    type Storage = SlotStorage<Self>;
 }

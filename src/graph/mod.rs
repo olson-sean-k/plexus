@@ -165,7 +165,6 @@ mod borrow;
 mod core;
 mod geometry;
 mod mutation;
-mod payload;
 mod storage;
 mod view;
 
@@ -184,11 +183,12 @@ use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::geometry::{AsPosition, FromGeometry, FromInteriorGeometry, IntoGeometry};
+use crate::geometry::{AsPosition, IntoGeometry};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
+use crate::graph::storage::key::OpaqueKey;
+use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{
     ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
@@ -201,8 +201,8 @@ pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexPosition,
 };
-pub use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-pub use crate::graph::storage::{ArcKey, EdgeKey, FaceKey, VertexKey};
+pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
+pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
 pub use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
 pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
@@ -383,24 +383,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(Storage::<VertexPayload<G>>::new())
-                .bind(Storage::<ArcPayload<G>>::new())
-                .bind(Storage::<EdgePayload<G>>::new())
-                .bind(Storage::<FacePayload<G>>::new()),
-        )
-    }
-
-    /// Creates an empty `MeshGraph`.
-    ///
-    /// Underlying storage has zero capacity and does not allocate until the
-    /// first insertion.
-    pub fn empty() -> Self {
-        MeshGraph::from(
-            Core::empty()
-                .bind(Storage::<VertexPayload<G>>::empty())
-                .bind(Storage::<ArcPayload<G>>::empty())
-                .bind(Storage::<EdgePayload<G>>::empty())
-                .bind(Storage::<FacePayload<G>>::empty()),
+                .bind(StorageProxy::<VertexPayload<G>>::new())
+                .bind(StorageProxy::<ArcPayload<G>>::new())
+                .bind(StorageProxy::<EdgePayload<G>>::new())
+                .bind(StorageProxy::<FacePayload<G>>::new()),
         )
     }
 
@@ -465,11 +451,12 @@ where
         (key, self).into_view()
     }
 
+    // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
-    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&Self, G>> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
         self.as_vertex_storage()
             .keys()
-            .map(move |key| (*key, self).into_view().unwrap())
+            .map(move |key| (key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the vertices in the graph.
@@ -480,7 +467,7 @@ where
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -499,11 +486,12 @@ where
         (key, self).into_view()
     }
 
+    // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
-    pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&Self, G>> {
+    pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self, G>> {
         self.as_arc_storage()
             .keys()
-            .map(move |key| (*key, self).into_view().unwrap())
+            .map(move |key| (key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the arcs in the graph.
@@ -514,7 +502,7 @@ where
     pub fn orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -533,11 +521,12 @@ where
         (key, self).into_view()
     }
 
+    // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
-    pub fn edges(&self) -> impl Clone + Iterator<Item = EdgeView<&Self, G>> {
+    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self, G>> {
         self.as_edge_storage()
             .keys()
-            .map(move |key| (*key, self).into_view().unwrap())
+            .map(move |key| (key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the edges in the graph.
@@ -548,7 +537,7 @@ where
     pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -567,11 +556,12 @@ where
         (key, self).into_view()
     }
 
+    // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
-    pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&Self, G>> {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self, G>> {
         self.as_face_storage()
             .keys()
-            .map(move |key| (*key, self).into_view().unwrap())
+            .map(move |key| (key, self).into_view().unwrap())
     }
 
     /// Gets an iterator of orphan views over the faces in the graph.
@@ -582,7 +572,7 @@ where
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
         self.as_face_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((*key, source)))
+            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -617,7 +607,7 @@ where
 
     /// Triangulates the mesh, tesselating all faces into triangles.
     pub fn triangulate(&mut self) {
-        let faces = self.as_face_storage().keys().cloned().collect::<Vec<_>>();
+        let faces = self.as_face_storage().keys().collect::<Vec<_>>();
         for face in faces {
             self.face_mut(face).unwrap().triangulate();
         }
@@ -778,7 +768,7 @@ impl<G> AsStorage<VertexPayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
         self.core.as_vertex_storage()
     }
 }
@@ -787,7 +777,7 @@ impl<G> AsStorage<ArcPayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
         self.core.as_arc_storage()
     }
 }
@@ -796,7 +786,7 @@ impl<G> AsStorage<EdgePayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<EdgePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<EdgePayload<G>> {
         self.core.as_edge_storage()
     }
 }
@@ -805,7 +795,7 @@ impl<G> AsStorage<FacePayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
         self.core.as_face_storage()
     }
 }
@@ -814,7 +804,7 @@ impl<G> AsStorageMut<VertexPayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<VertexPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<VertexPayload<G>> {
         self.core.as_vertex_storage_mut()
     }
 }
@@ -823,7 +813,7 @@ impl<G> AsStorageMut<ArcPayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<ArcPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<ArcPayload<G>> {
         self.core.as_arc_storage_mut()
     }
 }
@@ -832,7 +822,7 @@ impl<G> AsStorageMut<EdgePayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<EdgePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<EdgePayload<G>> {
         self.core.as_edge_storage_mut()
     }
 }
@@ -841,7 +831,7 @@ impl<G> AsStorageMut<FacePayload<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<FacePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<FacePayload<G>> {
         self.core.as_face_storage_mut()
     }
 }
@@ -853,9 +843,7 @@ where
     G: GraphGeometry,
 {
     fn default() -> Self {
-        // Because `default` is likely to be used in more generic contexts,
-        // `empty` is used to avoid any unnecessary allocations.
-        MeshGraph::empty()
+        MeshGraph::new()
     }
 }
 
@@ -877,30 +865,6 @@ where
 {
     fn from(core: OwnedCore<G>) -> Self {
         MeshGraph { core }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<MeshGraph<H>> for MeshGraph<G>
-where
-    G: GraphGeometry,
-    G::Vertex: FromGeometry<H::Vertex>,
-    G::Arc: FromGeometry<H::Arc>,
-    G::Edge: FromGeometry<H::Edge>,
-    G::Face: FromGeometry<H::Face>,
-    H: GraphGeometry,
-{
-    fn from_interior_geometry(graph: MeshGraph<H>) -> Self {
-        let MeshGraph { core, .. } = graph;
-        let (vertices, arcs, edges, faces) = core.into_storage();
-        let core = Core::empty()
-            .bind(
-                vertices
-                    .map_values_into(|vertex| VertexPayload::<G>::from_interior_geometry(vertex)),
-            )
-            .bind(arcs.map_values_into(|arc| ArcPayload::<G>::from_interior_geometry(arc)))
-            .bind(edges.map_values_into(|edge| EdgePayload::<G>::from_interior_geometry(edge)))
-            .bind(faces.map_values_into(|face| FacePayload::<G>::from_interior_geometry(face)));
-        MeshGraph::from(core)
     }
 }
 

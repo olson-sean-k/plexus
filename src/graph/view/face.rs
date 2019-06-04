@@ -15,8 +15,9 @@ use crate::graph::mutation::face::{
     FaceSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-use crate::graph::storage::{ArcKey, AsStorage, AsStorageMut, FaceKey, Storage, VertexKey};
+use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
+use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
@@ -1191,9 +1192,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                mem::transmute::<&'_ mut Storage<VertexPayload<G>>, &'a mut Storage<VertexPayload<G>>>(
-                    self.input.storage.as_storage_mut(),
-                )
+                mem::transmute::<
+                    &'_ mut StorageProxy<VertexPayload<G>>,
+                    &'a mut StorageProxy<VertexPayload<G>>,
+                >(self.input.storage.as_storage_mut())
             })
                 .into_view()
         })
@@ -1316,9 +1318,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                mem::transmute::<&'_ mut Storage<ArcPayload<G>>, &'a mut Storage<ArcPayload<G>>>(
-                    self.storage.as_storage_mut(),
-                )
+                mem::transmute::<
+                    &'_ mut StorageProxy<ArcPayload<G>>,
+                    &'a mut StorageProxy<ArcPayload<G>>,
+                >(self.storage.as_storage_mut())
             })
                 .into_view()
         })
@@ -1408,9 +1411,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             (key, unsafe {
-                mem::transmute::<&'_ mut Storage<FacePayload<G>>, &'a mut Storage<FacePayload<G>>>(
-                    self.input.storage.as_storage_mut(),
-                )
+                mem::transmute::<
+                    &'_ mut StorageProxy<FacePayload<G>>,
+                    &'a mut StorageProxy<FacePayload<G>>,
+                >(self.input.storage.as_storage_mut())
             })
                 .into_view()
         })

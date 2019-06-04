@@ -157,6 +157,7 @@ where
     T: Scalar,
     D: DimName,
     DefaultAllocator: Allocator<T, D>,
+    Self: Copy,
 {
     type Vertex = Self;
     type Arc = ();

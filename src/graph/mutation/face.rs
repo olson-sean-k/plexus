@@ -11,9 +11,10 @@ use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
 use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
-use crate::graph::payload::{ArcPayload, FacePayload, VertexPayload};
 use crate::graph::storage::alias::*;
-use crate::graph::storage::{ArcKey, AsStorage, FaceKey, Storage, VertexKey};
+use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
+use crate::graph::storage::payload::{ArcPayload, FacePayload, VertexPayload};
+use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
@@ -26,7 +27,7 @@ where
     G: GraphGeometry,
 {
     mutation: EdgeMutation<G>,
-    storage: Storage<FacePayload<G>>,
+    storage: StorageProxy<FacePayload<G>>,
 }
 
 impl<G> FaceMutation<G>
@@ -164,7 +165,7 @@ impl<G> AsStorage<FacePayload<G>> for FaceMutation<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
         &self.storage
     }
 }

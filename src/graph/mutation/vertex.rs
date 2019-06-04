@@ -3,8 +3,9 @@ use crate::graph::core::{Bind, Core};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
-use crate::graph::payload::VertexPayload;
-use crate::graph::storage::{ArcKey, AsStorage, Storage, VertexKey};
+use crate::graph::storage::key::{ArcKey, VertexKey};
+use crate::graph::storage::payload::VertexPayload;
+use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
@@ -13,7 +14,7 @@ pub struct VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    storage: Storage<VertexPayload<G>>,
+    storage: StorageProxy<VertexPayload<G>>,
 }
 
 impl<G> VertexMutation<G>
@@ -43,7 +44,7 @@ impl<G> AsStorage<VertexPayload<G>> for VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &Storage<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
         &self.storage
     }
 }
@@ -52,7 +53,7 @@ impl<G> Mutate for VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    type Mutant = Core<Storage<VertexPayload<G>>, (), (), ()>;
+    type Mutant = Core<StorageProxy<VertexPayload<G>>, (), (), ()>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
