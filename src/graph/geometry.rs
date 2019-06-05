@@ -62,6 +62,7 @@
 
 use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector};
+use theon::FromItems;
 
 use crate::geometry::AsPosition;
 use crate::graph::borrow::Reborrow;
@@ -162,52 +163,6 @@ where
     type Face = ();
 }
 
-pub trait FaceNormal: GraphGeometry {
-    type Normal;
-
-    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
-    where
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
-}
-
-impl<G> FaceNormal for G
-where
-    G: GraphGeometry,
-    G::Vertex: AsPosition,
-    Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
-    VertexPosition<G>: EuclideanSpace,
-{
-    type Normal = Vector<VertexPosition<G>>;
-
-    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
-    where
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
-    {
-        let mut positions = face
-            .reachable_vertices()
-            .take(3)
-            .map(|vertex| vertex.geometry.as_position().clone());
-        let a = positions
-            .next()
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let b = positions
-            .next()
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let c = positions
-            .next()
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let ab = a - b;
-        let bc = b - c;
-        ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
-    }
-}
-
 pub trait VertexCentroid: GraphGeometry {
     type Centroid;
 
@@ -240,49 +195,46 @@ where
     }
 }
 
-pub trait FaceCentroid: GraphGeometry {
-    type Centroid;
+pub trait ArcNormal: GraphGeometry {
+    type Normal;
 
-    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
 
-impl<G> FaceCentroid for G
+impl<G> ArcNormal for G
 where
     G: GraphGeometry,
     G::Vertex: AsPosition,
+    Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
-    type Centroid = VertexPosition<G>;
+    type Normal = Vector<VertexPosition<G>>;
 
-    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
-        VertexPosition::<G>::centroid(
-            face.reachable_vertices()
-                .map(|vertex| vertex.geometry.as_position().clone()),
+        let (a, b) = FromItems::from_items(
+            arc.reachable_vertices()
+                .map(|vertex| vertex.position().clone()),
         )
-        .ok_or_else(|| GraphError::TopologyNotFound)
+        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let c = arc
+            .reachable_next_arc()
+            .ok_or_else(|| GraphError::TopologyNotFound)?
+            .reachable_destination_vertex()
+            .ok_or_else(|| GraphError::TopologyNotFound)?
+            .position()
+            .clone();
+        let ab = a - b;
+        let cb = c - b;
+        let p = b + ab.project(cb);
+        (p - c).normalize().ok_or_else(|| GraphError::Geometry)
     }
-}
-
-pub trait FacePlane: GraphGeometry {
-    type Plane;
-
-    fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
-    where
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
 }
 
 pub trait EdgeMidpoint: GraphGeometry {
@@ -311,74 +263,101 @@ where
             + AsStorage<EdgePayload<Self>>
             + AsStorage<VertexPayload<Self>>,
     {
-        let a = edge
+        let arc = edge
             .reachable_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .and_then(|arc| {
-                arc.reachable_source_vertex()
-                    .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().clone())
-            })?;
-        let b = edge
-            .reachable_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .and_then(|arc| {
-                arc.reachable_destination_vertex()
-                    .ok_or_else(|| GraphError::TopologyNotFound)
-                    .map(|vertex| vertex.geometry.as_position().clone())
-            })?;
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let (a, b) = FromItems::from_items(
+            arc.reachable_vertices()
+                .map(|vertex| vertex.position().clone()),
+        )
+        .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(a.midpoint(b))
     }
 }
 
-pub trait ArcNormal: GraphGeometry {
-    type Normal;
+pub trait FaceCentroid: GraphGeometry {
+    type Centroid;
 
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
 }
 
-impl<G> ArcNormal for G
+impl<G> FaceCentroid for G
 where
     G: GraphGeometry,
     G::Vertex: AsPosition,
-    Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
+    VertexPosition<G>: EuclideanSpace,
+{
+    type Centroid = VertexPosition<G>;
+
+    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
+    {
+        VertexPosition::<G>::centroid(
+            face.reachable_vertices()
+                .map(|vertex| vertex.position().clone()),
+        )
+        .ok_or_else(|| GraphError::TopologyNotFound)
+    }
+}
+
+pub trait FaceNormal: GraphGeometry {
+    type Normal;
+
+    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
+}
+
+impl<G> FaceNormal for G
+where
+    G: FaceCentroid<Centroid = VertexPosition<G>> + GraphGeometry,
+    G::Vertex: AsPosition,
+    Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
     type Normal = Vector<VertexPosition<G>>;
 
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
     {
-        let a = arc
-            .reachable_source_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry
-            .as_position()
-            .clone();
-        let b = arc
-            .reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry
-            .as_position()
-            .clone();
-        let c = arc
-            .reachable_next_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry
-            .as_position()
-            .clone();
+        let (a, b) = FromItems::from_items(
+            face.reachable_vertices()
+                .take(2)
+                .map(|vertex| vertex.position().clone()),
+        )
+        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let c = G::centroid(face)?;
         let ab = a - b;
-        let cb = c - b;
-        let p = b + ab.project(cb);
-        (p - c).normalize().ok_or_else(|| GraphError::Geometry)
+        let bc = b - c;
+        ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
     }
+}
+
+pub trait FacePlane: GraphGeometry {
+    type Plane;
+
+    fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
 }
 
 // TODO: The `array` feature only supports Linux. See
