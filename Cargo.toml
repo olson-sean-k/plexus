@@ -39,7 +39,9 @@ path = "examples/zip.rs"
 name = "plexus"
 
 [features]
-default = ["geometry-nalgebra"]
+# TODO: Remove "encoding-ply" from default features.
+default = ["geometry-nalgebra", "encoding-ply"]
+encoding-ply = ["ply-rs"]
 geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
 geometry-mint = ["mint", "theon/geometry-mint"]
 geometry-nalgebra = ["nalgebra", "theon/geometry-nalgebra"]
@@ -61,6 +63,7 @@ typenum = "^1.10.0"
 cgmath = { version = "^0.17.0", optional = true }
 mint = { version = "^0.5.0", optional = true }
 nalgebra = { version = "^0.18.0", optional = true }
+ply-rs = { version = "^0.1.2", optional = true }
 
 [dependencies.theon]
 git = "https://github.com/olson-sean-k/theon.git"

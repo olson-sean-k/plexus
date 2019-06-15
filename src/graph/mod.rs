@@ -183,6 +183,7 @@ use theon::space::{EuclideanSpace, Scalar};
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
+use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::geometry::{AsPosition, IntoGeometry};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
@@ -865,6 +866,34 @@ where
 {
     fn from(core: OwnedCore<G>) -> Self {
         MeshGraph { core }
+    }
+}
+
+impl<E, G> FromEncoding<E> for MeshGraph<G>
+where
+    G: GraphGeometry,
+    E: FaceDecoder<Face = <G as GraphGeometry>::Face>
+        + VertexDecoder<Vertex = <G as GraphGeometry>::Vertex>,
+{
+    type Error = GraphError;
+
+    fn from_encoding(
+        vertices: <E as VertexDecoder>::Output,
+        faces: <E as FaceDecoder>::Output,
+    ) -> Result<Self, Self::Error> {
+        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let keys = vertices
+            .into_iter()
+            .map(|geometry| mutation.insert_vertex(geometry))
+            .collect::<Vec<_>>();
+        for (perimeter, geometry) in faces {
+            let perimeter = perimeter
+                .into_iter()
+                .map(|index| keys[index])
+                .collect::<SmallVec<[_; 4]>>();
+            mutation.insert_face(perimeter.as_slice(), (Default::default(), geometry))?;
+        }
+        mutation.commit()
     }
 }
 

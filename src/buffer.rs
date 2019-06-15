@@ -93,13 +93,14 @@ use std::iter::FromIterator;
 use theon::ops::Map;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
+use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::geometry::IntoGeometry;
 use crate::index::{
     ClosedIndexVertices, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer,
     Indexer, Push, Structured, Structured3, Structured4, StructuredN,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Polygonal, Quad, Topological, Triangle};
+use crate::primitive::{Polygon, Polygonal, Quad, Topological, Triangle};
 use crate::{Arity, FromRawBuffers};
 
 #[derive(Debug, Fail)]
@@ -356,6 +357,21 @@ where
                 .drain(..)
                 .map(|topology| topology.into().map(|index| index + offset)),
         )
+    }
+}
+
+impl<E, G> FromEncoding<E> for MeshBuffer<StructuredN, G>
+where
+    E: FaceDecoder<Face = (), Index = Polygon<usize>> + VertexDecoder<Vertex = G>,
+{
+    type Error = BufferError;
+
+    fn from_encoding(
+        vertices: <E as VertexDecoder>::Output,
+        faces: <E as FaceDecoder>::Output,
+    ) -> Result<Self, Self::Error> {
+        let indices = faces.into_iter().map(|(index, _)| index);
+        MeshBuffer::from_raw_buffers(indices, vertices)
     }
 }
 

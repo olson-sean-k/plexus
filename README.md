@@ -129,3 +129,25 @@ features.
 
 If using one of the supported crates, it is highly recommended to enable the
 corresponding feature.
+
+## Encodings
+
+Plexus provides support for polygonal mesh encodings. This allows `MeshGraph`s
+and `MeshBuffer`s to be serialized and deserialized to and from various formats.
+
+```rust
+use nalgebra::Point3;
+use plexus::encoding::ply::{FromPly, PointEncoding};
+use plexus::graph::MeshGraph;
+use std::fs::File;
+
+let ply = File::open("cube.ply").unwrap();
+let encoding = PointEncoding::default();
+let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, ply).unwrap();
+```
+
+Encoding support is optional and enabled via Cargo features.
+
+| Feature        | Default | Encoding | Read | Write |
+|----------------|---------|----------|------|-------|
+| `encoding-ply` | No      | PLY      | Yes  | No    |

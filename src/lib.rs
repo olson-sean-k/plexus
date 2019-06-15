@@ -30,6 +30,7 @@ extern crate typenum;
 use std::fmt::Debug;
 
 pub mod buffer;
+pub mod encoding;
 pub mod geometry;
 pub mod graph;
 pub mod index;
@@ -63,6 +64,8 @@ pub mod prelude {
     //! `Selector` is often used when mutating `MeshGraph`s.
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
+    #[cfg(feature = "encoding-ply")]
+    pub use crate::encoding::ply::{FromPly as _, ToPly as _};
     pub use crate::geometry::{FromGeometry as _, IntoGeometry as _};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, OpenIndexVertices as _};

@@ -286,6 +286,15 @@ impl<T> IntoItems for Edge<T> {
     }
 }
 
+impl<T> IntoIterator for Edge<T> {
+    type Item = T;
+    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_items().into_iter()
+    }
+}
+
 impl<T, U> Map<U> for Edge<T> {
     type Output = Edge<U>;
 
@@ -417,6 +426,15 @@ impl<T> IntoItems for Triangle<T> {
 
     fn into_items(self) -> Self::Output {
         ArrayVec::from([self.a, self.b, self.c])
+    }
+}
+
+impl<T> IntoIterator for Triangle<T> {
+    type Item = T;
+    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_items().into_iter()
     }
 }
 
@@ -560,6 +578,15 @@ impl<T> IntoItems for Quad<T> {
 
     fn into_items(self) -> Self::Output {
         ArrayVec::from([self.a, self.b, self.c, self.d])
+    }
+}
+
+impl<T> IntoIterator for Quad<T> {
+    type Item = T;
+    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_items().into_iter()
     }
 }
 
@@ -709,6 +736,15 @@ impl<T> IntoItems for Polygon<T> {
             Polygon::Triangle(triangle) => triangle.into_items().into_iter().collect(),
             Polygon::Quad(quad) => quad.into_items().into_iter().collect(),
         }
+    }
+}
+
+impl<T> IntoIterator for Polygon<T> {
+    type Item = T;
+    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_items().into_iter()
     }
 }
 
