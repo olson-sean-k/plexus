@@ -170,6 +170,7 @@ mod view;
 
 use arrayvec::ArrayVec;
 use decorum::N64;
+use failure::Fail;
 use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;

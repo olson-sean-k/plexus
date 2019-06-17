@@ -7,6 +7,8 @@
 //!
 //! These types are stored using the `storage` module and `StorageProxy`.
 
+use derivative::Derivative;
+
 use crate::geometry::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};

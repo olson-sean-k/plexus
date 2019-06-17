@@ -5,28 +5,6 @@
 //! avoid spurious breakage.
 #![allow(unknown_lints)] // Allow clippy lints.
 
-extern crate arrayvec;
-#[cfg(feature = "geometry-cgmath")]
-extern crate cgmath;
-extern crate decorum;
-#[macro_use]
-extern crate derivative;
-extern crate either;
-#[macro_use]
-extern crate failure;
-extern crate fnv;
-extern crate fool;
-#[macro_use]
-extern crate itertools;
-#[cfg(feature = "geometry-mint")]
-extern crate mint;
-#[cfg(feature = "geometry-nalgebra")]
-extern crate nalgebra;
-extern crate num;
-extern crate smallvec;
-extern crate theon;
-extern crate typenum;
-
 use std::fmt::Debug;
 
 pub mod buffer;

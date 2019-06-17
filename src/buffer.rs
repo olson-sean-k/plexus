@@ -86,6 +86,7 @@
 //! # }
 //! ```
 
+use failure::Fail;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;

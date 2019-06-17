@@ -64,6 +64,7 @@ pub mod generate;
 pub mod sphere;
 
 use arrayvec::ArrayVec;
+use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::Integer;
 use smallvec::SmallVec;
