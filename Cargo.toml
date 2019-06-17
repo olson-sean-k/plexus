@@ -39,8 +39,7 @@ path = "examples/zip.rs"
 name = "plexus"
 
 [features]
-# TODO: Remove "encoding-ply" from default features.
-default = ["geometry-nalgebra", "encoding-ply"]
+default = ["geometry-nalgebra"]
 encoding-ply = ["ply-rs"]
 geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
 geometry-mint = ["mint", "theon/geometry-mint"]
