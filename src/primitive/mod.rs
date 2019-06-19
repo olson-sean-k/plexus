@@ -1,17 +1,19 @@
 //! Primitive topological structures.
 //!
-//! This module provides primitives that can be composed to form more complex
-//! structures. This includes simple topological structures like `Triangles`,
-//! generators that form shapes from those structures, and iterator expressions
-//! that compose and decompose streams.
+//! This module provides composable primitives like $n$-gons that can form more
+//! complex structures. This includes simple topological structures like
+//! `Triangles`, generators that form more complex shapes like spheres, and
+//! iterator expressions that compose and decompose streams of topological and
+//! geometric data.
 //!
-//! Much functionality in this module is exposed via traits. Many of these
-//! traits are included in the `prelude` module, and it is highly recommended
-//! to import the `prelude`'s contents as seen in the examples.
+//! Much functionality in this module is exposed via traits, especially
+//! generators. Many of these traits are included in the `prelude` module, and
+//! it is highly recommended to import the `prelude`'s contents as seen in the
+//! examples.
 //!
 //! # Examples
 //!
-//! Generating position data for a sphere:
+//! Generating positional data for a sphere:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -27,9 +29,7 @@
 //! let positions = sphere
 //!     .vertices_with_position::<Point3<f64>>()
 //!     .collect::<Vec<_>>();
-//! // Generate polygons indexing the unique set of positional vertices.
-//! // Decompose the indexing polygons into triangles and vertices and then collect
-//! // the index data into a buffer.
+//! // Generate polygon that index the unique set of positional vertices.
 //! let indices = sphere
 //!     .indices_for_position()
 //!     .triangulate()
@@ -37,7 +37,7 @@
 //!     .collect::<Vec<_>>();
 //! # }
 //! ```
-//! Generating position data for a cube using an indexer:
+//! Generating positional data for a cube using an indexer:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -48,11 +48,11 @@
 //! use nalgebra::Point3;
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
-//! use plexus::primitive::cube::{Bounds, Cube};
+//! use plexus::primitive::cube::Cube;
 //!
 //! # fn main() {
 //! let (indices, positions) = Cube::new()
-//!     .polygons_with_position_from::<Point3<N64>>(Bounds::unit_radius())
+//!     .polygons_with_position::<Point3<N64>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! # }
@@ -63,14 +63,14 @@ pub mod decompose;
 pub mod generate;
 pub mod sphere;
 
-use arrayvec::ArrayVec;
+use arrayvec::{Array, ArrayVec};
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::Integer;
 use smallvec::SmallVec;
-use std::iter::FromIterator;
 use std::marker::PhantomData;
-use std::ops::{Index, Range};
+use std::ops::{Index, IndexMut};
+use std::slice;
 use theon::{Composite, FromItems, IntoItems};
 
 pub use theon::ops::{Map, Reduce, ZipMap};
@@ -90,6 +90,8 @@ pub trait ConstantArity {
     const ARITY: usize;
 }
 
+// TODO: It should be possible to implement this for all `NGon`s, but that
+//       implementation would likely be inefficient.
 pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
@@ -100,6 +102,24 @@ pub trait Zip {
     fn zip(self) -> Self::Output;
 }
 macro_rules! impl_zip {
+    (composite => $c:ident, length => $n:expr) => (
+        impl_zip!(composite => $c, length => $n, items => (A, B));
+        impl_zip!(composite => $c, length => $n, items => (A, B, C));
+        impl_zip!(composite => $c, length => $n, items => (A, B, C, D));
+        impl_zip!(composite => $c, length => $n, items => (A, B, C, D, E));
+        impl_zip!(composite => $c, length => $n, items => (A, B, C, D, E, F));
+    );
+    (composite => $c:ident, length => $n:expr, items => ($($i:ident),*)) => (
+        #[allow(non_snake_case)]
+        impl<$($i),*> Zip for ($($c<[$i; $n]>),*) {
+            type Output = $c<[($($i),*); $n]>;
+
+            fn zip(self) -> Self::Output {
+                let ($($i,)*) = self;
+                FromItems::from_items(izip!($($i.into_items()),*)).unwrap()
+            }
+        }
+    );
     (composite => $c:ident) => (
         impl_zip!(composite => $c, items => (A, B));
         impl_zip!(composite => $c, items => (A, B, C));
@@ -107,14 +127,14 @@ macro_rules! impl_zip {
         impl_zip!(composite => $c, items => (A, B, C, D, E));
         impl_zip!(composite => $c, items => (A, B, C, D, E, F));
     );
-    (composite => $c:ident, items => ($($o:ident),*)) => (
+    (composite => $c:ident, items => ($($i:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($o),*> Zip for ($($c<$o>),*) {
-            type Output = $c<($($o),*)>;
+        impl<$($i),*> Zip for ($($c<$i>),*) {
+            type Output = $c<($($i),*)>;
 
             fn zip(self) -> Self::Output {
-                let ($($o,)*) = self;
-                FromItems::from_items(izip!($($o.into_items()),*)).unwrap()
+                let ($($i,)*) = self;
+                FromItems::from_items(izip!($($i.into_items()),*)).unwrap()
             }
         }
     );
@@ -174,121 +194,152 @@ where
     }
 }
 
-struct Iter<'a, T>
-where
-    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
-{
-    topology: &'a T,
-    range: Range<usize>,
-}
-
-impl<'a, T> Iter<'a, T>
-where
-    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
-{
-    fn new(topology: &'a T, n: usize) -> Self {
-        Iter {
-            topology,
-            range: 0..n,
-        }
-    }
-}
-
-impl<'a, T> Iterator for Iter<'a, T>
-where
-    T: 'a + Index<usize, Output = <T as Topological>::Vertex> + Topological,
-{
-    type Item = &'a T::Vertex;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.range.next().map(|index| self.topology.index(index))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.range.size_hint()
-    }
-}
-
+/// Statically sized $n$-gon.
+///
+/// `NGon` represents a topological structure as an array. Each array element
+/// represents vertex data in order, with neighboring elements being connected
+/// by an implicit undirected edge. For example, an `NGon` with three vertices
+/// (`NGon<[T; 3]>`) would represent a triangle. Generally these elements are
+/// labeled $A$, $B$, $C$, etc.
+///
+/// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
+/// two vertices (`NGon<[T; 2]>`) is considered a _monogon_ despite common
+/// definitions specifying a single vertex. Such an `NGon` is not considered a
+/// _digon_, as it represents a single undirected edge rather than two distinct
+/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the
+/// `Edge` type definition.
+///
+/// Monogons and digons are not generally considered polygons, and `NGon` does
+/// not implement the `Polygonal` trait in these cases.
 #[derive(Clone, Copy, Debug)]
-pub struct Edge<T> {
-    pub a: T,
-    pub b: T,
-}
-
-impl<T> Edge<T> {
-    pub fn new(a: T, b: T) -> Self {
-        Edge { a, b }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        // For polygons (including digons), the vertex count and edge count
-        // (arity) are the same. For monogons, these values diverge: an edge
-        // connects two vertices with only one edge (itself).
-        Iter::new(self, 2)
-    }
-}
-
-impl<T> Composite for Edge<T> {
-    type Item = T;
-}
-
-impl<T> ConstantArity for Edge<T> {
-    const ARITY: usize = 1;
-}
-
-impl<T> Converged for Edge<T>
+pub struct NGon<A>(pub A)
 where
-    T: Clone,
+    A: Array;
+
+impl<A> NGon<A>
+where
+    A: Array,
 {
-    fn converged(value: T) -> Self {
-        Edge::new(value.clone(), value)
+    pub fn into_array(self) -> A {
+        self.0
+    }
+
+    fn into_array_vec(self) -> ArrayVec<A> {
+        ArrayVec::from(self.into_array())
     }
 }
 
-impl<T> FromItems for Edge<T> {
+/// Gets a slice over the data in an `NGon`.
+///
+/// Slicing an `NGon` can be used to iterate over references to its data:
+///
+/// ```rust
+/// use plexus::primitive::{Converged, Triangle};
+///
+/// let triangle = Triangle::converged(0u32);
+/// for vertex in triangle.as_ref() {
+///     // ...
+/// }
+/// ```
+impl<A> AsRef<[<A as Array>::Item]> for NGon<A>
+where
+    A: Array,
+{
+    fn as_ref(&self) -> &[A::Item] {
+        unsafe { slice::from_raw_parts(self.0.as_ptr(), A::capacity()) }
+    }
+}
+
+/// Gets a mutable slice over the data in an `NGon`.
+///
+/// Slicing an `NGon` can be used to iterate over references to its data:
+///
+/// ```rust
+/// use plexus::primitive::{Converged, Quad};
+///
+/// let mut quad = Quad::converged(1u32);
+/// for mut vertex in quad.as_mut() {
+///     *vertex = 0;
+/// }
+/// ```
+impl<A> AsMut<[<A as Array>::Item]> for NGon<A>
+where
+    A: Array,
+{
+    fn as_mut(&mut self) -> &mut [A::Item] {
+        unsafe { slice::from_raw_parts_mut(self.0.as_mut_ptr(), A::capacity()) }
+    }
+}
+
+impl<A> Composite for NGon<A>
+where
+    A: Array,
+{
+    type Item = A::Item;
+}
+
+impl<A> From<A> for NGon<A>
+where
+    A: Array,
+{
+    fn from(array: A) -> Self {
+        NGon(array)
+    }
+}
+
+impl<A> FromItems for NGon<A>
+where
+    A: Array,
+{
     fn from_items<I>(items: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self::Item>,
     {
-        let mut items = items.into_iter().take(2);
-        match (items.next(), items.next()) {
-            (Some(a), Some(b)) => Some(Edge::new(a, b)),
-            _ => None,
-        }
+        items
+            .into_iter()
+            .collect::<ArrayVec<A>>()
+            .into_inner()
+            .ok()
+            .map(|array| NGon(array))
     }
 }
 
-impl<T> FromIterator<T> for Edge<T> {
-    fn from_iter<I>(input: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-    {
-        Edge::from_items(input).unwrap()
-    }
-}
-
-impl<T> Index<usize> for Edge<T> {
-    type Output = T;
+impl<A> Index<usize> for NGon<A>
+where
+    A: Array + AsRef<[<A as Array>::Item]>,
+{
+    type Output = A::Item;
 
     fn index(&self, index: usize) -> &Self::Output {
-        match index {
-            0 => &self.a,
-            1 => &self.b,
-            _ => panic!(),
-        }
+        self.0.as_ref().index(index)
     }
 }
 
-impl<T> IntoItems for Edge<T> {
-    type Output = ArrayVec<[T; 2]>;
+impl<A> IndexMut<usize> for NGon<A>
+where
+    A: Array + AsRef<[<A as Array>::Item]> + AsMut<[<A as Array>::Item]>,
+{
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.as_mut().index_mut(index)
+    }
+}
+
+impl<A> IntoItems for NGon<A>
+where
+    A: Array,
+{
+    type Output = ArrayVec<A>;
 
     fn into_items(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b])
+        self.into_array_vec()
     }
 }
 
-impl<T> IntoIterator for Edge<T> {
-    type Item = T;
+impl<A> IntoIterator for NGon<A>
+where
+    A: Array,
+{
+    type Item = <A as Array>::Item;
     type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -296,19 +347,11 @@ impl<T> IntoIterator for Edge<T> {
     }
 }
 
-impl<T, U> Map<U> for Edge<T> {
-    type Output = Edge<U>;
-
-    fn map<F>(self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item) -> U,
-    {
-        let Edge { a, b } = self;
-        Edge::new(f(a), f(b))
-    }
-}
-
-impl<T, U> Reduce<U> for Edge<T> {
+impl<A, U> Reduce<U> for NGon<A>
+where
+    Self: Topological + IntoItems,
+    A: Array,
+{
     fn reduce<F>(self, mut seed: U, mut f: F) -> U
     where
         F: FnMut(U, Self::Item) -> U,
@@ -320,11 +363,94 @@ impl<T, U> Reduce<U> for Edge<T> {
     }
 }
 
+macro_rules! impl_ngon {
+    (length => $n:expr) => (
+        impl<T> Converged for NGon<[T; $n]>
+        where
+            T: Copy,
+        {
+            fn converged(item: T) -> Self {
+                NGon([item; $n])
+            }
+        }
+
+        impl<T, U> Map<U> for NGon<[T; $n]> {
+            type Output = NGon<[U; $n]>;
+
+            fn map<F>(self, f: F) -> Self::Output
+            where
+                F: FnMut(Self::Item) -> U,
+            {
+                FromItems::from_items(self.into_iter().map(f)).unwrap()
+            }
+        }
+
+        impl_zip!(composite => NGon, length => $n);
+
+        impl<T, U> ZipMap<U> for NGon<[T; $n]> {
+            type Output = NGon<[U; $n]>;
+
+            fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
+            where
+                F: FnMut(Self::Item, Self::Item) -> U,
+            {
+                FromItems::from_items(self.into_iter().zip(other).map(|(a, b)| f(a, b))).unwrap()
+            }
+        }
+    );
+    (lengths => $($n:expr),*$(,)?) => (
+        $(impl_ngon!(length => $n);)*
+    );
+}
+impl_ngon!(lengths => 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+
+macro_rules! impl_polygonal_ngon {
+    (length => $n:expr) => (
+        impl<T> ConstantArity for NGon<[T; $n]> {
+            const ARITY: usize = $n;
+        }
+
+        impl<T> Polygonal for NGon<[T; $n]> {}
+
+        impl<T> Topological for NGon<[T; $n]> {
+            type Vertex = T;
+
+            fn arity(&self) -> usize {
+                $n
+            }
+        }
+    );
+    (lengths => $($n:expr),*$(,)?) => (
+        impl<T> ConstantArity for NGon<[T; 2]> {
+            const ARITY: usize = 1;
+        }
+
+        impl<T> Topological for NGon<[T; 2]> {
+            type Vertex = T;
+
+            fn arity(&self) -> usize {
+                1
+            }
+        }
+
+        $(impl_polygonal_ngon!(length => $n);)*
+    );
+}
+impl_polygonal_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+
+pub type Edge<T> = NGon<[T; 2]>;
+
+impl<T> Edge<T> {
+    pub fn new(a: T, b: T) -> Self {
+        NGon([a, b])
+    }
+}
+
 impl<T> Rotate for Edge<T> {
     fn rotate(self, n: isize) -> Self {
         if n % 2 != 0 {
-            let Edge { a, b } = self;
-            Edge { b, a }
+            let [a, b] = self.into_array();
+            Edge::new(b, a)
         }
         else {
             self
@@ -332,136 +458,11 @@ impl<T> Rotate for Edge<T> {
     }
 }
 
-impl<T> Topological for Edge<T> {
-    type Vertex = T;
-
-    fn arity(&self) -> usize {
-        Self::ARITY
-    }
-}
-
-impl_zip!(composite => Edge);
-
-impl<T, U> ZipMap<U> for Edge<T> {
-    type Output = Edge<U>;
-
-    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item, Self::Item) -> U,
-    {
-        Edge::new(f(self.a, other.a), f(self.b, other.b))
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Triangle<T> {
-    pub a: T,
-    pub b: T,
-    pub c: T,
-}
+pub type Triangle<T> = NGon<[T; 3]>;
 
 impl<T> Triangle<T> {
     pub fn new(a: T, b: T, c: T) -> Self {
-        Triangle { a, b, c }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity())
-    }
-}
-
-impl<T> Composite for Triangle<T> {
-    type Item = T;
-}
-
-impl<T> ConstantArity for Triangle<T> {
-    const ARITY: usize = 3;
-}
-
-impl<T> Converged for Triangle<T>
-where
-    T: Clone,
-{
-    fn converged(value: T) -> Self {
-        Triangle::new(value.clone(), value.clone(), value)
-    }
-}
-
-impl<T> FromItems for Triangle<T> {
-    fn from_items<I>(items: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Item>,
-    {
-        let mut items = items.into_iter().take(3);
-        match (items.next(), items.next(), items.next()) {
-            (Some(a), Some(b), Some(c)) => Some(Triangle::new(a, b, c)),
-            _ => None,
-        }
-    }
-}
-
-impl<T> FromIterator<T> for Triangle<T> {
-    fn from_iter<I>(input: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-    {
-        Triangle::from_items(input).unwrap()
-    }
-}
-
-impl<T> Index<usize> for Triangle<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        match index {
-            0 => &self.a,
-            1 => &self.b,
-            2 => &self.c,
-            _ => panic!(),
-        }
-    }
-}
-
-impl<T> IntoItems for Triangle<T> {
-    type Output = ArrayVec<[T; 3]>;
-
-    fn into_items(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b, self.c])
-    }
-}
-
-impl<T> IntoIterator for Triangle<T> {
-    type Item = T;
-    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.into_items().into_iter()
-    }
-}
-
-impl<T, U> Map<U> for Triangle<T> {
-    type Output = Triangle<U>;
-
-    fn map<F>(self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item) -> U,
-    {
-        let Triangle { a, b, c } = self;
-        Triangle::new(f(a), f(b), f(c))
-    }
-}
-
-impl<T> Polygonal for Triangle<T> {}
-
-impl<T, U> Reduce<U> for Triangle<T> {
-    fn reduce<F>(self, mut seed: U, mut f: F) -> U
-    where
-        F: FnMut(U, Self::Item) -> U,
-    {
-        for vertex in self.into_vertices() {
-            seed = f(seed, vertex);
-        }
-        seed
+        NGon([a, b, c])
     }
 }
 
@@ -469,12 +470,12 @@ impl<T> Rotate for Triangle<T> {
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
-            let Triangle { a, b, c } = self;
-            Triangle { b, c, a }
+            let [a, b, c] = self.into_array();
+            Triangle::new(b, c, a)
         }
         else if n == 2 {
-            let Triangle { a, b, c } = self;
-            Triangle { c, a, b }
+            let [a, b, c] = self.into_array();
+            Triangle::new(c, a, b)
         }
         else {
             self
@@ -482,138 +483,11 @@ impl<T> Rotate for Triangle<T> {
     }
 }
 
-impl<T> Topological for Triangle<T> {
-    type Vertex = T;
-
-    fn arity(&self) -> usize {
-        Self::ARITY
-    }
-}
-
-impl_zip!(composite => Triangle);
-
-impl<T, U> ZipMap<U> for Triangle<T> {
-    type Output = Triangle<U>;
-
-    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item, Self::Item) -> U,
-    {
-        Triangle::new(f(self.a, other.a), f(self.b, other.b), f(self.c, other.c))
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Quad<T> {
-    pub a: T,
-    pub b: T,
-    pub c: T,
-    pub d: T,
-}
+pub type Quad<T> = NGon<[T; 4]>;
 
 impl<T> Quad<T> {
     pub fn new(a: T, b: T, c: T, d: T) -> Self {
-        Quad { a, b, c, d }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity())
-    }
-}
-
-impl<T> Composite for Quad<T> {
-    type Item = T;
-}
-
-impl<T> ConstantArity for Quad<T> {
-    const ARITY: usize = 4;
-}
-
-impl<T> Converged for Quad<T>
-where
-    T: Clone,
-{
-    fn converged(value: T) -> Self {
-        Quad::new(value.clone(), value.clone(), value.clone(), value)
-    }
-}
-
-impl<T> FromItems for Quad<T> {
-    fn from_items<I>(items: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Item>,
-    {
-        let mut items = items.into_iter().take(4);
-        match (items.next(), items.next(), items.next(), items.next()) {
-            (Some(a), Some(b), Some(c), Some(d)) => Some(Quad::new(a, b, c, d)),
-            _ => None,
-        }
-    }
-}
-
-impl<T> FromIterator<T> for Quad<T> {
-    fn from_iter<I>(input: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-    {
-        Quad::from_items(input).unwrap()
-    }
-}
-
-impl<T> Index<usize> for Quad<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        match index {
-            0 => &self.a,
-            1 => &self.b,
-            2 => &self.c,
-            3 => &self.d,
-            _ => panic!(),
-        }
-    }
-}
-
-impl<T> IntoItems for Quad<T> {
-    type Output = ArrayVec<[T; 4]>;
-
-    fn into_items(self) -> Self::Output {
-        ArrayVec::from([self.a, self.b, self.c, self.d])
-    }
-}
-
-impl<T> IntoIterator for Quad<T> {
-    type Item = T;
-    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.into_items().into_iter()
-    }
-}
-
-impl<T, U> Map<U> for Quad<T> {
-    type Output = Quad<U>;
-
-    fn map<F>(self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item) -> U,
-    {
-        let Quad { a, b, c, d } = self;
-        Quad::new(f(a), f(b), f(c), f(d))
-    }
-}
-
-impl<T> Polygonal for Quad<T> {}
-
-impl<T, U> Reduce<U> for Quad<T> {
-    fn reduce<F>(self, mut seed: U, mut f: F) -> U
-    where
-        F: FnMut(U, Self::Item) -> U,
-    {
-        for vertex in self.into_vertices() {
-            seed = f(seed, vertex);
-        }
-        seed
+        NGon([a, b, c, d])
     }
 }
 
@@ -621,46 +495,20 @@ impl<T> Rotate for Quad<T> {
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
-            let Quad { a, b, c, d } = self;
-            Quad { b, c, d, a }
+            let [a, b, c, d] = self.into_array();
+            Quad::new(b, c, d, a)
         }
         else if n == 2 {
-            let Quad { a, b, c, d } = self;
-            Quad { c, d, a, b }
+            let [a, b, c, d] = self.into_array();
+            Quad::new(c, d, a, b)
         }
         else if n == 3 {
-            let Quad { a, b, c, d } = self;
-            Quad { d, a, b, c }
+            let [a, b, c, d] = self.into_array();
+            Quad::new(d, a, b, c)
         }
         else {
             self
         }
-    }
-}
-
-impl<T> Topological for Quad<T> {
-    type Vertex = T;
-
-    fn arity(&self) -> usize {
-        Self::ARITY
-    }
-}
-
-impl_zip!(composite => Quad);
-
-impl<T, U> ZipMap<U> for Quad<T> {
-    type Output = Quad<U>;
-
-    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
-    where
-        F: FnMut(Self::Item, Self::Item) -> U,
-    {
-        Quad::new(
-            f(self.a, other.a),
-            f(self.b, other.b),
-            f(self.c, other.c),
-            f(self.d, other.d),
-        )
     }
 }
 
@@ -671,8 +519,30 @@ pub enum Polygon<T> {
 }
 
 impl<T> Polygon<T> {
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        Iter::new(self, self.arity())
+    pub fn triangle(a: T, b: T, c: T) -> Self {
+        Polygon::Triangle(Triangle::new(a, b, c))
+    }
+
+    pub fn quad(a: T, b: T, c: T, d: T) -> Self {
+        Polygon::Quad(Quad::new(a, b, c, d))
+    }
+}
+
+impl<T> AsRef<[T]> for Polygon<T> {
+    fn as_ref(&self) -> &[T] {
+        match *self {
+            Polygon::Triangle(ref triangle) => triangle.as_ref(),
+            Polygon::Quad(ref quad) => quad.as_ref(),
+        }
+    }
+}
+
+impl<T> AsMut<[T]> for Polygon<T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        match *self {
+            Polygon::Triangle(ref mut triangle) => triangle.as_mut(),
+            Polygon::Quad(ref mut quad) => quad.as_mut(),
+        }
     }
 }
 
@@ -709,15 +579,6 @@ impl<T> FromItems for Polygon<T> {
     }
 }
 
-impl<T> FromIterator<T> for Polygon<T> {
-    fn from_iter<I>(input: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-    {
-        Polygon::from_items(input).unwrap()
-    }
-}
-
 impl<T> Index<usize> for Polygon<T> {
     type Output = T;
 
@@ -725,6 +586,15 @@ impl<T> Index<usize> for Polygon<T> {
         match *self {
             Polygon::Triangle(ref triangle) => triangle.index(index),
             Polygon::Quad(ref quad) => quad.index(index),
+        }
+    }
+}
+
+impl<T> IndexMut<usize> for Polygon<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match *self {
+            Polygon::Triangle(ref mut triangle) => triangle.index_mut(index),
+            Polygon::Quad(ref mut quad) => quad.index_mut(index),
         }
     }
 }
@@ -808,7 +678,8 @@ impl_zip!(composite => Polygon);
 ///
 /// # Examples
 ///
-/// Create a topological stream of position and UV-mapping data for a cube:
+/// Zip position and UV-mapping data for a cube and map over it to compute
+/// color:
 ///
 /// ```rust
 /// # extern crate decorum;
@@ -829,7 +700,7 @@ impl_zip!(composite => Polygon);
 /// type E2 = Point2<N64>;
 /// type E3 = Point3<N64>;
 ///
-/// fn map_uv_to_rgb(uv: &Vector<E2>) -> Vector4<R64> {
+/// fn map_uv_to_rgba(uv: &Vector<E2>) -> Vector4<R64> {
 /// #   Zero::zero()
 ///     // ...
 /// }
@@ -840,7 +711,7 @@ impl_zip!(composite => Polygon);
 ///     cube.polygons_with_position::<E3>(),
 ///     cube.polygons_with_uv_map::<E2>(),
 /// ))
-///     .map_vertices(|(position, uv)| (position, uv, map_uv_to_rgb(&uv)))
+///     .map_vertices(|(position, uv)| (position, uv, map_uv_to_rgba(&uv)))
 ///     .triangulate()
 ///     .collect::<Vec<_>>();
 /// # }

@@ -8,7 +8,7 @@ use nalgebra::Point2;
 use plexus::geometry::AsPosition;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 use plexus::prelude::*;
-use plexus::primitive::Triangle;
+use plexus::primitive::NGon;
 use smallvec::SmallVec;
 
 pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
@@ -37,7 +37,7 @@ where
 fn main() {
     // Create a graph from a right triangle.
     let mut graph = MeshGraph::<Point2<N64>>::from_raw_buffers(
-        vec![Triangle::new(0usize, 1, 2)],
+        vec![NGon([0usize, 1, 2])],
         vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
     )
     .unwrap();

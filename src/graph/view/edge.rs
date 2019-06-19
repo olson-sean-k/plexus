@@ -595,7 +595,7 @@ where
     /// ```rust
     /// use plexus::graph::{GraphGeometry, MeshGraph};
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Triangle;
+    /// use plexus::primitive::NGon;
     ///
     /// pub enum Weight {}
     ///
@@ -606,11 +606,9 @@ where
     ///     type Face = ();
     /// }
     ///
-    /// let mut graph = MeshGraph::<Weight>::from_raw_buffers(
-    ///     vec![Triangle::new(0usize, 1, 2)],
-    ///     vec![1.0, 2.0, 0.5],
-    /// )
-    /// .unwrap();
+    /// let mut graph =
+    ///     MeshGraph::<Weight>::from_raw_buffers(vec![NGon([0usize, 1, 2])], vec![1.0, 2.0, 0.5])
+    ///         .unwrap();
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_with(|| 0.1);
     /// ```
@@ -720,7 +718,7 @@ where
     /// use plexus::geometry::IntoGeometry;
     /// use plexus::graph::{GraphGeometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Quad;
+    /// use plexus::primitive::NGon;
     ///
     /// # fn main() {
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>
@@ -737,7 +735,7 @@ where
     /// }
     ///
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
-    ///     vec![Quad::new(0usize, 1, 2, 3), Quad::new(4, 5, 6, 7)],
+    ///     vec![NGon([0usize, 1, 2, 3]), NGon([4, 5, 6, 7])],
     ///     vec![
     ///         (-2.0, 0.0),
     ///         (-1.0, 0.0), // b

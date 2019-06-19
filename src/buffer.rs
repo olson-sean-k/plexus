@@ -92,6 +92,7 @@ use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 use theon::ops::Map;
+use theon::FromItems;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
@@ -701,15 +702,14 @@ where
     /// ```
     fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G> {
         let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .chunks(U3::USIZE)
-                .into_iter()
-                .map(|triangle| <Structured<Self::Item> as Grouping>::Item::from_iter(triangle))
-                .collect(),
-            vertices,
-        }
+        let indices = indices
+            .into_iter()
+            .chunks(U3::USIZE)
+            .into_iter()
+            .map(|triangle| <Structured<Self::Item> as Grouping>::Item::from_items(triangle))
+            .collect::<Option<Vec<_>>>()
+            .expect("inconsistent index buffer");
+        MeshBuffer { indices, vertices }
     }
 }
 
@@ -747,15 +747,14 @@ where
     /// ```
     fn into_structured_index(self) -> MeshBuffer<Structured<Self::Item>, G> {
         let MeshBuffer { indices, vertices } = self;
-        MeshBuffer {
-            indices: indices
-                .into_iter()
-                .chunks(U4::USIZE)
-                .into_iter()
-                .map(|quad| <Structured<Self::Item> as Grouping>::Item::from_iter(quad))
-                .collect(),
-            vertices,
-        }
+        let indices = indices
+            .into_iter()
+            .chunks(U4::USIZE)
+            .into_iter()
+            .map(|quad| <Structured<Self::Item> as Grouping>::Item::from_items(quad))
+            .collect::<Option<Vec<_>>>()
+            .expect("inconsistent index buffer");
+        MeshBuffer { indices, vertices }
     }
 }
 

@@ -33,7 +33,7 @@ use crate::primitive::generate::{
     PolygonGenerator, PolygonsWithPosition, PositionGenerator, PositionIndexGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, VerticesWithPosition,
 };
-use crate::primitive::{Polygon, Quad, Triangle};
+use crate::primitive::Polygon;
 
 #[derive(Clone, Copy)]
 pub struct Bounds<S>
@@ -199,28 +199,28 @@ where
         // (`lower`). Emit triangles at the poles, otherwise quads.
         let lower = self.vertex_with_position_from(state, u, v);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(
+            Polygon::triangle(
                 lower,
                 self.vertex_with_position_from(state, u, q),
                 self.vertex_with_position_from(state, p, q),
-            ))
+            )
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(
+            Polygon::triangle(
                 // Normalize `u` at the pole, using `(0, nv)` in place of
                 // `(p, q)`.
                 self.vertex_with_position_from(state, 0, self.nv),
                 self.vertex_with_position_from(state, p, v),
                 lower,
-            ))
+            )
         }
         else {
-            Polygon::Quad(Quad::new(
+            Polygon::quad(
                 lower,
                 self.vertex_with_position_from(state, u, q),
                 self.vertex_with_position_from(state, p, q),
                 self.vertex_with_position_from(state, p, v),
-            ))
+            )
         }
     }
 }
@@ -235,18 +235,18 @@ impl PositionIndexGenerator for UvSphere {
         let low = self.index_for_position(u, v);
         let high = self.index_for_position(p, q);
         if v == 0 {
-            Polygon::Triangle(Triangle::new(low, self.index_for_position(u, q), high))
+            Polygon::triangle(low, self.index_for_position(u, q), high)
         }
         else if v == self.nv - 1 {
-            Polygon::Triangle(Triangle::new(high, self.index_for_position(p, v), low))
+            Polygon::triangle(high, self.index_for_position(p, v), low)
         }
         else {
-            Polygon::Quad(Quad::new(
+            Polygon::quad(
                 low,
                 self.index_for_position(u, q),
                 high,
                 self.index_for_position(p, v),
-            ))
+            )
         }
     }
 }

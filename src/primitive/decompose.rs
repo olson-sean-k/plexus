@@ -80,11 +80,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(topology) = self.output.pop_front() {
-                return Some(topology);
+            if let Some(ngon) = self.output.pop_front() {
+                return Some(ngon);
             }
-            if let Some(topology) = self.input.next() {
-                self.output.extend((self.f)(topology));
+            if let Some(ngon) = self.input.next() {
+                self.output.extend((self.f)(ngon));
             }
             else {
                 return None;
@@ -152,7 +152,7 @@ where
     type Output = ArrayVec<[Edge<Self::Vertex>; 3]>;
 
     fn into_edges(self) -> Self::Output {
-        let Triangle { a, b, c } = self;
+        let [a, b, c] = self.into_array();
         ArrayVec::from([
             Edge::new(a.clone(), b.clone()),
             Edge::new(b, c.clone()),
@@ -168,7 +168,7 @@ where
     type Output = ArrayVec<[Edge<Self::Vertex>; 4]>;
 
     fn into_edges(self) -> Self::Output {
-        let Quad { a, b, c, d } = self;
+        let [a, b, c, d] = self.into_array();
         ArrayVec::from([
             Edge::new(a.clone(), b.clone()),
             Edge::new(b, c.clone()),
@@ -207,7 +207,7 @@ where
     type Output = ArrayVec<[Triangle<Self::Vertex>; 2]>;
 
     fn into_triangles(self) -> Self::Output {
-        let Quad { a, b, c, d } = self;
+        let [a, b, c, d] = self.into_array();
         ArrayVec::from([
             Triangle::new(a.clone(), b, c.clone()),
             Triangle::new(c, d, a),
@@ -236,7 +236,7 @@ where
     type Output = ArrayVec<[Triangle<Self::Vertex>; 2]>;
 
     fn into_subdivisions(self) -> Self::Output {
-        let Triangle { a, b, c } = self;
+        let [a, b, c] = self.into_array();
         let ac = a.clone().midpoint(c.clone());
         ArrayVec::from([
             Triangle::new(b.clone(), ac.clone(), a),
@@ -252,7 +252,7 @@ where
     type Output = ArrayVec<[Quad<Self::Vertex>; 4]>;
 
     fn into_subdivisions(self) -> Self::Output {
-        let Quad { a, b, c, d } = self;
+        let [a, b, c, d] = self.into_array();
         let ab = a.clone().midpoint(b.clone());
         let bc = b.clone().midpoint(c.clone());
         let cd = c.clone().midpoint(d.clone());
@@ -272,7 +272,7 @@ where
     T: Clone + Interpolate<Output = T>,
 {
     fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]> {
-        let Quad { a, b, c, d } = self;
+        let [a, b, c, d] = self.into_array();
         let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
             Triangle::new(a.clone(), b.clone(), ac.clone()),
@@ -390,15 +390,15 @@ where
     }
 }
 
-fn remap<I, P, R, F>(n: usize, topologies: I, f: F) -> Vec<P>
+fn remap<I, P, R, F>(n: usize, ngons: I, f: F) -> Vec<P>
 where
     I: IntoIterator<Item = P>,
     R: IntoIterator<Item = P>,
     F: Fn(P) -> R,
 {
-    let mut topologies: Vec<_> = topologies.into_iter().collect();
+    let mut ngons: Vec<_> = ngons.into_iter().collect();
     for _ in 0..n {
-        topologies = topologies.into_iter().flat_map(&f).collect();
+        ngons = ngons.into_iter().flat_map(&f).collect();
     }
-    topologies
+    ngons
 }
