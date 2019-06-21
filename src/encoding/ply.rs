@@ -23,7 +23,8 @@
 //! // Read from a file, network, etc.
 //! fn read() -> impl Read {
 //!     // ...
-//!     # include_bytes!("../../data/cube.ply")
+//!     # let ply: &[u8] = include_bytes!("../../data/cube.ply");
+//!     # ply
 //! }
 //!
 //! # fn main() {
