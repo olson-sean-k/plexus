@@ -18,10 +18,10 @@
 //! use nalgebra::Point3;
 //! use plexus::encoding::ply::{FromPly, PointEncoding};
 //! use plexus::graph::MeshGraph;
-//! use std::fs::File;
+//! use std::io::Read;
 //!
 //! // Read from a file, network, etc.
-//! fn read<'a>() -> &'a [u8] {
+//! fn read() -> impl Read {
 //!     // ...
 //!     # include_bytes!("../../data/cube.ply")
 //! }
