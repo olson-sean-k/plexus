@@ -73,7 +73,7 @@ use std::ops::{Index, IndexMut};
 use std::slice;
 use theon::{Composite, FromItems, IntoItems};
 
-pub use theon::ops::{Map, Reduce, ZipMap};
+pub use theon::ops::{Fold, Map, ZipMap};
 pub use theon::Converged;
 
 use crate::primitive::decompose::IntoVertices;
@@ -278,6 +278,22 @@ where
     type Item = A::Item;
 }
 
+impl<A, U> Fold<U> for NGon<A>
+where
+    Self: Topological + IntoItems,
+    A: Array,
+{
+    fn fold<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, Self::Item) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
+    }
+}
+
 impl<A> From<A> for NGon<A>
 where
     A: Array,
@@ -344,22 +360,6 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         self.into_items().into_iter()
-    }
-}
-
-impl<A, U> Reduce<U> for NGon<A>
-where
-    Self: Topological + IntoItems,
-    A: Array,
-{
-    fn reduce<F>(self, mut seed: U, mut f: F) -> U
-    where
-        F: FnMut(U, Self::Item) -> U,
-    {
-        for vertex in self.into_vertices() {
-            seed = f(seed, vertex);
-        }
-        seed
     }
 }
 
@@ -550,6 +550,18 @@ impl<T> Composite for Polygon<T> {
     type Item = T;
 }
 
+impl<T, U> Fold<U> for Polygon<T> {
+    fn fold<F>(self, mut seed: U, mut f: F) -> U
+    where
+        F: FnMut(U, Self::Item) -> U,
+    {
+        for vertex in self.into_vertices() {
+            seed = f(seed, vertex);
+        }
+        seed
+    }
+}
+
 impl<T> From<Triangle<T>> for Polygon<T> {
     fn from(triangle: Triangle<T>) -> Self {
         Polygon::Triangle(triangle)
@@ -634,18 +646,6 @@ impl<T, U> Map<U> for Polygon<T> {
 }
 
 impl<T> Polygonal for Polygon<T> {}
-
-impl<T, U> Reduce<U> for Polygon<T> {
-    fn reduce<F>(self, mut seed: U, mut f: F) -> U
-    where
-        F: FnMut(U, Self::Item) -> U,
-    {
-        for vertex in self.into_vertices() {
-            seed = f(seed, vertex);
-        }
-        seed
-    }
-}
 
 impl<T> Rotate for Polygon<T> {
     fn rotate(self, n: isize) -> Self {

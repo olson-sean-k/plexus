@@ -66,7 +66,7 @@ ply-rs = { version = "^0.1.2", optional = true }
 
 [dependencies.theon]
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "85465ecb902aaa1a74796f3260e974a37c70e893"
+rev = "dbd85567a530f216199900483bb4588d37b2bfc4"
 default-features = false
 features = ["array"]
 
