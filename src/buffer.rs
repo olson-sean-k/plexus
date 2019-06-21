@@ -98,8 +98,8 @@ use typenum::{self, NonZero, Unsigned as _, U3, U4};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::geometry::IntoGeometry;
 use crate::index::{
-    ClosedIndexVertices, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer,
-    Indexer, Push, Structured, Structured3, Structured4, StructuredN,
+    Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer,
+    Push, Structured, Structured3, Structured4, StructuredN,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Polygonal, Quad, Topological, Triangle};

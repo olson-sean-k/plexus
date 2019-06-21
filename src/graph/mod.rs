@@ -193,7 +193,7 @@ use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{
-    ClosedIndexVertices, Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, Indexer, Structured,
+    Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygonal, Quad};

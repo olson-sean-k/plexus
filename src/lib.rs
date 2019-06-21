@@ -46,7 +46,7 @@ pub mod prelude {
     pub use crate::encoding::ply::{FromPly as _, ToPly as _};
     pub use crate::geometry::{FromGeometry as _, IntoGeometry as _};
     pub use crate::graph::Selector;
-    pub use crate::index::{CollectWithIndexer as _, OpenIndexVertices as _};
+    pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _,
         IntoTriangles as _, IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _,
