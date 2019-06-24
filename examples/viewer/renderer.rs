@@ -54,7 +54,9 @@ pub trait MetaRenderer {
     type Device: Device<Resources = Self::Resources, CommandBuffer = Self::CommandBuffer>;
 }
 
-pub struct GlutinRenderer {}
+// TODO: This is incorrectly linted as dead code.
+#[allow(dead_code)]
+pub enum GlutinRenderer {}
 
 impl MetaRenderer for GlutinRenderer {
     type Window = GlWindow;
@@ -119,6 +121,7 @@ where
         let data = Data {
             buffer: factory.create_vertex_buffer(&[]),
             transform: factory.create_constant_buffer(1),
+            viewpoint: [0.0; 4],
             camera: [[0.0; 4]; 4],
             model: [[0.0; 4]; 4],
             color: color,
@@ -170,6 +173,7 @@ where
         }
     }
 
+    #[allow(dead_code)]
     pub fn update_frame_buffer_view(&mut self) {
         self.window
             .update_frame_buffer_view(&mut self.data.color, &mut self.data.depth);

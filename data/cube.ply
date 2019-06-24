@@ -5,7 +5,7 @@ property float x
 property float y
 property float z
 element face 6
-property list uchar uint index
+property list uint8 uint32 index
 end_header
 0 0 0
 0 0 1

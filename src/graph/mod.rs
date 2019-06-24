@@ -607,7 +607,7 @@ where
         }
     }
 
-    /// Triangulates the mesh, tesselating all faces into triangles.
+    /// Triangulates the mesh, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
         let faces = self.as_face_storage().keys().collect::<Vec<_>>();
         for face in faces {
