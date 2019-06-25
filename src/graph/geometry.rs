@@ -61,7 +61,7 @@
 // TODO: Integrate this module documentation into the `graph` module.
 
 use theon::ops::{Cross, Interpolate, Project};
-use theon::space::{EuclideanSpace, InnerSpace, Vector};
+use theon::space::{EuclideanSpace, InnerSpace, Vector, VectorSpace};
 use theon::FromItems;
 
 use crate::geometry::AsPosition;
@@ -192,6 +192,41 @@ where
                 .map(|vertex| vertex.geometry.as_position().clone()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)
+    }
+}
+
+// TODO: This depends on faces, but only an interior path is necessary.
+pub trait VertexNormal: FaceNormal + GraphGeometry {
+    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Self::Normal, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>;
+}
+
+impl<G> VertexNormal for G
+where
+    G: FaceNormal<Normal = Vector<VertexPosition<G>>>,
+    G::Vertex: AsPosition,
+    VertexPosition<G>: EuclideanSpace,
+{
+    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Self::Normal, GraphError>
+    where
+        M: Reborrow,
+        M::Target: AsStorage<ArcPayload<Self>>
+            + AsStorage<FacePayload<Self>>
+            + AsStorage<VertexPayload<Self>>,
+    {
+        Vector::<VertexPosition<G>>::mean(
+            vertex
+                .reachable_neighboring_faces()
+                .map(|face| G::normal(face))
+                .collect::<Result<Vec<_>, _>>()?,
+        )
+        .ok_or_else(|| GraphError::TopologyNotFound)?
+        .normalize()
+        .ok_or_else(|| GraphError::Geometry)
     }
 }
 

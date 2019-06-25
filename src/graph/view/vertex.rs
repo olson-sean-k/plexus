@@ -5,7 +5,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{GraphGeometry, VertexCentroid, VertexPosition};
+use crate::graph::geometry::{GraphGeometry, VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::storage::alias::*;
@@ -51,6 +51,13 @@ where
     /// Gets the key for the vertex.
     pub fn key(&self) -> VertexKey {
         self.inner.key()
+    }
+
+    pub fn position(&self) -> &VertexPosition<G>
+    where
+        G::Vertex: AsPosition,
+    {
+        self.geometry.as_position()
     }
 }
 
@@ -199,6 +206,13 @@ where
     pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         self.reachable_incoming_arcs()
     }
+
+    pub fn centroid(&self) -> G::Centroid
+    where
+        G: VertexCentroid,
+    {
+        G::centroid(self.interior_reborrow()).expect_consistent()
+    }
 }
 
 /// Reachable API.
@@ -230,6 +244,13 @@ where
     /// of the vertex.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         self.reachable_neighboring_faces()
+    }
+
+    pub fn normal(&self) -> Result<G::Normal, GraphError>
+    where
+        G: VertexNormal,
+    {
+        <G as VertexNormal>::normal(self.interior_reborrow())
     }
 }
 
@@ -353,32 +374,6 @@ where
                 .map(|_| ())
         })()
         .expect_consistent()
-    }
-}
-
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-    G::Vertex: AsPosition,
-{
-    pub fn position(&self) -> &VertexPosition<G> {
-        self.geometry.as_position()
-    }
-}
-
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: GraphGeometry,
-{
-    pub fn centroid(&self) -> G::Centroid
-    where
-        G: VertexCentroid,
-    {
-        G::centroid(self.interior_reborrow()).expect_consistent()
     }
 }
 
