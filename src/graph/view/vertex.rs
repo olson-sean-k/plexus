@@ -462,14 +462,11 @@ where
     pub fn key(&self) -> VertexKey {
         self.inner.key()
     }
-}
 
-impl<'a, G> OrphanVertexView<'a, G>
-where
-    G: 'a + GraphGeometry,
-    G::Vertex: AsPosition,
-{
-    pub fn position(&self) -> &VertexPosition<G> {
+    pub fn position(&self) -> &VertexPosition<G>
+    where
+        G::Vertex: AsPosition,
+    {
         self.inner.geometry.as_position()
     }
 }
