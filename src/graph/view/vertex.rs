@@ -366,14 +366,12 @@ where
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
     pub fn remove(self) {
-        (move || {
-            let (a, storage) = self.into_inner().into_keyed_source();
-            let cache = VertexRemoveCache::snapshot(&storage, a)?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
-                .map(|_| ())
-        })()
-        .expect_consistent()
+        let (a, storage) = self.into_inner().into_keyed_source();
+        let cache = VertexRemoveCache::snapshot(&storage, a).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
+            .map(|_| ())
+            .expect_consistent()
     }
 }
 

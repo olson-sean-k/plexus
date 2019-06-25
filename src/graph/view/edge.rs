@@ -616,14 +616,12 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        (move || {
-            let (ab, storage) = self.into_inner().into_keyed_source();
-            let cache = EdgeSplitCache::snapshot(&storage, ab, f())?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
-                .map(|(storage, m)| (m, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent()
+        let (ab, storage) = self.into_inner().into_keyed_source();
+        let cache = EdgeSplitCache::snapshot(&storage, ab, f()).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
+            .map(|(storage, m)| (m, storage).into_view().expect_consistent())
+            .expect_consistent()
     }
 
     /// Splits an edge (and its arcs) at the midpoint of the arc's vertices.
@@ -771,6 +769,8 @@ where
                 .map(|arc| arc.key())
         })?;
         let (source, storage) = self.into_inner().into_keyed_source();
+        // Errors can easily be caused by inputs to this function. Allow errors
+        // from the snapshot to propagate.
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
@@ -834,7 +834,7 @@ where
     {
         let translation = self.normal() * offset.into();
         let (ab, storage) = self.into_inner().into_keyed_source();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab, translation)?;
+        let cache = ArcExtrudeCache::snapshot(&storage, ab, translation).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
             .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
@@ -851,15 +851,13 @@ where
     /// $\overrightarrow{AB}$ is removed and its source vertex is not disjoint,
     /// then $A$ is returned.
     pub fn remove(self) -> Option<VertexView<&'a mut M, G>> {
-        (move || {
-            let a = self.source_vertex().key();
-            let (ab, storage) = self.into_inner().into_keyed_source();
-            let cache = EdgeRemoveCache::snapshot(&storage, ab)?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-                .map(|(storage, _)| (a, storage).into_view())
-        })()
-        .expect_consistent()
+        let a = self.source_vertex().key();
+        let (ab, storage) = self.into_inner().into_keyed_source();
+        let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
+            .map(|(storage, _)| (a, storage).into_view())
+            .expect_consistent()
     }
 }
 

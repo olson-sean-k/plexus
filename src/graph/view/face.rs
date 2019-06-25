@@ -471,14 +471,14 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
         })?;
-        Ok((move || {
-            let (abc, storage) = self.into_inner().into_keyed_source();
-            let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| face::split_with_cache(mutation, cache))
-                .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent())
+        let (abc, storage) = self.into_inner().into_keyed_source();
+        // Errors can easily be caused by inputs to this function. Allow errors
+        // from the snapshot to propagate.
+        let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
+        Ok(Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::split_with_cache(mutation, cache))
+            .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+            .expect_consistent())
     }
 
     /// Merges the face into a neighboring face over their shared composite
@@ -572,6 +572,8 @@ where
     /// of the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (source, storage) = self.into_inner().into_keyed_source();
+        // Errors can easily be caused by inputs to this function. Allow errors
+        // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
@@ -639,14 +641,12 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        (move || {
-            let (abc, storage) = self.into_inner().into_keyed_source();
-            let cache = FacePokeCache::snapshot(&storage, abc, f())?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
-                .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent()
+        let (abc, storage) = self.into_inner().into_keyed_source();
+        let cache = FacePokeCache::snapshot(&storage, abc, f()).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
+            .map(|(storage, vertex)| (vertex, storage).into_view().expect_consistent())
+            .expect_consistent()
     }
 
     /// Subdivides the face about its centroid. A triangle fan is formed from
@@ -722,28 +722,24 @@ where
         VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal() * offset.into();
-        (move || {
-            let (abc, storage) = self.into_inner().into_keyed_source();
-            let cache = FaceExtrudeCache::snapshot(&storage, abc, translation)?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
-                .map(|(storage, face)| (face, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent()
+        let (abc, storage) = self.into_inner().into_keyed_source();
+        let cache = FaceExtrudeCache::snapshot(&storage, abc, translation).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
+            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            .expect_consistent()
     }
 
     /// Removes the face.
     ///
     /// Returns the interior path of the face.
     pub fn remove(self) -> InteriorPathView<&'a mut M, G> {
-        (move || {
-            let (abc, storage) = self.into_inner().into_keyed_source();
-            let cache = FaceRemoveCache::snapshot(&storage, abc)?;
-            Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
-                .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
-        })()
-        .expect_consistent()
+        let (abc, storage) = self.into_inner().into_keyed_source();
+        let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
+        Mutation::replace(storage, Default::default())
+            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
+            .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
+            .expect_consistent()
     }
 }
 
@@ -1079,19 +1075,17 @@ where
             self.into_inner().rekey_map(key).expect_consistent()
         }
         else {
-            (move || {
-                let vertices = self
-                    .vertices()
-                    .map(|vertex| vertex.key())
-                    .collect::<Vec<_>>();
-                let (_, storage) = self.into_inner().into_keyed_source();
-                let cache =
-                    FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))?;
-                Mutation::replace(storage, Default::default())
-                    .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
-                    .map(|(storage, face)| (face, storage).into_view().expect_consistent())
-            })()
-            .expect_consistent()
+            let vertices = self
+                .vertices()
+                .map(|vertex| vertex.key())
+                .collect::<Vec<_>>();
+            let (_, storage) = self.into_inner().into_keyed_source();
+            let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))
+                .expect_consistent();
+            Mutation::replace(storage, Default::default())
+                .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
+                .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+                .expect_consistent()
         }
     }
 }
