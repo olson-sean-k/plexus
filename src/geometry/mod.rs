@@ -26,6 +26,17 @@ impl<T> FromGeometry<T> for T {
     }
 }
 
+impl<T> FromGeometry<()> for T
+where
+    T: UnitGeometry,
+{
+    fn from_geometry(_: ()) -> Self {
+        T::default()
+    }
+}
+
+pub trait UnitGeometry: Default {}
+
 pub trait IntoGeometry<T> {
     fn into_geometry(self) -> T;
 }
