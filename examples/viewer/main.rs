@@ -14,6 +14,7 @@ use nalgebra::{Matrix4, Point3};
 use plexus::encoding::ply::PointEncoding;
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
+use std::f32::consts::PI;
 
 use crate::camera::Camera;
 use crate::pipeline::{Transform, Vertex};
@@ -39,9 +40,9 @@ fn main() {
 
     // Compute constant transformations used in the vertex shader.
     let transform = {
-        let viewpoint = Point3::new(0.0, -6.0, 4.0);
+        let viewpoint = Point3::new(0.0, -8.0, 4.0);
         let camera = {
-            let mut camera = Camera::new(WIDTH as f32 / HEIGHT as f32, 45.0, -1.0, 2.0);
+            let mut camera = Camera::new(WIDTH as f32 / HEIGHT as f32, PI / 4.0, 0.1, 100.0);
             camera.look_at(&viewpoint, &Point3::new(0.0, 0.0, 1.0));
             camera
         };
