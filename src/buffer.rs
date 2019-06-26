@@ -364,7 +364,8 @@ where
 
 impl<E, G> FromEncoding<E> for MeshBuffer<StructuredN, G>
 where
-    E: FaceDecoder<Face = (), Index = Polygon<usize>> + VertexDecoder<Vertex = G>,
+    E: FaceDecoder<Face = (), Index = Polygon<usize>> + VertexDecoder,
+    E::Vertex: IntoGeometry<G>,
 {
     type Error = BufferError;
 
@@ -373,6 +374,7 @@ where
         faces: <E as FaceDecoder>::Output,
     ) -> Result<Self, Self::Error> {
         let indices = faces.into_iter().map(|(index, _)| index);
+        let vertices = vertices.into_iter().map(|vertex| vertex.into_geometry());
         MeshBuffer::from_raw_buffers(indices, vertices)
     }
 }

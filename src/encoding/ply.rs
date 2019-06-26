@@ -28,7 +28,7 @@
 //! }
 //!
 //! # fn main() {
-//! let encoding = PointEncoding::default();
+//! let encoding = PointEncoding::<Point3<f64>>::default();
 //! let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, read()).unwrap();
 //! # }
 //! ```
@@ -357,8 +357,12 @@ mod tests {
 
     #[test]
     fn decode() {
-        let ply: &[u8] = include_bytes!("../../data/cube.ply");
-        let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(PointEncoding::default(), ply).unwrap();
+        let graph = {
+            let ply: &[u8] = include_bytes!("../../data/cube.ply");
+            MeshGraph::<Point3<f64>>::from_ply(PointEncoding::<Point3<f64>>::default(), ply)
+                .unwrap()
+                .0
+        };
         assert_eq!(8, graph.vertex_count());
         assert_eq!(12, graph.edge_count());
         assert_eq!(6, graph.face_count());

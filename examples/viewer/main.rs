@@ -53,7 +53,7 @@ fn main() {
     // needed. Convert the graph into a buffer that can be rendered.
     let graph = {
         let ply: &[u8] = include_bytes!("../../data/teapot.ply");
-        MeshGraph::<Point3<f32>>::from_ply(PointEncoding::default(), ply)
+        MeshGraph::<Point3<f32>>::from_ply(PointEncoding::<Point3<f32>>::default(), ply)
             .expect("teapot")
             .0
     };

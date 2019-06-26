@@ -873,8 +873,9 @@ where
 impl<E, G> FromEncoding<E> for MeshGraph<G>
 where
     G: GraphGeometry,
-    E: FaceDecoder<Face = <G as GraphGeometry>::Face>
-        + VertexDecoder<Vertex = <G as GraphGeometry>::Vertex>,
+    E: FaceDecoder + VertexDecoder,
+    E::Face: IntoGeometry<G::Face>,
+    E::Vertex: IntoGeometry<G::Vertex>,
 {
     type Error = GraphError;
 
@@ -885,14 +886,17 @@ where
         let mut mutation = Mutation::mutate(MeshGraph::new());
         let keys = vertices
             .into_iter()
-            .map(|geometry| mutation.insert_vertex(geometry))
+            .map(|geometry| mutation.insert_vertex(geometry.into_geometry()))
             .collect::<Vec<_>>();
         for (perimeter, geometry) in faces {
             let perimeter = perimeter
                 .into_iter()
                 .map(|index| keys[index])
                 .collect::<SmallVec<[_; 4]>>();
-            mutation.insert_face(perimeter.as_slice(), (Default::default(), geometry))?;
+            mutation.insert_face(
+                perimeter.as_slice(),
+                (Default::default(), geometry.into_geometry()),
+            )?;
         }
         mutation.commit()
     }

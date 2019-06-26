@@ -142,7 +142,7 @@ use plexus::graph::MeshGraph;
 use std::fs::File;
 
 let ply = File::open("cube.ply").unwrap();
-let encoding = PointEncoding::default();
+let encoding = PointEncoding::<Point3<f64>>::default();
 let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, ply).unwrap();
 ```
 
