@@ -1,6 +1,8 @@
 use decorum;
 use gfx;
-use nalgebra::{Matrix4, Point3, Vector3};
+use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
+use num::One;
+use plexus::geometry::UnitGeometry;
 use std::hash::{Hash, Hasher};
 
 pub use self::pipeline::*;
@@ -50,23 +52,16 @@ gfx_vertex_struct! {
     Vertex {
         position: [f32; 3] = "a_position",
         normal: [f32; 3] = "a_normal",
+        color: [f32; 4] = "a_color",
     }
 }
 
 impl Vertex {
-    pub fn new(position: &Point3<f32>, normal: &Vector3<f32>) -> Self {
+    pub fn new(position: &Point3<f32>, normal: &Vector3<f32>, color: &Vector4<f32>) -> Self {
         Vertex {
             position: [position[0], position[1], position[2]],
             normal: [normal[0], normal[1], normal[2]],
-        }
-    }
-}
-
-impl Default for Vertex {
-    fn default() -> Self {
-        Vertex {
-            position: Default::default(),
-            normal: [1.0, 0.0, 0.0],
+            color: [color[0], color[1], color[2], color[3]],
         }
     }
 }
@@ -78,5 +73,61 @@ impl Hash for Vertex {
     {
         decorum::hash_float_array(&self.position, state);
         decorum::hash_float_array(&self.normal, state);
+        decorum::hash_float_array(&self.color, state);
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+pub struct Color4<T>(pub Vector4<T>)
+where
+    T: Scalar;
+
+impl<T> Color4<T>
+where
+    T: Scalar,
+{
+    pub fn white() -> Self
+    where
+        T: One,
+    {
+        Color4(Vector4::repeat(One::one()))
+    }
+}
+
+impl<T> AsRef<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn as_ref(&self) -> &Vector4<T> {
+        &self.0
+    }
+}
+
+impl<T> Default for Color4<T>
+where
+    T: One + Scalar,
+{
+    fn default() -> Self {
+        Color4::white()
+    }
+}
+
+impl<T> From<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn from(vector: Vector4<T>) -> Self {
+        Color4(vector)
+    }
+}
+
+impl<T> Into<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn into(self) -> Vector4<T> {
+        self.0
+    }
+}
+
+impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}

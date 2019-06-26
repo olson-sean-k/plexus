@@ -12,16 +12,25 @@ use glutin::{
 };
 use nalgebra::{Matrix4, Point3};
 use plexus::encoding::ply::PointEncoding;
-use plexus::graph::MeshGraph;
+use plexus::graph::{GraphGeometry, MeshGraph};
 use plexus::prelude::*;
 use std::f32::consts::PI;
 
 use crate::camera::Camera;
-use crate::pipeline::{Transform, Vertex};
+use crate::pipeline::{Color4, Transform, Vertex};
 use crate::renderer::Renderer;
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 576;
+
+enum Geometry {}
+
+impl GraphGeometry for Geometry {
+    type Vertex = Point3<f32>;
+    type Arc = ();
+    type Edge = ();
+    type Face = Color4<f32>;
+}
 
 fn main() {
     // Establish an event loop and renderer for the application.
@@ -51,15 +60,19 @@ fn main() {
 
     // Read a PLY file into a graph. This graph can be further manipulated as
     // needed. Convert the graph into a buffer that can be rendered.
-    let graph = {
-        let ply: &[u8] = include_bytes!("../../data/teapot.ply");
-        MeshGraph::<Point3<f32>>::from_ply(PointEncoding::<Point3<f32>>::default(), ply)
-            .expect("teapot")
-            .0
+    let buffer = {
+        let graph = {
+            let ply: &[u8] = include_bytes!("../../data/teapot.ply");
+            MeshGraph::<Geometry>::from_ply(PointEncoding::<Point3<f32>>::default(), ply)
+                .expect("teapot")
+                .0
+        };
+        graph
+            .to_mesh_buffer_by_face_with(|face, vertex| {
+                Vertex::new(&vertex.geometry, &face.normal(), face.geometry.as_ref())
+            })
+            .expect("buffer")
     };
-    let buffer = graph
-        .to_mesh_buffer_by_face_with(|face, vertex| Vertex::new(&vertex.geometry, &face.normal()))
-        .expect("buffer");
 
     // Start the application and exit when the window is closed.
     event_loop.run_forever(move |event| match event {
