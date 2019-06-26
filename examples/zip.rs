@@ -1,7 +1,3 @@
-extern crate decorum;
-extern crate nalgebra;
-extern crate plexus;
-
 use decorum::N64;
 use nalgebra::{Point3, Vector2};
 use plexus::index::{Flat3, HashIndexer};

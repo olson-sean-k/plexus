@@ -1,0 +1,81 @@
+[package]
+name = "plexus"
+version = "0.0.11"
+edition = "2018"
+authors = ["Sean Olson <olson.sean.k@gmail.com>"]
+license = "MIT"
+readme = "../README.md"
+homepage = "https://plexus.rs"
+repository = "https://github.com/olson-sean-k/plexus"
+description = "Polygonal mesh processing."
+keywords = ["graphics", "half-edge", "mesh", "topology", "geometry"]
+
+[package.metadata.docs.rs]
+# Enable all featues so that trait implementations for types from commonly used
+# linear algebra crates are shown.
+all-features = true
+# Enable Katex support.
+rustdoc-args = [
+    "--html-in-header",
+    "doc/katex-header.html"
+]
+
+[badges]
+travis-ci = { repository = "olson-sean-k/plexus" }
+
+[[example]]
+name = "teapot"
+path = "../examples/teapot.rs"
+
+[[example]]
+name = "subdivide"
+path = "../examples/subdivide.rs"
+
+[[example]]
+name = "zip"
+path = "../examples/zip.rs"
+
+[lib]
+name = "plexus"
+
+[features]
+default = ["geometry-nalgebra"]
+encoding-ply = ["ply-rs"]
+geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
+geometry-mint = ["mint", "theon/geometry-mint"]
+geometry-nalgebra = ["nalgebra", "theon/geometry-nalgebra"]
+
+[dependencies]
+arrayvec = "^0.4.8"
+decorum = "^0.1.1"
+derivative = "^1.0.2"
+either = "^1.5.0"
+failure = "^0.1.5"
+fnv = "^1.0.6"
+fool = "0.0.1"
+itertools = "^0.8.0"
+num = "^0.2.0"
+slotmap = "^0.3.0"
+smallvec = "^0.6.9"
+typenum = "^1.10.0"
+
+cgmath = { version = "^0.17.0", optional = true }
+mint = { version = "^0.5.0", optional = true }
+nalgebra = { version = "^0.18.0", optional = true }
+ply-rs = { version = "^0.1.2", optional = true }
+
+[dependencies.theon]
+git = "https://github.com/olson-sean-k/theon.git"
+rev = "dbd85567a530f216199900483bb4588d37b2bfc4"
+default-features = false
+features = ["array"]
+
+[dev-dependencies]
+# This dependency must be removed when publishing. Cargo does not allow
+# non-published dependencies, even if they are for development only. See the
+# following issues:
+#
+#   https://github.com/rust-lang/cargo/issues/4242
+#   https://github.com/rust-lang/cargo/issues/4663
+#
+plexus-viewer = { path = "../plexus-viewer" }

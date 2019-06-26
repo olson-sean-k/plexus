@@ -54,8 +54,6 @@ pub trait MetaRenderer {
     type Device: Device<Resources = Self::Resources, CommandBuffer = Self::CommandBuffer>;
 }
 
-// TODO: This is incorrectly linted as dead code.
-#[allow(dead_code)]
 pub enum GlutinRenderer {}
 
 impl MetaRenderer for GlutinRenderer {
@@ -173,7 +171,6 @@ where
         }
     }
 
-    #[allow(dead_code)]
     pub fn update_frame_buffer_view(&mut self) {
         self.window
             .update_frame_buffer_view(&mut self.data.color, &mut self.data.depth);

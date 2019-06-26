@@ -1,8 +1,3 @@
-extern crate arrayvec;
-extern crate decorum;
-extern crate nalgebra;
-extern crate plexus;
-
 use decorum::N64;
 use nalgebra::Point2;
 use plexus::geometry::AsPosition;

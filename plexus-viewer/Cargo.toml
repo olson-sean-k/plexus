@@ -1,0 +1,38 @@
+[package]
+name = "plexus-viewer"
+version = "0.0.0"
+# This package should not be published.
+#
+# Because of this, published packages can not take a dependency on this one and
+# it must be removed from the manifest when publishing. This code is part of a
+# separate crate so that it can be shared by examples and can enable necessary
+# features without the need for additional command line options. See the
+# following issues:
+#
+#   https://github.com/rust-lang/cargo/issues/4242
+#   https://github.com/rust-lang/cargo/issues/4663
+#
+publish = false
+edition = "2018"
+authors = ["Sean Olson <olson.sean.k@gmail.com>"]
+license = "MIT"
+
+[lib]
+name = "plexus_viewer"
+
+[dependencies]
+decorum = "^0.1.1"
+gfx = "0.18.0"
+gfx_device_gl = "0.16.0"
+gfx_window_glutin = "0.29.0"
+glutin = "0.19.0"
+nalgebra = "^0.18.0"
+num = "^0.2.0"
+rand = "^0.7.0"
+
+[dependencies.plexus]
+path = "../plexus"
+features = [
+    "encoding-ply",
+    "geometry-nalgebra",
+]

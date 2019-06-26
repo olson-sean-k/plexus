@@ -23,7 +23,7 @@
 //! // Read from a file, network, etc.
 //! fn read() -> impl Read {
 //!     // ...
-//!     # let ply: &[u8] = include_bytes!("../../data/cube.ply");
+//!     # let ply: &[u8] = include_bytes!("../../../data/cube.ply");
 //!     # ply
 //! }
 //!
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn decode() {
         let graph = {
-            let ply: &[u8] = include_bytes!("../../data/cube.ply");
+            let ply: &[u8] = include_bytes!("../../../data/cube.ply");
             MeshGraph::<Point3<f64>>::from_ply(PointEncoding::<Point3<f64>>::default(), ply)
                 .unwrap()
                 .0
