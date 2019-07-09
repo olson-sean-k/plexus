@@ -614,10 +614,10 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point3;
-    /// use plexus::geometry::AsPosition;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::Triangle;
+    /// use plexus::AsPosition;
     ///
     /// # fn main() {
     /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(

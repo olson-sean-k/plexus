@@ -713,10 +713,10 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point2;
-    /// use plexus::geometry::IntoGeometry;
     /// use plexus::graph::{GraphGeometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::NGon;
+    /// use plexus::IntoGeometry;
     ///
     /// # fn main() {
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>

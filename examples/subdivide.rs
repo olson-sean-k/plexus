@@ -1,9 +1,9 @@
 use decorum::N64;
 use nalgebra::Point2;
-use plexus::geometry::AsPosition;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 use plexus::prelude::*;
 use plexus::primitive::NGon;
+use plexus::AsPosition;
 use smallvec::SmallVec;
 
 pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>

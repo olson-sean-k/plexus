@@ -29,9 +29,9 @@
 //! # extern crate plexus;
 //! # extern crate smallvec;
 //! #
-//! use plexus::geometry::AsPosition;
 //! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
 //! use plexus::prelude::*;
+//! use plexus::AsPosition;
 //! use smallvec::SmallVec;
 //!
 //! # fn main() {
@@ -97,10 +97,10 @@ pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Targe
 /// use decorum::N64;
 /// use nalgebra::{Point3, Vector4};
 /// use num::Zero;
-/// use plexus::geometry::{AsPosition, IntoGeometry};
 /// use plexus::graph::{GraphGeometry, MeshGraph};
 /// use plexus::prelude::*;
 /// use plexus::primitive::sphere::UvSphere;
+/// use plexus::{AsPosition, IntoGeometry};
 ///
 /// // Vertex-only geometry with position and color data.
 /// #[derive(Clone, Copy, Eq, Hash, PartialEq)]

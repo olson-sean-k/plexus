@@ -13,7 +13,7 @@ use glutin::{
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
 use num::One;
 use plexus::buffer::MeshBuffer3;
-use plexus::geometry::UnitGeometry;
+use plexus::UnitGeometry;
 use rand::distributions::{Distribution, Standard};
 use rand::{self, Rng};
 use std::f32::consts::PI;

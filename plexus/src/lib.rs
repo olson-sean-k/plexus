@@ -5,18 +5,20 @@
 //! avoid spurious breakage.
 #![allow(unknown_lints)] // Allow clippy lints.
 
+// TODO: Documentation comments include static image content from the GitHub
+//       repository. This is fragile and difficult to maintain. Use a mechanism
+//       provided by rustdoc or doxidize for this instead.
+
 use std::fmt::Debug;
 
 pub mod buffer;
 pub mod encoding;
-pub mod geometry;
+mod geometry;
 pub mod graph;
 pub mod index;
 pub mod primitive;
 
-// TODO: Documentation comments include static image content from the GitHub
-//       repository. This is fragile and difficult to maintain. Use a mechanism
-//       provided by rustdoc or doxidize for this instead.
+pub use geometry::{AsPosition, FromGeometry, IntoGeometry, UnitGeometry};
 
 pub mod prelude {
     //! Re-exports commonly used types and traits.

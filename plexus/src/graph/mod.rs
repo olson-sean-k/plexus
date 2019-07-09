@@ -201,7 +201,7 @@ use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
-    VertexPosition,
+    VertexNormal, VertexPosition,
 };
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
