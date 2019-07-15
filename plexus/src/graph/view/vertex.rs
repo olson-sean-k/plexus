@@ -510,7 +510,7 @@ where
     }
 }
 
-struct ArcCirculator<M, G>
+pub struct ArcCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -620,7 +620,7 @@ where
     }
 }
 
-struct FaceCirculator<M, G>
+pub struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,

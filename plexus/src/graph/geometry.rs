@@ -69,7 +69,7 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, EdgeView};
-use crate::graph::view::face::FaceView;
+use crate::graph::view::face::InteriorPath;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
 
@@ -195,7 +195,6 @@ where
     }
 }
 
-// TODO: This depends on faces, but only an interior path is necessary.
 pub trait VertexNormal: FaceNormal + GraphGeometry {
     fn normal<M>(vertex: VertexView<M, Self>) -> Result<Self::Normal, GraphError>
     where
@@ -313,12 +312,11 @@ where
 pub trait FaceCentroid: GraphGeometry {
     type Centroid;
 
-    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
+    fn centroid<P, M>(path: P) -> Result<Self::Centroid, GraphError>
     where
+        P: InteriorPath<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> FaceCentroid for G
@@ -329,15 +327,14 @@ where
 {
     type Centroid = VertexPosition<G>;
 
-    fn centroid<M>(face: FaceView<M, Self>) -> Result<Self::Centroid, GraphError>
+    fn centroid<P, M>(path: P) -> Result<Self::Centroid, GraphError>
     where
+        P: InteriorPath<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
         VertexPosition::<G>::centroid(
-            face.reachable_vertices()
+            path.reachable_vertices()
                 .map(|vertex| vertex.position().clone()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)
@@ -347,12 +344,11 @@ where
 pub trait FaceNormal: GraphGeometry {
     type Normal;
 
-    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn normal<P, M>(path: P) -> Result<Self::Normal, GraphError>
     where
+        P: InteriorPath<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
 
 impl<G> FaceNormal for G
@@ -364,20 +360,19 @@ where
 {
     type Normal = Vector<VertexPosition<G>>;
 
-    fn normal<M>(face: FaceView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn normal<P, M>(path: P) -> Result<Self::Normal, GraphError>
     where
+        P: InteriorPath<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
         let (a, b) = FromItems::from_items(
-            face.reachable_vertices()
+            path.reachable_vertices()
                 .take(2)
                 .map(|vertex| vertex.position().clone()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let c = G::centroid(face)?;
+        let c = G::centroid(path)?;
         let ab = a - b;
         let bc = b - c;
         ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
@@ -387,12 +382,11 @@ where
 pub trait FacePlane: GraphGeometry {
     type Plane;
 
-    fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
+    fn plane<P, M>(path: P) -> Result<Self::Plane, GraphError>
     where
+        P: InteriorPath<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
 
 // TODO: The `array` feature only supports Linux. See
@@ -406,7 +400,7 @@ mod array {
     use theon::query::Plane;
     use theon::space::{FiniteDimensional, Scalar};
     use theon::{FromItems, IntoItems};
-    use typenum::U3; // TODO: Maybe theon should re-export these types?
+    use typenum::U3;
 
     impl<G> FacePlane for G
     where
@@ -418,14 +412,13 @@ mod array {
     {
         type Plane = Plane<VertexPosition<G>>;
 
-        fn plane<M>(face: FaceView<M, Self>) -> Result<Self::Plane, GraphError>
+        fn plane<P, M>(path: P) -> Result<Self::Plane, GraphError>
         where
+            P: InteriorPath<M, Self>,
             M: Reborrow,
-            M::Target: AsStorage<ArcPayload<Self>>
-                + AsStorage<FacePayload<Self>>
-                + AsStorage<VertexPayload<Self>>,
+            M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
         {
-            let points = face
+            let points = path
                 .reachable_vertices()
                 .map(|vertex| vertex.geometry.as_position().clone())
                 .collect::<SmallVec<[_; 4]>>();

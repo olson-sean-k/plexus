@@ -25,12 +25,91 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;
 
+// TODO: The API for faces and interior paths presents fuzzy distinctions; many
+//       operations supported by `FaceView` could be supported by
+//       `InteriorPathView` as well (specifically, all topological operations
+//       where a `FacePayload` is unnecessary). In essence, a face is simply an
+//       interior path with an associated payload that describes its path and
+//       geometry. The geometry is the most notable difference, keeping in mind
+//       that in a consistent graph all arcs are part of an interior path.
+
+pub trait InteriorPath<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>,
+    G: GraphGeometry,
+{
+    fn reachable_vertices(&self) -> VertexCirculator<&M::Target, G>
+    where
+        M::Target: AsStorage<VertexPayload<G>>,
+    {
+        self.reachable_arcs().into()
+    }
+
+    fn vertices(&self) -> VertexCirculator<&M::Target, G>
+    where
+        M::Target: AsStorage<VertexPayload<G>> + Consistent,
+    {
+        self.reachable_vertices()
+    }
+
+    fn reachable_arcs(&self) -> ArcCirculator<&M::Target, G>;
+
+    fn arcs(&self) -> ArcCirculator<&M::Target, G>
+    where
+        M::Target: Consistent,
+    {
+        self.reachable_arcs()
+    }
+
+    fn arity(&self) -> usize
+    where
+        M::Target: Consistent,
+    {
+        self.arcs().count()
+    }
+
+    fn distance(
+        &self,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
+    ) -> Result<usize, GraphError>
+    where
+        M::Target: AsStorage<VertexPayload<G>> + Consistent,
+    {
+        let arity = self.arity();
+        let select = |selector: Selector<_>| {
+            selector
+                .index_or_else(|key| {
+                    self.vertices()
+                        .map(|vertex| vertex.key())
+                        .enumerate()
+                        .find(|(_, a)| *a == key)
+                        .map(|(index, _)| index)
+                        .ok_or_else(|| GraphError::TopologyNotFound)
+                })
+                .and_then(|index| {
+                    if index >= arity {
+                        Err(GraphError::TopologyNotFound)
+                    }
+                    else {
+                        Ok(index)
+                    }
+                })
+        };
+        let source = select(source)? as isize;
+        let destination = select(destination)? as isize;
+        let difference = (source - destination).abs() as usize;
+        Ok(cmp::min(difference, arity - difference))
+    }
+}
+
 /// View of a face.
 ///
 /// Provides traversals, queries, and mutations related to faces in a graph.
 /// See the module documentation for more information about topological views.
 ///
-/// Faces are notated similary to paths. A triangular face with a perimeter
+/// Faces are notated similarly to paths. A triangular face with a perimeter
 /// formed by vertices $A$, $B$, and $C$ is notated $\Overrightarrow{\\{A, B,
 /// C\\}}$ (using a double-struck arrow).
 pub struct FaceView<M, G>
@@ -163,13 +242,13 @@ where
     pub(in crate::graph) fn reachable_interior_arcs(
         &self,
     ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        ArcCirculator::from(self.interior_reborrow())
+        <Self as InteriorPath<_, _>>::reachable_arcs(self)
     }
 
     pub(in crate::graph) fn reachable_neighboring_faces(
         &self,
     ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow()))
+        FaceCirculator::from(<Self as InteriorPath<_, _>>::reachable_arcs(self))
     }
 }
 
@@ -217,7 +296,7 @@ where
     /// Gets the arity of the face. This is the number of arcs that form the
     /// face's interior path.
     pub fn arity(&self) -> usize {
-        self.interior_arcs().count()
+        <Self as InteriorPath<_, _>>::arity(self)
     }
 }
 
@@ -231,7 +310,7 @@ where
     pub(in crate::graph) fn reachable_vertices(
         &self,
     ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow()))
+        <Self as InteriorPath<_, _>>::reachable_vertices(self)
     }
 }
 
@@ -246,6 +325,13 @@ where
 {
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+        // TODO: This does not use the `InteriorPath` trait directly to prevent
+        //       dead code warnings on `reachable_vertices`. It would be
+        //       preferable for `reachable_vertices` to be implemented directly
+        //       and then used to implement `InteriorPath`, but that trait must
+        //       specify a concrete type for its non-consuming iterators, so
+        //       the code is reused the other way around. This could be changed
+        //       when GATs land in Rust.
         self.reachable_vertices()
     }
 
@@ -812,6 +898,17 @@ where
     }
 }
 
+impl<M, G> InteriorPath<M, G> for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
+    G: GraphGeometry,
+{
+    fn reachable_arcs(&self) -> ArcCirculator<&M::Target, G> {
+        ArcCirculator::from(self.interior_reborrow())
+    }
+}
+
 /// Orphan view of a face.
 ///
 /// Provides mutable access to a face's geometry. See the module documentation
@@ -907,12 +1004,12 @@ where
     /// Gets the arity of the interior path. This is the number of arcs that
     /// form the path.
     pub fn arity(&self) -> usize {
-        self.arcs().count()
+        <Self as InteriorPath<_, _>>::arity(self)
     }
 
     /// Gets an iterator of views over the arcs within the interior path.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        ArcCirculator::from(self.interior_reborrow())
+        <Self as InteriorPath<_, _>>::arcs(self)
     }
 
     fn interior_reborrow(&self) -> InteriorPathView<&M::Target, G> {
@@ -981,35 +1078,12 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        let arity = self.arity();
-        let select = |selector: Selector<_>| {
-            selector
-                .index_or_else(|key| {
-                    self.vertices()
-                        .map(|vertex| vertex.key())
-                        .enumerate()
-                        .find(|(_, a)| *a == key)
-                        .map(|(index, _)| index)
-                        .ok_or_else(|| GraphError::TopologyNotFound)
-                })
-                .and_then(|index| {
-                    if index >= arity {
-                        Err(GraphError::TopologyNotFound)
-                    }
-                    else {
-                        Ok(index)
-                    }
-                })
-        };
-        let source = select(source)? as isize;
-        let destination = select(destination)? as isize;
-        let difference = (source - destination).abs() as usize;
-        Ok(cmp::min(difference, arity - difference))
+        <Self as InteriorPath<_, _>>::distance(self, source, destination)
     }
 
     /// Gets an iterator of views over the vertices within the interior path.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow()))
+        <Self as InteriorPath<_, _>>::vertices(self)
     }
 }
 
@@ -1112,7 +1186,18 @@ where
     }
 }
 
-struct VertexCirculator<M, G>
+impl<M, G> InteriorPath<M, G> for InteriorPathView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn reachable_arcs(&self) -> ArcCirculator<&M::Target, G> {
+        ArcCirculator::from(self.interior_reborrow())
+    }
+}
+
+pub struct VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -1196,7 +1281,7 @@ where
     }
 }
 
-struct ArcCirculator<M, G>
+pub struct ArcCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -1322,7 +1407,7 @@ where
     }
 }
 
-struct FaceCirculator<M, G>
+pub struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,

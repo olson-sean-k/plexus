@@ -1255,7 +1255,7 @@ where
     }
 }
 
-struct VertexCirculator<M, G>
+pub struct VertexCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
@@ -1349,7 +1349,7 @@ where
     }
 }
 
-struct FaceCirculator<M, G>
+pub struct FaceCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
