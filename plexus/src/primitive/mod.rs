@@ -97,7 +97,7 @@ pub trait Rotate {
 }
 
 pub trait Zip {
-    type Output: FromItems + Topological;
+    type Output: ConstantArity + FromItems + Topological;
 
     fn zip(self) -> Self::Output;
 }
@@ -113,24 +113,6 @@ macro_rules! impl_zip {
         #[allow(non_snake_case)]
         impl<$($i),*> Zip for ($($c<[$i; $n]>),*) {
             type Output = $c<[($($i),*); $n]>;
-
-            fn zip(self) -> Self::Output {
-                let ($($i,)*) = self;
-                FromItems::from_items(izip!($($i.into_items()),*)).unwrap()
-            }
-        }
-    );
-    (composite => $c:ident) => (
-        impl_zip!(composite => $c, items => (A, B));
-        impl_zip!(composite => $c, items => (A, B, C));
-        impl_zip!(composite => $c, items => (A, B, C, D));
-        impl_zip!(composite => $c, items => (A, B, C, D, E));
-        impl_zip!(composite => $c, items => (A, B, C, D, E, F));
-    );
-    (composite => $c:ident, items => ($($i:ident),*)) => (
-        #[allow(non_snake_case)]
-        impl<$($i),*> Zip for ($($c<$i>),*) {
-            type Output = $c<($($i),*)>;
 
             fn zip(self) -> Self::Output {
                 let ($($i,)*) = self;
@@ -574,23 +556,6 @@ impl<T> From<Quad<T>> for Polygon<T> {
     }
 }
 
-impl<T> FromItems for Polygon<T> {
-    fn from_items<I>(items: I) -> Option<Self>
-    where
-        I: IntoIterator<Item = Self::Item>,
-    {
-        let items = items
-            .into_iter()
-            .take(Quad::<T>::ARITY)
-            .collect::<ArrayVec<[T; 4]>>();
-        match items.len() {
-            Triangle::<T>::ARITY => Triangle::from_items(items).map(|triangle| triangle.into()),
-            Quad::<T>::ARITY => Quad::from_items(items).map(|quad| quad.into()),
-            _ => None,
-        }
-    }
-}
-
 impl<T> Index<usize> for Polygon<T> {
     type Output = T;
 
@@ -666,8 +631,6 @@ impl<T> Topological for Polygon<T> {
         }
     }
 }
-
-impl_zip!(composite => Polygon);
 
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.
