@@ -37,15 +37,15 @@
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! A traversal along a series of arcs is a _path_. The path formed by
-//! traversing from an arc to its next arc and so on is an _interior path_.
-//! When a face is present within an interior path, the arcs will refer to that
-//! face and the face will refer to exactly one of the arcs in the interior
-//! path (this is the leading arc of the face). An arc with no associated face
-//! is known as a _boundary arc_. If both of an edge's arcs are boundary arcs,
-//! then that edge is an _unbounded edge_.
+//! traversing from an arc to its next arc and so on is a _ring_.  When a face
+//! is present within an ring, the arcs will refer to that face and the face
+//! will refer to exactly one of the arcs in the ring (this is the leading arc
+//! of the face). An arc with no associated face is known as a _boundary arc_.
+//! If both of an edge's arcs are boundary arcs, then that edge is an
+//! _unbounded edge_.
 //!
 //! A path that terminates is _open_ and a path that forms a loop is _closed_.
-//! Interior paths are always closed. A path over vertices $A$, $B$, and $C$ is
+//! Rings are always closed. A path over vertices $A$, $B$, and $C$ is
 //! notated $\overrightarrow{\\{A, B, C\\}}$.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
@@ -206,7 +206,7 @@ pub use crate::graph::geometry::{
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
-pub use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
+pub use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 
 pub use Selector::ByIndex;

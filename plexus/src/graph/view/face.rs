@@ -25,15 +25,15 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;
 
-// TODO: The API for faces and interior paths presents fuzzy distinctions; many
-//       operations supported by `FaceView` could be supported by
-//       `InteriorPathView` as well (specifically, all topological operations
-//       where a `FacePayload` is unnecessary). In essence, a face is simply an
-//       interior path with an associated payload that describes its path and
-//       geometry. The geometry is the most notable difference, keeping in mind
-//       that in a consistent graph all arcs are part of an interior path.
+// TODO: The API for faces and rings presents fuzzy distinctions; many
+//       operations supported by `FaceView` could be supported by `RingView` as
+//       well (specifically, all topological operations where a `FacePayload`
+//       is unnecessary). In essence, a face is simply a ring with an
+//       associated payload that describes its path and geometry. The geometry
+//       is the most notable difference, keeping in mind that in a consistent
+//       graph all arcs are part of a ring.
 
-pub trait InteriorPath<M, G>
+pub trait Ring<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -242,13 +242,13 @@ where
     pub(in crate::graph) fn reachable_interior_arcs(
         &self,
     ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as InteriorPath<_, _>>::reachable_arcs(self)
+        <Self as Ring<_, _>>::reachable_arcs(self)
     }
 
     pub(in crate::graph) fn reachable_neighboring_faces(
         &self,
     ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(<Self as InteriorPath<_, _>>::reachable_arcs(self))
+        FaceCirculator::from(<Self as Ring<_, _>>::reachable_arcs(self))
     }
 }
 
@@ -258,8 +258,8 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Converts the face into its interior path.
-    pub fn into_interior_path(self) -> InteriorPathView<M, G> {
+    /// Converts the face into its ring.
+    pub fn into_ring(self) -> RingView<M, G> {
         let key = self.arc().key();
         self.into_inner().rekey_map(key).expect_consistent()
     }
@@ -269,8 +269,8 @@ where
         self.into_reachable_arc().expect_consistent()
     }
 
-    /// Gets the interior path of the face.
-    pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
+    /// Gets the ring of the face.
+    pub fn ring(&self) -> RingView<&M::Target, G> {
         let key = self.arc().key();
         self.inner
             .interior_reborrow()
@@ -283,7 +283,7 @@ where
         self.reachable_arc().expect_consistent()
     }
 
-    /// Gets an iterator of views over the arcs in the face's interior path.
+    /// Gets an iterator of views over the arcs in the face's ring.
     pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         self.reachable_interior_arcs()
     }
@@ -294,9 +294,9 @@ where
     }
 
     /// Gets the arity of the face. This is the number of arcs that form the
-    /// face's interior path.
+    /// face's ring.
     pub fn arity(&self) -> usize {
-        <Self as InteriorPath<_, _>>::arity(self)
+        <Self as Ring<_, _>>::arity(self)
     }
 }
 
@@ -310,7 +310,7 @@ where
     pub(in crate::graph) fn reachable_vertices(
         &self,
     ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as InteriorPath<_, _>>::reachable_vertices(self)
+        <Self as Ring<_, _>>::reachable_vertices(self)
     }
 }
 
@@ -325,10 +325,10 @@ where
 {
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        // TODO: This does not use the `InteriorPath` trait directly to prevent
+        // TODO: This does not use the `Ring` trait directly to prevent
         //       dead code warnings on `reachable_vertices`. It would be
         //       preferable for `reachable_vertices` to be implemented directly
-        //       and then used to implement `InteriorPath`, but that trait must
+        //       and then used to implement `Ring`, but that trait must
         //       specify a concrete type for its non-consuming iterators, so
         //       the code is reused the other way around. This could be changed
         //       when GATs land in Rust.
@@ -380,8 +380,7 @@ where
         + Consistent,
     G: GraphGeometry,
 {
-    /// Gets an iterator of orphan views over the arcs in the face's interior
-    /// path.
+    /// Gets an iterator of orphan views over the arcs in the face's ring.
     pub fn interior_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
         self.reachable_interior_orphan_arcs()
     }
@@ -496,7 +495,7 @@ where
     /// two non-neighboring vertices within the face's perimeter.
     ///
     /// The vertices can be chosen by key or index, where index selects the
-    /// $n^\text{th}$ vertex within the face's interior path.
+    /// $n^\text{th}$ vertex within the face's ring.
     ///
     /// This can be thought of as the opposite of `merge`.
     ///
@@ -510,7 +509,7 @@ where
     ///
     /// Returns an error if either of the given vertices cannot be found, are
     /// not within the face's perimeter, or the distance between the vertices
-    /// along the interior path is less than two.
+    /// along the ring is less than two.
     ///
     /// # Examples
     ///
@@ -642,7 +641,7 @@ where
             // Removing an edge between faces must yield a vertex.
             .expect_consistent()
             .into_outgoing_arc()
-            .into_interior_path()
+            .into_ring()
             .get_or_insert_face_with(|| geometry))
     }
 
@@ -818,8 +817,8 @@ where
 
     /// Removes the face.
     ///
-    /// Returns the interior path of the face.
-    pub fn remove(self) -> InteriorPathView<&'a mut M, G> {
+    /// Returns the ring of the face.
+    pub fn remove(self) -> RingView<&'a mut M, G> {
         let (abc, storage) = self.into_inner().into_keyed_source();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
@@ -898,7 +897,7 @@ where
     }
 }
 
-impl<M, G> InteriorPath<M, G> for FaceView<M, G>
+impl<M, G> Ring<M, G> for FaceView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
@@ -968,20 +967,20 @@ where
     }
 }
 
-/// View of an interior path.
+/// View of a ring.
 ///
 /// Interior paths are closed paths formed by arcs and their immediate
 /// neighboring arcs. In a consistent graph, every arc forms such a path. Such
 /// paths may or may not be occupied by faces.
 ///
 /// Interior paths have no associated payload and do not directly expose
-/// geometry (`InteriorPathView` does not implement `Deref`).
+/// geometry (`RingView` does not implement `Deref`).
 ///
-/// An interior path with a perimeter formed by vertices $A$, $B$, and $C$ is
-/// notated $\overrightarrow{\\{A, B, C\\}}$.
+/// A ring with a perimeter formed by vertices $A$, $B$, and $C$ is notated
+/// $\overrightarrow{\\{A, B, C\\}}$.
 ///
 /// See the module documentation for more information about topological views.
-pub struct InteriorPathView<M, G>
+pub struct RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
@@ -990,34 +989,34 @@ where
     inner: View<M, ArcPayload<G>>,
 }
 
-impl<M, G> InteriorPathView<M, G>
+impl<M, G> RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, ArcPayload<G>> {
-        let InteriorPathView { inner, .. } = self;
+        let RingView { inner, .. } = self;
         inner
     }
 
-    /// Gets the arity of the interior path. This is the number of arcs that
-    /// form the path.
+    /// Gets the arity of the ring. This is the number of arcs that form the
+    /// path.
     pub fn arity(&self) -> usize {
-        <Self as InteriorPath<_, _>>::arity(self)
+        <Self as Ring<_, _>>::arity(self)
     }
 
-    /// Gets an iterator of views over the arcs within the interior path.
+    /// Gets an iterator of views over the arcs within the ring.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as InteriorPath<_, _>>::arcs(self)
+        <Self as Ring<_, _>>::arcs(self)
     }
 
-    fn interior_reborrow(&self) -> InteriorPathView<&M::Target, G> {
+    fn interior_reborrow(&self) -> RingView<&M::Target, G> {
         self.inner.interior_reborrow().into()
     }
 }
 
-impl<'a, M, G> InteriorPathView<&'a mut M, G>
+impl<'a, M, G> RingView<&'a mut M, G>
 where
     M: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + Consistent,
     G: 'a + GraphGeometry,
@@ -1026,7 +1025,7 @@ where
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> InteriorPathView<&'a M, G> {
+    pub fn into_ref(self) -> RingView<&'a M, G> {
         self.into_inner().into_ref().into()
     }
 
@@ -1041,7 +1040,7 @@ where
     pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
     where
         T: FromKeyedSource<(K, &'a mut M)>,
-        F: FnOnce(InteriorPathView<&M, G>) -> Option<K>,
+        F: FnOnce(RingView<&M, G>) -> Option<K>,
     {
         if let Some(key) = f(self.interior_reborrow()) {
             let (_, storage) = self.into_inner().into_keyed_source();
@@ -1055,45 +1054,45 @@ where
     }
 }
 
-impl<M, G> InteriorPathView<M, G>
+impl<M, G> RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Converts the interior path into its originating arc.
+    /// Converts the ring into its originating arc.
     pub fn into_arc(self) -> ArcView<M, G> {
         self.into_inner().into()
     }
 
-    /// Gets the originating arc of the interior path.
+    /// Gets the originating arc of the ring.
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         self.inner.interior_reborrow().into()
     }
 
     /// Gets the distance (number of arcs) between two vertices within the
-    /// interior path.
+    /// ring.
     pub fn distance(
         &self,
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        <Self as InteriorPath<_, _>>::distance(self, source, destination)
+        <Self as Ring<_, _>>::distance(self, source, destination)
     }
 
-    /// Gets an iterator of views over the vertices within the interior path.
+    /// Gets an iterator of views over the vertices within the ring.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as InteriorPath<_, _>>::vertices(self)
+        <Self as Ring<_, _>>::vertices(self)
     }
 }
 
-impl<M, G> InteriorPathView<M, G>
+impl<M, G> RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Converts the interior path into its face.
+    /// Converts the ring into its face.
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn into_face(self) -> Option<FaceView<M, G>> {
@@ -1102,7 +1101,7 @@ where
         key.map(move |key| inner.rekey_map(key).expect_consistent())
     }
 
-    /// Gets the face of the interior path.
+    /// Gets the face of the ring.
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
@@ -1116,7 +1115,7 @@ where
     }
 }
 
-impl<'a, M, G> InteriorPathView<&'a mut M, G>
+impl<'a, M, G> RingView<&'a mut M, G>
 where
     M: AsStorage<VertexPayload<G>>
         + AsStorage<ArcPayload<G>>
@@ -1125,16 +1124,16 @@ where
         + Mutable<G>,
     G: 'a + GraphGeometry,
 {
-    /// Gets the face of the interior path or inserts a face if one does not
-    /// already exist.
+    /// Gets the face of the ring or inserts a face if one does not already
+    /// exist.
     ///
     /// Returns the inserted face.
     pub fn get_or_insert_face(self) -> FaceView<&'a mut M, G> {
         self.get_or_insert_face_with(|| Default::default())
     }
 
-    /// Gets the face of the interior path or inserts a face if one does not
-    /// already exist.
+    /// Gets the face of the ring or inserts a face if one does not already
+    /// exist.
     ///
     /// If a face is inserted, then the given function is used to get the
     /// geometry for the face.
@@ -1164,18 +1163,18 @@ where
     }
 }
 
-impl<M, G> From<View<M, ArcPayload<G>>> for InteriorPathView<M, G>
+impl<M, G> From<View<M, ArcPayload<G>>> for RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
     fn from(view: View<M, ArcPayload<G>>) -> Self {
-        InteriorPathView { inner: view }
+        RingView { inner: view }
     }
 }
 
-impl<M, G> FromKeyedSource<(ArcKey, M)> for InteriorPathView<M, G>
+impl<M, G> FromKeyedSource<(ArcKey, M)> for RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
@@ -1186,7 +1185,7 @@ where
     }
 }
 
-impl<M, G> InteriorPath<M, G> for InteriorPathView<M, G>
+impl<M, G> Ring<M, G> for RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
@@ -1354,13 +1353,13 @@ where
     }
 }
 
-impl<M, G> From<InteriorPathView<M, G>> for ArcCirculator<M, G>
+impl<M, G> From<RingView<M, G>> for ArcCirculator<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    fn from(path: InteriorPathView<M, G>) -> Self {
+    fn from(path: RingView<M, G>) -> Self {
         let (key, storage) = path.into_inner().into_keyed_source();
         ArcCirculator {
             storage,
@@ -1674,7 +1673,7 @@ mod tests {
     }
 
     #[test]
-    fn interior_path_distance() {
+    fn ring_distance() {
         let graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -1686,9 +1685,9 @@ mod tests {
             .vertices()
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
-        let path = face.into_interior_path();
-        assert_eq!(2, path.distance(keys[0].into(), keys[2].into()).unwrap());
-        assert_eq!(1, path.distance(keys[0].into(), keys[3].into()).unwrap());
-        assert_eq!(0, path.distance(keys[0].into(), keys[0].into()).unwrap());
+        let ring = face.into_ring();
+        assert_eq!(2, ring.distance(keys[0].into(), keys[2].into()).unwrap());
+        assert_eq!(1, ring.distance(keys[0].into(), keys[3].into()).unwrap());
+        assert_eq!(0, ring.distance(keys[0].into(), keys[0].into()).unwrap());
     }
 }

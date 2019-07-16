@@ -69,7 +69,7 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, EdgeView};
-use crate::graph::view::face::InteriorPath;
+use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
 
@@ -312,9 +312,9 @@ where
 pub trait FaceCentroid: GraphGeometry {
     type Centroid;
 
-    fn centroid<P, M>(path: P) -> Result<Self::Centroid, GraphError>
+    fn centroid<R, M>(ring: R) -> Result<Self::Centroid, GraphError>
     where
-        P: InteriorPath<M, Self>,
+        R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
@@ -327,14 +327,14 @@ where
 {
     type Centroid = VertexPosition<G>;
 
-    fn centroid<P, M>(path: P) -> Result<Self::Centroid, GraphError>
+    fn centroid<R, M>(ring: R) -> Result<Self::Centroid, GraphError>
     where
-        P: InteriorPath<M, Self>,
+        R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
         VertexPosition::<G>::centroid(
-            path.reachable_vertices()
+            ring.reachable_vertices()
                 .map(|vertex| vertex.position().clone()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)
@@ -344,9 +344,9 @@ where
 pub trait FaceNormal: GraphGeometry {
     type Normal;
 
-    fn normal<P, M>(path: P) -> Result<Self::Normal, GraphError>
+    fn normal<R, M>(ring: R) -> Result<Self::Normal, GraphError>
     where
-        P: InteriorPath<M, Self>,
+        R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
@@ -360,19 +360,19 @@ where
 {
     type Normal = Vector<VertexPosition<G>>;
 
-    fn normal<P, M>(path: P) -> Result<Self::Normal, GraphError>
+    fn normal<R, M>(ring: R) -> Result<Self::Normal, GraphError>
     where
-        P: InteriorPath<M, Self>,
+        R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
         let (a, b) = FromItems::from_items(
-            path.reachable_vertices()
+            ring.reachable_vertices()
                 .take(2)
                 .map(|vertex| vertex.position().clone()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let c = G::centroid(path)?;
+        let c = G::centroid(ring)?;
         let ab = a - b;
         let bc = b - c;
         ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
@@ -382,9 +382,9 @@ where
 pub trait FacePlane: GraphGeometry {
     type Plane;
 
-    fn plane<P, M>(path: P) -> Result<Self::Plane, GraphError>
+    fn plane<R, M>(ring: R) -> Result<Self::Plane, GraphError>
     where
-        P: InteriorPath<M, Self>,
+        R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
 }
@@ -412,13 +412,13 @@ mod array {
     {
         type Plane = Plane<VertexPosition<G>>;
 
-        fn plane<P, M>(path: P) -> Result<Self::Plane, GraphError>
+        fn plane<R, M>(ring: R) -> Result<Self::Plane, GraphError>
         where
-            P: InteriorPath<M, Self>,
+            R: Ring<M, Self>,
             M: Reborrow,
             M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
         {
-            let points = path
+            let points = ring
                 .reachable_vertices()
                 .map(|vertex| vertex.geometry.as_position().clone())
                 .collect::<SmallVec<[_; 4]>>();

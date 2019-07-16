@@ -16,7 +16,7 @@ use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::face::{FaceView, InteriorPathView, OrphanFaceView};
+use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
@@ -253,8 +253,8 @@ where
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Converts the arc into its interior path.
-    pub fn into_interior_path(self) -> InteriorPathView<M, G> {
+    /// Converts the arc into its ring.
+    pub fn into_ring(self) -> RingView<M, G> {
         let (key, storage) = self.into_inner().into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
@@ -279,8 +279,8 @@ where
         self.into_reachable_previous_arc().expect_consistent()
     }
 
-    /// Gets the interior path of the arc.
-    pub fn interior_path(&self) -> InteriorPathView<&M::Target, G> {
+    /// Gets the ring of the arc.
+    pub fn ring(&self) -> RingView<&M::Target, G> {
         let (key, storage) = self.inner.interior_reborrow().into_keyed_source();
         (key, storage).into_view().expect_consistent()
     }
@@ -583,8 +583,8 @@ where
     /// Splitting inserts a new vertex with the geometry provided by the given
     /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
     /// that subdivides the composite edge. The leading arc of $M$ is
-    /// $\overrightarrow{MB}$ and is a part of the same interior path as the
-    /// initiating arc.
+    /// $\overrightarrow{MB}$ and is a part of the same ring as the initiating
+    /// arc.
     ///
     /// Returns the inserted vertex.
     ///
@@ -633,8 +633,8 @@ where
     /// Splitting inserts a new vertex with the geometry provided by the given
     /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
     /// that subdivides the composite edge. The leading arc of $M$ is
-    /// $\overrightarrow{MB}$ and is a part of the same interior path as the
-    /// initiating arc.
+    /// $\overrightarrow{MB}$ and is a part of the same ring as the initiating
+    /// arc.
     ///
     /// This function is only available if a graph's geometry exposes
     /// positional data in its vertices and that data supports interpolation.
@@ -679,22 +679,21 @@ where
     }
 
     // TODO: What if an edge in the bridging quadrilateral is collapsed, such
-    //       as bridging arcs within a triangular interior path? Document these
+    //       as bridging arcs within a triangular ring? Document these
     //       edge cases (no pun intended).
     /// Connects a boundary arc to another boundary arc with a face.
     ///
     /// Bridging arcs inserts a new face and, as needed, new arcs and edges.
     /// The inserted face is always a quadrilateral. The bridged arcs must be
-    /// boundary arcs with an orientation that allows them to form an interior
-    /// path.
+    /// boundary arcs with an orientation that allows them to form a ring.
     ///
     /// Bridging two compatible arcs $\overrightarrow{AB}$ and
-    /// $\overrightarrow{CD}$ will result in an interior path
-    /// $\overrightarrow{\\{A, B, C, D\\}}$.
+    /// $\overrightarrow{CD}$ will result in a ring $\overrightarrow{\\{A, B,
+    /// C, D\\}}$.
     ///
-    /// Arcs can be bridged within an interior path. The destination arc can be
-    /// chosen by key or index, where an index selects the $n^\text{th}$ arc
-    /// from the source arc within the interior path.
+    /// Arcs can be bridged within a ring. The destination arc can be chosen by
+    /// key or index, where an index selects the $n^\text{th}$ arc from the
+    /// source arc within the ring.
     ///
     /// Returns the inserted face if successful.
     ///
@@ -762,7 +761,7 @@ where
         destination: Selector<ArcKey>,
     ) -> Result<FaceView<&'a mut M, G>, GraphError> {
         let destination = destination.key_or_else(|index| {
-            self.interior_path()
+            self.ring()
                 .arcs()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
@@ -792,7 +791,7 @@ where
     /// supports both 2D and 3D geometries.
     ///
     /// Returns the opposing arc. This is the arc in the destination edge that
-    /// is within the same interior path as the initiating arc.
+    /// is within the same ring as the initiating arc.
     ///
     /// # Errors
     ///
@@ -1589,8 +1588,8 @@ mod tests {
         {
             let vertex = graph.arc_mut(ab).unwrap().remove().unwrap().into_ref();
 
-            // The path should be formed from 6 edges.
-            assert_eq!(6, vertex.into_outgoing_arc().into_interior_path().arity());
+            // The ring should be formed from 6 edges.
+            assert_eq!(6, vertex.into_outgoing_arc().into_ring().arity());
         }
 
         // After the removal, the graph should have no faces.

@@ -277,14 +277,14 @@ where
                     return Err(GraphError::TopologyConflict);
                 }
                 // Let the previous arc be AB and the next arc be BC. The
-                // vertices A, B, and C lie within the implied interior path in
+                // vertices A, B, and C lie within the implied ring in
                 // order.
                 //
                 // If BC does not exist and AB is neighbors with some arc BX,
-                // then X must not lie within the implied interior path (the
+                // then X must not lie within the implied ring (the
                 // ordered set of vertices given to this function). If X is
-                // within the path, then BX must bisect the implied interior
-                // path (because X cannot be C).
+                // within the path, then BX must bisect the implied ring
+                // (because X cannot be C).
                 if next.is_none() {
                     if let Some(next) = previous.reachable_next_arc() {
                         let (_, destination) = next.key().into();
@@ -375,7 +375,7 @@ where
         let storage = storage.reborrow();
         let face = FaceView::from_keyed_source((abc, storage))
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        face.interior_path()
+        face.ring()
             .distance(source.into(), destination.into())
             .and_then(|distance| {
                 if distance <= 1 {
