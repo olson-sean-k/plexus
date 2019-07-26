@@ -5,6 +5,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::query::{Intersection, Line, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
+use theon::AsPosition;
 use typenum::U3;
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
@@ -21,7 +22,6 @@ use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
-use crate::AsPosition;
 
 use Selector::ByIndex;
 
@@ -522,11 +522,11 @@ where
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Quad;
+    /// use plexus::primitive::Tetragon;
     ///
     /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
-    ///     vec![Quad::new(0usize, 1, 2, 3)],
+    ///     vec![Tetragon::new(0usize, 1, 2, 3)],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
@@ -592,11 +592,11 @@ where
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Quad;
+    /// use plexus::primitive::Tetragon;
     ///
     /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
-    ///     vec![Quad::new(0usize, 1, 2, 3), Quad::new(0, 3, 4, 5)],
+    ///     vec![Tetragon::new(0usize, 1, 2, 3), Tetragon::new(0, 3, 4, 5)],
     ///     vec![
     ///         (0.0, 0.0),  // 0
     ///         (1.0, 0.0),  // 1
@@ -701,12 +701,12 @@ where
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Triangle;
+    /// use plexus::primitive::Trigon;
     /// use plexus::AsPosition;
     ///
     /// # fn main() {
     /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(
-    ///     vec![Triangle::new(0usize, 1, 2)],
+    ///     vec![Trigon::new(0usize, 1, 2)],
     ///     vec![(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 2.0, 0.0)],
     /// )
     /// .unwrap();
@@ -1595,19 +1595,19 @@ mod tests {
         }
 
         assert_eq!(8, graph.vertex_count());
-        // The mesh begins with 18 arcs. The extrusion adds three quads
-        // with four interior arcs each, so there are `18 + (3 * 4)`
-        // arcs.
+        // The mesh begins with 18 arcs. The extrusion adds three
+        // quadrilaterals with four interior arcs each, so there are `18 + (3 *
+        // 4)` arcs.
         assert_eq!(30, graph.arc_count());
         // All faces are triangles and the mesh begins with six such faces. The
         // extruded face remains, in addition to three connective faces, each
-        // of which is constructed from quads.
+        // of which is constructed from quadrilaterals.
         assert_eq!(9, graph.face_count());
     }
 
     #[test]
     fn merge_faces() {
-        // Construct a graph with two connected quads.
+        // Construct a graph with two connected quadrilaterals.
         let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 0, 3, 4, 5],
             vec![
@@ -1638,12 +1638,12 @@ mod tests {
     #[test]
     fn poke_face() {
         let mut graph = Cube::new()
-            .polygons_with_position::<E3>() // 6 quads, 24 vertices.
+            .polygons_with_position::<E3>() // 6 quadrilaterals, 24 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let key = graph.faces().nth(0).unwrap().key();
         let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
 
-        // Diverging a quad yields a tetrahedron.
+        // Diverging a quadrilateral yields a tetrahedron.
         assert_eq!(4, vertex.neighboring_faces().count());
 
         // Traverse to one of the triangles in the tetrahedron.
@@ -1660,7 +1660,7 @@ mod tests {
     #[test]
     fn triangulate_mesh() {
         let (indices, vertices) = Cube::new()
-            .polygons_with_position::<E3>() // 6 quads, 24 vertices.
+            .polygons_with_position::<E3>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<N64>>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate();
@@ -1668,7 +1668,8 @@ mod tests {
         assert_eq!(8, graph.vertex_count());
         assert_eq!(36, graph.arc_count());
         assert_eq!(18, graph.edge_count());
-        // Each quad becomes 2 triangles, so 6 quads become 12 triangles.
+        // Each quadrilateral becomes 2 triangles, so 6 quadrilaterals become
+        // 12 triangles.
         assert_eq!(12, graph.face_count());
     }
 

@@ -2,7 +2,7 @@
 //!
 //! This module provides _indexers_, which disambiguate geometry and produce
 //! the minimal set of topological and geometric data. This is primarily used
-//! to index streams of $n$-gons (`NGon`, `Triangle`, etc.) into raw buffers or
+//! to index streams of $n$-gons (`NGon`, `Trigon`, etc.) into raw buffers or
 //! polygonal mesh data structures like `MeshBuffer`.
 //!
 //! The primary interface of this module are the `IndexVertices` and
@@ -23,8 +23,8 @@
 //! data. See `MeshBuffer3`.
 //!
 //! Structured index buffers contain sub-structures that group their indices,
-//! such as `Vec<Triangle<usize>>`. Structured index buffers typically contain
-//! `Triangle`s, `Quad`s, or `Polygon`s, all of which preserve the topology of
+//! such as `Vec<Trigon<usize>>`. Structured index buffers typically contain
+//! `Trigon`s, `Tetragon`s, or `Polygon`s, all of which preserve the topology of
 //! a mesh even if its arity is non-constant.
 //!
 //! # Examples
@@ -63,7 +63,7 @@ use theon::ops::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Polygon, Quad, Topological, Triangle};
+use crate::primitive::{ConstantArity, Polygon, Tetragon, Topological, Trigon};
 use crate::Arity;
 
 pub trait Grouping {
@@ -196,9 +196,9 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 
 /// Structured index buffer grouping.
 ///
-/// A structured index buffer of triangles, quads, etc. Useful if a buffer
-/// representing a mesh comprised of both triangles and quads is needed
-/// (triangulation is not required).
+/// A structured index buffer of triangles, quadrilaterals, etc. Useful if a
+/// buffer representing a mesh comprised of both triangles and quadrilaterals
+/// is needed (triangulation is not required).
 ///
 /// # Examples
 ///
@@ -232,9 +232,9 @@ where
 }
 
 /// Alias for a structured and triangular index buffer.
-pub type Structured3<N = usize> = Structured<Triangle<N>>;
+pub type Structured3<N = usize> = Structured<Trigon<N>>;
 /// Alias for a structured and quadrilateral index buffer.
-pub type Structured4<N = usize> = Structured<Quad<N>>;
+pub type Structured4<N = usize> = Structured<Tetragon<N>>;
 /// Alias for a structured index buffer with varying arity.
 pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 
@@ -583,7 +583,7 @@ where
     /// use plexus::primitive::cube::Cube;
     ///
     /// # fn main() {
-    /// // `indices` contains `Triangle`s with index data.
+    /// // `indices` contains `Trigon`s with index data.
     /// let (indices, positions) = Cube::new()
     ///     .polygons_with_position::<Point3<N64>>()
     ///     .subdivide()

@@ -32,7 +32,16 @@ rand = "^0.7.0"
 
 [dependencies.plexus]
 path = "../plexus"
+default-features = false
 features = [
     "encoding-ply",
+    "geometry-nalgebra",
+]
+
+[dependencies.theon]
+git = "https://github.com/olson-sean-k/theon.git"
+rev = "8bd6faf0e0869b09bb8c46588c0cecae6f51b47f"
+default-features = false
+features = [
     "geometry-nalgebra",
 ]

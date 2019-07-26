@@ -62,7 +62,7 @@
 
 use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector, VectorSpace};
-use theon::FromItems;
+use theon::{AsPosition, FromItems, Position};
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -71,7 +71,6 @@ use crate::graph::view::edge::{ArcView, EdgeView};
 use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
-use crate::{AsPosition, Position};
 
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 

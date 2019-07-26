@@ -35,7 +35,7 @@ pub mod prelude {
     //!
     //! This module re-exports numerous traits. Traits from the `primitive`
     //! module for generating and decomposing iterators over topological data
-    //! (e.g., `Triangle`, `Quad`, etc.) are re-exported so that functions in
+    //! (e.g., `Trigon`, `Tetragon`, etc.) are re-exported so that functions in
     //! iterator expressions can be used without lengthy imports.
     //!
     //! Basic traits for (de)constructing `MeshBuffer`s and `MeshGraph`s are
@@ -53,16 +53,15 @@ pub mod prelude {
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
-        Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _,
-        IntoTriangles as _, IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _,
-        Vertices as _,
+        Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,
+        IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _, Vertices as _,
     };
     pub use crate::primitive::generate::{
         IndicesForNormal as _, IndicesForPosition as _, PolygonsWithNormal as _,
         PolygonsWithPosition as _, PolygonsWithUvMap as _, VerticesWithNormal as _,
         VerticesWithPosition as _,
     };
-    pub use crate::primitive::{Converged as _, MapVertices as _, Zip as _};
+    pub use crate::primitive::{MapVertices as _, Topological as _, Zip as _};
     pub use crate::IteratorExt as _;
     pub use crate::{
         FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _, IntoGeometry as _,

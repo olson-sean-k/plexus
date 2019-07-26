@@ -21,7 +21,9 @@
 //! ```
 
 use num::{One, Zero};
+use theon::ops::Map;
 use theon::space::{Basis, EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
+use theon::Converged;
 use typenum::{U2, U3};
 
 use crate::primitive::generate::{
@@ -30,7 +32,7 @@ use crate::primitive::generate::{
     PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator, PositionVertexGenerator,
     UvMapGenerator, UvMapPolygonGenerator, VerticesWithNormal, VerticesWithPosition,
 };
-use crate::primitive::{Converged, Map, Quad};
+use crate::primitive::Tetragon;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Plane {
@@ -108,11 +110,11 @@ impl Cube {
         Cube
     }
 
-    pub fn polygon_with_plane(&self, index: usize) -> Quad<Plane> {
-        Quad::converged(self.vertex_with_plane(index))
+    pub fn polygon_with_plane(&self, index: usize) -> Tetragon<Plane> {
+        Tetragon::converged(self.vertex_with_plane(index))
     }
 
-    pub fn polygons_with_plane(&self) -> Generate<Self, (), Quad<Plane>> {
+    pub fn polygons_with_plane(&self) -> Generate<Self, (), Tetragon<Plane>> {
         Generate::new(self, (), self.polygon_count(), |cube, _, index| {
             cube.polygon_with_plane(index)
         })
@@ -181,7 +183,7 @@ impl<S> NormalPolygonGenerator<S> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    type Output = Quad<Vector<S>>;
+    type Output = Tetragon<Vector<S>>;
 
     fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output {
         self.index_for_normal(index)
@@ -190,11 +192,11 @@ where
 }
 
 impl NormalIndexGenerator for Cube {
-    type Output = Quad<usize>;
+    type Output = Tetragon<usize>;
 
     fn index_for_normal(&self, index: usize) -> Self::Output {
         assert!(index < self.polygon_count());
-        Quad::converged(index)
+        Tetragon::converged(index)
     }
 }
 
@@ -240,7 +242,7 @@ impl<S> PositionPolygonGenerator<S> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    type Output = Quad<S>;
+    type Output = Tetragon<S>;
 
     fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
         self.index_for_position(index).map(|index| {
@@ -250,16 +252,16 @@ where
 }
 
 impl PositionIndexGenerator for Cube {
-    type Output = Quad<usize>;
+    type Output = Tetragon<usize>;
 
     fn index_for_position(&self, index: usize) -> Self::Output {
         match index {
-            0 => Quad::new(5, 7, 3, 1), // front
-            1 => Quad::new(6, 7, 5, 4), // right
-            2 => Quad::new(3, 7, 6, 2), // top
-            3 => Quad::new(0, 1, 3, 2), // left
-            4 => Quad::new(4, 5, 1, 0), // bottom
-            5 => Quad::new(0, 2, 6, 4), // back
+            0 => Tetragon::new(5, 7, 3, 1), // front
+            1 => Tetragon::new(6, 7, 5, 4), // right
+            2 => Tetragon::new(3, 7, 6, 2), // top
+            3 => Tetragon::new(0, 1, 3, 2), // left
+            4 => Tetragon::new(4, 5, 1, 0), // bottom
+            5 => Tetragon::new(0, 2, 6, 4), // back
             _ => panic!(),
         }
     }
@@ -277,7 +279,7 @@ where
     S: EuclideanSpace + FiniteDimensional<N = U2>,
     Vector<S>: Converged,
 {
-    type Output = Quad<Vector<S>>;
+    type Output = Tetragon<Vector<S>>;
 
     fn polygon_with_uv_map_from(&self, _: &Self::State, index: usize) -> Self::Output {
         let uu = Vector::<S>::converged(One::one());
@@ -285,9 +287,9 @@ where
         let ll = Vector::<S>::converged(Zero::zero());
         let lu = Vector::<S>::from_xy(Zero::zero(), One::one());
         match index {
-            0 | 4 | 5 => Quad::new(uu, ul, ll, lu), // front | bottom | back
-            1 => Quad::new(ul, ll, lu, uu),         // right
-            2 | 3 => Quad::new(lu, uu, ul, ll),     // top | left
+            0 | 4 | 5 => Tetragon::new(uu, ul, ll, lu), // front | bottom | back
+            1 => Tetragon::new(ul, ll, lu, uu),         // right
+            2 | 3 => Tetragon::new(lu, uu, ul, ll),     // top | left
             _ => panic!(),
         }
     }

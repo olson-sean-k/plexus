@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
+use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
@@ -19,7 +20,7 @@ use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
-use crate::{AsPosition, IteratorExt};
+use crate::IteratorExt;
 
 pub struct FaceMutation<G>
 where

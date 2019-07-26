@@ -2,8 +2,8 @@ use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
 use num::{NumCast, ToPrimitive};
-use plexus::primitive::Map;
 use std::hash::{Hash, Hasher};
+use theon::ops::Map;
 
 pub use self::pipeline::*;
 

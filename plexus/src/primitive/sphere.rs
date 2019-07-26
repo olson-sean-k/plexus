@@ -33,7 +33,7 @@ use crate::primitive::generate::{
     PolygonGenerator, PolygonsWithPosition, PositionGenerator, PositionIndexGenerator,
     PositionPolygonGenerator, PositionVertexGenerator, VerticesWithPosition,
 };
-use crate::primitive::{Polygon, Quad, Triangle};
+use crate::primitive::{Polygon, Tetragon, Trigon};
 
 #[derive(Clone, Copy)]
 pub struct Bounds<S>
@@ -196,10 +196,10 @@ where
 
         // Generate the vertices at the requested meridian and parallel. The
         // lower bound of `(u, v)` is always used, so compute that in advance
-        // (`lower`). Emit triangles at the poles, otherwise quads.
+        // (`lower`). Emit triangles at the poles, otherwise quadrilaterals.
         let lower = self.vertex_with_position_from(state, u, v);
         if v == 0 {
-            Triangle::new(
+            Trigon::new(
                 lower,
                 self.vertex_with_position_from(state, u, q),
                 self.vertex_with_position_from(state, p, q),
@@ -207,7 +207,7 @@ where
             .into()
         }
         else if v == self.nv - 1 {
-            Triangle::new(
+            Trigon::new(
                 // Normalize `u` at the pole, using `(0, nv)` in place of
                 // `(p, q)`.
                 self.vertex_with_position_from(state, 0, self.nv),
@@ -217,7 +217,7 @@ where
             .into()
         }
         else {
-            Quad::new(
+            Tetragon::new(
                 lower,
                 self.vertex_with_position_from(state, u, q),
                 self.vertex_with_position_from(state, p, q),
@@ -238,13 +238,13 @@ impl PositionIndexGenerator for UvSphere {
         let low = self.index_for_position(u, v);
         let high = self.index_for_position(p, q);
         if v == 0 {
-            Triangle::new(low, self.index_for_position(u, q), high).into()
+            Trigon::new(low, self.index_for_position(u, q), high).into()
         }
         else if v == self.nv - 1 {
-            Triangle::new(high, self.index_for_position(p, v), low).into()
+            Trigon::new(high, self.index_for_position(p, v), low).into()
         }
         else {
-            Quad::new(
+            Tetragon::new(
                 low,
                 self.index_for_position(u, q),
                 high,

@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
+use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
@@ -14,7 +15,7 @@ use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
-use crate::{AsPosition, IteratorExt};
+use crate::IteratorExt;
 
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdgePayload<G> = (EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>));

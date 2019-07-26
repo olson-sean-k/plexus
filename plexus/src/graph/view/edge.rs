@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
+use theon::AsPosition;
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint, GraphGeometry, VertexPosition};
@@ -19,7 +20,6 @@ use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
-use crate::AsPosition;
 
 /// View of an arc.
 ///
@@ -653,11 +653,11 @@ where
     /// use nalgebra::Point2;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
-    /// use plexus::primitive::Triangle;
+    /// use plexus::primitive::Trigon;
     ///
     /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
-    ///     vec![Triangle::new(0usize, 1, 2)],
+    ///     vec![Trigon::new(0usize, 1, 2)],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
@@ -1456,11 +1456,11 @@ mod tests {
     use decorum::N64;
     use nalgebra::{Point2, Point3};
 
-    use crate::geometry::IntoGeometry;
     use crate::graph::{ArcKey, GraphGeometry, MeshGraph, VertexView};
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
+    use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where
@@ -1512,7 +1512,7 @@ mod tests {
 
     #[test]
     fn bridge_arcs() {
-        // Construct a mesh with two independent quads.
+        // Construct a mesh with two independent quadrilaterals.
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 4, 5, 6, 7],
             vec![
@@ -1545,7 +1545,7 @@ mod tests {
     #[test]
     fn split_edge() {
         let (indices, vertices) = Cube::new()
-            .polygons_with_position::<Point3<N64>>() // 6 quads, 24 vertices.
+            .polygons_with_position::<Point3<N64>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
@@ -1565,7 +1565,7 @@ mod tests {
 
     #[test]
     fn remove_edge() {
-        // Construct a graph with two connected quads.
+        // Construct a graph with two connected quadrilaterals.
         let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 0, 3, 4, 5],
             vec![
@@ -1583,7 +1583,7 @@ mod tests {
         // The graph should begin with 2 faces.
         assert_eq!(2, graph.face_count());
 
-        // Remove the edge joining the quads from the graph.
+        // Remove the edge joining the quadrilaterals from the graph.
         let ab = find_arc_with_vertex_geometry(&graph, ((0.0, 0.0), (0.0, 1.0))).unwrap();
         {
             let vertex = graph.arc_mut(ab).unwrap().remove().unwrap().into_ref();

@@ -101,7 +101,7 @@ use crate::index::{
     Push, Structured, Structured3, Structured4, StructuredN,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
 use crate::{Arity, FromRawBuffers};
 
@@ -606,7 +606,7 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .flat_map(|triangle| triangle.into_vertices())
+                .flat_map(|trigon| trigon.into_vertices())
                 .collect(),
             vertices,
         }
@@ -651,7 +651,7 @@ where
         MeshBuffer {
             indices: indices
                 .into_iter()
-                .flat_map(|quad| quad.into_vertices())
+                .flat_map(|tetragon| tetragon.into_vertices())
                 .collect(),
             vertices,
         }
@@ -674,7 +674,7 @@ impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat3<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Item = Triangle<N>;
+    type Item = Trigon<N>;
 
     /// Converts a flat index buffer into a structured index buffer.
     ///
@@ -697,7 +697,7 @@ where
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
-    /// for triangle in buffer.as_index_slice() {
+    /// for trigon in buffer.as_index_slice() {
     ///     // ...
     /// }
     /// # }
@@ -708,7 +708,7 @@ where
             .into_iter()
             .chunks(U3::USIZE)
             .into_iter()
-            .map(|triangle| <Structured<Self::Item> as Grouping>::Item::from_items(triangle))
+            .map(|trigon| <Structured<Self::Item> as Grouping>::Item::from_items(trigon))
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
@@ -719,7 +719,7 @@ impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat4<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Item = Quad<N>;
+    type Item = Tetragon<N>;
 
     /// Converts a flat index buffer into a structured index buffer.
     ///
@@ -742,7 +742,7 @@ where
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
-    /// for quad in buffer.as_index_slice() {
+    /// for tetragon in buffer.as_index_slice() {
     ///     // ...
     /// }
     /// # }
@@ -753,7 +753,7 @@ where
             .into_iter()
             .chunks(U4::USIZE)
             .into_iter()
-            .map(|quad| <Structured<Self::Item> as Grouping>::Item::from_items(quad))
+            .map(|tetragon| <Structured<Self::Item> as Grouping>::Item::from_items(tetragon))
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
@@ -803,7 +803,7 @@ mod tests {
             .collect::<MeshBuffer<StructuredN<u32>, Point3<f64>>>();
         buffer.append(
             &mut Cube::new()
-                .polygons_with_position::<E3>() // 6 quads, 24 vertices.
+                .polygons_with_position::<E3>() // 6 quadrilaterals, 24 vertices.
                 .collect::<MeshBuffer<Structured4<u32>, Point3<f64>>>(),
         );
 

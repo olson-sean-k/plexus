@@ -9,7 +9,7 @@ use std::iter::IntoIterator;
 use theon::ops::Interpolate;
 use theon::IntoItems;
 
-use crate::primitive::{Edge, Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::primitive::{Edge, Polygon, Polygonal, Tetragon, Topological, Trigon};
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -121,10 +121,10 @@ pub trait IntoEdges: Topological {
     fn into_edges(self) -> Self::Output;
 }
 
-pub trait IntoTriangles: Polygonal {
-    type Output: IntoIterator<Item = Triangle<Self::Vertex>>;
+pub trait IntoTrigons: Polygonal {
+    type Output: IntoIterator<Item = Trigon<Self::Vertex>>;
 
-    fn into_triangles(self) -> Self::Output;
+    fn into_trigons(self) -> Self::Output;
 }
 
 pub trait IntoSubdivisions: Polygonal {
@@ -134,7 +134,7 @@ pub trait IntoSubdivisions: Polygonal {
 }
 
 pub trait IntoTetrahedrons: Polygonal {
-    fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]>;
+    fn into_tetrahedrons(self) -> ArrayVec<[Trigon<Self::Vertex>; 4]>;
 }
 
 impl<T> IntoEdges for Edge<T> {
@@ -145,7 +145,7 @@ impl<T> IntoEdges for Edge<T> {
     }
 }
 
-impl<T> IntoEdges for Triangle<T>
+impl<T> IntoEdges for Trigon<T>
 where
     T: Clone,
 {
@@ -161,7 +161,7 @@ where
     }
 }
 
-impl<T> IntoEdges for Quad<T>
+impl<T> IntoEdges for Tetragon<T>
 where
     T: Clone,
 {
@@ -186,70 +186,64 @@ where
 
     fn into_edges(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => triangle.into_edges().into_iter().collect(),
-            Polygon::Quad(quad) => quad.into_edges().into_iter().collect(),
+            Polygon::N3(trigon) => trigon.into_edges().into_iter().collect(),
+            Polygon::N4(tetragon) => tetragon.into_edges().into_iter().collect(),
         }
     }
 }
 
-impl<T> IntoTriangles for Triangle<T> {
-    type Output = ArrayVec<[Triangle<Self::Vertex>; 1]>;
+impl<T> IntoTrigons for Trigon<T> {
+    type Output = ArrayVec<[Trigon<Self::Vertex>; 1]>;
 
-    fn into_triangles(self) -> Self::Output {
+    fn into_trigons(self) -> Self::Output {
         ArrayVec::from([self])
     }
 }
 
-impl<T> IntoTriangles for Quad<T>
+impl<T> IntoTrigons for Tetragon<T>
 where
     T: Clone,
 {
-    type Output = ArrayVec<[Triangle<Self::Vertex>; 2]>;
+    type Output = ArrayVec<[Trigon<Self::Vertex>; 2]>;
 
-    fn into_triangles(self) -> Self::Output {
+    fn into_trigons(self) -> Self::Output {
         let [a, b, c, d] = self.into_array();
-        ArrayVec::from([
-            Triangle::new(a.clone(), b, c.clone()),
-            Triangle::new(c, d, a),
-        ])
+        ArrayVec::from([Trigon::new(a.clone(), b, c.clone()), Trigon::new(c, d, a)])
     }
 }
 
-impl<T> IntoTriangles for Polygon<T>
+impl<T> IntoTrigons for Polygon<T>
 where
     T: Clone,
 {
-    type Output = Vec<Triangle<Self::Vertex>>;
+    type Output = Vec<Trigon<Self::Vertex>>;
 
-    fn into_triangles(self) -> Self::Output {
+    fn into_trigons(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => triangle.into_triangles().into_iter().collect(),
-            Polygon::Quad(quad) => quad.into_triangles().into_iter().collect(),
+            Polygon::N3(trigon) => trigon.into_trigons().into_iter().collect(),
+            Polygon::N4(tetragon) => tetragon.into_trigons().into_iter().collect(),
         }
     }
 }
 
-impl<T> IntoSubdivisions for Triangle<T>
+impl<T> IntoSubdivisions for Trigon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    type Output = ArrayVec<[Triangle<Self::Vertex>; 2]>;
+    type Output = ArrayVec<[Trigon<Self::Vertex>; 2]>;
 
     fn into_subdivisions(self) -> Self::Output {
         let [a, b, c] = self.into_array();
         let ac = a.clone().midpoint(c.clone());
-        ArrayVec::from([
-            Triangle::new(b.clone(), ac.clone(), a),
-            Triangle::new(c, ac, b),
-        ])
+        ArrayVec::from([Trigon::new(b.clone(), ac.clone(), a), Trigon::new(c, ac, b)])
     }
 }
 
-impl<T> IntoSubdivisions for Quad<T>
+impl<T> IntoSubdivisions for Tetragon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    type Output = ArrayVec<[Quad<Self::Vertex>; 4]>;
+    type Output = ArrayVec<[Tetragon<Self::Vertex>; 4]>;
 
     fn into_subdivisions(self) -> Self::Output {
         let [a, b, c, d] = self.into_array();
@@ -259,26 +253,26 @@ where
         let da = d.clone().midpoint(a.clone());
         let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
-            Quad::new(a, ab.clone(), ac.clone(), da.clone()),
-            Quad::new(ab, b, bc.clone(), ac.clone()),
-            Quad::new(ac.clone(), bc, c, cd.clone()),
-            Quad::new(da, ac, cd, d),
+            Tetragon::new(a, ab.clone(), ac.clone(), da.clone()),
+            Tetragon::new(ab, b, bc.clone(), ac.clone()),
+            Tetragon::new(ac.clone(), bc, c, cd.clone()),
+            Tetragon::new(da, ac, cd, d),
         ])
     }
 }
 
-impl<T> IntoTetrahedrons for Quad<T>
+impl<T> IntoTetrahedrons for Tetragon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    fn into_tetrahedrons(self) -> ArrayVec<[Triangle<Self::Vertex>; 4]> {
+    fn into_tetrahedrons(self) -> ArrayVec<[Trigon<Self::Vertex>; 4]> {
         let [a, b, c, d] = self.into_array();
         let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
-            Triangle::new(a.clone(), b.clone(), ac.clone()),
-            Triangle::new(b, c.clone(), ac.clone()),
-            Triangle::new(c, d.clone(), ac.clone()),
-            Triangle::new(d, a, ac),
+            Trigon::new(a.clone(), b.clone(), ac.clone()),
+            Trigon::new(b, c.clone(), ac.clone()),
+            Trigon::new(c, d.clone(), ac.clone()),
+            Trigon::new(d, a, ac),
         ])
     }
 }
@@ -291,15 +285,15 @@ where
 
     fn into_subdivisions(self) -> Self::Output {
         match self {
-            Polygon::Triangle(triangle) => triangle
+            Polygon::N3(trigon) => trigon
                 .into_subdivisions()
                 .into_iter()
-                .map(|triangle| triangle.into())
+                .map(|trigon| trigon.into())
                 .collect(),
-            Polygon::Quad(quad) => quad
+            Polygon::N4(tetragon) => tetragon
                 .into_subdivisions()
                 .into_iter()
-                .map(|quad| quad.into())
+                .map(|tetragon| tetragon.into())
                 .collect(),
         }
     }
@@ -342,18 +336,18 @@ where
 
 pub trait Triangulate<P>: Sized
 where
-    P: IntoTriangles,
+    P: IntoTrigons,
 {
-    fn triangulate(self) -> Decompose<Self, P, Triangle<P::Vertex>, P::Output>;
+    fn triangulate(self) -> Decompose<Self, P, Trigon<P::Vertex>, P::Output>;
 }
 
 impl<I, P> Triangulate<P> for I
 where
     I: Iterator<Item = P>,
-    P: IntoTriangles,
+    P: IntoTrigons,
 {
-    fn triangulate(self) -> Decompose<Self, P, Triangle<P::Vertex>, P::Output> {
-        Decompose::new(self, P::into_triangles)
+    fn triangulate(self) -> Decompose<Self, P, Trigon<P::Vertex>, P::Output> {
+        Decompose::new(self, P::into_trigons)
     }
 }
 
@@ -376,17 +370,17 @@ where
 
 pub trait Tetrahedrons<T>: Sized {
     #[allow(type_complexity)]
-    fn tetrahedrons(self) -> Decompose<Self, Quad<T>, Triangle<T>, ArrayVec<[Triangle<T>; 4]>>;
+    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>>;
 }
 
 impl<I, T> Tetrahedrons<T> for I
 where
-    I: Iterator<Item = Quad<T>>,
+    I: Iterator<Item = Tetragon<T>>,
     T: Clone + Interpolate<Output = T>,
 {
     #[allow(type_complexity)]
-    fn tetrahedrons(self) -> Decompose<Self, Quad<T>, Triangle<T>, ArrayVec<[Triangle<T>; 4]>> {
-        Decompose::new(self, Quad::into_tetrahedrons)
+    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>> {
+        Decompose::new(self, Tetragon::into_tetrahedrons)
     }
 }
 

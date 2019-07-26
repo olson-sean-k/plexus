@@ -137,11 +137,11 @@
 //! use nalgebra::Point2;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
-//! use plexus::primitive::Quad;
+//! use plexus::primitive::Tetragon;
 //!
 //! # fn main() {
 //! let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
-//!     vec![Quad::new(0u32, 1, 2, 3)],
+//!     vec![Tetragon::new(0u32, 1, 2, 3)],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
 //! )
 //! .unwrap();
@@ -181,6 +181,7 @@ use std::iter::FromIterator;
 use theon::ops::Map;
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
+use theon::AsPosition;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
@@ -195,8 +196,8 @@ use crate::index::{
     Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer, Structured,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Polygonal, Quad};
-use crate::{Arity, AsPosition, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
+use crate::primitive::{ConstantArity, Polygonal, Tetragon};
+use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
@@ -925,12 +926,13 @@ where
             .collect::<Vec<_>>();
         for face in indices {
             // The topology with the greatest arity emitted by indexing is a
-            // quad. Avoid allocations by using an `ArrayVec`.
+            // quadrilateral (tetragon). Avoid allocations by using an
+            // `ArrayVec`.
             let perimeter = face
                 .into_vertices()
                 .into_iter()
                 .map(|index| vertices[index])
-                .collect::<ArrayVec<[_; Quad::<()>::ARITY]>>();
+                .collect::<ArrayVec<[_; Tetragon::<()>::ARITY]>>();
             mutation.insert_face(&perimeter, Default::default())?;
         }
         mutation.commit()
