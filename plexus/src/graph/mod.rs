@@ -185,7 +185,6 @@ use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::geometry::{AsPosition, IntoGeometry};
 use crate::graph::core::{Bind, Core, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
@@ -197,7 +196,7 @@ use crate::index::{
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygonal, Quad};
-use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity};
+use crate::{Arity, AsPosition, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,

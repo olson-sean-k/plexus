@@ -6,7 +6,6 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 
-use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{
@@ -20,6 +19,7 @@ use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
+use crate::AsPosition;
 
 /// View of an arc.
 ///

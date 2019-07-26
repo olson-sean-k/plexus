@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{GraphGeometry, VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
@@ -16,6 +15,7 @@ use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::face::{FaceView, OrphanFaceView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt};
+use crate::AsPosition;
 
 /// View of a vertex.
 ///

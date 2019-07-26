@@ -7,8 +7,8 @@ use nalgebra::base::dimension::DimName;
 use nalgebra::{Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::geometry::{AsPosition, FromGeometry};
 use crate::graph::GraphGeometry;
+use crate::FromGeometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -55,23 +55,6 @@ where
             U::from(other.y).unwrap(),
             U::from(other.z).unwrap(),
         )
-    }
-}
-
-impl<T, D> AsPosition for Point<T, D>
-where
-    T: Scalar,
-    D: DimName,
-    DefaultAllocator: Allocator<T, D>,
-{
-    type Target = Self;
-
-    fn as_position(&self) -> &Self::Target {
-        self
-    }
-
-    fn as_position_mut(&mut self) -> &mut Self::Target {
-        self
     }
 }
 

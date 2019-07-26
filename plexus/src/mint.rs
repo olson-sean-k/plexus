@@ -4,8 +4,8 @@ use decorum::{Finite, NotNan, Ordered, Primitive};
 use mint::{Point2, Point3, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
-use crate::geometry::{AsPosition, FromGeometry};
 use crate::graph::GraphGeometry;
+use crate::FromGeometry;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -55,30 +55,6 @@ where
             U::from(other.y).unwrap(),
             U::from(other.z).unwrap(),
         )
-    }
-}
-
-impl<T> AsPosition for Point2<T> {
-    type Target = Self;
-
-    fn as_position(&self) -> &Self::Target {
-        self
-    }
-
-    fn as_position_mut(&mut self) -> &mut Self::Target {
-        self
-    }
-}
-
-impl<T> AsPosition for Point3<T> {
-    type Target = Self;
-
-    fn as_position(&self) -> &Self::Target {
-        self
-    }
-
-    fn as_position_mut(&mut self) -> &mut Self::Target {
-        self
     }
 }
 

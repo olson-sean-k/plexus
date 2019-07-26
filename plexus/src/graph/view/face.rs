@@ -7,7 +7,6 @@ use theon::query::{Intersection, Line, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use typenum::U3;
 
-use crate::geometry::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{
@@ -22,6 +21,7 @@ use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
+use crate::AsPosition;
 
 use Selector::ByIndex;
 

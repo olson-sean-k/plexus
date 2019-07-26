@@ -64,7 +64,6 @@ use theon::ops::{Cross, Interpolate, Project};
 use theon::space::{EuclideanSpace, InnerSpace, Vector, VectorSpace};
 use theon::FromItems;
 
-use crate::geometry::AsPosition;
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
@@ -72,8 +71,9 @@ use crate::graph::view::edge::{ArcView, EdgeView};
 use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::GraphError;
+use crate::{AsPosition, Position};
 
-pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Target;
+pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 
 // TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
 //       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
@@ -117,13 +117,13 @@ pub type VertexPosition<G> = <<G as GraphGeometry>::Vertex as AsPosition>::Targe
 /// }
 ///
 /// impl AsPosition for Vertex {
-///     type Target = Point3<N64>;
+///     type Position = Point3<N64>;
 ///
-///     fn as_position(&self) -> &Self::Target {
+///     fn as_position(&self) -> &Self::Position {
 ///         &self.position
 ///     }
 ///
-///     fn as_position_mut(&mut self) -> &mut Self::Target {
+///     fn as_position_mut(&mut self) -> &mut Self::Position {
 ///         &mut self.position
 ///     }
 /// }

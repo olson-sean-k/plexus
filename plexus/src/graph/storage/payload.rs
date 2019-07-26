@@ -9,7 +9,6 @@
 
 use derivative::Derivative;
 
-use crate::geometry::{FromGeometry, FromInteriorGeometry, IntoGeometry};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 use crate::graph::storage::{Get, HashStorage, Remove, Sequence, SlotStorage};
@@ -46,20 +45,6 @@ where
         VertexPayload {
             geometry,
             arc: None,
-        }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<VertexPayload<H>> for VertexPayload<G>
-where
-    G: GraphGeometry,
-    G::Vertex: FromGeometry<H::Vertex>,
-    H: GraphGeometry,
-{
-    fn from_interior_geometry(vertex: VertexPayload<H>) -> Self {
-        VertexPayload {
-            geometry: vertex.geometry.into_geometry(),
-            arc: vertex.arc,
         }
     }
 }
@@ -114,23 +99,6 @@ where
     }
 }
 
-impl<G, H> FromInteriorGeometry<ArcPayload<H>> for ArcPayload<G>
-where
-    G: GraphGeometry,
-    G::Arc: FromGeometry<H::Arc>,
-    H: GraphGeometry,
-{
-    fn from_interior_geometry(arc: ArcPayload<H>) -> Self {
-        ArcPayload {
-            geometry: arc.geometry.into_geometry(),
-            next: arc.next,
-            previous: arc.previous,
-            edge: arc.edge,
-            face: arc.face,
-        }
-    }
-}
-
 impl<G> Payload for ArcPayload<G>
 where
     G: GraphGeometry,
@@ -163,20 +131,6 @@ where
     }
 }
 
-impl<G, H> FromInteriorGeometry<EdgePayload<H>> for EdgePayload<G>
-where
-    G: GraphGeometry,
-    G::Edge: FromGeometry<H::Edge>,
-    H: GraphGeometry,
-{
-    fn from_interior_geometry(edge: EdgePayload<H>) -> Self {
-        EdgePayload {
-            geometry: edge.geometry.into_geometry(),
-            arc: edge.arc,
-        }
-    }
-}
-
 impl<G> Payload for EdgePayload<G>
 where
     G: GraphGeometry,
@@ -206,20 +160,6 @@ where
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
         FacePayload { geometry, arc }
-    }
-}
-
-impl<G, H> FromInteriorGeometry<FacePayload<H>> for FacePayload<G>
-where
-    G: GraphGeometry,
-    G::Face: FromGeometry<H::Face>,
-    H: GraphGeometry,
-{
-    fn from_interior_geometry(face: FacePayload<H>) -> Self {
-        FacePayload {
-            geometry: face.geometry.into_geometry(),
-            arc: face.arc,
-        }
     }
 }
 

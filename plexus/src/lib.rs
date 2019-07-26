@@ -11,14 +11,18 @@
 
 use std::fmt::Debug;
 
+// Feature modules. These are empty unless features are enabled.
+mod cgmath;
+mod mint;
+mod nalgebra;
+
 pub mod buffer;
 pub mod encoding;
-mod geometry;
 pub mod graph;
 pub mod index;
 pub mod primitive;
 
-pub use geometry::{AsPosition, FromGeometry, IntoGeometry, UnitGeometry};
+pub use theon::{AsPosition, Position};
 
 pub mod prelude {
     //! Re-exports commonly used types and traits.
@@ -46,7 +50,6 @@ pub mod prelude {
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
     #[cfg(feature = "encoding-ply")]
     pub use crate::encoding::ply::{FromPly as _, ToPly as _};
-    pub use crate::geometry::{FromGeometry as _, IntoGeometry as _};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
@@ -61,7 +64,9 @@ pub mod prelude {
     };
     pub use crate::primitive::{Converged as _, MapVertices as _, Zip as _};
     pub use crate::IteratorExt as _;
-    pub use crate::{FromRawBuffers as _, FromRawBuffersWithArity as _};
+    pub use crate::{
+        FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _, IntoGeometry as _,
+    };
 
     pub use Selector::ByIndex;
     pub use Selector::ByKey;
@@ -94,6 +99,40 @@ pub trait FromRawBuffersWithArity<N, G>: Sized {
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = G>;
+}
+
+pub trait FromGeometry<T> {
+    fn from_geometry(other: T) -> Self;
+}
+
+impl<T> FromGeometry<T> for T {
+    fn from_geometry(other: T) -> Self {
+        other
+    }
+}
+
+impl<T> FromGeometry<()> for T
+where
+    T: UnitGeometry,
+{
+    fn from_geometry(_: ()) -> Self {
+        T::default()
+    }
+}
+
+pub trait UnitGeometry: Default {}
+
+pub trait IntoGeometry<T> {
+    fn into_geometry(self) -> T;
+}
+
+impl<T, U> IntoGeometry<U> for T
+where
+    U: FromGeometry<T>,
+{
+    fn into_geometry(self) -> U {
+        U::from_geometry(self)
+    }
 }
 
 /// Extension methods for types implementing `Iterator`.

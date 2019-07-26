@@ -96,13 +96,13 @@ use theon::FromItems;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::geometry::IntoGeometry;
 use crate::index::{
     Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer,
     Push, Structured, Structured3, Structured4, StructuredN,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Polygonal, Quad, Topological, Triangle};
+use crate::IntoGeometry;
 use crate::{Arity, FromRawBuffers};
 
 #[derive(Debug, Fail)]
