@@ -56,10 +56,11 @@ where
     /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
     ///     .index_vertices::<Flat4, _>(HashIndexer::default());

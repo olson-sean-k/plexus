@@ -56,12 +56,8 @@ pub mod prelude {
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,
         IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _, Vertices as _,
     };
-    pub use crate::primitive::generate::{
-        IndicesForNormal as _, IndicesForPosition as _, PolygonsWithNormal as _,
-        PolygonsWithPosition as _, PolygonsWithUvMap as _, VerticesWithNormal as _,
-        VerticesWithPosition as _,
-    };
-    pub use crate::primitive::{MapVertices as _, Topological as _, Zip as _};
+    pub use crate::primitive::generate::Generator as _;
+    pub use crate::primitive::{MapVertices as _, Topological as _};
     pub use crate::IteratorExt as _;
     pub use crate::{
         FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _, IntoGeometry as _,

@@ -48,10 +48,11 @@ use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 /// use plexus::index::HashIndexer;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
+/// use plexus::primitive::generate::Position;
 ///
 /// # fn main() {
 /// let mut graph = Cube::new()
-///     .polygons_with_position::<Point3<N64>>()
+///     .polygons::<Position<Point3<N64>>>()
 ///     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
 ///     .unwrap();
 ///
@@ -1460,6 +1461,7 @@ mod tests {
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
+    use crate::primitive::generate::Position;
     use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
@@ -1545,7 +1547,7 @@ mod tests {
     #[test]
     fn split_edge() {
         let (indices, vertices) = Cube::new()
-            .polygons_with_position::<Point3<N64>>() // 6 quadrilaterals, 24 vertices.
+            .polygons::<Position<Point3<N64>>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();

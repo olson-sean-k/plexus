@@ -86,7 +86,7 @@
 //!
 //! # Examples
 //!
-//! Generating a mesh from a UV-sphere:
+//! Generating a mesh from a $uv$-sphere:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -97,11 +97,12 @@
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
+//! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let mut graph = UvSphere::default()
-//!     .polygons_with_position::<Point3<N64>>()
+//!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! # }
 //! ```
@@ -117,11 +118,12 @@
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
+//! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let mut graph = UvSphere::new(8, 8)
-//!     .polygons_with_position::<Point3<N64>>()
+//!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
 //! let face = graph.face_mut(key).unwrap().extrude(1.0); // Extrude the face.
@@ -290,10 +292,11 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
+/// use plexus::primitive::generate::Position;
 ///
 /// # fn main() {
 /// let mut graph = Cube::new()
-///     .polygons_with_position::<Point3<N64>>()
+///     .polygons::<Position<Point3<N64>>>()
 ///     .collect::<MeshGraph<Point3<N64>>>();
 /// let key = graph.faces().nth(0).unwrap().key();
 /// graph
@@ -1016,11 +1019,12 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::index::{Flat3, LruIndexer};
     /// use plexus::prelude::*;
+    /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
     /// let (indices, positions) = UvSphere::new(16, 16)
-    ///     .polygons_with_position::<Point3<f64>>()
+    ///     .polygons::<Position<Point3<f64>>>()
     ///     .triangulate()
     ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(256));
     /// let mut graph =
@@ -1090,6 +1094,7 @@ mod tests {
 
     use crate::graph::{GraphError, GraphGeometry, MeshGraph};
     use crate::prelude::*;
+    use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
 
     type E3 = Point3<N64>;
@@ -1097,7 +1102,7 @@ mod tests {
     #[test]
     fn collect_topology_into_mesh() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
 
         assert_eq!(5, graph.vertex_count());
@@ -1108,7 +1113,7 @@ mod tests {
     #[test]
     fn iterate_mesh_topology() {
         let mut graph = UvSphere::new(4, 2)
-            .polygons_with_position::<E3>() // 8 triangles, 24 vertices.
+            .polygons::<Position<E3>>() // 8 triangles, 24 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
 
         assert_eq!(6, graph.vertices().count());
@@ -1128,7 +1133,7 @@ mod tests {
     #[test]
     fn non_manifold_error_deferred() {
         let graph = UvSphere::new(32, 32)
-            .polygons_with_position::<E3>()
+            .polygons::<Position<E3>>()
             .triangulate()
             .collect::<MeshGraph<Point3<f64>>>();
         // This conversion will join faces by a single vertex, but ultimately
@@ -1168,7 +1173,7 @@ mod tests {
         // Create a mesh with a floating point value associated with each face.
         // Use a mutable iterator to write to the geometry of each face.
         let mut graph = UvSphere::new(4, 4)
-            .polygons_with_position::<E3>()
+            .polygons::<Position<E3>>()
             .collect::<MeshGraph<ValueGeometry>>();
         let value = 3.14;
         for mut face in graph.orphan_faces() {

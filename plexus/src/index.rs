@@ -42,10 +42,11 @@
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::generate::Position;
 //!
 //! # fn main() {
 //! let (indices, positions) = Cube::new()
-//!     .polygons_with_position::<Point3<N64>>()
+//!     .polygons::<Position<Point3<N64>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
@@ -280,10 +281,11 @@ where
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
+/// use plexus::primitive::generate::Position;
 ///
 /// # fn main() {
 /// let (indices, positions) = Cube::new()
-///     .polygons_with_position::<Point3<N64>>()
+///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// # }
@@ -365,11 +367,12 @@ where
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, LruIndexer};
 /// use plexus::prelude::*;
+/// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 ///
 /// # fn main() {
 /// let (indices, positions) = UvSphere::new(8, 8)
-///     .polygons_with_position::<Point3<f64>>()
+///     .polygons::<Position<Point3<f64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(64));
 /// # }
@@ -540,12 +543,13 @@ where
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
+/// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 ///
 /// # fn main() {
 /// let sphere = UvSphere::new(32, 32);
 /// let (indices, positions) = sphere
-///     .polygons_with_position::<Point3<N64>>()
+///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// # }
@@ -581,11 +585,12 @@ where
     /// use plexus::index::{HashIndexer, Structured3};
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
     /// // `indices` contains `Trigon`s with index data.
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .subdivide()
     ///     .triangulate()
     ///     .index_vertices::<Structured3, _>(HashIndexer::default());
@@ -654,11 +659,12 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     /// use plexus::index::HashIndexer;
     ///
     /// # fn main() {
     /// let graph = Cube::new()
-    ///     .polygons_with_position::<Point3<N32>>()
+    ///     .polygons::<Position<Point3<N32>>>()
     ///     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
     ///     .unwrap();
     /// # }

@@ -99,10 +99,11 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
     /// let mut graph = Cube::new()
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<N64>>>();
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
@@ -358,9 +359,10 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// let mut graph = Cube::new()
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let key = graph.vertices().nth(0).unwrap().key();
     /// graph.vertex_mut(key).unwrap().remove();
@@ -720,13 +722,16 @@ mod tests {
 
     use crate::graph::MeshGraph;
     use crate::prelude::*;
+    use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
+
+    type E3 = Point3<N64>;
 
     #[test]
     fn circulate_over_arcs() {
         let graph = UvSphere::new(4, 2)
-            .polygons_with_position::<Point3<N64>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<N64>>>();
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
+            .collect::<MeshGraph<E3>>();
 
         // All faces should be triangles and all vertices should have 4
         // (incoming) arcs.

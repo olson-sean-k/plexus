@@ -98,6 +98,7 @@ pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 /// use num::Zero;
 /// use plexus::graph::{GraphGeometry, MeshGraph};
 /// use plexus::prelude::*;
+/// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 /// use plexus::{AsPosition, IntoGeometry};
 ///
@@ -130,7 +131,7 @@ pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 /// # fn main() {
 /// // Create a mesh from a sphere primitive and map the geometry data.
 /// let mut graph = UvSphere::new(8, 8)
-///     .polygons_with_position::<Point3<N64>>()
+///     .polygons::<Position<Point3<N64>>>()
 ///     .map_vertices(|position| Vertex {
 ///         position,
 ///         color: Zero::zero(),

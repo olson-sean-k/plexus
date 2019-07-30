@@ -1,13 +1,91 @@
-//! Primitive generation.
+//! Polytope generation.
 //!
 //! This module provides a generic iterator and traits for generating streams
-//! of geometric and topological data for primitives like cubes and spheres.
+//! of geometric and topological data for polytopes like cubes and spheres.
+//!
+//! The primary API of this module is exposed by the `Generator` trait.
 
+use std::marker::PhantomData;
 use std::ops::Range;
-use theon::space::{EuclideanSpace, FiniteDimensional, Vector};
-use typenum::{U2, U3};
 
 use crate::primitive::Polygonal;
+
+/// Geometric attribute.
+///
+/// Types implementing this trait can be used with `Generator` to query
+/// geometric attributes. For example, the `Position` type can be used to get
+/// positional data for cubes or spheres via `Cube` and `UvSphere`.
+pub trait Attribute {}
+
+/// Meta-attribute for surface normals.
+///
+/// Describes the surface normals of a polytope. The generated data is derived
+/// from the type parameter `S`, which typically requires `EuclideanSpace`.
+///
+/// # Examples
+///
+/// Generating raw buffers with normal data for a sphere:
+///
+/// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
+/// use plexus::index::{Flat3, HashIndexer};
+/// use plexus::prelude::*;
+/// use plexus::primitive::generate::Normal;
+/// use plexus::primitive::sphere::UvSphere;
+///
+/// # fn main() {
+/// let (indices, normals) = UvSphere::new(8, 8)
+///     .polygons::<Normal<Point3<N64>>>()
+///     .map_vertices(|normal| normal.into_inner())
+///     .triangulate()
+///     .index_vertices::<Flat3, _>(HashIndexer::default());
+/// # }
+/// ```
+pub struct Normal<S = ()> {
+    phantom: PhantomData<S>,
+}
+
+impl<S> Attribute for Normal<S> {}
+
+/// Meta-attribute for positions.
+///
+/// Describes the position of vertices in a polytope. The generated data is
+/// derived from the type parameter `S`, which typically requires
+/// `EuclideanSpace`.
+///
+/// # Examples
+///
+/// Generating raw buffers with positional data for a cube:
+///
+/// ```rust
+/// # extern crate decorum;
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use decorum::N64;
+/// use nalgebra::Point3;
+/// use plexus::index::{Flat3, HashIndexer};
+/// use plexus::prelude::*;
+/// use plexus::primitive::cube::Cube;
+/// use plexus::primitive::generate::Position;
+///
+/// # fn main() {
+/// let (indices, positions) = Cube::new()
+///     .polygons::<Position<Point3<N64>>>()
+///     .triangulate()
+///     .index_vertices::<Flat3, _>(HashIndexer::default());
+/// # }
+/// ```
+pub struct Position<S = ()> {
+    phantom: PhantomData<S>,
+}
+
+impl<S> Attribute for Position<S> {}
 
 pub struct Generate<'a, G, S, P>
 where
@@ -23,12 +101,7 @@ impl<'a, G, S, P> Generate<'a, G, S, P>
 where
     G: 'a,
 {
-    pub(in crate::primitive) fn new(
-        generator: &'a G,
-        state: S,
-        n: usize,
-        f: fn(&'a G, &S, usize) -> P,
-    ) -> Self {
+    fn new(generator: &'a G, state: S, n: usize, f: fn(&'a G, &S, usize) -> P) -> Self {
         Generate {
             generator,
             state,
@@ -59,128 +132,53 @@ pub trait PolygonGenerator {
     fn polygon_count(&self) -> usize;
 }
 
-pub trait NormalGenerator<S>
+pub trait AttributeGenerator<A>
 where
-    S: EuclideanSpace + FiniteDimensional<N = U3>,
+    A: Attribute,
 {
     type State: Default;
 }
 
-pub trait NormalVertexGenerator<S>: NormalGenerator<S>
+pub trait AttributePolygonGenerator<A>: AttributeGenerator<A> + PolygonGenerator
 where
-    S: EuclideanSpace + FiniteDimensional<N = U3>,
+    A: Attribute,
 {
-    fn vertex_with_normal_from(&self, state: &Self::State, index: usize) -> Vector<S>;
+    type Output: Polygonal;
 
-    /// Gets the number of unique vertices with normal data that comprise a primitive.
-    fn vertex_with_normal_count(&self) -> usize;
+    fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output;
 }
 
-/// Functions for generating vertices with normal data.
-pub trait VerticesWithNormal: Sized {
-    fn vertices_with_normal<S>(&self) -> Generate<Self, Self::State, Vector<S>>
-    where
-        Self: NormalVertexGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U3>,
-    {
-        self.vertices_with_normal_from(Default::default())
-    }
+pub trait AttributeVertexGenerator<A>: AttributeGenerator<A>
+where
+    A: Attribute,
+{
+    type Output;
 
-    fn vertices_with_normal_from<S>(
-        &self,
-        state: Self::State,
-    ) -> Generate<Self, Self::State, Vector<S>>
-    where
-        Self: NormalVertexGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U3>,
-    {
-        Generate::new(
-            self,
-            state,
-            self.vertex_with_normal_count(),
-            Self::vertex_with_normal_from,
-        )
-    }
+    fn vertex_count(&self) -> usize;
+
+    fn vertex_from(&self, state: &Self::State, index: usize) -> Self::Output;
 }
 
-pub trait NormalIndexGenerator: PolygonGenerator {
+pub trait IndexingPolygonGenerator<A>: PolygonGenerator
+where
+    A: Attribute,
+{
     type Output: Polygonal<Vertex = usize>;
 
-    fn index_for_normal(&self, index: usize) -> Self::Output;
+    fn indexing_polygon(&self, index: usize) -> Self::Output;
 }
 
-pub trait IndicesForNormal: NormalIndexGenerator + Sized {
-    fn indices_for_normal(&self) -> Generate<Self, (), Self::Output> {
-        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
-            generator.index_for_normal(index)
-        })
-    }
-}
-
-impl<G> IndicesForNormal for G where G: NormalIndexGenerator + Sized {}
-
-pub trait NormalPolygonGenerator<S>: PolygonGenerator + NormalGenerator<S>
-where
-    S: EuclideanSpace + FiniteDimensional<N = U3>,
-{
-    type Output: Polygonal<Vertex = Vector<S>>;
-
-    fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output;
-}
-
-/// Functions for generating polygons with normal data.
-pub trait PolygonsWithNormal: Sized {
-    fn polygons_with_normal<S>(
-        &self,
-    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
-    where
-        Self: NormalPolygonGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U3>,
-    {
-        self.polygons_with_normal_from(Default::default())
-    }
-
-    fn polygons_with_normal_from<S>(
-        &self,
-        state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as NormalPolygonGenerator<S>>::Output>
-    where
-        Self: NormalPolygonGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U3>,
-    {
-        Generate::new(
-            self,
-            state,
-            self.polygon_count(),
-            Self::polygon_with_normal_from,
-        )
-    }
-}
-
-pub trait PositionGenerator<S>
-where
-    S: EuclideanSpace,
-{
-    type State: Default;
-}
-
-pub trait PositionVertexGenerator<S>: PositionGenerator<S>
-where
-    S: EuclideanSpace,
-{
-    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S;
-
-    /// Gets the number of unique vertices with position data that comprise a primitive.
-    fn vertex_with_position_count(&self) -> usize;
-}
-
-/// Functions for generating vertices with position data.
-pub trait VerticesWithPosition: Sized {
-    /// Provides an iterator over the set of unique vertices with position
-    /// data.
+/// Functions for iterating over the topological structures of generators.
+pub trait Generator: Sized {
+    /// Provides an iterator over the set of **unique** vertices with the given
+    /// attribute data.
     ///
-    /// This can be paired with functions from `IndicesForPosition` to index
-    /// the set of positions.
+    /// Each geometric attribute has an independent set of unique values. For
+    /// example, `Cube` generates six unique surface normals and eight unique
+    /// positions.
+    ///
+    /// This can be paired with the `indexing_polygons` function to index the
+    /// set of vertices.
     ///
     /// # Examples
     ///
@@ -190,139 +188,47 @@ pub trait VerticesWithPosition: Sized {
     /// #
     /// use nalgebra::Point3;
     /// use plexus::prelude::*;
-    /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
-    /// let sphere = UvSphere::new(8, 8);
+    /// type E3 = Point3<f64>;
     ///
-    /// let positions = sphere
-    ///     .vertices_with_position::<Point3<f64>>()
-    ///     .collect::<Vec<_>>();
-    /// let indices = sphere
-    ///     .indices_for_position()
-    ///     .triangulate()
-    ///     .vertices()
-    ///     .collect::<Vec<_>>();
-    /// # }
-    /// ```
-    fn vertices_with_position<S>(&self) -> Generate<Self, Self::State, S>
-    where
-        Self: PositionVertexGenerator<S>,
-        S: EuclideanSpace,
-    {
-        self.vertices_with_position_from(Default::default())
-    }
-
-    /// Provides an iterator over the set of unique vertices with position data
-    /// using the provided state.
-    ///
-    /// This can be paired with functions from `IndicesForPosition` to index
-    /// the set of positions.
-    ///
-    /// State typically dictates the scale of the generated positions, using a
-    /// unit width, radius, etc.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// #
-    /// use nalgebra::Point3;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::{Bounds, Cube};
-    ///
-    /// # fn main() {
     /// let cube = Cube::new();
     ///
     /// let positions = cube
-    ///     .vertices_with_position_from::<Point3<f64>>(Bounds::with_width(3.0))
+    ///     .vertices::<Position<E3>>()
     ///     .collect::<Vec<_>>();
     /// let indices = cube
-    ///     .indices_for_position()
+    ///     .indexing_polygons::<Position>()
     ///     .triangulate()
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// # }
     /// ```
-    fn vertices_with_position_from<S>(&self, state: Self::State) -> Generate<Self, Self::State, S>
-    where
-        Self: PositionVertexGenerator<S>,
-        S: EuclideanSpace,
-    {
-        Generate::new(
-            self,
-            state,
-            self.vertex_with_position_count(),
-            Self::vertex_with_position_from,
-        )
-    }
-}
-
-pub trait PositionIndexGenerator: PolygonGenerator {
-    type Output: Polygonal<Vertex = usize>;
-
-    fn index_for_position(&self, index: usize) -> Self::Output;
-}
-
-pub trait IndicesForPosition: PositionIndexGenerator + Sized {
-    fn indices_for_position(&self) -> Generate<Self, (), Self::Output> {
-        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
-            generator.index_for_position(index)
-        })
-    }
-}
-
-impl<G> IndicesForPosition for G where G: PositionIndexGenerator + Sized {}
-
-pub trait PositionPolygonGenerator<S>: PolygonGenerator + PositionGenerator<S>
-where
-    S: EuclideanSpace,
-{
-    type Output: Polygonal<Vertex = S>;
-
-    fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output;
-}
-
-/// Functions for generating polygons with position data.
-pub trait PolygonsWithPosition: Sized {
-    /// Provides an iterator over the set of unique polygons with position
-    /// data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate decorum;
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// #
-    /// use decorum::N64;
-    /// use nalgebra::Point3;
-    /// use plexus::index::{HashIndexer, StructuredN};
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::sphere::UvSphere;
-    ///
-    /// # fn main() {
-    /// let (indices, positions) = UvSphere::new(8, 8)
-    ///     .polygons_with_position::<Point3<N64>>()
-    ///     .index_vertices::<StructuredN, _>(HashIndexer::default());
-    /// # }
-    /// ```
-    fn polygons_with_position<S>(
+    fn vertices<A>(
         &self,
-    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator<S>>::Output>
+    ) -> Generate<Self, Self::State, <Self as AttributeVertexGenerator<A>>::Output>
     where
-        Self: PositionPolygonGenerator<S>,
-        S: EuclideanSpace,
+        Self: AttributeVertexGenerator<A>,
+        A: Attribute,
     {
-        self.polygons_with_position_from(Default::default())
+        self.vertices_from(Default::default())
     }
 
-    /// Provides an iterator over the set of unique polygons with position data
-    /// using the provided state.
-    ///
-    /// State typically dictates the scale of the generated positions, using a
-    /// unit width, radius, etc.
+    fn vertices_from<A>(
+        &self,
+        state: Self::State,
+    ) -> Generate<Self, Self::State, <Self as AttributeVertexGenerator<A>>::Output>
+    where
+        Self: AttributeVertexGenerator<A>,
+        A: Attribute,
+    {
+        Generate::new(self, state, self.vertex_count(), Self::vertex_from)
+    }
+
+    /// Provides an iterator over the set of polygons with the given
+    /// attribute data.
     ///
     /// # Examples
     ///
@@ -335,104 +241,76 @@ pub trait PolygonsWithPosition: Sized {
     /// use nalgebra::Point3;
     /// use plexus::index::{HashIndexer, Structured4};
     /// use plexus::prelude::*;
-    /// use plexus::primitive::cube::{Bounds, Cube};
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
     /// let (indices, positions) = Cube::new()
-    ///     .polygons_with_position_from::<Point3<N64>>(Bounds::unit_radius())
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .index_vertices::<Structured4, _>(HashIndexer::default());
     /// # }
     /// ```
-    fn polygons_with_position_from<S>(
+    fn polygons<A>(
+        &self,
+    ) -> Generate<Self, Self::State, <Self as AttributePolygonGenerator<A>>::Output>
+    where
+        Self: AttributePolygonGenerator<A>,
+        A: Attribute,
+    {
+        self.polygons_from(Default::default())
+    }
+
+    fn polygons_from<A>(
         &self,
         state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as PositionPolygonGenerator<S>>::Output>
+    ) -> Generate<Self, Self::State, <Self as AttributePolygonGenerator<A>>::Output>
     where
-        Self: PositionPolygonGenerator<S>,
-        S: EuclideanSpace,
+        Self: AttributePolygonGenerator<A>,
+        A: Attribute,
     {
-        Generate::new(
-            self,
-            state,
-            self.polygon_count(),
-            Self::polygon_with_position_from,
-        )
+        Generate::new(self, state, self.polygon_count(), Self::polygon_from)
     }
-}
 
-pub trait UvMapGenerator<S>
-where
-    S: EuclideanSpace + FiniteDimensional<N = U2>,
-{
-    type State: Default;
-}
-
-pub trait UvMapPolygonGenerator<S>: PolygonGenerator + UvMapGenerator<S>
-where
-    S: EuclideanSpace + FiniteDimensional<N = U2>,
-{
-    type Output: Polygonal<Vertex = Vector<S>>;
-
-    fn polygon_with_uv_map_from(&self, state: &Self::State, index: usize) -> Self::Output;
-}
-
-/// Functions for generating polygons with UV-mapping (texture coordinate)
-/// data.
-pub trait PolygonsWithUvMap: Sized {
-    /// Provides an iterator over the set of unique polygons with UV-mapping
-    /// data.
+    /// Provides an iterator over a set of polygons that index the unique set
+    /// of vertices with the given attribute.
+    ///
+    /// Indexing differs per geometric attribute, because each attribute has an
+    /// independent set of unique values. For example, `Cube` generates six
+    /// unique surface normals and eight unique positions.
+    ///
+    /// When used with meta-attribute types like `Position`, input types are
+    /// not needed and default type parameters can be used instead. For
+    /// example, if `Position<Point3<f64>>` is used to generate positional
+    /// data, then `Position<()>` or `Position` can be used to generate
+    /// indexing polygons.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
-    /// use nalgebra::{Point2, Point3};
-    /// use plexus::index::{Flat4, HashIndexer};
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
-    /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
-    /// type E2 = Point2<N64>;
-    /// type E3 = Point3<N64>;
-    ///
     /// let cube = Cube::new();
-    /// let (indices, positions) = primitive::zip_vertices((
-    ///     cube.polygons_with_position::<E3>(),
-    ///     cube.polygons_with_uv_map::<E2>(),
-    /// ))
-    /// .index_vertices::<Flat4, _>(HashIndexer::default());
+    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
+    ///     cube.indexing_polygons::<Position>().vertices(),
+    ///     cube.vertices::<Position<Point3<f64>>>(),
+    /// );
     /// # }
     /// ```
-    fn polygons_with_uv_map<S>(
-        &self,
-    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
+    fn indexing_polygons<A>(&self) -> Generate<Self, (), Self::Output>
     where
-        Self: UvMapPolygonGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U2>,
+        Self: IndexingPolygonGenerator<A>,
+        A: Attribute,
     {
-        self.polygons_with_uv_map_from(Default::default())
-    }
-
-    /// Provides an iterator over the set of unique polygons with UV-mapping
-    /// data using the provided state.
-    fn polygons_with_uv_map_from<S>(
-        &self,
-        state: Self::State,
-    ) -> Generate<Self, Self::State, <Self as UvMapPolygonGenerator<S>>::Output>
-    where
-        Self: UvMapPolygonGenerator<S>,
-        S: EuclideanSpace + FiniteDimensional<N = U2>,
-    {
-        Generate::new(
-            self,
-            state,
-            self.polygon_count(),
-            Self::polygon_with_uv_map_from,
-        )
+        Generate::new(self, (), self.polygon_count(), |generator, _, index| {
+            generator.indexing_polygon(index)
+        })
     }
 }

@@ -10,16 +10,17 @@
 ## Primitives and Iterator Expressions
 
 Plexus provides a rich set of primitive topological structures that can be
-composed using generators and iterator expressions. Expressions operate over a
-stream of structures like `Triangle`s or `Quad`s with arbitrary data in their
-vertices. These can be transformed, decomposed (tessellated), indexed, and
-collected into mesh data structures.
+composed using _generators_ and _iterator expressions_. Expressions operate
+over a stream of structures like `Trigon`s or `Tetragon`s with arbitrary data
+in their vertices. These can be transformed, decomposed (tessellated), indexed,
+and collected into mesh data structures.
 
 ```rust
 use decorum::N64;
 use nalgebra::Point3;
 use plexus::buffer::MeshBuffer3;
 use plexus::prelude::*;
+use plexus::primitive::generate::Position;
 use plexus::primitive::sphere::UvSphere;
 
 // Example rendering module.
@@ -27,7 +28,7 @@ use render::{self, Color4, Vertex};
 
 // Construct a linear buffer of index and vertex data from a sphere.
 let buffer = UvSphere::new(16, 16)
-    .polygons_with_position::<Point3<N64>>()
+    .polygons::<Position<Point3<N64>>>()
     .map_vertices(|position| Vertex::new(position, Color4::white()))
     .triangulate()
     .collect::<MeshBuffer3<u64, Vertex>>();
@@ -38,8 +39,6 @@ The [`decorum`](https://crates.io/crates/decorum) crate is used for
 floating-point values that can be hashed for fast indexing. See the [teapot
 example](https://github.com/olson-sean-k/plexus/tree/master/examples/teapot.rs)
 for an example of rendering.
-
-![Teapot](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/teapot.png)
 
 ## Half-Edge Graphs
 
@@ -55,11 +54,12 @@ use decorum::N64;
 use nalgebra::Point3;
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
+use plexus::primitive::generate::Position;
 use plexus::primitive::sphere::{Bounds, UvSphere};
 
 // Construct a mesh from a sphere.
 let mut graph = UvSphere::new(8, 8)
-    .polygons_with_position_from::<Point3<N64>>(Bounds::unit_width())
+    .polygons_from::<Position<Point3<N64>>>(Bounds::unit_width())
     .collect::<MeshGraph<Point3<f64>>>();
 // Extrude a face in the mesh.
 let key = graph.faces().nth(0).unwrap().key();
@@ -82,8 +82,8 @@ become available.
 ```rust
 use decorum::N64;
 use nalgebra::{Point3, Vector3};
-use plexus::geometry::AsPosition;
 use plexus::graph::GraphGeometry;
+use plexus::AsPosition;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Vertex {

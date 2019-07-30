@@ -4,6 +4,7 @@ use plexus::index::{Flat3, HashIndexer};
 use plexus::prelude::*;
 use plexus::primitive;
 use plexus::primitive::cube::{Bounds, Cube, Plane};
+use plexus::primitive::generate::Position;
 
 fn map_unit_uv(position: Point3<N64>, plane: Plane, unit: N64) -> Vector2<N64> {
     let map = |position: N64| -> N64 { position / unit };
@@ -22,8 +23,8 @@ fn main() {
     let cube = Cube::default();
     // Zip positions and planes into the vertices of a stream of polygons.
     let polygons = primitive::zip_vertices((
-        cube.polygons_with_position_from::<Point3<N64>>(Bounds::with_width(width)),
-        cube.polygons_with_plane(),
+        cube.polygons_from::<Position<Point3<N64>>>(Bounds::with_width(width)),
+        cube.polygons::<Plane>(),
     ));
     // Use the position and plane to map texture coordinates and then
     // triangulate the polygons and index them.

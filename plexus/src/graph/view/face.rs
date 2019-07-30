@@ -180,10 +180,11 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     ///
     /// # fn main() {
     /// let mut graph = Cube::new()
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let key = graph.faces().nth(0).unwrap().key();
     /// let face = graph.face_mut(key).unwrap().extrude(1.0).into_ref();
@@ -771,11 +772,12 @@ where
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// # fn main() {
     /// let mut graph = UvSphere::new(16, 8)
-    ///     .polygons_with_position::<Point3<N64>>()
+    ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let keys = graph.faces().map(|face| face.key()).collect::<Vec<_>>();
     /// for key in keys {
@@ -1508,6 +1510,7 @@ mod tests {
     use crate::index::{HashIndexer, Structured4};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
+    use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
 
     type E3 = Point3<N64>;
@@ -1515,7 +1518,7 @@ mod tests {
     #[test]
     fn circulate_over_arcs() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let face = graph.faces().nth(0).unwrap();
 
@@ -1526,7 +1529,7 @@ mod tests {
     #[test]
     fn circulate_over_faces() {
         let graph = UvSphere::new(3, 2)
-            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let face = graph.faces().nth(0).unwrap();
 
@@ -1537,7 +1540,7 @@ mod tests {
     #[test]
     fn remove_face() {
         let mut graph = UvSphere::new(3, 2)
-            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
 
         // The graph should begin with 6 faces.
@@ -1583,7 +1586,7 @@ mod tests {
     #[test]
     fn extrude_face() {
         let mut graph = UvSphere::new(3, 2)
-            .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+            .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         {
             let key = graph.faces().nth(0).unwrap().key();
@@ -1638,7 +1641,7 @@ mod tests {
     #[test]
     fn poke_face() {
         let mut graph = Cube::new()
-            .polygons_with_position::<E3>() // 6 quadrilaterals, 24 vertices.
+            .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let key = graph.faces().nth(0).unwrap().key();
         let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
@@ -1660,7 +1663,7 @@ mod tests {
     #[test]
     fn triangulate_mesh() {
         let (indices, vertices) = Cube::new()
-            .polygons_with_position::<E3>() // 6 quadrilaterals, 24 vertices.
+            .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Structured4, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<N64>>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate();

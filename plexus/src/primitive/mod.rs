@@ -11,14 +11,9 @@
 //! term _triangle_ is still used, such as in functions concerning
 //! _triangulation_.
 //!
-//! Much functionality in this module is exposed via traits, especially
-//! generators. Many of these traits are included in the `prelude` module, and
-//! it is highly recommended to import the `prelude`'s contents as seen in the
-//! examples.
-//!
 //! # Examples
 //!
-//! Generating positional data for a sphere:
+//! Generating raw buffers with the positional data for a sphere:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -26,23 +21,28 @@
 //! #
 //! use nalgebra::Point3;
 //! use plexus::prelude::*;
+//! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
 //! let sphere = UvSphere::new(16, 16);
+//!
 //! // Generate the unique set of positional vertices.
 //! let positions = sphere
-//!     .vertices_with_position::<Point3<f64>>()
+//!     .vertices::<Position<Point3<f64>>>()
 //!     .collect::<Vec<_>>();
-//! // Generate polygon that index the unique set of positional vertices.
+//!
+//! // Generate polygons that index the unique set of positional vertices.
+//! // The polygons are decomposed into triangles and then into vertices (indices).
 //! let indices = sphere
-//!     .indices_for_position()
+//!     .indexing_polygons::<Position>()
 //!     .triangulate()
 //!     .vertices()
 //!     .collect::<Vec<_>>();
 //! # }
 //! ```
-//! Generating positional data for a cube using an indexer:
+//!
+//! Generating raw buffers with positional data for a cube using an indexer:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -54,10 +54,11 @@
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::generate::Position;
 //!
 //! # fn main() {
 //! let (indices, positions) = Cube::new()
-//!     .polygons_with_position::<Point3<N64>>()
+//!     .polygons::<Position<Point3<N64>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! # }
@@ -303,22 +304,22 @@ where
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with neighboring elements being connected
 /// by an implicit undirected edge. For example, an `NGon` with three vertices
-/// (`NGon<[T; 3]>`) would represent a triangle (trigon).  Generally these
+/// (`NGon<[T; 3]>`) would represent a triangle (trigon). Generally these
 /// elements are labeled $A$, $B$, $C$, etc.
 ///
 /// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
 /// two vertices (`NGon<[T; 2]>`) is considered a _monogon_ despite common
 /// definitions specifying a single vertex. Such an `NGon` is not considered a
 /// _digon_, as it represents a single undirected edge rather than two distinct
-/// (but collapsed) edges.  Single-vertex `NGon`s are unsupported. See the
+/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the
 /// `Edge` type definition.
 ///
 /// Polygons are defined in $\Reals^2$, but `NGon` supports arbitrary vertex
 /// data. This includes positional data in Euclidean spaces of arbitrary
-/// dimension. As such, `NGon` does not represent a "pure polygon", but instead
-/// a superset defined by its topology. `NGon`s in $\Reals^3$ are useful for
-/// representing polygons embedded into three-dimensional space, but **there
-/// are no restrictions on the geometry of vertices**.
+/// dimension. As such, `NGon` does not represent a pure polygon, but instead a
+/// superset defined solely by its topology. `NGon`s in $\Reals^3$ are useful
+/// for representing polygons embedded into three-dimensional space, but
+/// **there are no restrictions on the geometry of vertices**.
 #[derive(Clone, Copy, Debug)]
 pub struct NGon<A>(pub A)
 where
@@ -789,13 +790,12 @@ impl<T> Topological for Polygon<T> {
 /// iterator.
 ///
 /// This is useful for zipping different attributes of a primitive generator.
-/// For example, it can be used to combine position, plane, and UV-mapping data
+/// For example, it can be used to combine position, plane, and normal data
 /// data of a cube into a single topology stream.
 ///
 /// # Examples
 ///
-/// Zip position and UV-mapping data for a cube and map over it to compute
-/// color:
+/// Zip position, normal, and plane data for a cube:
 ///
 /// ```rust
 /// # extern crate decorum;
@@ -804,30 +804,23 @@ impl<T> Topological for Polygon<T> {
 /// # extern crate plexus;
 /// # extern crate theon;
 /// #
-/// use decorum::{N64, R64};
-/// use nalgebra::{Point2, Point3, Vector4};
-/// # use num::Zero;
+/// use decorum::N64;
+/// use nalgebra::Point3;
 /// use plexus::prelude::*;
 /// use plexus::primitive;
-/// use plexus::primitive::cube::Cube;
-/// use theon::space::Vector;
+/// use plexus::primitive::cube::{Cube, Plane};
+/// use plexus::primitive::generate::{Normal, Position};
 ///
 /// # fn main() {
-/// type E2 = Point2<N64>;
 /// type E3 = Point3<N64>;
-///
-/// fn map_uv_to_rgba(uv: &Vector<E2>) -> Vector4<R64> {
-/// #   Zero::zero()
-///     // ...
-/// }
 ///
 /// let cube = Cube::new();
 /// // Zip positions and texture coordinates into each vertex.
 /// let polygons = primitive::zip_vertices((
-///     cube.polygons_with_position::<E3>(),
-///     cube.polygons_with_uv_map::<E2>(),
+///     cube.polygons::<Position<E3>>(),
+///     cube.polygons::<Normal<E3>>(),
+///     cube.polygons::<Plane>(),
 /// ))
-///     .map_vertices(|(position, uv)| (position, uv, map_uv_to_rgba(&uv)))
 ///     .triangulate()
 ///     .collect::<Vec<_>>();
 /// # }

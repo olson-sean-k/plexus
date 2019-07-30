@@ -12,25 +12,25 @@
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::generate::Position;
 //!
 //! # fn main() {
 //! let mut graph = Cube::new()
-//!     .polygons_with_position::<Point3<N64>>()
+//!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! # }
 //! ```
 
-use num::{One, Zero};
+use num::One;
 use theon::ops::Map;
-use theon::space::{Basis, EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
+use theon::query::Unit;
+use theon::space::{Basis, EuclideanSpace, FiniteDimensional, InnerSpace, Scalar, Vector};
 use theon::Converged;
-use typenum::{U2, U3};
+use typenum::U3;
 
 use crate::primitive::generate::{
-    Generate, NormalGenerator, NormalIndexGenerator, NormalPolygonGenerator, NormalVertexGenerator,
-    PolygonGenerator, PolygonsWithNormal, PolygonsWithPosition, PolygonsWithUvMap,
-    PositionGenerator, PositionIndexGenerator, PositionPolygonGenerator, PositionVertexGenerator,
-    UvMapGenerator, UvMapPolygonGenerator, VerticesWithNormal, VerticesWithPosition,
+    Attribute, AttributeGenerator, AttributePolygonGenerator, AttributeVertexGenerator, Generator,
+    IndexingPolygonGenerator, Normal, PolygonGenerator, Position,
 };
 use crate::primitive::Tetragon;
 
@@ -45,20 +45,22 @@ pub enum Plane {
 }
 
 impl Plane {
-    pub fn normal<S>(&self) -> Vector<S>
+    pub fn normal<S>(&self) -> Unit<S>
     where
-        S: EuclideanSpace + FiniteDimensional<N = U3>,
+        S: Basis + FiniteDimensional<N = U3> + InnerSpace,
     {
         match *self {
-            Plane::XY => Vector::<S>::z(),   // front
-            Plane::NXY => -Vector::<S>::z(), // back
-            Plane::YZ => Vector::<S>::x(),   // right
-            Plane::NYZ => -Vector::<S>::x(), // left
-            Plane::XZ => -Vector::<S>::y(),  // bottom
-            Plane::NXZ => Vector::<S>::y(),  // top
+            Plane::XY => Unit::<S>::z(),   // front
+            Plane::NXY => -Unit::<S>::z(), // back
+            Plane::YZ => Unit::<S>::x(),   // right
+            Plane::NYZ => -Unit::<S>::x(), // left
+            Plane::XZ => -Unit::<S>::y(),  // bottom
+            Plane::NXZ => Unit::<S>::y(),  // top
         }
     }
 }
+
+impl Attribute for Plane {}
 
 #[derive(Clone, Copy)]
 pub struct Bounds<S>
@@ -109,41 +111,6 @@ impl Cube {
     pub fn new() -> Self {
         Cube
     }
-
-    pub fn polygon_with_plane(&self, index: usize) -> Tetragon<Plane> {
-        Tetragon::converged(self.vertex_with_plane(index))
-    }
-
-    pub fn polygons_with_plane(&self) -> Generate<Self, (), Tetragon<Plane>> {
-        Generate::new(self, (), self.polygon_count(), |cube, _, index| {
-            cube.polygon_with_plane(index)
-        })
-    }
-
-    pub fn vertex_with_plane_count(&self) -> usize {
-        self.polygon_count()
-    }
-
-    pub fn vertex_with_plane(&self, index: usize) -> Plane {
-        match index {
-            0 => Plane::XY,  // front
-            1 => Plane::YZ,  // right
-            2 => Plane::NXZ, // top
-            3 => Plane::NYZ, // left
-            4 => Plane::XZ,  // bottom
-            5 => Plane::NXY, // back
-            _ => panic!(),
-        }
-    }
-
-    pub fn vertices_with_plane(&self) -> Generate<Self, (), Plane> {
-        Generate::new(
-            self,
-            (),
-            self.vertex_with_plane_count(),
-            |cube, _, index| cube.vertex_with_plane(index),
-        )
-    }
 }
 
 impl Default for Cube {
@@ -158,60 +125,67 @@ impl PolygonGenerator for Cube {
     }
 }
 
-impl<S> NormalGenerator<S> for Cube
+impl<S> AttributeGenerator<Normal<S>> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = ();
 }
 
-impl<S> NormalVertexGenerator<S> for Cube
+impl<S> AttributeVertexGenerator<Normal<S>> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    fn vertex_with_normal_from(&self, _: &Self::State, index: usize) -> Vector<S> {
-        // There is a unique normal for each face (plane).
-        self.vertex_with_plane(index).normal::<S>()
-    }
+    type Output = Unit<Vector<S>>;
 
-    fn vertex_with_normal_count(&self) -> usize {
+    fn vertex_count(&self) -> usize {
         self.polygon_count()
     }
-}
 
-impl<S> NormalPolygonGenerator<S> for Cube
-where
-    S: EuclideanSpace + FiniteDimensional<N = U3>,
-{
-    type Output = Tetragon<Vector<S>>;
-
-    fn polygon_with_normal_from(&self, state: &Self::State, index: usize) -> Self::Output {
-        self.index_for_normal(index)
-            .map(|index| NormalVertexGenerator::<S>::vertex_with_normal_from(self, state, index))
+    fn vertex_from(&self, _: &Self::State, index: usize) -> Self::Output {
+        AttributeVertexGenerator::<Plane>::vertex_from(self, &(), index).normal::<Vector<S>>()
     }
 }
 
-impl NormalIndexGenerator for Cube {
+impl<S> AttributePolygonGenerator<Normal<S>> for Cube
+where
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
+{
+    type Output = Tetragon<Unit<Vector<S>>>;
+
+    fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        IndexingPolygonGenerator::<Normal<S>>::indexing_polygon(self, index)
+            .map(|index| AttributeVertexGenerator::<Normal<S>>::vertex_from(self, state, index))
+    }
+}
+
+impl<S> IndexingPolygonGenerator<Normal<S>> for Cube {
     type Output = Tetragon<usize>;
 
-    fn index_for_normal(&self, index: usize) -> Self::Output {
+    fn indexing_polygon(&self, index: usize) -> Self::Output {
         assert!(index < self.polygon_count());
         Tetragon::converged(index)
     }
 }
 
-impl<S> PositionGenerator<S> for Cube
+impl<S> AttributeGenerator<Position<S>> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = Bounds<S>;
 }
 
-impl<S> PositionVertexGenerator<S> for Cube
+impl<S> AttributeVertexGenerator<Position<S>> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S {
+    type Output = S;
+
+    fn vertex_count(&self) -> usize {
+        8
+    }
+
+    fn vertex_from(&self, state: &Self::State, index: usize) -> Self::Output {
         let x = if index & 0b100 == 0b100 {
             state.upper
         }
@@ -232,29 +206,24 @@ where
         };
         S::from_xyz(x, y, z)
     }
-
-    fn vertex_with_position_count(&self) -> usize {
-        8
-    }
 }
 
-impl<S> PositionPolygonGenerator<S> for Cube
+impl<S> AttributePolygonGenerator<Position<S>> for Cube
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type Output = Tetragon<S>;
 
-    fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
-        self.index_for_position(index).map(|index| {
-            PositionVertexGenerator::<S>::vertex_with_position_from(self, state, index)
-        })
+    fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        IndexingPolygonGenerator::<Position<S>>::indexing_polygon(self, index)
+            .map(|index| AttributeVertexGenerator::<Position<S>>::vertex_from(self, state, index))
     }
 }
 
-impl PositionIndexGenerator for Cube {
+impl<S> IndexingPolygonGenerator<Position<S>> for Cube {
     type Output = Tetragon<usize>;
 
-    fn index_for_position(&self, index: usize) -> Self::Output {
+    fn indexing_polygon(&self, index: usize) -> Self::Output {
         match index {
             0 => Tetragon::new(5, 7, 3, 1), // front
             1 => Tetragon::new(6, 7, 5, 4), // right
@@ -267,37 +236,53 @@ impl PositionIndexGenerator for Cube {
     }
 }
 
-impl<S> UvMapGenerator<S> for Cube
-where
-    S: EuclideanSpace + FiniteDimensional<N = U2>,
-{
+impl AttributeGenerator<Plane> for Cube {
     type State = ();
 }
 
-impl<S> UvMapPolygonGenerator<S> for Cube
-where
-    S: EuclideanSpace + FiniteDimensional<N = U2>,
-    Vector<S>: Converged,
-{
-    type Output = Tetragon<Vector<S>>;
+impl AttributeVertexGenerator<Plane> for Cube {
+    type Output = Plane;
 
-    fn polygon_with_uv_map_from(&self, _: &Self::State, index: usize) -> Self::Output {
-        let uu = Vector::<S>::converged(One::one());
-        let ul = Vector::<S>::from_xy(One::one(), Zero::zero());
-        let ll = Vector::<S>::converged(Zero::zero());
-        let lu = Vector::<S>::from_xy(Zero::zero(), One::one());
+    fn vertex_count(&self) -> usize {
+        self.polygon_count()
+    }
+
+    fn vertex_from(&self, _: &Self::State, index: usize) -> Self::Output {
         match index {
-            0 | 4 | 5 => Tetragon::new(uu, ul, ll, lu), // front | bottom | back
-            1 => Tetragon::new(ul, ll, lu, uu),         // right
-            2 | 3 => Tetragon::new(lu, uu, ul, ll),     // top | left
+            0 => Plane::XY,  // front
+            1 => Plane::YZ,  // right
+            2 => Plane::NXZ, // top
+            3 => Plane::NYZ, // left
+            4 => Plane::XZ,  // bottom
+            5 => Plane::NXY, // back
             _ => panic!(),
         }
     }
 }
 
-impl VerticesWithNormal for Cube {}
-impl VerticesWithPosition for Cube {}
+impl AttributePolygonGenerator<Plane> for Cube {
+    type Output = Tetragon<Plane>;
 
-impl PolygonsWithNormal for Cube {}
-impl PolygonsWithPosition for Cube {}
-impl PolygonsWithUvMap for Cube {}
+    fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        IndexingPolygonGenerator::<Plane>::indexing_polygon(self, index)
+            .map(|index| AttributeVertexGenerator::<Plane>::vertex_from(self, state, index))
+    }
+}
+
+impl IndexingPolygonGenerator<Plane> for Cube {
+    type Output = Tetragon<usize>;
+
+    fn indexing_polygon(&self, index: usize) -> Self::Output {
+        match index {
+            0 => Tetragon::converged(0), // front
+            1 => Tetragon::converged(1), // right
+            2 => Tetragon::converged(2), // top
+            3 => Tetragon::converged(3), // left
+            4 => Tetragon::converged(4), // bottom
+            5 => Tetragon::converged(5), // back
+            _ => panic!(),
+        }
+    }
+}
+
+impl Generator for Cube {}

@@ -2,6 +2,8 @@
 //!
 //! # Examples
 //!
+//! Generating a graph from the positional data of a $uv$-sphere.
+//!
 //! ```rust
 //! # extern crate decorum;
 //! # extern crate nalgebra;
@@ -12,12 +14,15 @@
 //! use plexus::graph::MeshGraph;
 //! use plexus::index::HashIndexer;
 //! use plexus::prelude::*;
+//! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! # fn main() {
+//! type E3 = Point3<N64>;
+//!
 //! let mut graph = UvSphere::new(16, 8)
-//!     .polygons_with_position::<Point3<N64>>()
-//!     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
+//!     .polygons::<Position<E3>>()
+//!     .collect_with_indexer::<MeshGraph<E3>, _>(HashIndexer::default())
 //!     .unwrap();
 //! # }
 //! ```
@@ -26,12 +31,14 @@ use decorum::Real;
 use num::traits::FloatConst;
 use num::{NumCast, One, ToPrimitive};
 use std::cmp;
-use theon::space::{EuclideanSpace, FiniteDimensional, Scalar};
+use theon::ops::Map;
+use theon::query::Unit;
+use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use typenum::U3;
 
 use crate::primitive::generate::{
-    PolygonGenerator, PolygonsWithPosition, PositionGenerator, PositionIndexGenerator,
-    PositionPolygonGenerator, PositionVertexGenerator, VerticesWithPosition,
+    AttributeGenerator, AttributePolygonGenerator, AttributeVertexGenerator, Generator,
+    IndexingPolygonGenerator, Normal, PolygonGenerator, Position,
 };
 use crate::primitive::{Polygon, Tetragon, Trigon};
 
@@ -89,12 +96,12 @@ impl UvSphere {
 
     fn vertex_with_position_from<S>(
         &self,
-        state: &<Self as PositionGenerator<S>>::State,
+        state: &<Self as AttributeGenerator<Position<S>>>::State,
         u: usize,
         v: usize,
     ) -> S
     where
-        Self: PositionGenerator<S, State = Bounds<S>>,
+        Self: AttributeGenerator<Position<S>, State = Bounds<S>>,
         S: EuclideanSpace + FiniteDimensional<N = U3>,
         Scalar<S>: FloatConst,
     {
@@ -138,20 +145,74 @@ impl PolygonGenerator for UvSphere {
     }
 }
 
-impl<S> PositionGenerator<S> for UvSphere
+impl<S> AttributeGenerator<Normal<S>> for UvSphere
+where
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
+{
+    type State = ();
+}
+
+impl<S> AttributeVertexGenerator<Normal<S>> for UvSphere
+where
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
+{
+    type Output = Unit<Vector<S>>;
+
+    fn vertex_count(&self) -> usize {
+        (self.nv - 1) * self.nu + 2
+    }
+
+    fn vertex_from(&self, _: &Self::State, index: usize) -> Self::Output {
+        let position =
+            AttributeVertexGenerator::<Position<S>>::vertex_from(self, &Default::default(), index);
+        Unit::try_from_inner(position.into_coordinates()).expect("non-zero vector")
+    }
+}
+
+impl<S> AttributePolygonGenerator<Normal<S>> for UvSphere
+where
+    S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
+{
+    type Output = Polygon<Unit<Vector<S>>>;
+
+    fn polygon_from(&self, _: &Self::State, index: usize) -> Self::Output {
+        AttributePolygonGenerator::<Position<S>>::polygon_from(self, &Default::default(), index)
+            .map(|position| {
+                Unit::try_from_inner(position.into_coordinates()).expect("non-zero vector")
+            })
+    }
+}
+
+impl<S> IndexingPolygonGenerator<Normal<S>> for UvSphere {
+    type Output = Polygon<usize>;
+
+    fn indexing_polygon(&self, index: usize) -> Self::Output {
+        IndexingPolygonGenerator::<Position<S>>::indexing_polygon(self, index)
+    }
+}
+
+impl<S> AttributeGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
     type State = Bounds<S>;
 }
 
-impl<S> PositionVertexGenerator<S> for UvSphere
+impl<S> AttributeVertexGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
     Scalar<S>: FloatConst,
 {
-    fn vertex_with_position_from(&self, state: &Self::State, index: usize) -> S {
-        let count = <Self as PositionVertexGenerator<S>>::vertex_with_position_count(self);
+    type Output = S;
+
+    fn vertex_count(&self) -> usize {
+        (self.nv - 1) * self.nu + 2
+    }
+
+    fn vertex_from(&self, state: &Self::State, index: usize) -> Self::Output {
+        let count = AttributeVertexGenerator::<Position<S>>::vertex_count(self);
         if index == 0 {
             self.vertex_with_position_from::<S>(state, 0, 0)
         }
@@ -163,20 +224,16 @@ where
             self.vertex_with_position_from::<S>(state, index % self.nu, (index / self.nu) + 1)
         }
     }
-
-    fn vertex_with_position_count(&self) -> usize {
-        (self.nv - 1) * self.nu + 2
-    }
 }
 
-impl<S> PositionPolygonGenerator<S> for UvSphere
+impl<S> AttributePolygonGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
     Scalar<S>: FloatConst,
 {
     type Output = Polygon<S>;
 
-    fn polygon_with_position_from(&self, state: &Self::State, index: usize) -> Self::Output {
+    fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
         // values for `(u, v)` into `(p, q)`. This is important for indexing
         // geometry, because small differences in the computation of spatial
@@ -228,10 +285,10 @@ where
     }
 }
 
-impl PositionIndexGenerator for UvSphere {
+impl<S> IndexingPolygonGenerator<Position<S>> for UvSphere {
     type Output = Polygon<usize>;
 
-    fn index_for_position(&self, index: usize) -> Self::Output {
+    fn indexing_polygon(&self, index: usize) -> Self::Output {
         let (u, v) = self.map_polygon_index(index);
         let (p, q) = (u + 1, v + 1);
 
@@ -255,9 +312,7 @@ impl PositionIndexGenerator for UvSphere {
     }
 }
 
-impl VerticesWithPosition for UvSphere {}
-
-impl PolygonsWithPosition for UvSphere {}
+impl Generator for UvSphere {}
 
 fn into_scalar<T, S>(value: T) -> Scalar<S>
 where
@@ -274,6 +329,7 @@ mod tests {
     use std::iter::FromIterator;
 
     use crate::prelude::*;
+    use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
 
     type E3 = Point3<f64>;
@@ -283,7 +339,7 @@ mod tests {
         assert_eq!(
             5,
             UvSphere::new(3, 2)
-                .vertices_with_position::<E3>() // 5 conjoint vertices.
+                .vertices::<Position<E3>>() // 5 conjoint vertices.
                 .count()
         );
     }
@@ -293,7 +349,7 @@ mod tests {
         assert_eq!(
             18,
             UvSphere::new(3, 2)
-                .polygons_with_position::<E3>() // 6 triangles, 18 vertices.
+                .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
                 .vertices()
                 .count()
         );
@@ -305,7 +361,7 @@ mod tests {
             5,
             BTreeSet::from_iter(
                 UvSphere::new(3, 2)
-                    .indices_for_position() // 18 vertices, 5 indices.
+                    .indexing_polygons::<Position>() // 18 vertices, 5 indices.
                     .vertices()
             )
             .len()

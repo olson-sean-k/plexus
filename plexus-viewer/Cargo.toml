@@ -40,7 +40,7 @@ features = [
 
 [dependencies.theon]
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "8bd6faf0e0869b09bb8c46588c0cecae6f51b47f"
+rev = "e5fb47d2d652524462e52a269e58cd3dfc25f079"
 default-features = false
 features = [
     "geometry-nalgebra",
