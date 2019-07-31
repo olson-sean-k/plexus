@@ -85,6 +85,7 @@ where
         M: Reborrow,
         M::Target: AsStorage<VertexPayload<G>> + Consistent,
     {
+        let _ = (storage, a);
         unimplemented!()
     }
 }

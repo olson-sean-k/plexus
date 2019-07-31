@@ -67,7 +67,7 @@ where
             .cloned()
             .perimeter()
             .map(|(a, b)| {
-                self.get_or_insert_edge_with((a, b), || geometry.0.clone())
+                self.get_or_insert_edge_with((a, b), || geometry.0)
                     .map(|(_, (ab, _))| ab)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -393,14 +393,12 @@ where
             .cycle();
         let left = perimeter
             .clone()
-            .into_iter()
             .tuple_windows()
             .skip_while(|(_, b)| *b != source)
             .take_while(|(a, _)| *a != destination)
             .map(|(_, b)| b)
             .collect::<Vec<_>>();
         let right = perimeter
-            .into_iter()
             .tuple_windows()
             .skip_while(|(_, b)| *b != destination)
             .take_while(|(a, _)| *a != source)
@@ -410,7 +408,7 @@ where
             cache: FaceRemoveCache::snapshot(storage, abc)?,
             left,
             right,
-            geometry: face.geometry.clone(),
+            geometry: face.geometry,
         })
     }
 }
@@ -537,16 +535,15 @@ where
         let destinations = face
             .vertices()
             .map(|vertex| {
-                let mut geometry = vertex.geometry.clone();
-                let position = geometry.as_position().clone() + translation.clone();
-                *geometry.as_position_mut() = position;
+                let mut geometry = vertex.geometry;
+                geometry.transform(|position| *position + translation);
                 geometry
             })
             .collect();
         Ok(FaceExtrudeCache {
             sources,
             destinations,
-            geometry: face.geometry.clone(),
+            geometry: face.geometry,
             cache,
         })
     }
@@ -591,7 +588,7 @@ where
     remove_with_cache(mutation.as_mut(), cache)?;
     mutation
         .as_mut()
-        .insert_face(&left, (Default::default(), geometry.clone()))?;
+        .insert_face(&left, (Default::default(), geometry))?;
     mutation
         .as_mut()
         .insert_face(&right, (Default::default(), geometry))?;
@@ -617,7 +614,7 @@ where
     for (a, b) in vertices.into_iter().perimeter() {
         mutation
             .as_mut()
-            .insert_face(&[a, b, c], (Default::default(), face.geometry.clone()))?;
+            .insert_face(&[a, b, c], (Default::default(), face.geometry))?;
     }
     Ok(c)
 }
@@ -675,7 +672,7 @@ where
     // to construct the extruded face and its connective faces.
     let extrusion = mutation
         .as_mut()
-        .insert_face(&destinations, (Default::default(), geometry.clone()))?;
+        .insert_face(&destinations, (Default::default(), geometry))?;
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
@@ -684,7 +681,7 @@ where
         // TODO: Split these faces to form triangles.
         mutation
             .as_mut()
-            .insert_face(&[a, b, d, c], (Default::default(), geometry.clone()))?;
+            .insert_face(&[a, b, d, c], (Default::default(), geometry))?;
     }
     Ok(extrusion)
 }

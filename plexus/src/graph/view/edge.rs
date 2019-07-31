@@ -671,7 +671,7 @@ where
         G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
         G::Vertex: AsPosition,
     {
-        let mut geometry = self.source_vertex().geometry.clone();
+        let mut geometry = self.source_vertex().geometry;
         let midpoint = self.edge().midpoint();
         self.split_with(move || {
             *geometry.as_position_mut() = midpoint;

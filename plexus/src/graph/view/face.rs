@@ -464,7 +464,7 @@ where
         }
         let plane = self.plane()?;
         for mut vertex in self.orphan_vertices() {
-            let position = vertex.position().clone();
+            let position = *vertex.position();
             let line = Line::<VertexPosition<G>> {
                 origin: position,
                 direction: plane.normal,
@@ -475,7 +475,7 @@ where
             let distance = plane
                 .intersection(&line)
                 .ok_or_else(|| GraphError::Geometry)?;
-            let translation = line.direction.get().clone() * distance;
+            let translation = *line.direction.get() * distance;
             *vertex.geometry.as_position_mut() = position + translation;
         }
         Ok(())
@@ -633,7 +633,7 @@ where
             })
             .map(|arc| arc.key())
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let geometry = self.geometry.clone();
+        let geometry = self.geometry;
         // TODO: Batch this operation by using the mutation API instead.
         let (_, storage) = self.into_inner().into_keyed_source();
         Ok(ArcView::from_keyed_source((ab, storage))
@@ -661,10 +661,10 @@ where
         // Errors can easily be caused by inputs to this function. Allow errors
         // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
-        Ok(Mutation::replace(storage, Default::default())
+        Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
-            .map(|_| ())
-            .expect_consistent())
+            .expect_consistent();
+        Ok(())
     }
 
     /// Decomposes the face into triangles. Does nothing if the face is
@@ -744,7 +744,7 @@ where
         G: FaceCentroid<Centroid = VertexPosition<G>>,
         G::Vertex: AsPosition,
     {
-        let mut geometry = self.arc().source_vertex().geometry.clone();
+        let mut geometry = self.arc().source_vertex().geometry;
         let centroid = self.centroid();
         self.poke_with(move || {
             *geometry.as_position_mut() = centroid;
@@ -793,7 +793,7 @@ where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let mut geometry = self.arc().source_vertex().geometry.clone();
+        let mut geometry = self.arc().source_vertex().geometry;
         let position = self.centroid() + (self.normal() * offset.into());
         self.poke_with(move || {
             *geometry.as_position_mut() = position;
@@ -1131,7 +1131,7 @@ where
     ///
     /// Returns the inserted face.
     pub fn get_or_insert_face(self) -> FaceView<&'a mut M, G> {
-        self.get_or_insert_face_with(|| Default::default())
+        self.get_or_insert_face_with(Default::default)
     }
 
     /// Gets the face of the ring or inserts a face if one does not already

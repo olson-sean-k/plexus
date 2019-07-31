@@ -3,7 +3,6 @@
 //! Please note that versions in the `0.0.*` series are experimental and
 //! unstable! Use exact version constraints when specifying a dependency to
 //! avoid spurious breakage.
-#![allow(unknown_lints)] // Allow clippy lints.
 
 // TODO: Documentation comments include static image content from the GitHub
 //       repository. This is fragile and difficult to maintain. Use a mechanism

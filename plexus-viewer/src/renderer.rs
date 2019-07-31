@@ -122,16 +122,16 @@ where
             viewpoint: [0.0; 4],
             camera: [[0.0; 4]; 4],
             model: [[0.0; 4]; 4],
-            color: color,
-            depth: depth,
+            color,
+            depth,
         };
         Renderer {
-            window: window,
-            factory: factory,
-            device: device,
-            encoder: encoder,
-            state: state,
-            data: data,
+            window,
+            factory,
+            device,
+            encoder,
+            state,
+            data,
         }
     }
 

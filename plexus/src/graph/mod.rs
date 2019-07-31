@@ -587,10 +587,7 @@ where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        Aabb::from_points(
-            self.vertices()
-                .map(|vertex| vertex.geometry.as_position().clone()),
-        )
+        Aabb::from_points(self.vertices().map(|vertex| *vertex.geometry.as_position()))
     }
 
     /// Gets the arity of the graph.
@@ -628,7 +625,7 @@ where
         let factor = factor.into();
         let mut positions = HashMap::with_capacity(self.vertex_count());
         for vertex in self.vertices() {
-            let position = vertex.position().clone();
+            let position = *vertex.position();
             positions.insert(
                 vertex.key(),
                 position + ((vertex.centroid() - position) * factor),
@@ -654,7 +651,7 @@ where
         A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
     {
-        self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.clone().into_geometry())
+        self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.into_geometry())
     }
 
     /// Creates a `MeshBuffer` from the graph.
@@ -721,7 +718,7 @@ where
         A: NonZero + typenum::Unsigned,
         N: Copy + Integer + NumCast + Unsigned,
     {
-        self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.clone().into_geometry())
+        self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.into_geometry())
     }
 
     /// Creates a `MeshBuffer` from the graph.

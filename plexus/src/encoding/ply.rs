@@ -344,7 +344,7 @@ where
 {
     values
         .into_iter()
-        .map(|value| num_cast_scalar(value))
+        .map(num_cast_scalar)
         .collect::<Result<_, _>>()
 }
 

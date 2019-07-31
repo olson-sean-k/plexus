@@ -153,6 +153,7 @@ impl<G> Mutate for EdgeMutation<G>
 where
     G: GraphGeometry,
 {
+    #[allow(clippy::type_complexity)]
     type Mutant = Core<
         StorageProxy<VertexPayload<G>>,
         StorageProxy<ArcPayload<G>>,
@@ -385,7 +386,7 @@ where
         // the mesh. Before mutating the mesh, ensure that existing interior
         // arcs are boundaries.
         for arc in [a, b, c, d]
-            .into_iter()
+            .iter()
             .cloned()
             .perimeter()
             .flat_map(|ab| ArcView::from_keyed_source((ab.into(), storage)))
@@ -399,11 +400,11 @@ where
             b,
             c,
             d,
-            arc: source.geometry.clone(),
+            arc: source.geometry,
             face: source
                 .reachable_opposite_arc()
                 .and_then(|opposite| opposite.into_reachable_face())
-                .map(|face| face.geometry.clone())
+                .map(|face| face.geometry)
                 .unwrap_or_else(Default::default),
         })
     }
@@ -441,21 +442,19 @@ where
             let arc = ArcView::from_keyed_source((ab, storage))
                 .ok_or_else(|| GraphError::TopologyNotFound)?;
             if !arc.is_boundary_arc() {
-                return Err(GraphError::TopologyConflict.into());
+                return Err(GraphError::TopologyConflict);
             }
             let mut vertices = (
                 arc.reachable_destination_vertex()
                     .ok_or_else(|| GraphError::TopologyConflict)?
-                    .geometry
-                    .clone(),
+                    .geometry,
                 arc.reachable_source_vertex()
                     .ok_or_else(|| GraphError::TopologyConflict)?
-                    .geometry
-                    .clone(),
+                    .geometry,
             );
-            *vertices.0.as_position_mut() = vertices.0.as_position().clone() + translation.clone();
-            *vertices.1.as_position_mut() = vertices.1.as_position().clone() + translation;
-            (vertices, arc.geometry.clone())
+            *vertices.0.as_position_mut() = *vertices.0.as_position() + translation;
+            *vertices.1.as_position_mut() = *vertices.1.as_position() + translation;
+            (vertices, arc.geometry)
         };
         Ok(ArcExtrudeCache { ab, vertices, arc })
     }
@@ -581,11 +580,11 @@ where
         } = remove(mutation.as_mut(), ab)?;
         let am = mutation
             .as_mut()
-            .get_or_insert_edge_with((a, m), || geometry.clone())
+            .get_or_insert_edge_with((a, m), || geometry)
             .map(|(_, (am, _))| am)?;
         let mb = mutation
             .as_mut()
-            .get_or_insert_edge_with((m, b), move || geometry)
+            .get_or_insert_edge_with((m, b), || geometry)
             .map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
         mutation.as_mut().connect_neighboring_arcs(am, mb)?;

@@ -86,7 +86,7 @@ where
         U: Payload,
         M::Target: AsStorage<U>,
     {
-        self.rekey(key).map(|view| V::from(view))
+        self.rekey(key).map(V::from)
     }
 
     pub fn interior_reborrow(&self) -> View<&M::Target, T> {

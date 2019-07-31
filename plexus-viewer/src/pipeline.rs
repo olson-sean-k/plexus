@@ -19,7 +19,7 @@ where
 {
     type Output = [[T; 4]; 4];
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     fn into_array(self) -> Self::Output {
         [
             [self[ 0], self[ 1], self[ 2], self[ 3]],

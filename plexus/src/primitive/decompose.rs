@@ -370,7 +370,7 @@ where
 }
 
 pub trait Tetrahedrons<T>: Sized {
-    #[allow(type_complexity)]
+    #[allow(clippy::type_complexity)]
     fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>>;
 }
 
@@ -379,7 +379,7 @@ where
     I: Iterator<Item = Tetragon<T>>,
     T: Clone + Interpolate<Output = T>,
 {
-    #[allow(type_complexity)]
+    #[allow(clippy::type_complexity)]
     fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>> {
         Decompose::new(self, Tetragon::into_tetrahedrons)
     }

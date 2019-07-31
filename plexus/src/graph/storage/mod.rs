@@ -219,7 +219,7 @@ where
     }
 
     fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a> {
-        Box::new(self.keys().map(|key| T::Key::from_inner(key)))
+        Box::new(self.keys().map(T::Key::from_inner))
     }
 }
 

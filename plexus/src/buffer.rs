@@ -545,13 +545,16 @@ where
             .into_iter()
             .map(|geometry| geometry)
             .collect::<Vec<_>>();
-        let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
-        if indices.iter().any(|polygon| {
-            polygon
-                .into_vertices()
-                .into_iter()
-                .any(|index| index >= len)
-        }) {
+        let is_out_of_bounds = {
+            let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
+            indices.iter().any(|polygon| {
+                polygon
+                    .into_vertices()
+                    .into_iter()
+                    .any(|index| index >= len)
+            })
+        };
+        if is_out_of_bounds {
             Err(BufferError::IndexOutOfBounds)
         }
         else {
@@ -715,7 +718,7 @@ where
             .into_iter()
             .chunks(U3::USIZE)
             .into_iter()
-            .map(|trigon| <Structured<Self::Item> as Grouping>::Item::from_items(trigon))
+            .map(<Structured<Self::Item> as Grouping>::Item::from_items)
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
@@ -761,7 +764,7 @@ where
             .into_iter()
             .chunks(U4::USIZE)
             .into_iter()
-            .map(|tetragon| <Structured<Self::Item> as Grouping>::Item::from_items(tetragon))
+            .map(<Structured<Self::Item> as Grouping>::Item::from_items)
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }

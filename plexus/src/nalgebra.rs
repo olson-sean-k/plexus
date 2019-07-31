@@ -78,7 +78,7 @@ macro_rules! from_ordered_geometry {
             DefaultAllocator: Allocator<$p<T>, D> + Allocator<T, D>,
         {
             fn from_geometry(other: Point<T, D>) -> Self {
-                Point::from(other.coords.map(|value| $p::<T>::from_inner(value)))
+                Point::from(other.coords.map($p::<T>::from_inner))
             }
         }
     };

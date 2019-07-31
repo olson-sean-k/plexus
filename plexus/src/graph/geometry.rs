@@ -189,7 +189,7 @@ where
             vertex
                 .reachable_incoming_arcs()
                 .flat_map(|arc| arc.into_reachable_source_vertex())
-                .map(|vertex| vertex.geometry.as_position().clone()),
+                .map(|vertex| *vertex.geometry.as_position()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)
     }
@@ -220,7 +220,7 @@ where
         Vector::<VertexPosition<G>>::mean(
             vertex
                 .reachable_neighboring_faces()
-                .map(|face| G::normal(face))
+                .map(G::normal)
                 .collect::<Result<Vec<_>, _>>()?,
         )
         .ok_or_else(|| GraphError::TopologyNotFound)?
@@ -252,18 +252,15 @@ where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
-        let (a, b) = FromItems::from_items(
-            arc.reachable_vertices()
-                .map(|vertex| vertex.position().clone()),
-        )
-        .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let c = arc
+        let (a, b) =
+            FromItems::from_items(arc.reachable_vertices().map(|vertex| *vertex.position()))
+                .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let c = *arc
             .reachable_next_arc()
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyNotFound)?
-            .position()
-            .clone();
+            .position();
         let ab = a - b;
         let cb = c - b;
         let p = b + ab.project(cb);
@@ -300,11 +297,9 @@ where
         let arc = edge
             .reachable_arc()
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let (a, b) = FromItems::from_items(
-            arc.reachable_vertices()
-                .map(|vertex| vertex.position().clone()),
-        )
-        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let (a, b) =
+            FromItems::from_items(arc.reachable_vertices().map(|vertex| *vertex.position()))
+                .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(a.midpoint(b))
     }
 }
@@ -333,11 +328,8 @@ where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
     {
-        VertexPosition::<G>::centroid(
-            ring.reachable_vertices()
-                .map(|vertex| vertex.position().clone()),
-        )
-        .ok_or_else(|| GraphError::TopologyNotFound)
+        VertexPosition::<G>::centroid(ring.reachable_vertices().map(|vertex| *vertex.position()))
+            .ok_or_else(|| GraphError::TopologyNotFound)
     }
 }
 
@@ -369,7 +361,7 @@ where
         let (a, b) = FromItems::from_items(
             ring.reachable_vertices()
                 .take(2)
-                .map(|vertex| vertex.position().clone()),
+                .map(|vertex| *vertex.position()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)?;
         let c = G::centroid(ring)?;
@@ -420,7 +412,7 @@ mod array {
         {
             let points = ring
                 .reachable_vertices()
-                .map(|vertex| vertex.geometry.as_position().clone())
+                .map(|vertex| *vertex.geometry.as_position())
                 .collect::<SmallVec<[_; 4]>>();
             Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
         }

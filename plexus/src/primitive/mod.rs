@@ -397,7 +397,7 @@ where
             .collect::<ArrayVec<A>>()
             .into_inner()
             .ok()
-            .map(|array| NGon(array))
+            .map(NGon)
     }
 }
 
@@ -592,6 +592,7 @@ impl<T> Trigon<T> {
         NGon([a, b, c])
     }
 
+    #[allow(clippy::many_single_char_names)]
     pub fn plane(&self) -> Option<Plane<Position<T>>>
     where
         T: AsPosition,
@@ -633,6 +634,7 @@ impl<T> Tetragon<T> {
 }
 
 impl<T> Rotate for Tetragon<T> {
+    #[allow(clippy::many_single_char_names)]
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
