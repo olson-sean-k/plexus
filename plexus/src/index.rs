@@ -5,27 +5,28 @@
 //! to index streams of $n$-gons (`NGon`, `Trigon`, etc.) into raw buffers or
 //! polygonal mesh data structures like `MeshBuffer`.
 //!
-//! The primary interface of this module are the `IndexVertices` and
-//! `CollectWithIndexer` traits along with the `HashIndexer` and `LruIndexer`
-//! types.
-//!
-//! Indexing produces an _index buffer_, which describes the topology of mesh
-//! data by providing groups of indices into geometric data (a _vertex
-//! buffer_). Plexus supports both _structured_ (_polygonal_) and
-//! _unstructured_ (_flat_) index buffers, which group indices explicitly and
-//! implicitly, respectively. See the grouping types `Flat` and `Structured`.
+//! Indexing produces an _index buffer_ and _vertex buffer_. The index buffer
+//! describes the topology of a mesh by providing ordered groups of indices
+//! into the vertex buffer. Each group of indices represents a polygon. The
+//! vertex buffer contains geometric data associated with a vertex, such as
+//! positions or surface normals. Plexus supports both _structured_ and _flat
+//! index buffers_.
 //!
 //! Flat index buffers directly store individual indices, such as `Vec<usize>`.
 //! Because there is no explicit structure, arity must by constant, but
 //! arbitrarily sized $n$-gons are trivially supported. Flat index buffers tend
-//! to be more useful for rendering, especially triangular buffers, because
-//! rendering pipelines typically expect a simple contiguous buffer of index
-//! data. See `MeshBuffer3`.
+//! to be more useful for rendering pipelines, especially triangular buffers,
+//! because rendering pipelines typically expect a simple contiguous buffer of
+//! index data. See `MeshBuffer3` and `Flat`.
 //!
-//! Structured index buffers contain sub-structures that group their indices,
-//! such as `Vec<Trigon<usize>>`. Structured index buffers typically contain
-//! `Trigon`s, `Tetragon`s, or `Polygon`s, all of which preserve the topology of
-//! a mesh even if its arity is non-constant.
+//! Structured index buffers contain sub-structures that explicitly group
+//! indices, such as `Vec<Trigon<usize>>`. Structured index buffers typically
+//! contain `Trigon`s, `Tetragon`s, or `Polygon`s. Notably, `Polygon` can
+//! describe the topology of a mesh even if its arity is non-constant.
+//!
+//! The primary interface of this module is the `IndexVertices` and
+//! `CollectWithIndexer` traits along with the `HashIndexer` and `LruIndexer`
+//! types.
 //!
 //! # Examples
 //!
@@ -64,18 +65,21 @@ use theon::ops::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Polygon, Tetragon, Topological, Trigon};
+use crate::primitive::{ConstantArity, Polygon, Topological};
 use crate::Arity;
 
-pub trait Grouping {
-    type Item;
-}
-
 /// Index buffer.
+///
+/// This trait is implemented by types that can be used as an index buffer. The
+/// elements in the buffer are determined by a `Grouping`.
+///
+/// In particular, this trait is implemented by `Vec`, such as `Vec<usize>` or
+/// `Vec<Trigon<usize>>`.
 pub trait IndexBuffer<R>
 where
     R: Grouping,
 {
+    /// The type of individual indices in the buffer.
     type Index: Copy + Integer + NumCast + Unsigned;
 
     fn arity(&self) -> Arity;
@@ -93,7 +97,19 @@ where
     }
 }
 
-impl<N> IndexBuffer<Structured<Polygon<N>>> for Vec<Polygon<N>>
+impl<P> IndexBuffer<P> for Vec<P>
+where
+    P: ConstantArity + Topological,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    type Index = P::Vertex;
+
+    fn arity(&self) -> Arity {
+        Arity::Uniform(P::ARITY)
+    }
+}
+
+impl<N> IndexBuffer<Polygon<N>> for Vec<Polygon<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
@@ -105,18 +121,6 @@ where
             MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
             _ => Arity::Uniform(0),
         }
-    }
-}
-
-impl<P> IndexBuffer<Structured<P>> for Vec<P>
-where
-    P: ConstantArity + Topological,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
-{
-    type Index = P::Vertex;
-
-    fn arity(&self) -> Arity {
-        Arity::Uniform(P::ARITY)
     }
 }
 
@@ -142,22 +146,31 @@ where
     }
 }
 
-impl<P> Push<Structured<P>, P> for Vec<P>
+impl<P> Push<P, P> for Vec<P>
 where
-    P: Topological,
+    P: Grouping + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Self: IndexBuffer<Structured<P>, Index = P::Vertex>,
+    Self: IndexBuffer<P, Index = P::Vertex>,
 {
     fn push(&mut self, index: P) {
         self.push(index);
     }
 }
 
-/// Flat index buffer grouping.
+pub trait Grouping {
+    type Item;
+}
+
+/// Flat index buffer meta-grouping.
 ///
-/// A flat (unstructured) index buffer with a constant arity. Arity is
-/// specified using a type constant from the
-/// [typenum](https://crates.io/crates/typenum) crate.
+/// Describes a flat index buffer with a constant arity. Arity is specified
+/// using a type constant from the [typenum](https://crates.io/crates/typenum)
+/// crate.
+///
+/// Unlike structured groupings, this meta-grouping is needed to associate an
+/// index type with an arity. For example, `Vec<usize>` implements both
+/// `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
+/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer).
 ///
 /// # Examples
 ///
@@ -197,9 +210,12 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 
 /// Structured index buffer grouping.
 ///
-/// A structured index buffer of triangles, quadrilaterals, etc. Useful if a
-/// buffer representing a mesh comprised of both triangles and quadrilaterals
-/// is needed (triangulation is not required).
+/// Describes a structured index buffer of triangles, quadrilaterals, etc.
+/// Useful if a buffer representing a mesh comprised of both triangles and
+/// quadrilaterals is needed.
+///
+/// Unlike flat groupings, structured groupings can be specified directly using
+/// a topological primitive type like `Trigon<usize>` or `Polygon<usize>`.
 ///
 /// # Examples
 ///
@@ -207,22 +223,12 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 ///
 /// ```rust
 /// use plexus::buffer::MeshBuffer;
-/// use plexus::index::Structured;
 /// use plexus::prelude::*;
 /// use plexus::primitive::Polygon;
 ///
-/// let mut buffer = MeshBuffer::<Structured<Polygon<usize>>, (f64, f64, f64)>::default();
+/// let mut buffer = MeshBuffer::<Polygon<usize>, (f64, f64, f64)>::default();
 /// ```
-#[derive(Debug)]
-pub struct Structured<P = Polygon<usize>>
-where
-    P: Topological,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
-{
-    phantom: PhantomData<P>,
-}
-
-impl<P> Grouping for Structured<P>
+impl<P> Grouping for P
 where
     P: Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
@@ -231,13 +237,6 @@ where
     /// their indices.
     type Item = P;
 }
-
-/// Alias for a structured and triangular index buffer.
-pub type Structured3<N = usize> = Structured<Trigon<N>>;
-/// Alias for a structured and quadrilateral index buffer.
-pub type Structured4<N = usize> = Structured<Tetragon<N>>;
-/// Alias for a structured index buffer with varying arity.
-pub type StructuredN<N = usize> = Structured<Polygon<N>>;
 
 /// Vertex indexer.
 ///
@@ -582,10 +581,11 @@ where
     /// #
     /// use decorum::N64;
     /// use nalgebra::Point3;
-    /// use plexus::index::{HashIndexer, Structured3};
+    /// use plexus::index::HashIndexer;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
+    /// use plexus::primitive::Trigon;
     ///
     /// # fn main() {
     /// // `indices` contains `Trigon`s with index data.
@@ -593,7 +593,7 @@ where
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .subdivide()
     ///     .triangulate()
-    ///     .index_vertices::<Structured3, _>(HashIndexer::default());
+    ///     .index_vertices::<Trigon<usize>, _>(HashIndexer::default());
     /// # }
     /// ```
     fn index_vertices<R, N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)

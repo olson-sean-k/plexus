@@ -1507,11 +1507,12 @@ mod tests {
     use nalgebra::{Point2, Point3};
 
     use crate::graph::MeshGraph;
-    use crate::index::{HashIndexer, Structured4};
+    use crate::index::HashIndexer;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
+    use crate::primitive::Tetragon;
 
     type E3 = Point3<N64>;
 
@@ -1664,7 +1665,7 @@ mod tests {
     fn triangulate_mesh() {
         let (indices, vertices) = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-            .index_vertices::<Structured4, _>(HashIndexer::default());
+            .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<N64>>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate();
 

@@ -239,15 +239,16 @@ pub trait Generator: Sized {
     /// #
     /// use decorum::N64;
     /// use nalgebra::Point3;
-    /// use plexus::index::{HashIndexer, Structured4};
+    /// use plexus::index::HashIndexer;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
+    /// use plexus::primitive::Tetragon;
     ///
     /// # fn main() {
     /// let (indices, positions) = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
-    ///     .index_vertices::<Structured4, _>(HashIndexer::default());
+    ///     .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
     /// # }
     /// ```
     fn polygons<A>(

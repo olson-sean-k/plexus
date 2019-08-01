@@ -194,9 +194,7 @@ use crate::graph::storage::alias::*;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::{IntoView, OrphanView};
-use crate::index::{
-    Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer, Structured,
-};
+use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{ConstantArity, Polygonal, Tetragon};
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
@@ -906,10 +904,9 @@ impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
     G: GraphGeometry,
     P: Map<usize> + Polygonal,
-    P::Output: IntoVertices + Polygonal<Vertex = usize>,
+    P::Output: Grouping<Item = P::Output> + IntoVertices + Polygonal<Vertex = usize>,
     P::Vertex: IntoGeometry<G::Vertex>,
-    Vec<<Structured<P::Output> as Grouping>::Item>:
-        IndexBuffer<Structured<P::Output>, Index = usize>,
+    Vec<P::Output>: IndexBuffer<P::Output, Index = usize>,
 {
     type Error = GraphError;
 

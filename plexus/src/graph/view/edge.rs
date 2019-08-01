@@ -1458,10 +1458,11 @@ mod tests {
     use nalgebra::{Point2, Point3};
 
     use crate::graph::{ArcKey, GraphGeometry, MeshGraph, VertexView};
-    use crate::index::{HashIndexer, Structured4};
+    use crate::index::HashIndexer;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
+    use crate::primitive::Tetragon;
     use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
@@ -1548,7 +1549,7 @@ mod tests {
     fn split_edge() {
         let (indices, vertices) = Cube::new()
             .polygons::<Position<Point3<N64>>>() // 6 quadrilaterals, 24 vertices.
-            .index_vertices::<Structured4, _>(HashIndexer::default());
+            .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
         let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
         let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
