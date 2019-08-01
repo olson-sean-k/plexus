@@ -146,14 +146,15 @@ where
     }
 }
 
-impl<P> Push<P, P> for Vec<P>
+impl<P, Q> Push<P, Q> for Vec<P>
 where
-    P: Grouping + Topological,
+    P: From<Q> + Grouping + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
+    Q: Topological<Vertex = P::Vertex>,
     Self: IndexBuffer<P, Index = P::Vertex>,
 {
-    fn push(&mut self, index: P) {
-        self.push(index);
+    fn push(&mut self, index: Q) {
+        self.push(P::from(index));
     }
 }
 
