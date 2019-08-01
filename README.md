@@ -99,13 +99,13 @@ impl GraphGeometry for Vertex {
 }
 
 impl AsPosition for Vertex {
-    type Target = Point3<N64>;
+    type Position = Point3<N64>;
 
-    fn as_position(&self) -> &Self::Target {
+    fn as_position(&self) -> &Self::Position {
         &self.position
     }
 
-    fn as_position_mut(&mut self) -> &mut Self::Target {
+    fn as_position_mut(&mut self) -> &mut Self::Position {
         &mut self.position
     }
 }
