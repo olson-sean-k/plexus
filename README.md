@@ -139,12 +139,12 @@ and `MeshBuffer`s to be serialized and deserialized to and from various formats.
 
 ```rust
 use nalgebra::Point3;
-use plexus::encoding::ply::{FromPly, PointEncoding};
+use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
 use std::fs::File;
 
 let ply = File::open("cube.ply").unwrap();
-let encoding = PointEncoding::<Point3<f64>>::default();
+let encoding = PositionEncoding::<Point3<f64>>::default();
 let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, ply).unwrap();
 ```
 

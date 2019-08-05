@@ -1,5 +1,5 @@
 use nalgebra::Point3;
-use plexus::encoding::ply::{FromPly, PointEncoding};
+use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
 
 use plexus_viewer::pipeline::Vertex;
@@ -11,7 +11,7 @@ fn main() {
     plexus_viewer::view_with(from, to, move || {
         // Read PLY data into a graph.
         let ply: &[u8] = include_bytes!("../data/teapot.ply");
-        let encoding = PointEncoding::<Point3<f32>>::default();
+        let encoding = PositionEncoding::<Point3<f32>>::default();
         let (graph, _) = MeshGraph::<Point3<f32>>::from_ply(encoding, ply).expect("teapot");
 
         // Convert the graph into a buffer that can be rendered for viewing.

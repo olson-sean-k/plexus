@@ -16,9 +16,11 @@
 //! # extern crate plexus;
 //! #
 //! use nalgebra::Point3;
-//! use plexus::encoding::ply::{FromPly, PointEncoding};
+//! use plexus::encoding::ply::{FromPly, PositionEncoding};
 //! use plexus::graph::MeshGraph;
 //! use std::io::Read;
+//!
+//! type E3 = Point3<f64>;
 //!
 //! // Read from a file, network, etc.
 //! fn read() -> impl Read {
@@ -28,8 +30,8 @@
 //! }
 //!
 //! # fn main() {
-//! let encoding = PointEncoding::<Point3<f64>>::default();
-//! let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, read()).unwrap();
+//! let encoding = PositionEncoding::<E3>::default();
+//! let (graph, _) = MeshGraph::<E3>::from_ply(encoding, read()).unwrap();
 //! # }
 //! ```
 
@@ -255,27 +257,27 @@ pub trait ToPly<E> {
         W: Write;
 }
 
-pub struct PointEncoding<T> {
+pub struct PositionEncoding<T> {
     phantom: PhantomData<T>,
 }
 
-impl<T> Default for PointEncoding<T> {
+impl<T> Default for PositionEncoding<T> {
     fn default() -> Self {
-        PointEncoding {
+        PositionEncoding {
             phantom: PhantomData,
         }
     }
 }
 
-impl<T> FaceDecoder for PointEncoding<T> {
+impl<T> FaceDecoder for PositionEncoding<T> {
     type Output = Vec<(Self::Index, Self::Face)>;
     type Index = SmallVec<[usize; 4]>;
     type Face = ();
 }
 
-impl<T> FaceElementDecoder for PointEncoding<T> {}
+impl<T> FaceElementDecoder for PositionEncoding<T> {}
 
-impl<T> FacePropertyDecoder for PointEncoding<T> {
+impl<T> FacePropertyDecoder for PositionEncoding<T> {
     fn decode_face_properties<'a, I>(
         &self,
         _: &'a ElementDefinition,
@@ -294,15 +296,15 @@ impl<T> FacePropertyDecoder for PointEncoding<T> {
     }
 }
 
-impl<T> VertexDecoder for PointEncoding<T> {
+impl<T> VertexDecoder for PositionEncoding<T> {
     type Output = Vec<Self::Vertex>;
     type Vertex = T;
 }
 
-impl<T> VertexElementDecoder for PointEncoding<T> {}
+impl<T> VertexElementDecoder for PositionEncoding<T> {}
 
 // TODO: Support two-dimensional spaces.
-impl<T> VertexPropertyDecoder for PointEncoding<T>
+impl<T> VertexPropertyDecoder for PositionEncoding<T>
 where
     T: EuclideanSpace + FiniteDimensional<N = U3>,
 {
@@ -352,14 +354,16 @@ where
 mod tests {
     use nalgebra::Point3;
 
-    use crate::encoding::ply::{FromPly, PointEncoding};
+    use crate::encoding::ply::{FromPly, PositionEncoding};
     use crate::graph::MeshGraph;
+
+    type E3 = Point3<f64>;
 
     #[test]
     fn decode() {
         let graph = {
             let ply: &[u8] = include_bytes!("../../../data/cube.ply");
-            MeshGraph::<Point3<f64>>::from_ply(PointEncoding::<Point3<f64>>::default(), ply)
+            MeshGraph::<E3>::from_ply(PositionEncoding::<E3>::default(), ply)
                 .unwrap()
                 .0
         };
