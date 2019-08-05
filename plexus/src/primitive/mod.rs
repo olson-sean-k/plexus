@@ -70,9 +70,11 @@ pub mod generate;
 pub mod sphere;
 
 use arrayvec::{Array, ArrayVec};
+use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
-use num::{Integer, Zero};
+use num::traits::FloatConst;
+use num::{Integer, One, Zero};
 use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
@@ -85,6 +87,7 @@ use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
 use crate::primitive::decompose::IntoVertices;
+use crate::IteratorExt;
 
 pub trait Topological:
     AsMut<[<Self as Composite>::Item]>
@@ -116,7 +119,7 @@ pub trait Topological:
     ///
     /// type E2 = Point2<f64>;
     ///
-    /// let trigon = Trigon::embed_into_xy(
+    /// let trigon = Trigon::embed_into_e3_xy(
     ///     Trigon::from([
     ///         E2::from_xy(-1.0, 0.0),
     ///         E2::from_xy(0.0, 1.0),
@@ -125,17 +128,17 @@ pub trait Topological:
     ///     1.0,
     /// );
     /// ```
-    fn embed_into_xy<P>(ngon: P, z: Scalar<Self::Vertex>) -> Self
+    fn embed_into_e3_xy<P>(ngon: P, z: Scalar<Self::Vertex>) -> Self
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
         P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
-        Self::embed_into_xy_with(ngon, z, |position| position)
+        Self::embed_into_e3_xy_with(ngon, z, |position| position)
     }
 
-    fn embed_into_xy_with<P, F>(ngon: P, z: Scalar<Position<Self::Vertex>>, mut f: F) -> Self
+    fn embed_into_e3_xy_with<P, F>(ngon: P, z: Scalar<Position<Self::Vertex>>, mut f: F) -> Self
     where
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
@@ -168,7 +171,7 @@ pub trait Topological:
     /// type E2 = Point2<f64>;
     /// type E3 = Point3<f64>;
     ///
-    /// let trigon = Trigon::embed_into_plane(
+    /// let trigon = Trigon::embed_into_e3_plane(
     ///     Trigon::from([
     ///         E2::from_xy(-1.0, 0.0),
     ///         E2::from_xy(0.0, 1.0),
@@ -180,17 +183,17 @@ pub trait Topological:
     ///     },
     /// );
     /// ```
-    fn embed_into_plane<P>(ngon: P, plane: Plane<Self::Vertex>) -> Self
+    fn embed_into_e3_plane<P>(ngon: P, plane: Plane<Self::Vertex>) -> Self
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
         P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
-        Self::embed_into_plane_with(ngon, plane, |position| position)
+        Self::embed_into_e3_plane_with(ngon, plane, |position| position)
     }
 
-    fn embed_into_plane_with<P, F>(ngon: P, _: Plane<Position<Self::Vertex>>, f: F) -> Self
+    fn embed_into_e3_plane_with<P, F>(ngon: P, _: Plane<Position<Self::Vertex>>, f: F) -> Self
     where
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
@@ -201,7 +204,7 @@ pub trait Topological:
         F: FnMut(Position<Self::Vertex>) -> Self::Vertex,
     {
         // TODO: Rotate the embedded n-gon into the plane about the origin.
-        let _ = Self::embed_into_xy_with(ngon, Zero::zero(), f);
+        let _ = Self::embed_into_e3_xy_with(ngon, Zero::zero(), f);
         unimplemented!()
     }
 
@@ -229,7 +232,63 @@ pub trait Topological:
     }
 }
 
-pub trait Polygonal: Topological {}
+pub trait Polygonal: Topological {
+    /// Determines if a polygon is convex.
+    fn is_convex(&self) -> bool
+    where
+        Self::Vertex: AsPosition,
+        Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+        Scalar<Position<Self::Vertex>>: FloatConst,
+    {
+        let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
+        let wrap = move |angle| {
+            if angle <= -pi {
+                angle + (pi + pi)
+            }
+            else if angle > pi {
+                angle - (pi + pi)
+            }
+            else {
+                angle
+            }
+        };
+        let sum = move || -> Option<_> {
+            let sum = self
+                .as_ref()
+                .iter()
+                .map(|vertex| vertex.as_position())
+                .perimeter()
+                .map(|(a, b)| *b - *a)
+                .filter(|vector| !vector.is_zero())
+                .map(|vector| vector.into_xy())
+                .map(|(x, y)| Real::atan2(x, y)) // Absolute angle.
+                .perimeter()
+                .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
+                .map(wrap) // Wrap angles into `(-pi, pi]`.
+                .perimeter()
+                .map(|(t1, t2)| {
+                    // If the orientation changes (signs disagree), then bail.
+                    if (t1 * t2) <= Zero::zero() {
+                        Err(())
+                    }
+                    else {
+                        Ok(t1)
+                    }
+                })
+                .collect::<Result<SmallVec<[_; 8]>, _>>()
+                .ok()?
+                .into_iter()
+                .fold(
+                    <Scalar<Position<Self::Vertex>> as Zero>::zero(),
+                    |sum, angle| sum + angle,
+                );
+            Some(sum)
+        };
+        sum()
+            .filter(|sum| (*sum / (pi + pi)).round().abs() == One::one())
+            .is_some()
+    }
+}
 
 pub trait ConstantArity {
     const ARITY: usize;
@@ -842,4 +901,38 @@ where
     T: Copy + Integer,
 {
     ((n % m) + m) % m
+}
+
+#[cfg(test)]
+mod tests {
+    use nalgebra::Point2;
+    use theon::space::EuclideanSpace;
+    use theon::Converged;
+
+    use crate::primitive::{NGon, Polygonal, Trigon};
+
+    type E2 = Point2<f64>;
+
+    #[test]
+    fn convexity() {
+        // Convex triangle.
+        let trigon = Trigon::new(
+            E2::from_xy(0.0, 1.0),
+            E2::from_xy(1.0, 0.0),
+            E2::from_xy(-1.0, 0.0),
+        );
+        assert!(trigon.is_convex());
+
+        // Degenerate (collinear) triangle. Not convex.
+        let trigon = Trigon::new(
+            E2::from_xy(0.0, 0.0),
+            E2::from_xy(0.0, 1.0),
+            E2::from_xy(0.0, 2.0),
+        );
+        assert!(!trigon.is_convex());
+
+        // Degenerate (converged) triangle. Not convex.
+        let trigon = Trigon::converged(E2::origin());
+        assert!(!trigon.is_convex());
+    }
 }
