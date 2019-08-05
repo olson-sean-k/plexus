@@ -118,6 +118,10 @@ impl Vertex {
     }
 }
 
+// TODO: The `gfx_vertex_struct` macro derives a `PartialEq` implementation
+//       that may conflict with `Hash`.
+impl Eq for Vertex {}
+
 impl Hash for Vertex {
     fn hash<H>(&self, state: &mut H)
     where

@@ -24,12 +24,16 @@ rustdoc-args = [
 travis-ci = { repository = "olson-sean-k/plexus" }
 
 [[example]]
-name = "teapot"
-path = "../examples/teapot.rs"
+name = "sphere"
+path = "../examples/sphere.rs"
 
 [[example]]
 name = "subdivide"
 path = "../examples/subdivide.rs"
+
+[[example]]
+name = "teapot"
+path = "../examples/teapot.rs"
 
 [[example]]
 name = "zip"
