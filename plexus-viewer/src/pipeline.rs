@@ -84,7 +84,7 @@ gfx_constant_struct! {
 }
 
 impl Transform {
-    pub fn new<T>(viewpoint: &Point3<T>, camera: &Matrix4<T>, model: &Matrix4<T>) -> Self
+    pub fn new<T>(viewpoint: Point3<T>, camera: Matrix4<T>, model: Matrix4<T>) -> Self
     where
         T: Scalar + ToPrimitive,
     {
@@ -106,7 +106,7 @@ gfx_vertex_struct! {
 }
 
 impl Vertex {
-    pub fn new<T>(position: &Point3<T>, normal: &Vector3<T>, color: &Vector4<T>) -> Self
+    pub fn new<T>(position: Point3<T>, normal: Vector3<T>, color: Vector4<T>) -> Self
     where
         T: Scalar + ToPrimitive,
     {
@@ -118,10 +118,11 @@ impl Vertex {
     }
 }
 
-// TODO: The `gfx_vertex_struct` macro derives a `PartialEq` implementation
-//       that may conflict with `Hash`.
 impl Eq for Vertex {}
 
+// TODO: The `gfx_vertex_struct` macro derives a `PartialEq` implementation
+//       that may conflict with `Hash`.
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for Vertex {
     fn hash<H>(&self, state: &mut H)
     where

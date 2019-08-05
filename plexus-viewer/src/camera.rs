@@ -1,5 +1,6 @@
 use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, RealField, Scalar, Vector3};
 
+#[derive(Clone, Copy, Debug)]
 pub struct Camera<T>
 where
     T: RealField + Scalar,
@@ -23,8 +24,9 @@ where
         }
     }
 
-    pub fn look_at(&mut self, from: &Point3<T>, to: &Point3<T>) {
-        self.view = Isometry3::look_at_rh(from, to, &Vector3::y());
+    pub fn look_at(mut self, from: Point3<T>, to: Point3<T>) -> Self {
+        self.view = Isometry3::look_at_rh(&from, &to, &Vector3::y());
+        self
     }
 
     pub fn transform(&self) -> Matrix4<T> {

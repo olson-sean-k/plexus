@@ -46,7 +46,7 @@ impl UpdateFrameBufferView<gfx_device_gl::Resources> for GlWindow {
     }
 }
 
-pub trait MetaRenderer {
+pub trait Binding {
     type Window: SwapBuffers + UpdateFrameBufferView<Self::Resources>;
     type Resources: Resources;
     type Factory: Factory<Self::Resources>;
@@ -54,9 +54,9 @@ pub trait MetaRenderer {
     type Device: Device<Resources = Self::Resources, CommandBuffer = Self::CommandBuffer>;
 }
 
-pub enum GlutinRenderer {}
+pub enum GlutinBinding {}
 
-impl MetaRenderer for GlutinRenderer {
+impl Binding for GlutinBinding {
     type Window = GlWindow;
     type Resources = gfx_device_gl::Resources;
     type Factory = gfx_device_gl::Factory;
@@ -66,7 +66,7 @@ impl MetaRenderer for GlutinRenderer {
 
 pub struct Renderer<R>
 where
-    R: MetaRenderer,
+    R: Binding,
 {
     pub window: R::Window,
     pub factory: R::Factory,
@@ -76,7 +76,7 @@ where
     data: Data<R::Resources>,
 }
 
-impl Renderer<GlutinRenderer> {
+impl Renderer<GlutinBinding> {
     pub fn from_glutin_window(window: GlWindow) -> Self {
         let (device, mut factory, color, depth) = gfx_window_glutin::init_existing(&window);
         let encoder = factory.create_command_buffer().into();
@@ -86,7 +86,7 @@ impl Renderer<GlutinRenderer> {
 
 impl<R> Renderer<R>
 where
-    R: MetaRenderer,
+    R: Binding,
 {
     fn new(
         window: R::Window,

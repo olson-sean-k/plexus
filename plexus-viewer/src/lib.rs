@@ -1,5 +1,3 @@
-#![allow(unknown_lints)] // Allow clippy lints.
-
 #[macro_use]
 extern crate gfx;
 
@@ -21,9 +19,6 @@ use std::f32::consts::PI;
 use crate::camera::Camera;
 use crate::pipeline::{Transform, Vertex};
 use crate::renderer::Renderer;
-
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 640;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Color4<T>(pub Vector4<T>)
@@ -88,19 +83,22 @@ where
 
 impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}
 
-pub fn view_with<F>(from: Point3<f32>, to: Point3<f32>, f: F)
+pub fn draw_with<F>(from: Point3<f32>, to: Point3<f32>, f: F)
 where
     F: FnOnce() -> MeshBuffer3<u32, Vertex>,
 {
+    const WIDTH: u32 = 640;
+    const HEIGHT: u32 = 640;
+    const ASPECT: f32 = WIDTH as f32 / HEIGHT as f32;
+
     let buffer = f();
-    let transform = {
-        let camera = {
-            let mut camera = Camera::new(WIDTH as f32 / HEIGHT as f32, PI / 4.0, 0.1, 100.0);
-            camera.look_at(&from, &to);
-            camera
-        };
-        Transform::new(&from, &camera.transform(), &Matrix4::identity())
-    };
+    let transform = Transform::new(
+        from,
+        Camera::new(ASPECT, PI / 4.0, 0.1, 100.0)
+            .look_at(from, to)
+            .transform(),
+        Matrix4::identity(),
+    );
 
     let mut event_loop = EventsLoop::new();
     let mut renderer = Renderer::from_glutin_window(
