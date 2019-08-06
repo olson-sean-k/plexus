@@ -127,7 +127,7 @@ features.
 |---------------------|---------|------------|
 | `geometry-cgmath`   | No      | `cgmath`   |
 | `geometry-mint`     | No      | `mint`     |
-| `geometry-nalgebra` | Yes     | `nalgebra` |
+| `geometry-nalgebra` | No      | `nalgebra` |
 
 If using one of the supported crates, it is highly recommended to enable the
 corresponding feature.

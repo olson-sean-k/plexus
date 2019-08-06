@@ -14,7 +14,7 @@ keywords = ["graphics", "half-edge", "mesh", "topology", "geometry"]
 # Enable all featues so that trait implementations for types from commonly used
 # linear algebra crates are shown.
 all-features = true
-# Enable Katex support.
+# Enable KaTex support.
 rustdoc-args = [
     "--html-in-header",
     "doc/katex-header.html"
@@ -26,24 +26,28 @@ travis-ci = { repository = "olson-sean-k/plexus" }
 [[example]]
 name = "sphere"
 path = "../examples/sphere.rs"
+required-features = ["geometry-nalgebra"]
 
 [[example]]
 name = "subdivide"
 path = "../examples/subdivide.rs"
+required-features = ["geometry-nalgebra"]
 
 [[example]]
 name = "teapot"
 path = "../examples/teapot.rs"
+required-features = ["encoding-ply", "geometry-nalgebra"]
 
 [[example]]
 name = "zip"
 path = "../examples/zip.rs"
+required-features = ["geometry-nalgebra"]
 
 [lib]
 name = "plexus"
 
 [features]
-default = ["geometry-nalgebra"]
+default = []
 encoding-ply = ["ply-rs"]
 geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
 geometry-mint = ["mint", "theon/geometry-mint"]
@@ -75,6 +79,7 @@ default-features = false
 features = ["array"]
 
 [dev-dependencies]
+nalgebra = "^0.18.0"
 # This dependency must be removed when publishing. Cargo does not allow
 # non-published dependencies, even if they are for development only. See the
 # following issues:
