@@ -234,6 +234,9 @@ pub trait Topological:
 
 pub trait Polygonal: Topological {
     /// Determines if a polygon is convex.
+    ///
+    /// This function rejects degenerate polygons, such as polygons with
+    /// collinear or converged vertices.
     fn is_convex(&self) -> bool
     where
         Self::Vertex: AsPosition,
@@ -241,52 +244,58 @@ pub trait Polygonal: Topological {
         Scalar<Position<Self::Vertex>>: FloatConst,
     {
         let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
-        let wrap = move |angle| {
-            if angle <= -pi {
-                angle + (pi + pi)
+        let mut sum = <Scalar<Position<Self::Vertex>> as Zero>::zero();
+        for (t1, t2) in self.angles().into_iter().perimeter() {
+            if (t1 * t2) <= Zero::zero() {
+                return false;
             }
-            else if angle > pi {
-                angle - (pi + pi)
-            }
-            else {
-                angle
-            }
-        };
-        let sum = move || -> Option<_> {
-            let sum = self
-                .as_ref()
-                .iter()
-                .map(|vertex| vertex.as_position())
-                .perimeter()
-                .map(|(a, b)| *b - *a)
-                .filter(|vector| !vector.is_zero())
-                .map(|vector| vector.into_xy())
-                .map(|(x, y)| Real::atan2(x, y)) // Absolute angle.
-                .perimeter()
-                .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
-                .map(wrap) // Wrap angles into `(-pi, pi]`.
-                .perimeter()
-                .map(|(t1, t2)| {
-                    // If the orientation changes (signs disagree), then bail.
-                    if (t1 * t2) <= Zero::zero() {
-                        Err(())
-                    }
-                    else {
-                        Ok(t1)
-                    }
-                })
-                .collect::<Result<SmallVec<[_; 8]>, _>>()
-                .ok()?
-                .into_iter()
-                .fold(
-                    <Scalar<Position<Self::Vertex>> as Zero>::zero(),
-                    |sum, angle| sum + angle,
-                );
-            Some(sum)
-        };
-        sum()
-            .filter(|sum| (*sum / (pi + pi)).round().abs() == One::one())
-            .is_some()
+            sum = sum + t1;
+        }
+        (sum / (pi + pi)).round().abs() == One::one()
+    }
+
+    /// Gets the relative angles between adjacent line segments.
+    ///
+    /// Computes the angle between line segments at each vertex in order. The
+    /// angles are wrapped into the interval $(-\pi,\pi]$. The sign of each
+    /// angle specifies the orientation of adjacent line segments. Given a
+    /// square, exactly four angles of $\plusmn\frac{\pi}{2}$ will be returned,
+    /// with the sign depending on the winding of the square.
+    ///
+    /// Adjacent vertices with the same position are ignored, as there is no
+    /// meaningful line segment between such vertices. Because of this, it is
+    /// possible that the number of angles returned by this function disagrees
+    /// with the arity of the polygon.
+    fn angles(&self) -> SmallVec<[Scalar<Position<Self::Vertex>>; 8]>
+    where
+        Self::Vertex: AsPosition,
+        Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+        Scalar<Position<Self::Vertex>>: FloatConst,
+    {
+        self.as_ref()
+            .iter()
+            .map(|vertex| vertex.as_position())
+            .perimeter()
+            .map(|(a, b)| *b - *a)
+            .filter(|vector| !vector.is_zero()) // Reject like positions.
+            .map(|vector| vector.into_xy())
+            .map(|(x, y)| Real::atan2(x, y)) // Absolute angle.
+            .perimeter()
+            .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
+            .map(|angle| {
+                // Wrap angles into `(-pi, pi]`.
+                let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
+                if angle <= -pi {
+                    angle + (pi + pi)
+                }
+                else if angle > pi {
+                    angle - (pi + pi)
+                }
+                else {
+                    angle
+                }
+            })
+            .collect()
     }
 }
 
@@ -909,7 +918,7 @@ mod tests {
     use theon::space::EuclideanSpace;
     use theon::Converged;
 
-    use crate::primitive::{NGon, Polygonal, Trigon};
+    use crate::primitive::{NGon, Polygonal, Tetragon, Trigon};
 
     type E2 = Point2<f64>;
 
@@ -923,6 +932,15 @@ mod tests {
         );
         assert!(trigon.is_convex());
 
+        // Convex qudrilateral.
+        let tetragon = Tetragon::new(
+            E2::from_xy(1.0, 1.0),
+            E2::from_xy(1.0, -1.0),
+            E2::from_xy(-1.0, -1.0),
+            E2::from_xy(-1.0, 1.0),
+        );
+        assert!(tetragon.is_convex());
+
         // Degenerate (collinear) triangle. Not convex.
         let trigon = Trigon::new(
             E2::from_xy(0.0, 0.0),
@@ -934,5 +952,15 @@ mod tests {
         // Degenerate (converged) triangle. Not convex.
         let trigon = Trigon::converged(E2::origin());
         assert!(!trigon.is_convex());
+
+        // Self-intersecting pentagon. Not convex.
+        let pentagon = NGon::from([
+            E2::from_xy(1.0, 1.0),
+            E2::from_xy(1.0, -1.0),
+            E2::from_xy(-1.0, -1.0),
+            E2::from_xy(-1.0, 1.0),
+            E2::from_xy(0.0, -2.0), // Self-intersecting vertex.
+        ]);
+        assert!(!pentagon.is_convex());
     }
 }
