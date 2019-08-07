@@ -801,55 +801,6 @@ where
     }
 }
 
-impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
-where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-    H: Clone + IntoGeometry<G::Vertex>,
-    G: GraphGeometry,
-{
-    type Error = GraphError;
-
-    /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
-    /// the index buffer must be known and constant.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if a `MeshGraph` cannot represent the topology in the
-    /// `MeshBuffer`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// #
-    /// use nalgebra::Point2;
-    /// use plexus::buffer::MeshBuffer;
-    /// use plexus::graph::MeshGraph;
-    /// use plexus::index::Flat4;
-    /// use plexus::prelude::*;
-    /// use std::convert::TryFrom;
-    ///
-    /// # fn main() {
-    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
-    ///     vec![0u64, 1, 2, 3],
-    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-    /// )
-    /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
-    /// # }
-    /// ```
-    fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
-        let arity = match buffer.arity() {
-            Arity::Uniform(arity) => arity,
-            _ => panic!("non-uniform flat index buffer arity"),
-        };
-        let (indices, vertices) = buffer.into_raw_buffers();
-        MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
-    }
-}
-
 impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
@@ -1064,6 +1015,99 @@ where
     fn into(self) -> OwnedCore<G> {
         let MeshGraph { core, .. } = self;
         core
+    }
+}
+
+impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+    H: Clone + IntoGeometry<G::Vertex>,
+    G: GraphGeometry,
+{
+    type Error = GraphError;
+
+    /// Creates a `MeshGraph` from a flat `MeshBuffer`. The arity of the
+    /// polygons in the index buffer must be known and constant.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a `MeshGraph` cannot represent the topology in the
+    /// `MeshBuffer`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::index::Flat4;
+    /// use plexus::prelude::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// # fn main() {
+    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
+    ///     vec![0u64, 1, 2, 3],
+    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    /// )
+    /// .unwrap();
+    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
+    /// # }
+    /// ```
+    fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
+        let arity = match buffer.arity() {
+            Arity::Uniform(arity) => arity,
+            _ => panic!("non-uniform flat index buffer arity"),
+        };
+        let (indices, vertices) = buffer.into_raw_buffers();
+        MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
+    }
+}
+
+impl<P, H, G> TryFrom<MeshBuffer<P, H>> for MeshGraph<G>
+where
+    P: Grouping<Item = P> + IntoVertices + Polygonal,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    H: Clone + IntoGeometry<G::Vertex>,
+    G: GraphGeometry,
+{
+    type Error = GraphError;
+
+    /// Creates a `MeshGraph` from a structured `MeshBuffer`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a `MeshGraph` cannot represent the topology in the
+    /// `MeshBuffer`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Tetragon;
+    /// use std::convert::TryFrom;
+    ///
+    /// # fn main() {
+    /// let buffer = MeshBuffer::<Tetragon<u64>, _>::from_raw_buffers(
+    ///     vec![Tetragon::new(0u64, 1, 2, 3)],
+    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    /// )
+    /// .unwrap();
+    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
+    /// # }
+    /// ```
+    fn try_from(buffer: MeshBuffer<P, H>) -> Result<Self, Self::Error> {
+        let (indices, vertices) = buffer.into_raw_buffers();
+        MeshGraph::from_raw_buffers(indices, vertices)
     }
 }
 
