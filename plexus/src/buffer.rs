@@ -311,13 +311,10 @@ where
     ///     .collect::<MeshGraph<Point3<R64>>>();
     /// # }
     /// ```
-    pub fn into_polygons(
-        self,
-    ) -> impl Clone + Iterator<Item = <<P as Grouping>::Item as Map<G>>::Output>
+    pub fn into_polygons(self) -> impl Iterator<Item = <<P as Grouping>::Item as Map<G>>::Output>
     where
         G: Clone,
         <P as Grouping>::Item: Map<G> + Topological,
-        <<P as Grouping>::Item as Map<G>>::Output: Clone,
         <<P as Grouping>::Item as Topological>::Vertex: ToPrimitive,
     {
         let (indices, vertices) = self.into_raw_buffers();
