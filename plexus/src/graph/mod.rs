@@ -170,7 +170,6 @@ mod mutation;
 mod storage;
 mod view;
 
-use arrayvec::ArrayVec;
 use decorum::N64;
 use failure::Fail;
 use itertools::{Itertools, MinMaxResult};
@@ -196,7 +195,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::{IntoView, OrphanView};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Polygonal, Tetragon};
+use crate::primitive::Polygonal;
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
 
 pub use crate::graph::geometry::{
@@ -922,14 +921,11 @@ where
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
-            // The topology with the greatest arity emitted by indexing is a
-            // quadrilateral (tetragon). Avoid allocations by using an
-            // `ArrayVec`.
             let perimeter = face
                 .into_vertices()
                 .into_iter()
                 .map(|index| vertices[index])
-                .collect::<ArrayVec<[_; Tetragon::<()>::ARITY]>>();
+                .collect::<SmallVec<[_; 4]>>();
             mutation.insert_face(&perimeter, Default::default())?;
         }
         mutation.commit()
