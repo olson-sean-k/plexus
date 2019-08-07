@@ -176,6 +176,7 @@ use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -390,52 +391,6 @@ where
                 .bind(StorageProxy::<EdgePayload<G>>::new())
                 .bind(StorageProxy::<FacePayload<G>>::new()),
         )
-    }
-
-    /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
-    /// the index buffer must be known and constant.
-    ///
-    /// `MeshGraph` also implements `From` for `MeshBuffer`, but will yield an
-    /// empty graph if the conversion fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if a `MeshGraph` cannot represent the topology in the
-    /// `MeshBuffer`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// #
-    /// use nalgebra::Point2;
-    /// use plexus::buffer::MeshBuffer;
-    /// use plexus::graph::MeshGraph;
-    /// use plexus::index::Flat4;
-    /// use plexus::prelude::*;
-    ///
-    /// # fn main() {
-    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
-    ///     vec![0u64, 1, 2, 3],
-    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
-    /// )
-    /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f64>>::from_mesh_buffer(buffer).unwrap();
-    /// # }
-    /// ```
-    pub fn from_mesh_buffer<A, N, H>(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, GraphError>
-    where
-        A: NonZero + typenum::Unsigned,
-        N: Copy + Integer + NumCast + Unsigned,
-        H: Clone + IntoGeometry<G::Vertex>,
-    {
-        let arity = match buffer.arity() {
-            Arity::Uniform(arity) => arity,
-            _ => panic!("non-uniform flat index buffer arity"),
-        };
-        let (indices, vertices) = buffer.into_raw_buffers();
-        MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
 
     /// Gets the number of vertices in the graph.
@@ -846,15 +801,52 @@ where
     }
 }
 
-impl<A, N, H, G> From<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
+impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     H: Clone + IntoGeometry<G::Vertex>,
     G: GraphGeometry,
 {
-    fn from(buffer: MeshBuffer<Flat<A, N>, H>) -> Self {
-        MeshGraph::from_mesh_buffer(buffer).unwrap_or_else(|_| Self::default())
+    type Error = GraphError;
+
+    /// Creates a `MeshGraph` from a `MeshBuffer`. The arity of the polygons in
+    /// the index buffer must be known and constant.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a `MeshGraph` cannot represent the topology in the
+    /// `MeshBuffer`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::index::Flat4;
+    /// use plexus::prelude::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// # fn main() {
+    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
+    ///     vec![0u64, 1, 2, 3],
+    ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+    /// )
+    /// .unwrap();
+    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
+    /// # }
+    /// ```
+    fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
+        let arity = match buffer.arity() {
+            Arity::Uniform(arity) => arity,
+            _ => panic!("non-uniform flat index buffer arity"),
+        };
+        let (indices, vertices) = buffer.into_raw_buffers();
+        MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }
 }
 
