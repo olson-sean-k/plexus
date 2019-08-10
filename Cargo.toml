@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "plexus",
-    "plexus-viewer"
+    "pictor",
+    "plexus"
 ]

@@ -1,5 +1,5 @@
 [package]
-name = "plexus-viewer"
+name = "pictor"
 version = "0.0.0"
 # This package should not be published.
 #
@@ -18,7 +18,7 @@ authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 
 [lib]
-name = "plexus_viewer"
+name = "pictor"
 
 [dependencies]
 decorum = "^0.1.1"

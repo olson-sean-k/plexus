@@ -99,4 +99,4 @@ nalgebra = "^0.18.0"
 #   https://github.com/rust-lang/cargo/issues/4242
 #   https://github.com/rust-lang/cargo/issues/4663
 #
-plexus-viewer = { path = "../plexus-viewer" }
+pictor = { path = "../pictor" }
