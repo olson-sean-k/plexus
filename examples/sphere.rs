@@ -1,11 +1,10 @@
 use nalgebra::Point3;
+use pictor::pipeline::Vertex;
+use pictor::{self, Color4};
 use plexus::prelude::*;
 use plexus::primitive;
 use plexus::primitive::generate::{Normal, Position};
 use plexus::primitive::sphere::UvSphere;
-
-use pictor::pipeline::Vertex;
-use pictor::{self, Color4};
 
 type E3 = Point3<f32>;
 

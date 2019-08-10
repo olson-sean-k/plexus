@@ -1,9 +1,8 @@
 use nalgebra::Point3;
-use plexus::encoding::ply::{FromPly, PositionEncoding};
-use plexus::graph::MeshGraph;
-
 use pictor::pipeline::Vertex;
 use pictor::{self, Color4};
+use plexus::encoding::ply::{FromPly, PositionEncoding};
+use plexus::graph::MeshGraph;
 
 type E3 = Point3<f32>;
 
