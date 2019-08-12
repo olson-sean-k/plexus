@@ -72,7 +72,7 @@ derivative = "^1.0.2"
 either = "^1.5.0"
 failure = "^0.1.5"
 fnv = "^1.0.6"
-fool = "0.0.1"
+fool = "0.0.2" # Unstable.
 itertools = "^0.8.0"
 num = "^0.2.0"
 slotmap = "^0.3.0"
@@ -84,7 +84,7 @@ mint = { version = "^0.5.0", optional = true }
 nalgebra = { version = "^0.18.0", optional = true }
 ply-rs = { version = "^0.1.2", optional = true }
 
-[dependencies.theon]
+[dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
 rev = "811ea063ffae86beeba6b5c6a58c26c1065ae8a9"
 default-features = false
