@@ -1,4 +1,4 @@
-![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.png)
+![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.svg?sanitize=true)
 
 **Plexus** is a Rust library for polygonal mesh processing.
 
@@ -10,10 +10,10 @@
 ## Primitives and Iterator Expressions
 
 Plexus provides a rich set of primitive topological structures that can be
-composed using _generators_ and _iterator expressions_. Expressions operate
-over a stream of structures like `Trigon`s or `Tetragon`s with arbitrary data
-in their vertices. These can be transformed, decomposed (tessellated), indexed,
-and collected into mesh data structures.
+composed using generators and iterator expressions. Iterator expressions operate
+over a sequence of polygons like `Trigon`s or `Tetragon`s with arbitrary data in
+their vertices. These can be transformed, decomposed (tessellated), indexed, and
+collected into mesh data structures.
 
 ```rust
 use decorum::N64;
