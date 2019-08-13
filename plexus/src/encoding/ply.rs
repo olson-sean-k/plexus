@@ -37,7 +37,8 @@
 
 #![cfg(feature = "encoding-ply")]
 
-use num::{NumCast, ToPrimitive};
+use num::cast;
+use num::NumCast;
 use ply_rs::parser::Parser;
 use ply_rs::ply::KeyMap;
 use smallvec::SmallVec;
@@ -332,15 +333,15 @@ where
 
 fn num_cast_scalar<T, U>(value: T) -> Result<U, PlyError>
 where
-    T: ToPrimitive,
+    T: NumCast,
     U: NumCast,
 {
-    NumCast::from(value).ok_or_else(|| PlyError::Encoding)
+    cast::cast(value).ok_or_else(|| PlyError::Encoding)
 }
 
 fn num_cast_list<T, U, I>(values: Vec<T>) -> Result<I, PlyError>
 where
-    T: ToPrimitive,
+    T: NumCast,
     U: NumCast,
     I: FromIterator<U>,
 {

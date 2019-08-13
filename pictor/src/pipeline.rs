@@ -1,7 +1,7 @@
 use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
-use num::ToPrimitive;
+use num::NumCast;
 use std::hash::{Hash, Hasher};
 use theon::ops::Map;
 
@@ -86,7 +86,7 @@ gfx_constant_struct! {
 impl Transform {
     pub fn new<T>(viewpoint: Point3<T>, camera: Matrix4<T>, model: Matrix4<T>) -> Self
     where
-        T: Scalar + ToPrimitive,
+        T: NumCast + Scalar,
     {
         let viewpoint = viewpoint.map(crate::num_cast);
         Transform {
@@ -108,7 +108,7 @@ gfx_vertex_struct! {
 impl Vertex {
     pub fn new<T>(position: Point3<T>, normal: Vector3<T>, color: Vector4<T>) -> Self
     where
-        T: Scalar + ToPrimitive,
+        T: NumCast + Scalar,
     {
         Vertex {
             position: position.map(crate::num_cast).into_array(),

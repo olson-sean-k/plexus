@@ -9,7 +9,8 @@ use glutin::{
     ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
 };
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
-use num::{NumCast, One, ToPrimitive};
+use num::cast;
+use num::{NumCast, One};
 use plexus::buffer::MeshBuffer3;
 use plexus::UnitGeometry;
 use rand::distributions::{Distribution, Standard};
@@ -86,7 +87,7 @@ impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}
 
 pub fn draw_with<T, F>(from: Point3<T>, to: Point3<T>, f: F)
 where
-    T: Scalar + ToPrimitive,
+    T: NumCast + Scalar,
     F: FnOnce() -> MeshBuffer3<u32, Vertex>,
 {
     const WIDTH: u32 = 640;
@@ -133,8 +134,8 @@ where
 
 fn num_cast<T, U>(value: T) -> U
 where
-    T: ToPrimitive,
+    T: NumCast,
     U: NumCast,
 {
-    <U as NumCast>::from(value).expect("numeric cast")
+    cast::cast(value).expect("numeric cast failed")
 }
