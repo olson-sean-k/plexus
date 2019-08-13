@@ -1,7 +1,7 @@
 use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
-use num::{NumCast, ToPrimitive};
+use num::ToPrimitive;
 use std::hash::{Hash, Hasher};
 use theon::ops::Map;
 
@@ -88,11 +88,11 @@ impl Transform {
     where
         T: Scalar + ToPrimitive,
     {
-        let viewpoint = viewpoint.map(num_cast);
+        let viewpoint = viewpoint.map(crate::num_cast);
         Transform {
             viewpoint: [viewpoint[0], viewpoint[1], viewpoint[2], 1.0],
-            camera: camera.map(num_cast).into_array(),
-            model: model.map(num_cast).into_array(),
+            camera: camera.map(crate::num_cast).into_array(),
+            model: model.map(crate::num_cast).into_array(),
         }
     }
 }
@@ -111,9 +111,9 @@ impl Vertex {
         T: Scalar + ToPrimitive,
     {
         Vertex {
-            position: position.map(num_cast).into_array(),
-            normal: normal.map(num_cast).into_array(),
-            color: color.map(num_cast).into_array(),
+            position: position.map(crate::num_cast).into_array(),
+            normal: normal.map(crate::num_cast).into_array(),
+            color: color.map(crate::num_cast).into_array(),
         }
     }
 }
@@ -132,12 +132,4 @@ impl Hash for Vertex {
         decorum::hash_float_array(&self.normal, state);
         decorum::hash_float_array(&self.color, state);
     }
-}
-
-fn num_cast<T, U>(value: T) -> U
-where
-    T: ToPrimitive,
-    U: NumCast,
-{
-    <U as NumCast>::from(value).expect("numeric cast")
 }

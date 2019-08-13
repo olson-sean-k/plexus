@@ -9,12 +9,13 @@ use glutin::{
     ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
 };
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
-use num::One;
+use num::{NumCast, One, ToPrimitive};
 use plexus::buffer::MeshBuffer3;
 use plexus::UnitGeometry;
 use rand::distributions::{Distribution, Standard};
 use rand::{self, Rng};
 use std::f32::consts::PI;
+use theon::ops::Map;
 
 use crate::camera::Camera;
 use crate::pipeline::{Transform, Vertex};
@@ -83,14 +84,17 @@ where
 
 impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}
 
-pub fn draw_with<F>(from: Point3<f32>, to: Point3<f32>, f: F)
+pub fn draw_with<T, F>(from: Point3<T>, to: Point3<T>, f: F)
 where
+    T: Scalar + ToPrimitive,
     F: FnOnce() -> MeshBuffer3<u32, Vertex>,
 {
     const WIDTH: u32 = 640;
     const HEIGHT: u32 = 640;
     const ASPECT: f32 = WIDTH as f32 / HEIGHT as f32;
 
+    let from = from.map(num_cast);
+    let to = to.map(num_cast);
     let buffer = f();
     let transform = Transform::new(
         from,
@@ -125,4 +129,12 @@ where
             ControlFlow::Continue
         }
     });
+}
+
+fn num_cast<T, U>(value: T) -> U
+where
+    T: ToPrimitive,
+    U: NumCast,
+{
+    <U as NumCast>::from(value).expect("numeric cast")
 }

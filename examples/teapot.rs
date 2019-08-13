@@ -1,10 +1,11 @@
+use decorum::R64;
 use nalgebra::Point3;
 use pictor::pipeline::Vertex;
 use pictor::{self, Color4};
 use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
 
-type E3 = Point3<f32>;
+type E3 = Point3<R64>;
 
 fn main() {
     let from = Point3::new(0.0, -10.0, 4.0);
@@ -19,7 +20,7 @@ fn main() {
         graph
             .to_mesh_buffer_by_vertex_with(|vertex| {
                 Vertex::new(
-                    vertex.geometry,
+                    *vertex.position(),
                     vertex.normal().unwrap(),
                     Color4::white().into(),
                 )
