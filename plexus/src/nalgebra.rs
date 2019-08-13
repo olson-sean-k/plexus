@@ -4,7 +4,7 @@ use decorum::{Finite, NotNan, Ordered, Primitive};
 use nalgebra::base::allocator::Allocator;
 use nalgebra::base::default_allocator::DefaultAllocator;
 use nalgebra::base::dimension::DimName;
-use nalgebra::{Point, Point2, Point3, Scalar, Vector2, Vector3};
+use nalgebra::{MatrixMN, Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
@@ -57,35 +57,6 @@ where
         )
     }
 }
-
-macro_rules! from_ordered_geometry {
-    (proxy => $p:ident) => {
-        impl<T, D> FromGeometry<Point<$p<T>, D>> for Point<T, D>
-        where
-            T: Float + Primitive + Scalar,
-            D: DimName,
-            DefaultAllocator: Allocator<T, D> + Allocator<$p<T>, D>,
-        {
-            fn from_geometry(other: Point<$p<T>, D>) -> Self {
-                Point::from(other.coords.map(|value| value.into_inner()))
-            }
-        }
-
-        impl<T, D> FromGeometry<Point<T, D>> for Point<$p<T>, D>
-        where
-            T: Float + Primitive + Scalar,
-            D: DimName,
-            DefaultAllocator: Allocator<$p<T>, D> + Allocator<T, D>,
-        {
-            fn from_geometry(other: Point<T, D>) -> Self {
-                Point::from(other.coords.map($p::<T>::from_inner))
-            }
-        }
-    };
-}
-from_ordered_geometry!(proxy => Finite);
-from_ordered_geometry!(proxy => NotNan);
-from_ordered_geometry!(proxy => Ordered);
 
 impl<T, U> FromGeometry<(U, U)> for Point2<T>
 where
@@ -147,3 +118,56 @@ where
     type Edge = ();
     type Face = ();
 }
+
+macro_rules! impl_from_geometry_ordered {
+    (proxy => $p:ident) => {
+        impl<T, R, C> FromGeometry<MatrixMN<$p<T>, R, C>> for MatrixMN<T, R, C>
+        where
+            T: Float + Primitive + Scalar,
+            R: DimName,
+            C: DimName,
+            DefaultAllocator: Allocator<T, R, C> + Allocator<$p<T>, R, C>,
+        {
+            fn from_geometry(other: MatrixMN<$p<T>, R, C>) -> Self {
+                other.map(|value| value.into_inner())
+            }
+        }
+
+        impl<T, R, C> FromGeometry<MatrixMN<T, R, C>> for MatrixMN<$p<T>, R, C>
+        where
+            T: Float + Primitive + Scalar,
+            R: DimName,
+            C: DimName,
+            DefaultAllocator: Allocator<$p<T>, R, C> + Allocator<T, R, C>,
+        {
+            fn from_geometry(other: MatrixMN<T, R, C>) -> Self {
+                other.map($p::<T>::from_inner)
+            }
+        }
+
+        impl<T, D> FromGeometry<Point<$p<T>, D>> for Point<T, D>
+        where
+            T: Float + Primitive + Scalar,
+            D: DimName,
+            DefaultAllocator: Allocator<T, D> + Allocator<$p<T>, D>,
+        {
+            fn from_geometry(other: Point<$p<T>, D>) -> Self {
+                Point::from(other.coords.map(|value| value.into_inner()))
+            }
+        }
+
+        impl<T, D> FromGeometry<Point<T, D>> for Point<$p<T>, D>
+        where
+            T: Float + Primitive + Scalar,
+            D: DimName,
+            DefaultAllocator: Allocator<$p<T>, D> + Allocator<T, D>,
+        {
+            fn from_geometry(other: Point<T, D>) -> Self {
+                Point::from(other.coords.map($p::<T>::from_inner))
+            }
+        }
+    };
+}
+impl_from_geometry_ordered!(proxy => Finite);
+impl_from_geometry_ordered!(proxy => NotNan);
+impl_from_geometry_ordered!(proxy => Ordered);

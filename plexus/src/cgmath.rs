@@ -55,34 +55,6 @@ where
     }
 }
 
-macro_rules! from_ordered_geometry {
-    (geometry => $g:ident,proxy => $p:ident) => {
-        impl<T> FromGeometry<$g<$p<T>>> for $g<T>
-        where
-            T: Float + Primitive,
-        {
-            fn from_geometry(other: $g<$p<T>>) -> Self {
-                other.map(|value| value.into_inner())
-            }
-        }
-
-        impl<T> FromGeometry<$g<T>> for $g<$p<T>>
-        where
-            T: Float + Primitive,
-        {
-            fn from_geometry(other: $g<T>) -> Self {
-                other.map(|value| $p::<T>::from_inner(value))
-            }
-        }
-    };
-}
-from_ordered_geometry!(geometry => Point2, proxy => Finite);
-from_ordered_geometry!(geometry => Point2, proxy => NotNan);
-from_ordered_geometry!(geometry => Point2, proxy => Ordered);
-from_ordered_geometry!(geometry => Point3, proxy => Finite);
-from_ordered_geometry!(geometry => Point3, proxy => NotNan);
-from_ordered_geometry!(geometry => Point3, proxy => Ordered);
-
 impl<T, U> FromGeometry<(U, U)> for Point2<T>
 where
     T: NumCast,
@@ -150,3 +122,37 @@ where
     type Edge = ();
     type Face = ();
 }
+
+macro_rules! impl_from_geometry_ordered {
+    (geometry => $g:ident,proxy => $p:ident) => {
+        impl<T> FromGeometry<$g<$p<T>>> for $g<T>
+        where
+            T: Float + Primitive,
+        {
+            fn from_geometry(other: $g<$p<T>>) -> Self {
+                other.map(|value| value.into_inner())
+            }
+        }
+
+        impl<T> FromGeometry<$g<T>> for $g<$p<T>>
+        where
+            T: Float + Primitive,
+        {
+            fn from_geometry(other: $g<T>) -> Self {
+                other.map(|value| $p::<T>::from_inner(value))
+            }
+        }
+    };
+}
+impl_from_geometry_ordered!(geometry => Vector2, proxy => Finite);
+impl_from_geometry_ordered!(geometry => Vector2, proxy => NotNan);
+impl_from_geometry_ordered!(geometry => Vector2, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Vector3, proxy => Finite);
+impl_from_geometry_ordered!(geometry => Vector3, proxy => NotNan);
+impl_from_geometry_ordered!(geometry => Vector3, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Point2, proxy => Finite);
+impl_from_geometry_ordered!(geometry => Point2, proxy => NotNan);
+impl_from_geometry_ordered!(geometry => Point2, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Point3, proxy => Finite);
+impl_from_geometry_ordered!(geometry => Point3, proxy => NotNan);
+impl_from_geometry_ordered!(geometry => Point3, proxy => Ordered);
