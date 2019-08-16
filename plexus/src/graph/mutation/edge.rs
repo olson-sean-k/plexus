@@ -1,3 +1,4 @@
+use fool::and;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
@@ -176,6 +177,13 @@ where
             storage: (arcs, edges),
             ..
         } = self;
+        // In a consistent graph, all arcs must have neighboring arcs and an
+        // associated edge.
+        for (_, arc) in arcs.iter() {
+            if !(and!(&arc.next, &arc.previous, &arc.edge)) {
+                return Err(GraphError::TopologyMalformed);
+            }
+        }
         inner.commit().and_then(move |mutant| {
             let (vertices, ..) = mutant.into_storage();
             Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
@@ -547,8 +555,13 @@ where
         M: Mutable<G>,
         G: GraphGeometry,
     {
-        let (a, _) = ab.into();
-        mutation.as_mut().disconnect_outgoing_arc(a)?;
+        // TODO: Is is probably more correct to disconnect the source vertex
+        //       from its leading arc.  However, this interacts poorly with
+        //       `split_at_vertex`, and on the second pass will orphan the
+        //       vertex B.
+        //
+        // let (a, _) = ab.into();
+        // mutation.as_mut().disconnect_outgoing_arc(a)?;
         let xa = mutation.as_mut().disconnect_previous_arc(ab)?;
         let bx = mutation.as_mut().disconnect_next_arc(ab)?;
         let mut arc = mutation.as_mut().storage.0.remove(&ab).unwrap();

@@ -33,6 +33,8 @@ where
             })
     }
 
+    // TODO: See `edge::split_with_cache`.
+    #[allow(dead_code)]
     pub fn disconnect_outgoing_arc(&mut self, a: VertexKey) -> Result<Option<ArcKey>, GraphError> {
         VertexView::from_keyed_source((a, &mut self.storage))
             .ok_or_else(|| GraphError::TopologyNotFound)
@@ -60,6 +62,12 @@ where
         let VertexMutation {
             storage: vertices, ..
         } = self;
+        // In a consistent graph, all vertices must have a leading arc.
+        for (_, vertex) in vertices.iter() {
+            if vertex.arc.is_none() {
+                return Err(GraphError::TopologyMalformed);
+            }
+        }
         Ok(Core::empty().bind(vertices))
     }
 
