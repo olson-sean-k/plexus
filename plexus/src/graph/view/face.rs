@@ -1424,7 +1424,7 @@ where
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
-        while let Some(ba) = self.input.next().map(|ab| ab.opposite()) {
+        while let Some(ba) = self.input.next().map(|ab| ab.into_opposite()) {
             if let Some(abc) = self
                 .input
                 .storage

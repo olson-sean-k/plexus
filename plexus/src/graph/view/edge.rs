@@ -206,7 +206,7 @@ where
     }
 
     pub(in crate::graph) fn into_reachable_opposite_arc(self) -> Option<Self> {
-        let key = self.key().opposite();
+        let key = self.key().into_opposite();
         self.into_inner().rekey_map(key)
     }
 
@@ -233,7 +233,7 @@ where
     }
 
     pub(in crate::graph) fn reachable_opposite_arc(&self) -> Option<ArcView<&M::Target, G>> {
-        let key = self.key().opposite();
+        let key = self.key().into_opposite();
         self.inner.interior_reborrow().rekey_map(key)
     }
 

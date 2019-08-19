@@ -58,7 +58,7 @@ impl OpaqueKey for VertexKey {
 pub struct ArcKey(VertexKey, VertexKey);
 
 impl ArcKey {
-    pub(in crate::graph) fn opposite(self) -> ArcKey {
+    pub(in crate::graph) fn into_opposite(self) -> ArcKey {
         let (a, b) = self.into();
         (b, a).into()
     }

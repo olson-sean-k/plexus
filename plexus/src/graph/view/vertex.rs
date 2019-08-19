@@ -1,4 +1,5 @@
 use either::Either;
+use std::collections::{HashSet, VecDeque};
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -164,6 +165,12 @@ where
             .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 
+    pub(in crate::graph) fn reachable_neighboring_vertices(
+        &self,
+    ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow()))
+    }
+
     pub(in crate::graph) fn reachable_incoming_arcs(
         &self,
     ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
@@ -200,6 +207,18 @@ where
         self.reachable_outgoing_arc().expect_consistent()
     }
 
+    pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+        Traversal::<_, VecDeque<_>, _>::from(self.interior_reborrow())
+    }
+
+    pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+        Traversal::<_, Vec<_>, _>::from(self.interior_reborrow())
+    }
+
+    pub fn neighboring_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+        self.reachable_neighboring_vertices()
+    }
+
     /// Gets an iterator of views over the incoming arcs of the vertex.
     ///
     /// The ordering of arcs is deterministic and is based on the leading arc
@@ -213,6 +232,67 @@ where
         G: VertexCentroid,
     {
         G::centroid(self.interior_reborrow()).expect_consistent()
+    }
+}
+
+/// Reachable API.
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target:
+        AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn reachable_neighboring_orphan_vertices(
+        &mut self,
+    ) -> impl Iterator<Item = OrphanVertexView<G>> {
+        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
+    }
+}
+
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<ArcPayload<G>>
+        + AsStorage<VertexPayload<G>>
+        + AsStorageMut<VertexPayload<G>>
+        + Consistent,
+    G: GraphGeometry,
+{
+    pub fn neighboring_orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
+        self.reachable_neighboring_orphan_vertices()
+    }
+}
+
+/// Reachable API.
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn reachable_incoming_orphan_arcs(
+        &mut self,
+    ) -> impl Iterator<Item = OrphanArcView<G>> {
+        ArcCirculator::from(self.interior_reborrow_mut())
+    }
+}
+
+impl<M, G> VertexView<M, G>
+where
+    M: Reborrow + ReborrowMut,
+    M::Target: AsStorage<ArcPayload<G>>
+        + AsStorageMut<ArcPayload<G>>
+        + AsStorage<VertexPayload<G>>
+        + Consistent,
+    G: GraphGeometry,
+{
+    /// Gets an iterator of orphan views over the incoming arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc
+    /// of the vertex.
+    pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
+        self.reachable_incoming_orphan_arcs()
     }
 }
 
@@ -252,38 +332,6 @@ where
         G: VertexNormal,
     {
         <G as VertexNormal>::normal(self.interior_reborrow())
-    }
-}
-
-/// Reachable API.
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_incoming_orphan_arcs(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanArcView<G>> {
-        ArcCirculator::from(self.interior_reborrow_mut())
-    }
-}
-
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorageMut<ArcPayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
-    G: GraphGeometry,
-{
-    /// Gets an iterator of orphan views over the incoming arcs of the vertex.
-    ///
-    /// The ordering of arcs is deterministic and is based on the leading arc
-    /// of the vertex.
-    pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
-        self.reachable_incoming_orphan_arcs()
     }
 }
 
@@ -512,6 +560,85 @@ where
     }
 }
 
+pub struct VertexCirculator<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    input: ArcCirculator<M, G>,
+}
+
+impl<M, G> VertexCirculator<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    fn next(&mut self) -> Option<VertexKey> {
+        self.input.next().map(|arc| {
+            let (source, _) = arc.into();
+            source
+        })
+    }
+}
+
+impl<M, G> Clone for VertexCirculator<M, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    fn clone(&self) -> Self {
+        VertexCirculator {
+            input: self.input.clone(),
+        }
+    }
+}
+
+impl<M, G> From<ArcCirculator<M, G>> for VertexCirculator<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    fn from(input: ArcCirculator<M, G>) -> Self {
+        VertexCirculator { input }
+    }
+}
+
+impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
+where
+    M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    G: 'a + GraphGeometry,
+{
+    type Item = VertexView<&'a M, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self).and_then(|key| (key, self.input.storage).into_view())
+    }
+}
+
+impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
+where
+    M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
+    G: 'a + GraphGeometry,
+{
+    type Item = OrphanVertexView<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        VertexCirculator::next(self).and_then(|key| {
+            (key, unsafe {
+                mem::transmute::<
+                    &'_ mut StorageProxy<VertexPayload<G>>,
+                    &'a mut StorageProxy<VertexPayload<G>>,
+                >(self.input.storage.as_storage_mut())
+            })
+                .into_view()
+        })
+    }
+}
+
 pub struct ArcCirculator<M, G>
 where
     M: Reborrow,
@@ -532,7 +659,7 @@ where
 {
     fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
-            .map(|outgoing| outgoing.opposite())
+            .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage
                     .reborrow()
@@ -715,6 +842,116 @@ where
     }
 }
 
+pub trait TraversalBuffer<T>: Default + Extend<T> {
+    fn push(&mut self, item: T);
+    fn pop(&mut self) -> Option<T>;
+}
+
+impl<T> TraversalBuffer<T> for Vec<T> {
+    fn push(&mut self, item: T) {
+        Vec::<T>::push(self, item)
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        Vec::<T>::pop(self)
+    }
+}
+
+impl<T> TraversalBuffer<T> for VecDeque<T> {
+    fn push(&mut self, item: T) {
+        VecDeque::<T>::push_back(self, item)
+    }
+
+    fn pop(&mut self) -> Option<T> {
+        VecDeque::<T>::pop_front(self)
+    }
+}
+
+pub struct Traversal<M, B, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    B: TraversalBuffer<VertexKey>,
+    G: GraphGeometry,
+{
+    storage: M,
+    breadcrumbs: HashSet<VertexKey>,
+    buffer: B,
+    phantom: PhantomData<G>,
+}
+
+impl<M, B, G> Clone for Traversal<M, B, G>
+where
+    M: Clone + Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    B: Clone + TraversalBuffer<VertexKey>,
+    G: GraphGeometry,
+{
+    fn clone(&self) -> Self {
+        Traversal {
+            storage: self.storage.clone(),
+            breadcrumbs: self.breadcrumbs.clone(),
+            buffer: self.buffer.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<M, B, G> From<VertexView<M, G>> for Traversal<M, B, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    B: TraversalBuffer<VertexKey>,
+    G: GraphGeometry,
+{
+    fn from(vertex: VertexView<M, G>) -> Self {
+        let (key, storage) = vertex.into_inner().into_keyed_source();
+        let capacity = storage.reborrow().as_vertex_storage().len();
+        let mut buffer = B::default();
+        buffer.push(key);
+        Traversal {
+            storage,
+            breadcrumbs: HashSet::with_capacity(capacity),
+            buffer,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, M, B, G> Iterator for Traversal<&'a M, B, G>
+where
+    M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
+    B: TraversalBuffer<VertexKey>,
+    G: 'a + GraphGeometry,
+{
+    type Item = VertexView<&'a M, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(vertex) = self
+            .buffer
+            .pop()
+            .and_then(|key| -> Option<VertexView<_, _>> { (key, self.storage).into_view() })
+        {
+            if self.breadcrumbs.insert(vertex.key()) {
+                self.buffer.extend(
+                    vertex
+                        .reachable_neighboring_vertices()
+                        .map(|vertex| vertex.key()),
+                );
+                return Some(vertex);
+            }
+            else {
+                continue;
+            }
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (1, Some(self.storage.as_vertex_storage().len()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use decorum::N64;
@@ -722,6 +959,7 @@ mod tests {
 
     use crate::graph::MeshGraph;
     use crate::prelude::*;
+    use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
 
@@ -738,5 +976,25 @@ mod tests {
         for vertex in graph.vertices() {
             assert_eq!(4, vertex.incoming_arcs().count());
         }
+    }
+
+    #[test]
+    fn traverse_by_breadth() {
+        let graph = Cube::new()
+            .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
+            .collect::<MeshGraph<E3>>();
+
+        let vertex = graph.vertices().nth(0).unwrap();
+        assert_eq!(graph.vertex_count(), vertex.traverse_by_breadth().count());
+    }
+
+    #[test]
+    fn traverse_by_depth() {
+        let graph = Cube::new()
+            .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
+            .collect::<MeshGraph<E3>>();
+
+        let vertex = graph.vertices().nth(0).unwrap();
+        assert_eq!(graph.vertex_count(), vertex.traverse_by_depth().count());
     }
 }

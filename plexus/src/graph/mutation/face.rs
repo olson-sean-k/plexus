@@ -114,7 +114,7 @@ where
         let (incoming, outgoing) = connectivity;
         for ab in arcs {
             let (a, b) = ab.clone().into();
-            let ba = ab.opposite();
+            let ba = ab.into_opposite();
             let neighbors = {
                 let core = self.core();
                 if ArcView::from_keyed_source((ba, &core))
