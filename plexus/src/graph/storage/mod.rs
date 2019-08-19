@@ -26,6 +26,8 @@ pub mod payload;
 pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Payload>::Key>, T>;
 pub type HashStorage<T> = HashMap<InnerKey<<T as Payload>::Key>, T, FnvBuildHasher>;
 
+pub type Rekeying<T> = HashMap<<T as Payload>::Key, <T as Payload>::Key, FnvBuildHasher>;
+
 pub trait AsStorage<T>
 where
     T: Payload,
@@ -264,6 +266,14 @@ where
         }
     }
 
+    pub fn from_inner(inner: T::Storage) -> Self {
+        StorageProxy { inner }
+    }
+
+    pub fn into_inner(self) -> T::Storage {
+        self.inner
+    }
+
     pub fn len(&self) -> usize {
         self.inner.len()
     }
@@ -310,6 +320,35 @@ where
 
     pub fn remove(&mut self, key: &T::Key) -> Option<T> {
         self.inner.remove(key)
+    }
+
+    pub fn partition_with<F>(self, f: F) -> (Self, Self)
+    where
+        T::Storage: Default + Extend<(T::Key, T)> + IntoIterator<Item = (T::Key, T)>,
+        F: FnMut(&(T::Key, T)) -> bool,
+    {
+        let (left, right) = self.into_inner().into_iter().partition(f);
+        (Self::from_inner(left), Self::from_inner(right))
+    }
+
+    pub fn partition_rekey_with<F>(self, f: F) -> (Rekeying<T>, (Self, Self))
+    where
+        T::Key: Eq + Hash,
+        T::Storage: Insert<T> + IntoIterator<Item = (T::Key, T)>,
+        F: FnMut(&(T::Key, T)) -> bool,
+    {
+        let mut rekeying = Rekeying::<T>::default();
+        let mut rekey = |partition| {
+            let mut storage = Self::new();
+            for (key, payload) in partition {
+                rekeying.insert(key, storage.insert(payload));
+            }
+            storage
+        };
+        let (left, right): (Vec<_>, Vec<_>) = self.into_inner().into_iter().partition(f);
+        let left = rekey(left);
+        let right = rekey(right);
+        (rekeying, (left, right))
     }
 }
 
