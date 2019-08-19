@@ -1,4 +1,5 @@
 use either::Either;
+use smallvec::SmallVec;
 use std::cmp;
 use std::marker::PhantomData;
 use std::mem;
@@ -19,8 +20,11 @@ use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcView, OrphanArcView};
+use crate::graph::view::traversal::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
-use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
+use crate::graph::view::{
+    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View, ViewBinding,
+};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 use Selector::ByIndex;
@@ -282,6 +286,14 @@ where
     /// Gets the leading arc of the face.
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         self.reachable_arc().expect_consistent()
+    }
+
+    pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
+        BreadthTraversal::from(self.interior_reborrow())
+    }
+
+    pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
+        DepthTraversal::from(self.interior_reborrow())
     }
 
     /// Gets an iterator of views over the arcs in the face's ring.
@@ -830,6 +842,20 @@ where
     }
 }
 
+impl<M, G> Adjacency for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    type Output = SmallVec<[Self::Key; 8]>;
+    type Key = FaceKey;
+
+    fn adjacency(&self) -> Self::Output {
+        self.neighboring_faces().map(|face| face.key()).collect()
+    }
+}
+
 impl<M, G> Clone for FaceView<M, G>
 where
     M: Reborrow,
@@ -907,6 +933,24 @@ where
 {
     fn reachable_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
+    }
+}
+
+impl<M, G> ViewBinding<M> for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<FacePayload<G>>,
+    G: GraphGeometry,
+{
+    type Key = FaceKey;
+    type Payload = FacePayload<G>;
+
+    fn into_inner(self) -> View<M, Self::Payload> {
+        FaceView::<_, _>::into_inner(self)
+    }
+
+    fn key(&self) -> Self::Key {
+        FaceView::<_, _>::key(self)
     }
 }
 

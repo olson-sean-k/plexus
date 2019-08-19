@@ -18,7 +18,9 @@ use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, Verte
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
-use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
+use crate::graph::view::{
+    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View, ViewBinding,
+};
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
 /// View of an arc.
@@ -930,6 +932,24 @@ where
     }
 }
 
+impl<M, G> ViewBinding<M> for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>,
+    G: GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = ArcPayload<G>;
+
+    fn into_inner(self) -> View<M, Self::Payload> {
+        ArcView::<_, _>::into_inner(self)
+    }
+
+    fn key(&self) -> Self::Key {
+        ArcView::<_, _>::key(self)
+    }
+}
+
 /// Orphan view of an arc.
 ///
 /// Provides mutable access to an arc's geometry. See the module documentation
@@ -1193,6 +1213,24 @@ where
 {
     fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
         View::<_, EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<M, G> ViewBinding<M> for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<EdgePayload<G>>,
+    G: GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Payload = EdgePayload<G>;
+
+    fn into_inner(self) -> View<M, Self::Payload> {
+        EdgeView::<_, _>::into_inner(self)
+    }
+
+    fn key(&self) -> Self::Key {
+        EdgeView::<_, _>::key(self)
     }
 }
 
@@ -1515,7 +1553,7 @@ mod tests {
 
     #[test]
     fn bridge_arcs() {
-        // Construct a mesh with two independent quadrilaterals.
+        // Construct a mesh with two disjoint quadrilaterals.
         let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 4, 5, 6, 7],
             vec![

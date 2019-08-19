@@ -1,5 +1,5 @@
 use either::Either;
-use std::collections::{HashSet, VecDeque};
+use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -15,7 +15,10 @@ use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, Verte
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::face::{FaceView, OrphanFaceView};
-use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View};
+use crate::graph::view::traversal::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::graph::view::{
+    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View, ViewBinding,
+};
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
 /// View of a vertex.
@@ -208,11 +211,11 @@ where
     }
 
     pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        Traversal::<_, VecDeque<_>, _>::from(self.interior_reborrow())
+        BreadthTraversal::from(self.interior_reborrow())
     }
 
     pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        Traversal::<_, Vec<_>, _>::from(self.interior_reborrow())
+        DepthTraversal::from(self.interior_reborrow())
     }
 
     pub fn neighboring_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
@@ -425,6 +428,22 @@ where
     }
 }
 
+impl<M, G> Adjacency for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    type Output = SmallVec<[Self::Key; 8]>;
+    type Key = VertexKey;
+
+    fn adjacency(&self) -> Self::Output {
+        self.neighboring_vertices()
+            .map(|vertex| vertex.key())
+            .collect()
+    }
+}
+
 impl<M, G> Clone for VertexView<M, G>
 where
     M: Reborrow,
@@ -491,6 +510,24 @@ where
 {
     fn from_keyed_source(source: (VertexKey, M)) -> Option<Self> {
         View::<_, VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<M, G> ViewBinding<M> for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    type Key = VertexKey;
+    type Payload = VertexPayload<G>;
+
+    fn into_inner(self) -> View<M, Self::Payload> {
+        VertexView::<_, _>::into_inner(self)
+    }
+
+    fn key(&self) -> Self::Key {
+        VertexView::<_, _>::key(self)
     }
 }
 
@@ -839,116 +876,6 @@ where
             })
                 .into_view()
         })
-    }
-}
-
-pub trait TraversalBuffer<T>: Default + Extend<T> {
-    fn push(&mut self, item: T);
-    fn pop(&mut self) -> Option<T>;
-}
-
-impl<T> TraversalBuffer<T> for Vec<T> {
-    fn push(&mut self, item: T) {
-        Vec::<T>::push(self, item)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        Vec::<T>::pop(self)
-    }
-}
-
-impl<T> TraversalBuffer<T> for VecDeque<T> {
-    fn push(&mut self, item: T) {
-        VecDeque::<T>::push_back(self, item)
-    }
-
-    fn pop(&mut self) -> Option<T> {
-        VecDeque::<T>::pop_front(self)
-    }
-}
-
-pub struct Traversal<M, B, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    B: TraversalBuffer<VertexKey>,
-    G: GraphGeometry,
-{
-    storage: M,
-    breadcrumbs: HashSet<VertexKey>,
-    buffer: B,
-    phantom: PhantomData<G>,
-}
-
-impl<M, B, G> Clone for Traversal<M, B, G>
-where
-    M: Clone + Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    B: Clone + TraversalBuffer<VertexKey>,
-    G: GraphGeometry,
-{
-    fn clone(&self) -> Self {
-        Traversal {
-            storage: self.storage.clone(),
-            breadcrumbs: self.breadcrumbs.clone(),
-            buffer: self.buffer.clone(),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<M, B, G> From<VertexView<M, G>> for Traversal<M, B, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    B: TraversalBuffer<VertexKey>,
-    G: GraphGeometry,
-{
-    fn from(vertex: VertexView<M, G>) -> Self {
-        let (key, storage) = vertex.into_inner().into_keyed_source();
-        let capacity = storage.reborrow().as_vertex_storage().len();
-        let mut buffer = B::default();
-        buffer.push(key);
-        Traversal {
-            storage,
-            breadcrumbs: HashSet::with_capacity(capacity),
-            buffer,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, M, B, G> Iterator for Traversal<&'a M, B, G>
-where
-    M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    B: TraversalBuffer<VertexKey>,
-    G: 'a + GraphGeometry,
-{
-    type Item = VertexView<&'a M, G>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some(vertex) = self
-            .buffer
-            .pop()
-            .and_then(|key| -> Option<VertexView<_, _>> { (key, self.storage).into_view() })
-        {
-            if self.breadcrumbs.insert(vertex.key()) {
-                self.buffer.extend(
-                    vertex
-                        .reachable_neighboring_vertices()
-                        .map(|vertex| vertex.key()),
-                );
-                return Some(vertex);
-            }
-            else {
-                continue;
-            }
-        }
-        None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (1, Some(self.storage.as_vertex_storage().len()))
     }
 }
 

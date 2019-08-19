@@ -86,7 +86,7 @@
 //!
 //! # Examples
 //!
-//! Generating a mesh from a $uv$-sphere:
+//! Generating a graph from a $uv$-sphere:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -107,7 +107,7 @@
 //! # }
 //! ```
 //!
-//! Extruding a face in a mesh:
+//! Extruding a face in a graph:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -130,7 +130,7 @@
 //! # }
 //! ```
 //!
-//! Traversing and circulating over a mesh:
+//! Traversing and circulating over a graph:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -175,7 +175,7 @@ use failure::Fail;
 use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -533,7 +533,7 @@ where
             .map(|view| view.into())
     }
 
-    /// Gets an axis-aligned bounding box that encloses the mesh.
+    /// Gets an axis-aligned bounding box that encloses the graph.
     pub fn aabb(&self) -> Aabb<VertexPosition<G>>
     where
         G::Vertex: AsPosition,
@@ -559,7 +559,7 @@ where
         }
     }
 
-    /// Triangulates the mesh, tessellating all faces into triangles.
+    /// Triangulates the graph, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
         let faces = self.as_face_storage().keys().collect::<Vec<_>>();
         for face in faces {
@@ -588,15 +588,63 @@ where
         }
     }
 
+    /// Gets an iterator over a vertex within each disjoint subgraph.
+    ///
+    /// Traverses the graph and returns an arbitrary vertex within each
+    /// _disjoint subgraph_. A subgraph is _disjoint_ if it cannot be reached
+    /// from all other topology in the graph.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Trigon;
+    ///
+    /// # fn main() {
+    /// type E2 = Point2<f64>;
+    ///
+    /// // Create a graph from two disjoint triangles.
+    /// let graph = MeshGraph::<E2>::from_raw_buffers(
+    ///     vec![Trigon::new(0u32, 1, 2), Trigon::new(3, 4, 5)],
+    ///     vec![
+    ///         (-2.0, 0.0), (-1.0, 0.0), (-1.0, 1.0),
+    ///         (1.0, 0.0), (2.0, 0.0), (1.0, 1.0),
+    ///     ],
+    /// )
+    /// .unwrap();
+    ///
+    /// // A vertex from each disjoint triangle is returned.
+    /// for vertex in graph.disjoint_subgraph_vertices() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    pub fn disjoint_subgraph_vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
+        let keys = self.as_vertex_storage().keys().collect::<HashSet<_>>();
+        let mut subkeys = HashSet::with_capacity(self.vertex_count());
+        let mut vertices = SmallVec::<[VertexView<_, _>; 4]>::new();
+        while let Some(key) = keys.difference(&subkeys).nth(0) {
+            let vertex = (*key, self).into_view().unwrap();
+            vertices.push(vertex);
+            subkeys.extend(vertex.traverse_by_depth().map(|vertex| vertex.key()));
+        }
+        vertices.into_iter()
+    }
+
     /// Creates a `MeshBuffer` from the graph.
     ///
     /// The buffer is created using the vertex geometry of each unique vertex.
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity that is
-    /// compatible with the index buffer. Typically, a mesh is triangulated
-    /// before being converted to a mesh buffer.
+    /// Returns an error if the graph does not have constant arity that is
+    /// compatible with the index buffer. Typically, a graph is triangulated
+    /// before being converted to a buffer.
     pub fn to_mesh_buffer_by_vertex<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
         G::Vertex: IntoGeometry<H>,
@@ -613,9 +661,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity that is
-    /// compatible with the index buffer. Typically, a mesh is triangulated
-    /// before being converted to a mesh buffer.
+    /// Returns an error if the graph does not have constant arity that is
+    /// compatible with the index buffer. Typically, a graph is triangulated
+    /// before being converted to a buffer.
     pub fn to_mesh_buffer_by_vertex_with<A, N, H, F>(
         &self,
         mut f: F,
@@ -661,9 +709,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity that is
-    /// compatible with the index buffer. Typically, a mesh is triangulated
-    /// before being converted to a mesh buffer.
+    /// Returns an error if the graph does not have constant arity that is
+    /// compatible with the index buffer. Typically, a graph is triangulated
+    /// before being converted to a buffer.
     pub fn to_mesh_buffer_by_face<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
     where
         G::Vertex: IntoGeometry<H>,
@@ -680,9 +728,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the mesh does not have constant arity that is
-    /// compatible with the index buffer. Typically, a mesh is triangulated
-    /// before being converted to a mesh buffer.
+    /// Returns an error if the graph does not have constant arity that is
+    /// compatible with the index buffer. Typically, a graph is triangulated
+    /// before being converted to a buffer.
     pub fn to_mesh_buffer_by_face_with<A, N, H, F>(
         &self,
         mut f: F,
@@ -940,7 +988,7 @@ where
     ///
     /// Returns an error if the arity of the index buffer is not constant, any
     /// index is out of bounds, or there is an error inserting topology into
-    /// the mesh.
+    /// the graph.
     ///
     /// # Examples
     ///
@@ -1114,7 +1162,7 @@ where
 #[cfg(test)]
 mod tests {
     use decorum::N64;
-    use nalgebra::{Point3, Vector3};
+    use nalgebra::{Point2, Point3, Vector3};
     use num::Zero;
     use typenum::U3;
 
@@ -1122,7 +1170,9 @@ mod tests {
     use crate::prelude::*;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
+    use crate::primitive::NGon;
 
+    type E2 = Point2<N64>;
     type E3 = Point3<N64>;
 
     #[test]
@@ -1157,6 +1207,36 @@ mod tests {
     }
 
     #[test]
+    fn isolate_disjoint_subgraphs() {
+        // Construct a graph from a quadrilateral.
+        let graph = MeshGraph::<E2>::from_raw_buffers(
+            vec![NGon([0u32, 1, 2, 3])],
+            vec![(1.0, 0.0), (2.0, 0.0), (2.0, 1.0), (1.0, 1.0)],
+        )
+        .unwrap();
+
+        assert_eq!(1, graph.disjoint_subgraph_vertices().count());
+
+        // Construct a graph with two disjoint quadrilaterals.
+        let graph = MeshGraph::<E2>::from_raw_buffers(
+            vec![NGon([0u32, 1, 2, 3]), NGon([4, 5, 6, 7])],
+            vec![
+                (-2.0, 0.0),
+                (-1.0, 0.0),
+                (-1.0, 1.0),
+                (-2.0, 1.0),
+                (1.0, 0.0),
+                (2.0, 0.0),
+                (2.0, 1.0),
+                (1.0, 1.0),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(2, graph.disjoint_subgraph_vertices().count());
+    }
+
+    #[test]
     fn non_manifold_error_deferred() {
         let graph = UvSphere::new(32, 32)
             .polygons::<Position<E3>>()
@@ -1171,19 +1251,18 @@ mod tests {
 
     #[test]
     fn error_on_non_manifold_mesh() {
-        // Construct a mesh with a "fan" of three triangles sharing the same
+        // Construct a graph with a "fan" of three triangles sharing the same
         // arc along the Z-axis. The edge would have three associated faces,
         // which should not be possible.
-        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers_with_arity(
-            vec![0u32, 1, 2, 0, 1, 3, 0, 1, 4],
+        let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
+            vec![NGon([0u32, 1, 2]), NGon([0, 1, 3]), NGon([0, 1, 4])],
             vec![(0, 0, 1), (0, 0, -1), (1, 0, 0), (0, 1, 0), (1, 1, 0)],
-            3,
         );
 
         assert_eq!(graph.err().unwrap(), GraphError::TopologyConflict);
     }
 
-    // This test is a sanity check for mesh iterators, topological views, and
+    // This test is a sanity check for graph iterators, topological views, and
     // the unsafe transmutations used to coerce lifetimes.
     #[test]
     fn read_write_geometry_ref() {
@@ -1196,8 +1275,8 @@ mod tests {
             type Face = f64;
         }
 
-        // Create a mesh with a floating point value associated with each face.
-        // Use a mutable iterator to write to the geometry of each face.
+        // Create a graph with a floating point value associated with each
+        // face.  Use a mutable iterator to write to the geometry of each face.
         let mut graph = UvSphere::new(4, 4)
             .polygons::<Position<E3>>()
             .collect::<MeshGraph<ValueGeometry>>();

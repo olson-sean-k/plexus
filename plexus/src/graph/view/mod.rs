@@ -1,5 +1,6 @@
 pub mod edge;
 pub mod face;
+mod traversal;
 pub mod vertex;
 
 use either::Either;
@@ -8,6 +9,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::core::Bind;
+use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::payload::Payload;
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::GraphError;
@@ -32,6 +34,23 @@ where
     fn into_view(self) -> Option<U> {
         U::from_keyed_source(self)
     }
+}
+
+/// A contextual view that is bound to a payload.
+///
+/// This trait is implemented by types that expose functionality that is
+/// specific to a particular payload or topology.
+pub trait ViewBinding<M>: From<View<M, <Self as ViewBinding<M>>::Payload>>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Self::Payload>,
+{
+    type Key: OpaqueKey;
+    type Payload: Payload<Key = Self::Key>;
+
+    fn into_inner(self) -> View<M, Self::Payload>;
+
+    fn key(&self) -> Self::Key;
 }
 
 pub struct View<M, T>

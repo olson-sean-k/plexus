@@ -11,6 +11,7 @@
 //! represent the fundemental topology of a graph.
 
 use slotmap::DefaultKey;
+use std::hash::Hash;
 
 pub type InnerKey<K> = <K as OpaqueKey>::Inner;
 
@@ -31,7 +32,7 @@ where
     }
 }
 
-pub trait OpaqueKey: Copy + Sized {
+pub trait OpaqueKey: Copy + Eq + Hash + Sized {
     type Inner: Copy + Sized;
 
     fn from_inner(key: Self::Inner) -> Self;
