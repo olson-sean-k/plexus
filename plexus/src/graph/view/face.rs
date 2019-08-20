@@ -947,7 +947,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding<M> for FaceView<M, G>
+impl<M, G> ViewBinding for FaceView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<FacePayload<G>>,
@@ -1017,6 +1017,18 @@ where
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
         OrphanView::<FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<'a, G> ViewBinding for OrphanFaceView<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = FaceKey;
+    type Payload = FacePayload<G>;
+
+    fn key(&self) -> Self::Key {
+        OrphanFaceView::key(self)
     }
 }
 

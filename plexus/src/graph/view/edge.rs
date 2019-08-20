@@ -943,7 +943,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding<M> for ArcView<M, G>
+impl<M, G> ViewBinding for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -1013,6 +1013,18 @@ where
 {
     fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
         OrphanView::<ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<'a, G> ViewBinding for OrphanArcView<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = ArcPayload<G>;
+
+    fn key(&self) -> Self::Key {
+        OrphanArcView::key(self)
     }
 }
 
@@ -1234,7 +1246,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding<M> for EdgeView<M, G>
+impl<M, G> ViewBinding for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
@@ -1304,6 +1316,18 @@ where
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
         OrphanView::<EdgePayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<'a, G> ViewBinding for OrphanEdgeView<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Payload = EdgePayload<G>;
+
+    fn key(&self) -> Self::Key {
+        OrphanEdgeView::key(self)
     }
 }
 

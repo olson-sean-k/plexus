@@ -6,8 +6,8 @@ use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::AsStorage;
 use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, View, ViewBinding};
 
-pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as ViewBinding<M>>::Key>, T, M>;
-pub type DepthTraversal<T, M> = Traversal<Vec<<T as ViewBinding<M>>::Key>, T, M>;
+pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as ViewBinding>::Key>, T, M>;
+pub type DepthTraversal<T, M> = Traversal<Vec<<T as ViewBinding>::Key>, T, M>;
 
 pub trait Adjacency: Sized {
     type Output: IntoIterator<Item = Self::Key>;
@@ -44,7 +44,7 @@ impl<T> TraversalBuffer<T> for VecDeque<T> {
 pub struct Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: ViewBinding<M>,
+    T: ViewBinding,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -57,7 +57,7 @@ where
 impl<B, T, M> Clone for Traversal<B, T, M>
 where
     B: Clone + TraversalBuffer<T::Key>,
-    T: ViewBinding<M>,
+    T: ViewBinding,
     M: Clone + Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -74,7 +74,7 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Into<View<M, <T as ViewBinding<M>>::Payload>> + ViewBinding<M>,
+    T: Into<View<M, <T as ViewBinding>::Payload>> + ViewBinding,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -98,7 +98,7 @@ where
     T: Adjacency
         + Copy
         + FromKeyedSource<(<T as Adjacency>::Key, &'a M)>
-        + ViewBinding<&'a M, Key = <T as Adjacency>::Key>,
+        + ViewBinding<Key = <T as Adjacency>::Key>,
     M: 'a + AsStorage<T::Payload>,
 {
     type Item = T;

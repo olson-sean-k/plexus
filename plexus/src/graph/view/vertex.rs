@@ -524,7 +524,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding<M> for VertexView<M, G>
+impl<M, G> ViewBinding for VertexView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
@@ -604,9 +604,8 @@ where
     }
 }
 
-impl<'a, M, G> ViewBinding<&'a mut M> for OrphanVertexView<'a, G>
+impl<'a, G> ViewBinding for OrphanVertexView<'a, G>
 where
-    M: AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
     type Key = VertexKey;
