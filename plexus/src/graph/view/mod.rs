@@ -36,10 +36,9 @@ where
     }
 }
 
-/// A contextual view that is bound to a payload.
-///
-/// This trait is implemented by types that expose functionality that is
-/// specific to a particular payload or topology.
+// TODO: Is there a better name for this? This trait should be implemented by
+//       view types that are bound to a particular payload such as `FaceView`.
+//       It is re-exported as `View` in the public API.
 pub trait ViewBinding: Deref<Target = <Self as ViewBinding>::Payload> {
     type Key: OpaqueKey;
     type Payload: Payload<Key = Self::Key>;

@@ -22,6 +22,9 @@ pub mod index;
 pub mod primitive;
 
 pub use theon::{AsPosition, Position};
+pub use typenum::{U2, U3, U4};
+
+use crate::graph::ViewBinding;
 
 pub mod prelude {
     //! Re-exports commonly used types and traits.
@@ -65,8 +68,6 @@ pub mod prelude {
     pub use Selector::ByIndex;
     pub use Selector::ByKey;
 }
-
-pub use typenum::{U2, U3, U4};
 
 pub enum Arity {
     Uniform(usize),
@@ -138,20 +139,59 @@ pub trait IteratorExt: Iterator + Sized {
     /// yeilds the ordered items $\\{(a, b), (b, c), (c, a)\\}$.
     fn perimeter(self) -> Perimeter<Self>
     where
-        Self::Item: Clone;
-}
-
-impl<I> IteratorExt for I
-where
-    I: Iterator,
-{
-    fn perimeter(self) -> Perimeter<I>
-    where
-        I::Item: Clone,
+        Self::Item: Clone,
     {
         Perimeter::new(self)
     }
+
+    /// Maps an iterator over topological views to the keys of those views.
+    ///
+    /// It is often useful to examine or collect the keys of views over a
+    /// `MeshGraph`. This iterator avoids redundant use of `map` to extract
+    /// keys.
+    ///
+    /// # Examples
+    ///
+    /// Collecting keys of faces before a topological mutation:
+    ///
+    /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::R64;
+    /// use nalgebra::Point3;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::generate::Position;
+    /// use plexus::primitive::sphere::UvSphere;
+    ///
+    /// type E3 = Point3<R64>;
+    ///
+    /// # fn main() {
+    /// let mut graph = UvSphere::new(6, 6)
+    ///     .polygons::<Position<E3>>()
+    ///     .collect::<MeshGraph<E3>>();
+    ///
+    /// let keys = graph
+    ///     .faces()
+    ///     .filter(|face| face.arity() > 3)
+    ///     .keys()
+    ///     .collect::<Vec<_>>();
+    /// for key in keys {
+    ///     graph.face_mut(key).unwrap().poke_with_offset(0.5);
+    /// }
+    /// # }
+    /// ```
+    fn keys(self) -> Keys<Self>
+    where
+        Self::Item: ViewBinding,
+    {
+        Keys::new(self)
+    }
 }
+
+impl<I> IteratorExt for I where I: Iterator {}
 
 /// Iterator that produces a window of duplets over its input.
 ///
@@ -201,6 +241,40 @@ where
             }
             _ => None,
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.input.size_hint()
+    }
+}
+
+pub struct Keys<I>
+where
+    I: Iterator,
+    I::Item: ViewBinding,
+{
+    input: I,
+}
+
+impl<I> Keys<I>
+where
+    I: Iterator,
+    I::Item: ViewBinding,
+{
+    fn new(input: I) -> Self {
+        Keys { input }
+    }
+}
+
+impl<I> Iterator for Keys<I>
+where
+    I: Iterator,
+    I::Item: ViewBinding,
+{
+    type Item = <I::Item as ViewBinding>::Key;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.input.next().map(|view| view.key())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

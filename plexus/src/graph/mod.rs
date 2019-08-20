@@ -208,6 +208,7 @@ pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, V
 pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
 pub use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
+pub use crate::graph::view::ViewBinding;
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
