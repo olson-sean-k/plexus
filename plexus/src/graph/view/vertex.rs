@@ -44,8 +44,7 @@ where
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, VertexPayload<G>> {
-        let VertexView { inner, .. } = self;
-        inner
+        self.into()
     }
 
     fn interior_reborrow(&self) -> VertexView<&M::Target, G> {
@@ -513,6 +512,18 @@ where
     }
 }
 
+impl<M, G> Into<View<M, VertexPayload<G>>> for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<VertexPayload<G>>,
+    G: GraphGeometry,
+{
+    fn into(self) -> View<M, VertexPayload<G>> {
+        let VertexView { inner, .. } = self;
+        inner
+    }
+}
+
 impl<M, G> ViewBinding<M> for VertexView<M, G>
 where
     M: Reborrow,
@@ -522,12 +533,8 @@ where
     type Key = VertexKey;
     type Payload = VertexPayload<G>;
 
-    fn into_inner(self) -> View<M, Self::Payload> {
-        VertexView::<_, _>::into_inner(self)
-    }
-
     fn key(&self) -> Self::Key {
-        VertexView::<_, _>::key(self)
+        VertexView::key(self)
     }
 }
 
@@ -594,6 +601,19 @@ where
 {
     fn from_keyed_source(source: (VertexKey, &'a mut M)) -> Option<Self> {
         OrphanView::<VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<'a, M, G> ViewBinding<&'a mut M> for OrphanVertexView<'a, G>
+where
+    M: AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
+    G: 'a + GraphGeometry,
+{
+    type Key = VertexKey;
+    type Payload = VertexPayload<G>;
+
+    fn key(&self) -> Self::Key {
+        OrphanVertexView::key(self)
     }
 }
 

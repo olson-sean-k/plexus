@@ -40,15 +40,13 @@ where
 ///
 /// This trait is implemented by types that expose functionality that is
 /// specific to a particular payload or topology.
-pub trait ViewBinding<M>: From<View<M, <Self as ViewBinding<M>>::Payload>>
+pub trait ViewBinding<M>: Deref<Target = <Self as ViewBinding<M>>::Payload>
 where
     M: Reborrow,
     M::Target: AsStorage<Self::Payload>,
 {
     type Key: OpaqueKey;
     type Payload: Payload<Key = Self::Key>;
-
-    fn into_inner(self) -> View<M, Self::Payload>;
 
     fn key(&self) -> Self::Key;
 }

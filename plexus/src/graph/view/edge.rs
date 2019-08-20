@@ -85,8 +85,7 @@ where
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, ArcPayload<G>> {
-        let ArcView { inner, .. } = self;
-        inner
+        self.into()
     }
 
     fn interior_reborrow(&self) -> ArcView<&M::Target, G> {
@@ -932,6 +931,18 @@ where
     }
 }
 
+impl<M, G> Into<View<M, ArcPayload<G>>> for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>,
+    G: GraphGeometry,
+{
+    fn into(self) -> View<M, ArcPayload<G>> {
+        let ArcView { inner, .. } = self;
+        inner
+    }
+}
+
 impl<M, G> ViewBinding<M> for ArcView<M, G>
 where
     M: Reborrow,
@@ -941,12 +952,8 @@ where
     type Key = ArcKey;
     type Payload = ArcPayload<G>;
 
-    fn into_inner(self) -> View<M, Self::Payload> {
-        ArcView::<_, _>::into_inner(self)
-    }
-
     fn key(&self) -> Self::Key {
-        ArcView::<_, _>::key(self)
+        ArcView::key(self)
     }
 }
 
@@ -1034,8 +1041,7 @@ where
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, EdgePayload<G>> {
-        let EdgeView { inner, .. } = self;
-        inner
+        self.into()
     }
 
     fn interior_reborrow(&self) -> EdgeView<&M::Target, G> {
@@ -1216,6 +1222,18 @@ where
     }
 }
 
+impl<M, G> Into<View<M, EdgePayload<G>>> for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<EdgePayload<G>>,
+    G: GraphGeometry,
+{
+    fn into(self) -> View<M, EdgePayload<G>> {
+        let EdgeView { inner, .. } = self;
+        inner
+    }
+}
+
 impl<M, G> ViewBinding<M> for EdgeView<M, G>
 where
     M: Reborrow,
@@ -1225,12 +1243,8 @@ where
     type Key = EdgeKey;
     type Payload = EdgePayload<G>;
 
-    fn into_inner(self) -> View<M, Self::Payload> {
-        EdgeView::<_, _>::into_inner(self)
-    }
-
     fn key(&self) -> Self::Key {
-        EdgeView::<_, _>::key(self)
+        EdgeView::key(self)
     }
 }
 

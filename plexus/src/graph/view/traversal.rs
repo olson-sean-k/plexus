@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::AsStorage;
-use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, ViewBinding};
+use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, View, ViewBinding};
 
 pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as ViewBinding<M>>::Key>, T, M>;
 pub type DepthTraversal<T, M> = Traversal<Vec<<T as ViewBinding<M>>::Key>, T, M>;
@@ -74,12 +74,12 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: ViewBinding<M>,
+    T: Into<View<M, <T as ViewBinding<M>>::Payload>> + ViewBinding<M>,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
     fn from(view: T) -> Self {
-        let (key, storage) = view.into_inner().into_keyed_source();
+        let (key, storage) = view.into().into_keyed_source();
         let capacity = storage.reborrow().as_storage().len();
         let mut buffer = B::default();
         buffer.push(key);

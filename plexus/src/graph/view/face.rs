@@ -132,8 +132,7 @@ where
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, FacePayload<G>> {
-        let FaceView { inner, .. } = self;
-        inner
+        self.into()
     }
 
     fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
@@ -925,6 +924,18 @@ where
     }
 }
 
+impl<M, G> Into<View<M, FacePayload<G>>> for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<FacePayload<G>>,
+    G: GraphGeometry,
+{
+    fn into(self) -> View<M, FacePayload<G>> {
+        let FaceView { inner, .. } = self;
+        inner
+    }
+}
+
 impl<M, G> Ring<M, G> for FaceView<M, G>
 where
     M: Reborrow,
@@ -945,12 +956,8 @@ where
     type Key = FaceKey;
     type Payload = FacePayload<G>;
 
-    fn into_inner(self) -> View<M, Self::Payload> {
-        FaceView::<_, _>::into_inner(self)
-    }
-
     fn key(&self) -> Self::Key {
-        FaceView::<_, _>::key(self)
+        FaceView::key(self)
     }
 }
 
@@ -1042,8 +1049,7 @@ where
     G: GraphGeometry,
 {
     fn into_inner(self) -> View<M, ArcPayload<G>> {
-        let RingView { inner, .. } = self;
-        inner
+        self.into()
     }
 
     /// Gets the arity of the ring. This is the number of arcs that form the
@@ -1228,6 +1234,18 @@ where
 {
     fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
         View::<_, ArcPayload<_>>::from_keyed_source(source).map(|view| view.into())
+    }
+}
+
+impl<M, G> Into<View<M, ArcPayload<G>>> for RingView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn into(self) -> View<M, ArcPayload<G>> {
+        let RingView { inner, .. } = self;
+        inner
     }
 }
 
