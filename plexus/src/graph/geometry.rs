@@ -65,12 +65,13 @@ use theon::space::{EuclideanSpace, InnerSpace, Vector, VectorSpace};
 use theon::{AsPosition, FromItems, Position};
 
 use crate::graph::borrow::Reborrow;
+use crate::graph::mutation::Consistent;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, EdgeView};
 use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::GraphError;
+use crate::graph::{GraphError, OptionExt};
 
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 
@@ -169,7 +170,7 @@ pub trait VertexCentroid: GraphGeometry {
     fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
 }
 
 impl<G> VertexCentroid for G
@@ -183,12 +184,11 @@ where
     fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
         VertexPosition::<G>::centroid(
             vertex
-                .reachable_incoming_arcs()
-                .flat_map(|arc| arc.into_reachable_source_vertex())
+                .neighboring_vertices()
                 .map(|vertex| *vertex.geometry.as_position()),
         )
         .ok_or_else(|| GraphError::TopologyNotFound)
@@ -201,7 +201,8 @@ pub trait VertexNormal: FaceNormal + GraphGeometry {
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+            + AsStorage<VertexPayload<Self>>
+            + Consistent;
 }
 
 impl<G> VertexNormal for G
@@ -215,11 +216,12 @@ where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
+            + AsStorage<VertexPayload<Self>>
+            + Consistent,
     {
         Vector::<VertexPosition<G>>::mean(
             vertex
-                .reachable_neighboring_faces()
+                .neighboring_faces()
                 .map(G::normal)
                 .collect::<Result<Vec<_>, _>>()?,
         )
@@ -235,7 +237,7 @@ pub trait ArcNormal: GraphGeometry {
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
 }
 
 impl<G> ArcNormal for G
@@ -250,17 +252,11 @@ where
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
-        let (a, b) =
-            FromItems::from_items(arc.reachable_vertices().map(|vertex| *vertex.position()))
-                .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let c = *arc
-            .reachable_next_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .position();
+        let (a, b) = FromItems::from_items(arc.vertices().map(|vertex| *vertex.position()))
+            .expect_consistent();
+        let c = *arc.next_arc().destination_vertex().position();
         let ab = a - b;
         let cb = c - b;
         let p = b + ab.project(cb);
@@ -276,7 +272,8 @@ pub trait EdgeMidpoint: GraphGeometry {
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<EdgePayload<Self>>
-            + AsStorage<VertexPayload<Self>>;
+            + AsStorage<VertexPayload<Self>>
+            + Consistent;
 }
 
 impl<G> EdgeMidpoint for G
@@ -292,14 +289,11 @@ where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<EdgePayload<Self>>
-            + AsStorage<VertexPayload<Self>>,
+            + AsStorage<VertexPayload<Self>>
+            + Consistent,
     {
-        let arc = edge
-            .reachable_arc()
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
         let (a, b) =
-            FromItems::from_items(arc.reachable_vertices().map(|vertex| *vertex.position()))
-                .ok_or_else(|| GraphError::TopologyNotFound)?;
+            FromItems::from_items(edge.arc().vertices().map(|vertex| *vertex.position())).unwrap();
         Ok(a.midpoint(b))
     }
 }
@@ -311,7 +305,7 @@ pub trait FaceCentroid: GraphGeometry {
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
 }
 
 impl<G> FaceCentroid for G
@@ -326,10 +320,12 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
-        VertexPosition::<G>::centroid(ring.reachable_vertices().map(|vertex| *vertex.position()))
-            .ok_or_else(|| GraphError::TopologyNotFound)
+        Ok(
+            VertexPosition::<G>::centroid(ring.vertices().map(|vertex| *vertex.position()))
+                .expect_consistent(),
+        )
     }
 }
 
@@ -340,7 +336,7 @@ pub trait FaceNormal: GraphGeometry {
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
 }
 
 impl<G> FaceNormal for G
@@ -356,14 +352,11 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
-        let (a, b) = FromItems::from_items(
-            ring.reachable_vertices()
-                .take(2)
-                .map(|vertex| *vertex.position()),
-        )
-        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let (a, b) =
+            FromItems::from_items(ring.vertices().take(2).map(|vertex| *vertex.position()))
+                .expect_consistent();
         let c = G::centroid(ring)?;
         let ab = a - b;
         let bc = b - c;
@@ -378,7 +371,7 @@ pub trait FacePlane: GraphGeometry {
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>;
+        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
 }
 
 // TODO: The `array` feature only supports Linux. See
@@ -408,10 +401,10 @@ mod array {
         where
             R: Ring<M, Self>,
             M: Reborrow,
-            M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>>,
+            M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
         {
             let points = ring
-                .reachable_vertices()
+                .vertices()
                 .map(|vertex| *vertex.geometry.as_position())
                 .collect::<SmallVec<[_; 4]>>();
             Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
