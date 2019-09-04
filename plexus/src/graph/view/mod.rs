@@ -1,6 +1,6 @@
 pub mod edge;
 pub mod face;
-mod traversal;
+mod traverse;
 pub mod vertex;
 
 use either::Either;
@@ -36,10 +36,9 @@ where
     }
 }
 
-// TODO: Is there a better name for this? This trait should be implemented by
-//       view types that are bound to a particular payload such as `FaceView`.
-//       It is re-exported as `View` in the public API.
-pub trait ViewBinding: Deref<Target = <Self as ViewBinding>::Payload> {
+pub trait PayloadBinding: Deref<Target = <Self as PayloadBinding>::Payload> {
+    // This associated type is redundant, but avoids re-exporting the
+    // `Payload` trait and simplifies the use of this trait.
     type Key: OpaqueKey;
     type Payload: Payload<Key = Self::Key>;
 
@@ -234,6 +233,20 @@ where
     }
 }
 
+impl<M, T> PayloadBinding for View<M, T>
+where
+    M: Reborrow,
+    M::Target: AsStorage<T>,
+    T: Payload,
+{
+    type Key = <T as Payload>::Key;
+    type Payload = T;
+
+    fn key(&self) -> Self::Key {
+        View::key(self)
+    }
+}
+
 pub struct OrphanView<'a, T>
 where
     T: Payload,
@@ -287,5 +300,17 @@ where
             .as_storage_mut()
             .get_mut(&key)
             .map(|payload| OrphanView { key, payload })
+    }
+}
+
+impl<'a, T> PayloadBinding for OrphanView<'a, T>
+where
+    T: 'a + Payload,
+{
+    type Key = <T as Payload>::Key;
+    type Payload = T;
+
+    fn key(&self) -> Self::Key {
+        OrphanView::key(self)
     }
 }

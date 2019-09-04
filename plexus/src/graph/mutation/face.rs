@@ -300,9 +300,8 @@ where
         let mut outgoing = HashMap::with_capacity(arity);
         for vertex in vertices {
             let key = vertex.key();
-            let connectivity = vertex.reachable_connectivity();
-            incoming.insert(key, connectivity.0);
-            outgoing.insert(key, connectivity.1);
+            incoming.insert(key, vertex.reachable_incoming_arcs().keys().collect());
+            outgoing.insert(key, vertex.reachable_outgoing_arcs().keys().collect());
         }
         Ok(FaceInsertCache {
             vertices: keys,
@@ -487,14 +486,8 @@ where
             return Err(GraphError::ArityNonUniform);
         }
         Ok(FaceBridgeCache {
-            source: source
-                .reachable_interior_arcs()
-                .map(|arc| arc.key())
-                .collect(),
-            destination: destination
-                .reachable_interior_arcs()
-                .map(|arc| arc.key())
-                .collect(),
+            source: source.interior_arcs().map(|arc| arc.key()).collect(),
+            destination: destination.interior_arcs().map(|arc| arc.key()).collect(),
             cache,
         })
     }

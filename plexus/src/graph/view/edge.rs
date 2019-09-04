@@ -19,7 +19,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View, ViewBinding,
+    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
@@ -441,20 +441,6 @@ where
     }
 }
 
-/// Reachable API.
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_vertices(
-        &self,
-    ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        VertexCirculator::from(self.interior_reborrow())
-    }
-}
-
 impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
@@ -463,22 +449,7 @@ where
 {
     /// Gets an iterator of views over the vertices connected by the arc.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        self.reachable_vertices()
-    }
-}
-
-/// Reachable API.
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target:
-        AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_orphan_vertices(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanVertexView<G>> {
-        VertexCirculator::from(self.interior_reborrow_mut())
+        VertexCirculator::from(self.interior_reborrow())
     }
 }
 
@@ -494,21 +465,7 @@ where
     /// Gets an iterator of orphan views over the vertices connected by the
     /// arc.
     pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
-        self.reachable_orphan_vertices()
-    }
-}
-
-/// Reachable API.
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_faces(
-        &self,
-    ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(self.interior_reborrow())
+        VertexCirculator::from(self.interior_reborrow_mut())
     }
 }
 
@@ -520,21 +477,7 @@ where
 {
     /// Gets an iterator of views over the faces connected to the arc.
     pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        self.reachable_faces()
-    }
-}
-
-/// Reachable API.
-impl<M, G> ArcView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_orphan_faces(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanFaceView<G>> {
-        FaceCirculator::from(self.interior_reborrow_mut())
+        FaceCirculator::from(self.interior_reborrow())
     }
 }
 
@@ -549,7 +492,7 @@ where
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
     pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        self.reachable_orphan_faces()
+        FaceCirculator::from(self.interior_reborrow_mut())
     }
 }
 
@@ -764,7 +707,7 @@ where
     ) -> Result<FaceView<&'a mut M, G>, GraphError> {
         let destination = destination.key_or_else(|index| {
             self.ring()
-                .arcs()
+                .interior_arcs()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
@@ -943,7 +886,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding for ArcView<M, G>
+impl<M, G> PayloadBinding for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
@@ -1016,7 +959,7 @@ where
     }
 }
 
-impl<'a, G> ViewBinding for OrphanArcView<'a, G>
+impl<'a, G> PayloadBinding for OrphanArcView<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -1246,7 +1189,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding for EdgeView<M, G>
+impl<M, G> PayloadBinding for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<EdgePayload<G>>,
@@ -1319,7 +1262,7 @@ where
     }
 }
 
-impl<'a, G> ViewBinding for OrphanEdgeView<'a, G>
+impl<'a, G> PayloadBinding for OrphanEdgeView<'a, G>
 where
     G: 'a + GraphGeometry,
 {

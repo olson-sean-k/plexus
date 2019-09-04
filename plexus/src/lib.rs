@@ -24,7 +24,7 @@ pub mod primitive;
 pub use theon::{AsPosition, Position};
 pub use typenum::{U2, U3, U4};
 
-use crate::graph::ViewBinding;
+use crate::graph::PayloadBinding;
 
 pub mod prelude {
     //! Re-exports commonly used types and traits.
@@ -185,7 +185,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     fn keys(self) -> Keys<Self>
     where
-        Self::Item: ViewBinding,
+        Self::Item: PayloadBinding,
     {
         Keys::new(self)
     }
@@ -251,7 +251,7 @@ where
 pub struct Keys<I>
 where
     I: Iterator,
-    I::Item: ViewBinding,
+    I::Item: PayloadBinding,
 {
     input: I,
 }
@@ -259,7 +259,7 @@ where
 impl<I> Keys<I>
 where
     I: Iterator,
-    I::Item: ViewBinding,
+    I::Item: PayloadBinding,
 {
     fn new(input: I) -> Self {
         Keys { input }
@@ -269,9 +269,9 @@ where
 impl<I> Iterator for Keys<I>
 where
     I: Iterator,
-    I::Item: ViewBinding,
+    I::Item: PayloadBinding,
 {
-    type Item = <I::Item as ViewBinding>::Key;
+    type Item = <I::Item as PayloadBinding>::Key;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|view| view.key())

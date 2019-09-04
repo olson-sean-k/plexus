@@ -15,9 +15,11 @@ use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, Verte
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcView, OrphanArcView};
 use crate::graph::view::face::{FaceView, OrphanFaceView};
-use crate::graph::view::traversal::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::graph::view::traverse::{
+    Adjacency, BreadthTraversal, DepthTraversal, TraceAny, TraceFirst, TraversalTrace,
+};
 use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, View, ViewBinding,
+    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
@@ -167,29 +169,19 @@ where
             .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
     }
 
-    pub(in crate::graph) fn reachable_neighboring_vertices(
-        &self,
-    ) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow()))
-    }
-
     pub(in crate::graph) fn reachable_incoming_arcs(
         &self,
     ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        // This reachable circulator is needed for face insertions.
         ArcCirculator::from(self.interior_reborrow())
     }
 
-    // TODO: Should this be exposed as part of the public (consistent) API?
-    pub(in crate::graph) fn reachable_connectivity(&self) -> (Vec<ArcKey>, Vec<ArcKey>) {
-        (
-            self.reachable_incoming_arcs()
-                .map(|arc| arc.key())
-                .collect(),
-            self.reachable_incoming_arcs()
-                .flat_map(|arc| arc.into_reachable_opposite_arc())
-                .map(|arc| arc.key())
-                .collect(),
-        )
+    pub(in crate::graph) fn reachable_outgoing_arcs(
+        &self,
+    ) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        // This reachable circulator is needed for face insertions.
+        self.reachable_incoming_arcs()
+            .flat_map(|arc| arc.into_reachable_opposite_arc())
     }
 }
 
@@ -209,16 +201,32 @@ where
         self.reachable_outgoing_arc().expect_consistent()
     }
 
+    /// Gets an iterator that traverses the vertices of the graph in
+    /// breadth-first order beginning with the vertex on which this function is
+    /// called.
+    ///
+    /// The traversal moves from the vertex to its neighboring vertices and so
+    /// on. If there are disjoint subgraphs in the graph, then a traversal will
+    /// not reach every vertex in the graph.
     pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         BreadthTraversal::from(self.interior_reborrow())
     }
 
+    /// Gets an iterator that traverses the vertices of the graph in
+    /// depth-first order beginning with the vertex on which this function is
+    /// called.
+    ///
+    /// The traversal moves from the vertex to its neighboring vertices and so
+    /// on. If there are disjoint subgraphs in the graph, then a traversal will
+    /// not reach every vertex in the graph.
     pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         DepthTraversal::from(self.interior_reborrow())
     }
 
     pub fn neighboring_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        self.reachable_neighboring_vertices()
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
+            self.interior_reborrow(),
+        ))
     }
 
     /// Gets an iterator of views over the incoming arcs of the vertex.
@@ -226,7 +234,16 @@ where
     /// The ordering of arcs is deterministic and is based on the leading arc
     /// of the vertex.
     pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        self.reachable_incoming_arcs()
+        ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow())
+    }
+
+    /// Gets an iterator of views over the outgoing arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc
+    /// of the vertex.
+    pub fn outgoing_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
+        ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow())
+            .map(|arc| arc.into_opposite_arc())
     }
 
     pub fn centroid(&self) -> G::Centroid
@@ -234,21 +251,6 @@ where
         G: VertexCentroid,
     {
         G::centroid(self.interior_reborrow()).expect_consistent()
-    }
-}
-
-/// Reachable API.
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target:
-        AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_neighboring_orphan_vertices(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanVertexView<G>> {
-        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 }
 
@@ -262,21 +264,9 @@ where
     G: GraphGeometry,
 {
     pub fn neighboring_orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
-        self.reachable_neighboring_orphan_vertices()
-    }
-}
-
-/// Reachable API.
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_incoming_orphan_arcs(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanArcView<G>> {
-        ArcCirculator::from(self.interior_reborrow_mut())
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
+            self.interior_reborrow_mut(),
+        ))
     }
 }
 
@@ -294,21 +284,7 @@ where
     /// The ordering of arcs is deterministic and is based on the leading arc
     /// of the vertex.
     pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
-        self.reachable_incoming_orphan_arcs()
-    }
-}
-
-/// Reachable API.
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_neighboring_faces(
-        &self,
-    ) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow()))
+        ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow_mut())
     }
 }
 
@@ -326,7 +302,9 @@ where
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        self.reachable_neighboring_faces()
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
+            self.interior_reborrow(),
+        ))
     }
 
     pub fn normal(&self) -> Result<G::Normal, GraphError>
@@ -334,23 +312,6 @@ where
         G: VertexNormal,
     {
         <G as VertexNormal>::normal(self.interior_reborrow())
-    }
-}
-
-/// Reachable API.
-impl<M, G> VertexView<M, G>
-where
-    M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorageMut<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>,
-    G: GraphGeometry,
-{
-    pub(in crate::graph) fn reachable_neighboring_orphan_faces(
-        &mut self,
-    ) -> impl Iterator<Item = OrphanFaceView<G>> {
-        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 }
 
@@ -370,7 +331,9 @@ where
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
     pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
-        self.reachable_neighboring_orphan_faces()
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
+            self.interior_reborrow_mut(),
+        ))
     }
 }
 
@@ -434,7 +397,6 @@ where
     G: GraphGeometry,
 {
     type Output = SmallVec<[Self::Key; 8]>;
-    type Key = VertexKey;
 
     fn adjacency(&self) -> Self::Output {
         self.neighboring_vertices()
@@ -524,7 +486,7 @@ where
     }
 }
 
-impl<M, G> ViewBinding for VertexView<M, G>
+impl<M, G> PayloadBinding for VertexView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<VertexPayload<G>>,
@@ -604,7 +566,7 @@ where
     }
 }
 
-impl<'a, G> ViewBinding for OrphanVertexView<'a, G>
+impl<'a, G> PayloadBinding for OrphanVertexView<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -616,17 +578,19 @@ where
     }
 }
 
-pub struct VertexCirculator<M, G>
+pub struct VertexCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
 {
-    input: ArcCirculator<M, G>,
+    input: ArcCirculator<P, M, G>,
 }
 
-impl<M, G> VertexCirculator<M, G>
+impl<P, M, G> VertexCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -639,8 +603,9 @@ where
     }
 }
 
-impl<M, G> Clone for VertexCirculator<M, G>
+impl<P, M, G> Clone for VertexCirculator<P, M, G>
 where
+    P: Clone + TraversalTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -652,19 +617,21 @@ where
     }
 }
 
-impl<M, G> From<ArcCirculator<M, G>> for VertexCirculator<M, G>
+impl<P, M, G> From<ArcCirculator<P, M, G>> for VertexCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
 {
-    fn from(input: ArcCirculator<M, G>) -> Self {
+    fn from(input: ArcCirculator<P, M, G>) -> Self {
         VertexCirculator { input }
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
+impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a M, G>
 where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -675,8 +642,9 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
+impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a mut M, G>
 where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -695,26 +663,36 @@ where
     }
 }
 
-pub struct ArcCirculator<M, G>
+pub struct ArcCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
 {
     storage: M,
     outgoing: Option<ArcKey>,
-    breadcrumb: Option<ArcKey>,
+    trace: P,
     phantom: PhantomData<G>,
 }
 
-impl<M, G> ArcCirculator<M, G>
+impl<P, M, G> ArcCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
+            .and_then(|outgoing| {
+                if self.trace.visit(outgoing).unwrap() {
+                    None
+                }
+                else {
+                    Some(outgoing)
+                }
+            })
             .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage
@@ -724,22 +702,16 @@ where
                     .map(|incoming| incoming.next)
                     .map(|outgoing| (incoming, outgoing))
             })
-            .and_then(|(incoming, outgoing)| {
-                self.breadcrumb.map(|_| {
-                    if self.breadcrumb == outgoing {
-                        self.breadcrumb = None;
-                    }
-                    else {
-                        self.outgoing = outgoing;
-                    }
-                    incoming
-                })
+            .map(|(incoming, outgoing)| {
+                self.outgoing = outgoing;
+                incoming
             })
     }
 }
 
-impl<M, G> Clone for ArcCirculator<M, G>
+impl<P, M, G> Clone for ArcCirculator<P, M, G>
 where
+    P: Clone + TraversalTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
@@ -748,13 +720,13 @@ where
         ArcCirculator {
             storage: self.storage.clone(),
             outgoing: self.outgoing,
-            breadcrumb: self.breadcrumb,
+            trace: self.trace.clone(),
             phantom: PhantomData,
         }
     }
 }
 
-impl<M, G> From<VertexView<M, G>> for ArcCirculator<M, G>
+impl<M, G> From<VertexView<M, G>> for ArcCirculator<TraceAny<ArcKey>, M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
@@ -767,14 +739,34 @@ where
         ArcCirculator {
             storage,
             outgoing: key,
-            breadcrumb: key,
+            trace: Default::default(),
             phantom: PhantomData,
         }
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<&'a M, G>
+impl<M, G> From<VertexView<M, G>> for ArcCirculator<TraceFirst<ArcKey>, M, G>
 where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn from(vertex: VertexView<M, G>) -> Self {
+        let inner = vertex.into_inner();
+        let key = inner.arc;
+        let (_, storage) = inner.into_keyed_source();
+        ArcCirculator {
+            storage,
+            outgoing: key,
+            trace: Default::default(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a M, G>
+where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -785,8 +777,9 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<&'a mut M, G>
+impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a mut M, G>
 where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -805,17 +798,19 @@ where
     }
 }
 
-pub struct FaceCirculator<M, G>
+pub struct FaceCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
 {
-    input: ArcCirculator<M, G>,
+    input: ArcCirculator<P, M, G>,
 }
 
-impl<M, G> FaceCirculator<M, G>
+impl<P, M, G> FaceCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -842,8 +837,9 @@ where
     }
 }
 
-impl<M, G> Clone for FaceCirculator<M, G>
+impl<P, M, G> Clone for FaceCirculator<P, M, G>
 where
+    P: Clone + TraversalTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -855,19 +851,21 @@ where
     }
 }
 
-impl<M, G> From<ArcCirculator<M, G>> for FaceCirculator<M, G>
+impl<P, M, G> From<ArcCirculator<P, M, G>> for FaceCirculator<P, M, G>
 where
+    P: TraversalTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
 {
-    fn from(input: ArcCirculator<M, G>) -> Self {
+    fn from(input: ArcCirculator<P, M, G>) -> Self {
         FaceCirculator { input }
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<&'a M, G>
+impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a M, G>
 where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -878,8 +876,9 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
+impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a mut M, G>
 where
+    P: 'a + TraversalTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {
