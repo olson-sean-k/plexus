@@ -42,24 +42,19 @@ use Selector::ByIndex;
 pub trait Ring<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
     fn vertices(&self) -> VertexCirculator<&M::Target, G>
     where
-        M::Target: AsStorage<VertexPayload<G>> + Consistent,
+        M::Target: AsStorage<VertexPayload<G>>,
     {
         self.interior_arcs().into()
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>
-    where
-        M::Target: Consistent;
+    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>;
 
-    fn arity(&self) -> usize
-    where
-        M::Target: Consistent,
-    {
+    fn arity(&self) -> usize {
         self.interior_arcs().count()
     }
 
@@ -69,7 +64,7 @@ where
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError>
     where
-        M::Target: AsStorage<VertexPayload<G>> + Consistent,
+        M::Target: AsStorage<VertexPayload<G>>,
     {
         let arity = self.arity();
         let select = |selector: Selector<_>| {
@@ -862,13 +857,10 @@ where
 impl<M, G> Ring<M, G> for FaceView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>
-    where
-        M::Target: Consistent,
-    {
+    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
 }
@@ -1193,10 +1185,7 @@ where
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>
-    where
-        M::Target: Consistent,
-    {
+    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
 }
