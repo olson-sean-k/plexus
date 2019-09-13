@@ -205,7 +205,9 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-pub use crate::graph::view::edge::{ArcView, EdgeView, OrphanArcView, OrphanEdgeView};
+pub use crate::graph::view::edge::{
+    ArcView, CompositeEdge, EdgeView, OrphanArcView, OrphanEdgeView,
+};
 pub use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
 pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
 pub use crate::graph::view::PayloadBinding;

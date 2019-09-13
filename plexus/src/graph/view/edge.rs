@@ -23,6 +23,17 @@ use crate::graph::view::{
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
+pub trait CompositeEdge<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn into_arc(self) -> ArcView<M, G>;
+
+    fn into_edge(self) -> EdgeView<M, G>;
+}
+
 /// View of an arc.
 ///
 /// Provides traversals, queries, and mutations related to arcs in a graph. See
@@ -499,10 +510,7 @@ where
 impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>>
-        + AsStorage<FacePayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + Consistent,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: ArcNormal,
 {
     pub fn normal(&self) -> G::Normal
@@ -510,6 +518,23 @@ where
         G: GraphGeometry,
     {
         G::normal(self.interior_reborrow()).expect_consistent()
+    }
+}
+
+impl<M, G> ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>>
+        + AsStorage<EdgePayload<G>>
+        + AsStorage<VertexPayload<G>>
+        + Consistent,
+    G: GraphGeometry,
+{
+    pub fn midpoint(&self) -> G::Midpoint
+    where
+        G: EdgeMidpoint,
+    {
+        G::midpoint(self.interior_reborrow()).expect_consistent()
     }
 }
 
@@ -616,7 +641,7 @@ where
         G::Vertex: AsPosition,
     {
         let mut geometry = self.source_vertex().geometry;
-        let midpoint = self.edge().midpoint();
+        let midpoint = self.midpoint();
         self.split_with(move || {
             *geometry.as_position_mut() = midpoint;
             geometry
@@ -816,6 +841,21 @@ where
         ArcView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<M, G> CompositeEdge<M, G> for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn into_arc(self) -> ArcView<M, G> {
+        self
+    }
+
+    fn into_edge(self) -> EdgeView<M, G> {
+        self.into_edge()
     }
 }
 
@@ -1095,7 +1135,6 @@ where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>
         + AsStorage<EdgePayload<G>>
-        + AsStorage<FacePayload<G>>
         + AsStorage<VertexPayload<G>>
         + Consistent,
     G: GraphGeometry,
@@ -1119,6 +1158,21 @@ where
         EdgeView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<M, G> CompositeEdge<M, G> for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<EdgePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn into_arc(self) -> ArcView<M, G> {
+        self.into_arc()
+    }
+
+    fn into_edge(self) -> EdgeView<M, G> {
+        self
     }
 }
 

@@ -68,7 +68,7 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::mutation::Consistent;
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::AsStorage;
-use crate::graph::view::edge::{ArcView, EdgeView};
+use crate::graph::view::edge::{ArcView, CompositeEdge};
 use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::{GraphError, OptionExt};
@@ -267,8 +267,9 @@ where
 pub trait EdgeMidpoint: GraphGeometry {
     type Midpoint;
 
-    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<E, M>(edge: E) -> Result<Self::Midpoint, GraphError>
     where
+        E: CompositeEdge<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<EdgePayload<Self>>
@@ -284,16 +285,18 @@ where
 {
     type Midpoint = VertexPosition<G>;
 
-    fn midpoint<M>(edge: EdgeView<M, Self>) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<E, M>(edge: E) -> Result<Self::Midpoint, GraphError>
     where
+        E: CompositeEdge<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
             + AsStorage<EdgePayload<Self>>
             + AsStorage<VertexPayload<Self>>
             + Consistent,
     {
+        let arc = edge.into_arc();
         let (a, b) =
-            FromItems::from_items(edge.arc().vertices().map(|vertex| *vertex.position())).unwrap();
+            FromItems::from_items(arc.vertices().map(|vertex| *vertex.position())).unwrap();
         Ok(a.midpoint(b))
     }
 }
