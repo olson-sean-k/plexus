@@ -1279,7 +1279,7 @@ mod tests {
             type Vertex = Point3<f64>;
             type Arc = ();
             type Edge = ();
-            type Face = f64;
+            type Face = u64;
         }
 
         // Create a graph with a floating point value associated with each
@@ -1287,7 +1287,7 @@ mod tests {
         let mut graph = UvSphere::new(4, 4)
             .polygons::<Position<E3>>()
             .collect::<MeshGraph<ValueGeometry>>();
-        let value = 3.14;
+        let value = 123_456_789;
         for mut face in graph.orphan_faces() {
             face.geometry = value;
         }

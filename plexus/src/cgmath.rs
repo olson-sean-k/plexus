@@ -139,7 +139,7 @@ macro_rules! impl_from_geometry_ordered {
             T: Float + Primitive,
         {
             fn from_geometry(other: $g<T>) -> Self {
-                other.map(|value| $p::<T>::from_inner(value))
+                other.map($p::<T>::from_inner)
             }
         }
     };

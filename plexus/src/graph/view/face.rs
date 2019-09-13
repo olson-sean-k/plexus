@@ -1336,7 +1336,7 @@ where
         ArcCirculator {
             storage: self.storage.clone(),
             arc: self.arc,
-            trace: self.trace.clone(),
+            trace: self.trace,
             phantom: PhantomData,
         }
     }

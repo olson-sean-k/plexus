@@ -2,10 +2,10 @@
 
 **Plexus** is a Rust library for polygonal mesh processing.
 
-[![Build Status](https://travis-ci.org/olson-sean-k/plexus.svg?branch=master)](https://travis-ci.org/olson-sean-k/plexus)
+[![CI](https://github.com/olson-sean-k/plexus/workflows/.github/workflows/continuous-integration.yml/badge.svg)](https://github.com/olson-sean-k/plexus/actions)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
 [![Crate](https://img.shields.io/crates/v/plexus.svg)](https://crates.io/crates/plexus)
-[![Chat](https://badges.gitter.im/plexus-rs/community.svg)](https://gitter.im/plexus-rs/community#)
+[![Chat](https://badges.gitter.im/plexus-rs/community.svg)](https://gitter.im/plexus-rs/community)
 
 ## Primitives and Iterator Expressions
 

@@ -213,13 +213,11 @@ where
         if self.breadcrumbs.insert(breadcrumb) {
             Ok(false)
         }
+        else if expected {
+            Ok(true)
+        }
         else {
-            if expected {
-                Ok(true)
-            }
-            else {
-                Err(GraphError::TopologyMalformed)
-            }
+            Err(GraphError::TopologyMalformed)
         }
     }
 }

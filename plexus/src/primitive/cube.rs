@@ -45,6 +45,9 @@ pub enum Plane {
 }
 
 impl Plane {
+    // Despite implementing `Copy`, it seems odd to consume `self` but not
+    // express this as a conversion.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn normal<S>(&self) -> Unit<S>
     where
         S: Basis + FiniteDimensional<N = U3> + InnerSpace,
