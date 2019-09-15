@@ -13,13 +13,13 @@ use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::edge::{ArcView, OrphanArcView};
-use crate::graph::view::face::{FaceView, OrphanFaceView};
+use crate::graph::view::edge::{ArcOrphan, ArcView};
+use crate::graph::view::face::{FaceOrphan, FaceView};
 use crate::graph::view::traverse::{
     Adjacency, BreadthTraversal, DepthTraversal, TraceAny, TraceFirst, TraversalTrace,
 };
 use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, PayloadBinding, View,
+    FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt};
 
@@ -83,7 +83,7 @@ where
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
-    pub fn into_orphan(self) -> OrphanVertexView<'a, G> {
+    pub fn into_orphan(self) -> VertexOrphan<'a, G> {
         self.into_inner().into_orphan().into()
     }
 
@@ -263,7 +263,7 @@ where
         + Consistent,
     G: GraphGeometry,
 {
-    pub fn neighboring_orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
+    pub fn neighboring_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
             self.interior_reborrow_mut(),
         ))
@@ -283,7 +283,7 @@ where
     ///
     /// The ordering of arcs is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn incoming_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
+    pub fn incoming_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow_mut())
     }
 }
@@ -330,7 +330,7 @@ where
     ///
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
+    pub fn neighboring_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _, _>::from(
             self.interior_reborrow_mut(),
         ))
@@ -504,14 +504,14 @@ where
 ///
 /// Provides mutable access to vertex's geometry. See the module documentation
 /// for more information about topological views.
-pub struct OrphanVertexView<'a, G>
+pub struct VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    inner: OrphanView<'a, VertexPayload<G>>,
+    inner: Orphan<'a, VertexPayload<G>>,
 }
 
-impl<'a, G> OrphanVertexView<'a, G>
+impl<'a, G> VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -527,7 +527,7 @@ where
     }
 }
 
-impl<'a, G> Deref for OrphanVertexView<'a, G>
+impl<'a, G> Deref for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -538,7 +538,7 @@ where
     }
 }
 
-impl<'a, G> DerefMut for OrphanVertexView<'a, G>
+impl<'a, G> DerefMut for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -547,26 +547,26 @@ where
     }
 }
 
-impl<'a, G> From<OrphanView<'a, VertexPayload<G>>> for OrphanVertexView<'a, G>
+impl<'a, G> From<Orphan<'a, VertexPayload<G>>> for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    fn from(view: OrphanView<'a, VertexPayload<G>>) -> Self {
-        OrphanVertexView { inner: view }
+    fn from(view: Orphan<'a, VertexPayload<G>>) -> Self {
+        VertexOrphan { inner: view }
     }
 }
 
-impl<'a, M, G> FromKeyedSource<(VertexKey, &'a mut M)> for OrphanVertexView<'a, G>
+impl<'a, M, G> FromKeyedSource<(VertexKey, &'a mut M)> for VertexOrphan<'a, G>
 where
     M: AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (VertexKey, &'a mut M)) -> Option<Self> {
-        OrphanView::<VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
+        Orphan::<VertexPayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
-impl<'a, G> PayloadBinding for OrphanVertexView<'a, G>
+impl<'a, G> PayloadBinding for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -574,7 +574,7 @@ where
     type Payload = VertexPayload<G>;
 
     fn key(&self) -> Self::Key {
-        OrphanVertexView::key(self)
+        VertexOrphan::key(self)
     }
 }
 
@@ -648,7 +648,7 @@ where
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanVertexView<'a, G>;
+    type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
@@ -783,7 +783,7 @@ where
     M: 'a + AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanArcView<'a, G>;
+    type Item = ArcOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
@@ -882,7 +882,7 @@ where
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanFaceView<'a, G>;
+    type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {

@@ -19,13 +19,13 @@ use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::edge::{ArcView, OrphanArcView};
+use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::traverse::{
     Adjacency, BreadthTraversal, DepthTraversal, TraceFirst, TraversalTrace,
 };
-use crate::graph::view::vertex::{OrphanVertexView, VertexView};
+use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, OrphanView, PayloadBinding, View,
+    FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
 
@@ -147,7 +147,7 @@ where
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
-    pub fn into_orphan(self) -> OrphanFaceView<'a, G> {
+    pub fn into_orphan(self) -> FaceOrphan<'a, G> {
         self.into_inner().into_orphan().into()
     }
 
@@ -343,7 +343,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
-    pub fn interior_orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
+    pub fn interior_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         ArcCirculator::from(self.interior_reborrow_mut())
     }
 }
@@ -358,7 +358,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over neighboring faces.
-    pub fn neighboring_orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
+    pub fn neighboring_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         FaceCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 }
@@ -374,7 +374,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
-    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
+    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         VertexCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 
@@ -393,7 +393,7 @@ where
             return Ok(());
         }
         let plane = self.plane()?;
-        for mut vertex in self.orphan_vertices() {
+        for mut vertex in self.vertex_orphans() {
             let position = *vertex.position();
             let line = Line::<VertexPosition<G>> {
                 origin: position,
@@ -883,14 +883,14 @@ where
 ///
 /// Provides mutable access to a face's geometry. See the module documentation
 /// for more information about topological views.
-pub struct OrphanFaceView<'a, G>
+pub struct FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    inner: OrphanView<'a, FacePayload<G>>,
+    inner: Orphan<'a, FacePayload<G>>,
 }
 
-impl<'a, G> OrphanFaceView<'a, G>
+impl<'a, G> FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -899,7 +899,7 @@ where
     }
 }
 
-impl<'a, G> Deref for OrphanFaceView<'a, G>
+impl<'a, G> Deref for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -910,7 +910,7 @@ where
     }
 }
 
-impl<'a, G> DerefMut for OrphanFaceView<'a, G>
+impl<'a, G> DerefMut for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -919,26 +919,26 @@ where
     }
 }
 
-impl<'a, G> From<OrphanView<'a, FacePayload<G>>> for OrphanFaceView<'a, G>
+impl<'a, G> From<Orphan<'a, FacePayload<G>>> for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    fn from(view: OrphanView<'a, FacePayload<G>>) -> Self {
-        OrphanFaceView { inner: view }
+    fn from(view: Orphan<'a, FacePayload<G>>) -> Self {
+        FaceOrphan { inner: view }
     }
 }
 
-impl<'a, M, G> FromKeyedSource<(FaceKey, &'a mut M)> for OrphanFaceView<'a, G>
+impl<'a, M, G> FromKeyedSource<(FaceKey, &'a mut M)> for FaceOrphan<'a, G>
 where
     M: AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
-        OrphanView::<FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
+        Orphan::<FacePayload<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
-impl<'a, G> PayloadBinding for OrphanFaceView<'a, G>
+impl<'a, G> PayloadBinding for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -946,7 +946,7 @@ where
     type Payload = FacePayload<G>;
 
     fn key(&self) -> Self::Key {
-        OrphanFaceView::key(self)
+        FaceOrphan::key(self)
     }
 }
 
@@ -1265,7 +1265,7 @@ where
         + Consistent,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanVertexView<'a, G>;
+    type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
@@ -1400,7 +1400,7 @@ where
     M: 'a + AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanArcView<'a, G>;
+    type Item = ArcOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
@@ -1503,7 +1503,7 @@ where
         + Consistent,
     G: 'a + GraphGeometry,
 {
-    type Item = OrphanFaceView<'a, G>;
+    type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {

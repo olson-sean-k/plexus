@@ -157,7 +157,7 @@
 //!     .into_opposite_arc()
 //!     .into_next_arc()
 //!     .into_destination_vertex();
-//! for mut face in vertex.neighboring_orphan_faces() {
+//! for mut face in vertex.neighboring_face_orphans() {
 //!     // `face.geometry` is mutable here.
 //! }
 //! # }
@@ -193,7 +193,7 @@ use crate::graph::mutation::{Consistent, Mutate, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::{IntoView, OrphanView};
+use crate::graph::view::{IntoView, Orphan};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
@@ -205,11 +205,9 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
-pub use crate::graph::view::edge::{
-    ArcView, CompositeEdge, EdgeView, OrphanArcView, OrphanEdgeView,
-};
-pub use crate::graph::view::face::{FaceView, OrphanFaceView, RingView};
-pub use crate::graph::view::vertex::{OrphanVertexView, VertexView};
+pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan, EdgeView};
+pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
+pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
 pub use crate::graph::view::PayloadBinding;
 
 pub use Selector::ByIndex;
@@ -424,10 +422,10 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
-    pub fn orphan_vertices(&mut self) -> impl Iterator<Item = OrphanVertexView<G>> {
+    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
+            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -459,10 +457,10 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `arc_mut` instead.
-    pub fn orphan_arcs(&mut self) -> impl Iterator<Item = OrphanArcView<G>> {
+    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
+            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -494,10 +492,10 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
-    pub fn orphan_edges(&mut self) -> impl Iterator<Item = OrphanEdgeView<G>> {
+    pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
+            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -529,10 +527,10 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
-    pub fn orphan_faces(&mut self) -> impl Iterator<Item = OrphanFaceView<G>> {
+    pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         self.as_face_storage_mut()
             .iter_mut()
-            .map(|(key, source)| OrphanView::from_keyed_source_unchecked((key, source)))
+            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
             .map(|view| view.into())
     }
 
@@ -586,7 +584,7 @@ where
                 position + ((vertex.centroid() - position) * factor),
             );
         }
-        for mut vertex in self.orphan_vertices() {
+        for mut vertex in self.vertex_orphans() {
             *vertex.geometry.as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
     }
@@ -1207,7 +1205,7 @@ mod tests {
             // Traversal of topology should be possible.
             assert_eq!(4, vertex.incoming_arcs().count());
         }
-        for mut vertex in graph.orphan_vertices() {
+        for mut vertex in graph.vertex_orphans() {
             // Geometry should be mutable.
             vertex.geometry += Vector3::zero();
         }
@@ -1288,7 +1286,7 @@ mod tests {
             .polygons::<Position<E3>>()
             .collect::<MeshGraph<ValueGeometry>>();
         let value = 123_456_789;
-        for mut face in graph.orphan_faces() {
+        for mut face in graph.face_orphans() {
             face.geometry = value;
         }
 

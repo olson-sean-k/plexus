@@ -121,7 +121,7 @@ where
     M: 'a + AsStorage<T> + AsStorageMut<T>,
     T: 'a + Payload,
 {
-    pub fn into_orphan(self) -> OrphanView<'a, T> {
+    pub fn into_orphan(self) -> Orphan<'a, T> {
         let (key, storage) = self.into_keyed_source();
         (key, storage).into_view().unwrap()
     }
@@ -247,7 +247,7 @@ where
     }
 }
 
-pub struct OrphanView<'a, T>
+pub struct Orphan<'a, T>
 where
     T: Payload,
 {
@@ -255,13 +255,13 @@ where
     payload: &'a mut T,
 }
 
-impl<'a, T> OrphanView<'a, T>
+impl<'a, T> Orphan<'a, T>
 where
     T: 'a + Payload,
 {
     pub fn from_keyed_source_unchecked(source: (T::Key, &'a mut T)) -> Self {
         let (key, payload) = source;
-        OrphanView { key, payload }
+        Orphan { key, payload }
     }
 
     pub fn key(&self) -> T::Key {
@@ -269,7 +269,7 @@ where
     }
 }
 
-impl<'a, T> Deref for OrphanView<'a, T>
+impl<'a, T> Deref for Orphan<'a, T>
 where
     T: 'a + Payload,
 {
@@ -280,7 +280,7 @@ where
     }
 }
 
-impl<'a, T> DerefMut for OrphanView<'a, T>
+impl<'a, T> DerefMut for Orphan<'a, T>
 where
     T: 'a + Payload,
 {
@@ -289,7 +289,7 @@ where
     }
 }
 
-impl<'a, M, T> FromKeyedSource<(T::Key, &'a mut M)> for OrphanView<'a, T>
+impl<'a, M, T> FromKeyedSource<(T::Key, &'a mut M)> for Orphan<'a, T>
 where
     M: AsStorage<T> + AsStorageMut<T>,
     T: 'a + Payload,
@@ -299,11 +299,11 @@ where
         storage
             .as_storage_mut()
             .get_mut(&key)
-            .map(|payload| OrphanView { key, payload })
+            .map(|payload| Orphan { key, payload })
     }
 }
 
-impl<'a, T> PayloadBinding for OrphanView<'a, T>
+impl<'a, T> PayloadBinding for Orphan<'a, T>
 where
     T: 'a + Payload,
 {
@@ -311,6 +311,6 @@ where
     type Payload = T;
 
     fn key(&self) -> Self::Key {
-        OrphanView::key(self)
+        Orphan::key(self)
     }
 }
