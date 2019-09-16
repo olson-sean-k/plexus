@@ -32,9 +32,6 @@ rustdoc-args = [
     "doc/katex-header.html"
 ]
 
-[badges]
-travis-ci = { repository = "olson-sean-k/plexus" }
-
 [[example]]
 name = "sphere"
 path = "../examples/sphere.rs"
