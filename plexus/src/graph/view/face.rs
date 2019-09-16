@@ -45,6 +45,8 @@ where
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
+    fn into_arc(self) -> ArcView<M, G>;
+
     fn vertices(&self) -> VertexCirculator<&M::Target, G>
     where
         M::Target: AsStorage<VertexPayload<G>>,
@@ -306,6 +308,16 @@ where
         + Consistent,
     G: GraphGeometry,
 {
+    /// Gets the distance (number of arcs) between two vertices within the
+    /// face.
+    pub fn distance(
+        &self,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
+    ) -> Result<usize, GraphError> {
+        <Self as Ring<_, _>>::distance(self, source, destination)
+    }
+
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
         <Self as Ring<_, _>>::vertices(self)
@@ -860,6 +872,10 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + Consistent,
     G: GraphGeometry,
 {
+    fn into_arc(self) -> ArcView<M, G> {
+        FaceView::into_arc(self)
+    }
+
     fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
@@ -1039,7 +1055,7 @@ where
 impl<M, G> RingView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Converts the ring into its originating arc.
@@ -1051,7 +1067,14 @@ where
     pub fn arc(&self) -> ArcView<&M::Target, G> {
         self.inner.interior_reborrow().into()
     }
+}
 
+impl<M, G> RingView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
     /// Gets the distance (number of arcs) between two vertices within the
     /// ring.
     pub fn distance(
@@ -1185,6 +1208,10 @@ where
     M::Target: AsStorage<ArcPayload<G>> + Consistent,
     G: GraphGeometry,
 {
+    fn into_arc(self) -> ArcView<M, G> {
+        RingView::into_arc(self)
+    }
+
     fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
