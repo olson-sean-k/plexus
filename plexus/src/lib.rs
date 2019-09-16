@@ -50,8 +50,6 @@ pub mod prelude {
     //! `Selector` is often used when mutating `MeshGraph`s.
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
-    #[cfg(feature = "encoding-ply")]
-    pub use crate::encoding::ply::{FromPly as _, ToPly as _};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
