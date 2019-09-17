@@ -142,10 +142,10 @@ where
     }
 }
 
-/// Trace of a graph traversal path.
+/// Trace of a circulator path.
 ///
-/// Traversal traces typically determine when a traversal should terminate.
-pub trait TraversalTrace<T> {
+/// Circulator traces determine when a circulator should terminate.
+pub trait CirculatorTrace<T> {
     // TODO: How useful is `Result` here? When used in iterators, there aren't
     //       many choices for handling errors.
     /// Visits a topology.
@@ -175,7 +175,7 @@ where
     breadcrumb: Option<T>,
 }
 
-impl<T> TraversalTrace<T> for TraceFirst<T>
+impl<T> CirculatorTrace<T> for TraceFirst<T>
 where
     T: Copy + Eq,
 {
@@ -204,7 +204,7 @@ where
     breadcrumbs: HashSet<T>,
 }
 
-impl<T> TraversalTrace<T> for TraceAny<T>
+impl<T> CirculatorTrace<T> for TraceAny<T>
 where
     T: Copy + Eq + Hash,
 {

@@ -16,7 +16,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::face::{FaceOrphan, FaceView};
 use crate::graph::view::traverse::{
-    Adjacency, BreadthTraversal, DepthTraversal, TraceAny, TraceFirst, TraversalTrace,
+    Adjacency, BreadthTraversal, CirculatorTrace, DepthTraversal, TraceAny, TraceFirst,
 };
 use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
@@ -580,7 +580,7 @@ where
 
 pub struct VertexCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -590,7 +590,7 @@ where
 
 impl<P, M, G> VertexCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -605,7 +605,7 @@ where
 
 impl<P, M, G> Clone for VertexCirculator<P, M, G>
 where
-    P: Clone + TraversalTrace<ArcKey>,
+    P: Clone + CirculatorTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -619,7 +619,7 @@ where
 
 impl<P, M, G> From<ArcCirculator<P, M, G>> for VertexCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: GraphGeometry,
@@ -631,7 +631,7 @@ where
 
 impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -644,7 +644,7 @@ where
 
 impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a mut M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + AsStorageMut<VertexPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -665,7 +665,7 @@ where
 
 pub struct ArcCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
@@ -678,7 +678,7 @@ where
 
 impl<P, M, G> ArcCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
@@ -711,7 +711,7 @@ where
 
 impl<P, M, G> Clone for ArcCirculator<P, M, G>
 where
-    P: Clone + TraversalTrace<ArcKey>,
+    P: Clone + CirculatorTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>>,
     G: GraphGeometry,
@@ -766,7 +766,7 @@ where
 
 impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -779,7 +779,7 @@ where
 
 impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a mut M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorageMut<ArcPayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -800,7 +800,7 @@ where
 
 pub struct FaceCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -810,7 +810,7 @@ where
 
 impl<P, M, G> FaceCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -839,7 +839,7 @@ where
 
 impl<P, M, G> Clone for FaceCirculator<P, M, G>
 where
-    P: Clone + TraversalTrace<ArcKey>,
+    P: Clone + CirculatorTrace<ArcKey>,
     M: Clone + Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -853,7 +853,7 @@ where
 
 impl<P, M, G> From<ArcCirculator<P, M, G>> for FaceCirculator<P, M, G>
 where
-    P: TraversalTrace<ArcKey>,
+    P: CirculatorTrace<ArcKey>,
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: GraphGeometry,
@@ -865,7 +865,7 @@ where
 
 impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {
@@ -878,7 +878,7 @@ where
 
 impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a mut M, G>
 where
-    P: 'a + TraversalTrace<ArcKey>,
+    P: 'a + CirculatorTrace<ArcKey>,
     M: 'a + AsStorage<ArcPayload<G>> + AsStorage<FacePayload<G>> + AsStorageMut<FacePayload<G>>,
     G: 'a + GraphGeometry,
 {

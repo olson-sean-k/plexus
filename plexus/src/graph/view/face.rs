@@ -21,7 +21,7 @@ use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, Verte
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::traverse::{
-    Adjacency, BreadthTraversal, DepthTraversal, TraceFirst, TraversalTrace,
+    Adjacency, BreadthTraversal, CirculatorTrace, DepthTraversal, TraceFirst,
 };
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{
