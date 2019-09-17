@@ -2,21 +2,21 @@
 //!
 //! This module provides traits that specify the geometry of `MeshGraph`s and
 //! express the spatial operations supported by that geometry. The most basic
-//! and only required trait is `Geometry`, which uses associated types to
+//! and only required trait is `GraphGeometry`, which uses associated types to
 //! specify the type of the `geometry` field in the payloads for vertices,
 //! arcs, edges, and faces in a graph.
 //!
-//! To support useful spatial operations, types that implement `Geometry` may
-//! also implement `AsPosition`. The `AsPosition` trait exposes positional data
-//! in vertices. If that positional data also implements spatial traits from
-//! the [theon](https://crates.io/crates/theon) crate, then spatial operations
-//! will be enabled, such as `smooth`, `split_at_midpoint`, and
+//! To support useful spatial operations, types that implement `GraphGeometry`
+//! may also implement `AsPosition`. The `AsPosition` trait exposes positional
+//! data in vertices. If that positional data also implements spatial traits
+//! from the [`theon`](https://crates.io/crates/theon) crate, then spatial
+//! operations will be enabled, such as `smooth`, `split_at_midpoint`, and
 //! `poke_with_offset`.
 //!
 //! This module also defines traits that define the capabilities of geometry in
 //! a `MeshGraph`. These traits enable generic code without the need to express
 //! complicated relationships between types representing a Euclidean space. For
-//! example, the `FaceCentroid` trait is defined for `Geometry` types that
+//! example, the `FaceCentroid` trait is defined for `GraphGeometry` types that
 //! expose positional data that implements the necessary traits to compute the
 //! centroid of a face.
 //!
@@ -29,7 +29,7 @@
 //! # extern crate plexus;
 //! # extern crate smallvec;
 //! #
-//! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph, VertexPosition};
+//! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph};
 //! use plexus::prelude::*;
 //! use plexus::AsPosition;
 //! use smallvec::SmallVec;
@@ -38,7 +38,7 @@
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
 //! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
 //! where
-//!     G: EdgeMidpoint<Midpoint = VertexPosition<G>> + GraphGeometry,
+//!     G: EdgeMidpoint + GraphGeometry,
 //!     G::Vertex: AsPosition,
 //! {
 //!     let arity = face.arity();
@@ -60,9 +60,18 @@
 
 // TODO: Integrate this module documentation into the `graph` module.
 
+// Geometric traits like `FaceNormal` and `EdgeMidpoint` are defined in such a
+// way to reduce the contraints necessary for writing generic user code. With
+// few exceptions, these traits only depend on `AsPosition` being implemented
+// by the `Vertex` type in their definition. If a more complex implementation
+// is necessary, constraints are specified there so that they do not pollute
+// user code.
+
 use theon::ops::{Cross, Interpolate, Project};
-use theon::space::{EuclideanSpace, InnerSpace, Vector, VectorSpace};
+use theon::query::Plane;
+use theon::space::{EuclideanSpace, FiniteDimensional, InnerSpace, Vector, VectorSpace};
 use theon::{AsPosition, FromItems, Position};
+use typenum::U3;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::mutation::Consistent;
@@ -164,29 +173,16 @@ where
     type Face = ();
 }
 
-pub trait VertexCentroid: GraphGeometry {
-    type Centroid;
-
-    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
-    where
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
-}
-
-impl<G> VertexCentroid for G
+pub trait VertexCentroid: GraphGeometry
 where
-    G: GraphGeometry,
-    G::Vertex: AsPosition,
-    VertexPosition<G>: EuclideanSpace,
+    Self::Vertex: AsPosition,
 {
-    type Centroid = VertexPosition<G>;
-
-    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<Self::Centroid, GraphError>
+    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
-        VertexPosition::<G>::centroid(
+        VertexPosition::<Self>::centroid(
             vertex
                 .neighboring_vertices()
                 .map(|vertex| *vertex.geometry.as_position()),
@@ -195,23 +191,18 @@ where
     }
 }
 
-pub trait VertexNormal: FaceNormal + GraphGeometry {
-    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Self::Normal, GraphError>
-    where
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>
-            + Consistent;
+impl<G> VertexCentroid for G
+where
+    G: GraphGeometry,
+    G::Vertex: AsPosition,
+{
 }
 
-impl<G> VertexNormal for G
+pub trait VertexNormal: FaceNormal
 where
-    G: FaceNormal<Normal = Vector<VertexPosition<G>>>,
-    G::Vertex: AsPosition,
-    VertexPosition<G>: EuclideanSpace,
+    Self::Vertex: AsPosition,
 {
-    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>>
@@ -219,10 +210,10 @@ where
             + AsStorage<VertexPayload<Self>>
             + Consistent,
     {
-        Vector::<VertexPosition<G>>::mean(
+        Vector::<VertexPosition<Self>>::mean(
             vertex
                 .neighboring_faces()
-                .map(G::normal)
+                .map(<Self as FaceNormal>::normal)
                 .collect::<Result<Vec<_>, _>>()?,
         )
         .ok_or_else(|| GraphError::TopologyNotFound)?
@@ -231,10 +222,18 @@ where
     }
 }
 
-pub trait ArcNormal: GraphGeometry {
-    type Normal;
+impl<G> VertexNormal for G
+where
+    G: FaceNormal,
+    G::Vertex: AsPosition,
+{
+}
 
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
+pub trait ArcNormal: GraphGeometry
+where
+    Self::Vertex: AsPosition,
+{
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
@@ -244,12 +243,10 @@ impl<G> ArcNormal for G
 where
     G: GraphGeometry,
     G::Vertex: AsPosition,
-    Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
+    Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
 {
-    type Normal = Vector<VertexPosition<G>>;
-
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Self::Normal, GraphError>
+    fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
@@ -264,10 +261,11 @@ where
     }
 }
 
-pub trait EdgeMidpoint: GraphGeometry {
-    type Midpoint;
-
-    fn midpoint<E, M>(edge: E) -> Result<Self::Midpoint, GraphError>
+pub trait EdgeMidpoint: GraphGeometry
+where
+    Self::Vertex: AsPosition,
+{
+    fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
     where
         E: CompositeEdge<M, Self>,
         M: Reborrow,
@@ -281,11 +279,9 @@ impl<G> EdgeMidpoint for G
 where
     G: GraphGeometry,
     G::Vertex: AsPosition,
-    VertexPosition<G>: EuclideanSpace + Interpolate<Output = VertexPosition<G>>,
+    VertexPosition<G>: Interpolate<Output = VertexPosition<G>>,
 {
-    type Midpoint = VertexPosition<G>;
-
-    fn midpoint<E, M>(edge: E) -> Result<Self::Midpoint, GraphError>
+    fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
     where
         E: CompositeEdge<M, Self>,
         M: Reborrow,
@@ -301,41 +297,35 @@ where
     }
 }
 
-pub trait FaceCentroid: GraphGeometry {
-    type Centroid;
-
-    fn centroid<R, M>(ring: R) -> Result<Self::Centroid, GraphError>
-    where
-        R: Ring<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
-}
-
-impl<G> FaceCentroid for G
+pub trait FaceCentroid: GraphGeometry
 where
-    G: GraphGeometry,
-    G::Vertex: AsPosition,
-    VertexPosition<G>: EuclideanSpace,
+    Self::Vertex: AsPosition,
 {
-    type Centroid = VertexPosition<G>;
-
-    fn centroid<R, M>(ring: R) -> Result<Self::Centroid, GraphError>
+    fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
     where
         R: Ring<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
         Ok(
-            VertexPosition::<G>::centroid(ring.vertices().map(|vertex| *vertex.position()))
+            VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
                 .expect_consistent(),
         )
     }
 }
 
-pub trait FaceNormal: GraphGeometry {
-    type Normal;
+impl<G> FaceCentroid for G
+where
+    G: GraphGeometry,
+    G::Vertex: AsPosition,
+{
+}
 
-    fn normal<R, M>(ring: R) -> Result<Self::Normal, GraphError>
+pub trait FaceNormal: GraphGeometry
+where
+    Self::Vertex: AsPosition,
+{
+    fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         R: Ring<M, Self>,
         M: Reborrow,
@@ -344,14 +334,12 @@ pub trait FaceNormal: GraphGeometry {
 
 impl<G> FaceNormal for G
 where
-    G: FaceCentroid<Centroid = VertexPosition<G>> + GraphGeometry,
+    G: FaceCentroid + GraphGeometry,
     G::Vertex: AsPosition,
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
-    type Normal = Vector<VertexPosition<G>>;
-
-    fn normal<R, M>(ring: R) -> Result<Self::Normal, GraphError>
+    fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         R: Ring<M, Self>,
         M: Reborrow,
@@ -367,10 +355,12 @@ where
     }
 }
 
-pub trait FacePlane: GraphGeometry {
-    type Plane;
-
-    fn plane<R, M>(ring: R) -> Result<Self::Plane, GraphError>
+pub trait FacePlane: GraphGeometry
+where
+    Self::Vertex: AsPosition,
+    VertexPosition<Self>: FiniteDimensional<N = U3>,
+{
+    fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<Self>>, GraphError>
     where
         R: Ring<M, Self>,
         M: Reborrow,
@@ -385,10 +375,8 @@ mod array {
 
     use smallvec::SmallVec;
     use theon::array::ArrayScalar;
-    use theon::query::Plane;
-    use theon::space::{FiniteDimensional, Scalar};
+    use theon::space::Scalar;
     use theon::{FromItems, IntoItems};
-    use typenum::U3;
 
     impl<G> FacePlane for G
     where
@@ -398,9 +386,7 @@ mod array {
         Scalar<VertexPosition<G>>: ArrayScalar,
         Vector<VertexPosition<G>>: FromItems + IntoItems,
     {
-        type Plane = Plane<VertexPosition<G>>;
-
-        fn plane<R, M>(ring: R) -> Result<Self::Plane, GraphError>
+        fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<G>>, GraphError>
         where
             R: Ring<M, Self>,
             M: Reborrow,

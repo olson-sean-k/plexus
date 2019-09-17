@@ -571,7 +571,7 @@ where
     pub fn smooth<T>(&mut self, factor: T)
     where
         T: Into<Scalar<VertexPosition<G>>>,
-        G: VertexCentroid<Centroid = VertexPosition<G>>,
+        G: VertexCentroid,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {

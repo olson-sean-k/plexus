@@ -511,11 +511,12 @@ impl<M, G> ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: ArcNormal,
+    G: GraphGeometry,
 {
-    pub fn normal(&self) -> G::Normal
+    pub fn normal(&self) -> Vector<VertexPosition<G>>
     where
-        G: GraphGeometry,
+        G: ArcNormal,
+        G::Vertex: AsPosition,
     {
         G::normal(self.interior_reborrow()).expect_consistent()
     }
@@ -530,9 +531,10 @@ where
         + Consistent,
     G: GraphGeometry,
 {
-    pub fn midpoint(&self) -> G::Midpoint
+    pub fn midpoint(&self) -> VertexPosition<G>
     where
         G: EdgeMidpoint,
+        G::Vertex: AsPosition,
     {
         G::midpoint(self.interior_reborrow()).expect_consistent()
     }
@@ -637,7 +639,7 @@ where
     /// ```
     pub fn split_at_midpoint(self) -> VertexView<&'a mut M, G>
     where
-        G: EdgeMidpoint<Midpoint = VertexPosition<G>>,
+        G: EdgeMidpoint,
         G::Vertex: AsPosition,
     {
         let mut geometry = self.source_vertex().geometry;
@@ -797,7 +799,7 @@ where
     pub fn extrude<T>(self, offset: T) -> Result<ArcView<&'a mut M, G>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
-        G: ArcNormal<Normal = Vector<VertexPosition<G>>>,
+        G: ArcNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
@@ -1139,9 +1141,10 @@ where
         + Consistent,
     G: GraphGeometry,
 {
-    pub fn midpoint(&self) -> G::Midpoint
+    pub fn midpoint(&self) -> VertexPosition<G>
     where
         G: EdgeMidpoint,
+        G::Vertex: AsPosition,
     {
         G::midpoint(self.interior_reborrow()).expect_consistent()
     }

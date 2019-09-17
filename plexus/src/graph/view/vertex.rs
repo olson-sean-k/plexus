@@ -3,6 +3,7 @@ use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use theon::space::Vector;
 use theon::AsPosition;
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
@@ -246,9 +247,10 @@ where
             .map(|arc| arc.into_opposite_arc())
     }
 
-    pub fn centroid(&self) -> G::Centroid
+    pub fn centroid(&self) -> VertexPosition<G>
     where
         G: VertexCentroid,
+        G::Vertex: AsPosition,
     {
         G::centroid(self.interior_reborrow()).expect_consistent()
     }
@@ -307,9 +309,10 @@ where
         ))
     }
 
-    pub fn normal(&self) -> Result<G::Normal, GraphError>
+    pub fn normal(&self) -> Result<Vector<VertexPosition<G>>, GraphError>
     where
         G: VertexNormal,
+        G::Vertex: AsPosition,
     {
         <G as VertexNormal>::normal(self.interior_reborrow())
     }

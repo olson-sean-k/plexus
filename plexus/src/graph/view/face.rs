@@ -323,23 +323,27 @@ where
         <Self as Ring<_, _>>::vertices(self)
     }
 
-    pub fn centroid(&self) -> G::Centroid
+    pub fn centroid(&self) -> VertexPosition<G>
     where
         G: FaceCentroid,
+        G::Vertex: AsPosition,
     {
         G::centroid(self.interior_reborrow()).expect_consistent()
     }
 
-    pub fn normal(&self) -> G::Normal
+    pub fn normal(&self) -> Vector<VertexPosition<G>>
     where
         G: FaceNormal,
+        G::Vertex: AsPosition,
     {
         G::normal(self.interior_reborrow()).expect_consistent()
     }
 
-    pub fn plane(&self) -> Result<G::Plane, GraphError>
+    pub fn plane(&self) -> Result<Plane<VertexPosition<G>>, GraphError>
     where
         G: FacePlane,
+        G::Vertex: AsPosition,
+        VertexPosition<G>: FiniteDimensional<N = U3>,
     {
         G::plane(self.interior_reborrow())
     }
@@ -397,7 +401,7 @@ where
     /// could not be translated into the plane.
     pub fn flatten(&mut self) -> Result<(), GraphError>
     where
-        G: FacePlane<Plane = Plane<VertexPosition<G>>>,
+        G: FacePlane,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
     {
@@ -683,7 +687,7 @@ where
     /// Returns the inserted vertex.
     pub fn poke_at_centroid(self) -> VertexView<&'a mut M, G>
     where
-        G: FaceCentroid<Centroid = VertexPosition<G>>,
+        G: FaceCentroid,
         G::Vertex: AsPosition,
     {
         let mut geometry = self.arc().source_vertex().geometry;
@@ -730,8 +734,7 @@ where
     pub fn poke_with_offset<T>(self, offset: T) -> VertexView<&'a mut M, G>
     where
         T: Into<Scalar<VertexPosition<G>>>,
-        G: FaceCentroid<Centroid = VertexPosition<G>>
-            + FaceNormal<Normal = Vector<VertexPosition<G>>>,
+        G: FaceCentroid + FaceNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
@@ -746,7 +749,7 @@ where
     pub fn extrude<T>(self, offset: T) -> FaceView<&'a mut M, G>
     where
         T: Into<Scalar<VertexPosition<G>>>,
-        G: FaceNormal<Normal = Vector<VertexPosition<G>>>,
+        G: FaceNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
