@@ -163,7 +163,37 @@ impl GraphGeometry for () {
     type Face = ();
 }
 
+impl<T> GraphGeometry for (T, T)
+where
+    T: Copy,
+{
+    type Vertex = Self;
+    type Arc = ();
+    type Edge = ();
+    type Face = ();
+}
+
 impl<T> GraphGeometry for (T, T, T)
+where
+    T: Copy,
+{
+    type Vertex = Self;
+    type Arc = ();
+    type Edge = ();
+    type Face = ();
+}
+
+impl<T> GraphGeometry for [T; 2]
+where
+    T: Copy,
+{
+    type Vertex = Self;
+    type Arc = ();
+    type Edge = ();
+    type Face = ();
+}
+
+impl<T> GraphGeometry for [T; 3]
 where
     T: Copy,
 {
