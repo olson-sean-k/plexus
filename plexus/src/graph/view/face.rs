@@ -177,7 +177,7 @@ where
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let key = graph.faces().nth(0).unwrap().key();
-    /// let face = graph.face_mut(key).unwrap().extrude(1.0).into_ref();
+    /// let face = graph.face_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = face.into_arc();
@@ -331,12 +331,12 @@ where
         G::centroid(self.interior_reborrow()).expect_consistent()
     }
 
-    pub fn normal(&self) -> Vector<VertexPosition<G>>
+    pub fn normal(&self) -> Result<Vector<VertexPosition<G>>, GraphError>
     where
         G: FaceNormal,
         G::Vertex: AsPosition,
     {
-        G::normal(self.interior_reborrow()).expect_consistent()
+        G::normal(self.interior_reborrow())
     }
 
     pub fn plane(&self) -> Result<Plane<VertexPosition<G>>, GraphError>
@@ -662,7 +662,7 @@ where
     ///
     /// // See `poke_with_offset`, which provides this functionality.
     /// let mut geometry = face.centroid();
-    /// let position = geometry.as_position().clone() + face.normal();
+    /// let position = geometry.as_position().clone() + face.normal().unwrap();
     /// face.poke_with(move || {
     ///     *geometry.as_position_mut() = position;
     ///     geometry
@@ -703,7 +703,11 @@ where
     /// The inserted vertex is then translated along the initiating face's
     /// normal by the given offset.
     ///
-    /// Returns the inserted vertex.
+    /// Returns the inserted vertex if successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the geometry could not be computed.
     ///
     /// # Examples
     ///
@@ -727,11 +731,11 @@ where
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let keys = graph.faces().map(|face| face.key()).collect::<Vec<_>>();
     /// for key in keys {
-    ///     graph.face_mut(key).unwrap().poke_with_offset(0.5);
+    ///     graph.face_mut(key).unwrap().poke_with_offset(0.5).unwrap();
     /// }
     /// # }
     /// ```
-    pub fn poke_with_offset<T>(self, offset: T) -> VertexView<&'a mut M, G>
+    pub fn poke_with_offset<T>(self, offset: T) -> Result<VertexView<&'a mut M, G>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceCentroid + FaceNormal,
@@ -739,27 +743,34 @@ where
         VertexPosition<G>: EuclideanSpace,
     {
         let mut geometry = self.arc().source_vertex().geometry;
-        let position = self.centroid() + (self.normal() * offset.into());
-        self.poke_with(move || {
+        let position = self.centroid() + (self.normal()? * offset.into());
+        Ok(self.poke_with(move || {
             *geometry.as_position_mut() = position;
             geometry
-        })
+        }))
     }
 
-    pub fn extrude<T>(self, offset: T) -> FaceView<&'a mut M, G>
+    /// Extrudes the face.
+    ///
+    /// Returns the extruded face if successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the geometry could not be computed.
+    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M, G>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let translation = self.normal() * offset.into();
+        let translation = self.normal()? * offset.into();
         let (abc, storage) = self.into_inner().into_keyed_source();
         let cache = FaceExtrudeCache::snapshot(&storage, abc, translation).expect_consistent();
-        Mutation::replace(storage, Default::default())
+        Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
             .map(|(storage, face)| (face, storage).into_view().expect_consistent())
-            .expect_consistent()
+            .expect_consistent())
     }
 
     /// Removes the face.
@@ -1638,7 +1649,12 @@ mod tests {
             .collect::<MeshGraph<Point3<f64>>>();
         {
             let key = graph.faces().nth(0).unwrap().key();
-            let face = graph.face_mut(key).unwrap().extrude(1.0).into_ref();
+            let face = graph
+                .face_mut(key)
+                .unwrap()
+                .extrude(1.0)
+                .unwrap()
+                .into_ref();
 
             // The extruded face, being a triangle, should have three
             // neighboring faces.
