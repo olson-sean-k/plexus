@@ -78,7 +78,6 @@ use num::{Integer, One, Zero};
 use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use std::slice;
 use theon::ops::{Cross, Fold, Map, Push, ZipMap};
 use theon::query::{Intersection, Line, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
@@ -407,7 +406,7 @@ where
     A: Array,
 {
     fn as_ref(&self) -> &[A::Item] {
-        unsafe { slice::from_raw_parts(self.0.as_ptr(), A::capacity()) }
+        self.0.as_slice()
     }
 }
 
@@ -416,7 +415,7 @@ where
     A: Array,
 {
     fn as_mut(&mut self) -> &mut [A::Item] {
-        unsafe { slice::from_raw_parts_mut(self.0.as_mut_ptr(), A::capacity()) }
+        self.0.as_mut_slice()
     }
 }
 
