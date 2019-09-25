@@ -25,20 +25,9 @@ jobs:
         with:
           fetch-depth: 1
       - run: ./clippy.sh -- -D clippy::all
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: hecrj/setup-rust-action@master
-        with:
-          rust-version: stable
-      - uses: actions/checkout@master
-        with:
-          fetch-depth: 1
-      - run: cargo check --all --verbose
   test:
     name: Test
-    needs: [check, clippy, rustfmt]
+    needs: [clippy, rustfmt]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
