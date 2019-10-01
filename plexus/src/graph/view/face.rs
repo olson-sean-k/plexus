@@ -1175,7 +1175,7 @@ where
             let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))
                 .expect_consistent();
             Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| mutation.insert_face_with_cache(cache))
+                .commit_with(move |mutation| mutation.as_mut().insert_face_with_cache(cache))
                 .map(|(storage, face)| (face, storage).into_view().expect_consistent())
                 .expect_consistent()
         }

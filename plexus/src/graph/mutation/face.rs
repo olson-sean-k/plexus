@@ -26,7 +26,7 @@ pub struct FaceMutation<G>
 where
     G: GraphGeometry,
 {
-    mutation: EdgeMutation<G>,
+    inner: EdgeMutation<G>,
     storage: StorageProxy<FacePayload<G>>,
 }
 
@@ -177,23 +177,23 @@ where
     type Mutant = OwnedCore<G>;
     type Error = GraphError;
 
-    fn mutate(core: Self::Mutant) -> Self {
+    fn mutate(mutant: Self::Mutant) -> Self {
         // TODO: Include edges.
-        let (vertices, arcs, edges, faces) = core.into_storage();
+        let (vertices, arcs, edges, faces) = mutant.into_storage();
         FaceMutation {
             storage: faces,
-            mutation: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs).bind(edges)),
+            inner: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs).bind(edges)),
         }
     }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let FaceMutation {
-            mutation,
+            inner,
             storage: faces,
             ..
         } = self;
-        mutation.commit().and_then(move |core| {
-            let (vertices, arcs, edges, ..) = core.into_storage();
+        inner.commit().and_then(move |mutant| {
+            let (vertices, arcs, edges, ..) = mutant.into_storage();
             Ok(Core::empty()
                 .bind(vertices)
                 .bind(arcs)
@@ -203,6 +203,7 @@ where
     }
 }
 
+// TODO: This is a hack. Replace this with delegation.
 impl<G> Deref for FaceMutation<G>
 where
     G: GraphGeometry,
@@ -210,7 +211,7 @@ where
     type Target = EdgeMutation<G>;
 
     fn deref(&self) -> &Self::Target {
-        &self.mutation
+        &self.inner
     }
 }
 
@@ -219,7 +220,7 @@ where
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mutation
+        &mut self.inner
     }
 }
 

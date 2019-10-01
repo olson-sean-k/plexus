@@ -24,7 +24,7 @@ pub struct EdgeMutation<G>
 where
     G: GraphGeometry,
 {
-    mutation: VertexMutation<G>,
+    inner: VertexMutation<G>,
     storage: (StorageProxy<ArcPayload<G>>, StorageProxy<EdgePayload<G>>),
 }
 
@@ -165,24 +165,25 @@ where
     fn mutate(mutant: Self::Mutant) -> Self {
         let (vertices, arcs, edges, ..) = mutant.into_storage();
         EdgeMutation {
-            mutation: VertexMutation::mutate(Core::empty().bind(vertices)),
+            inner: VertexMutation::mutate(Core::empty().bind(vertices)),
             storage: (arcs, edges),
         }
     }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
         let EdgeMutation {
-            mutation,
+            inner,
             storage: (arcs, edges),
             ..
         } = self;
-        mutation.commit().and_then(move |core| {
-            let (vertices, ..) = core.into_storage();
+        inner.commit().and_then(move |mutant| {
+            let (vertices, ..) = mutant.into_storage();
             Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
         })
     }
 }
 
+// TODO: This is a hack. Replace this with delegation.
 impl<G> Deref for EdgeMutation<G>
 where
     G: GraphGeometry,
@@ -190,7 +191,7 @@ where
     type Target = VertexMutation<G>;
 
     fn deref(&self) -> &Self::Target {
-        &self.mutation
+        &self.inner
     }
 }
 
@@ -199,7 +200,7 @@ where
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mutation
+        &mut self.inner
     }
 }
 

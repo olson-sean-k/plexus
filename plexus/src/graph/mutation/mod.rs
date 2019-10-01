@@ -39,6 +39,13 @@ pub trait Mutate: Sized {
 
     fn mutate(mutant: Self::Mutant) -> Self;
 
+    fn replace(target: &mut Self::Mutant, replacement: Self::Mutant) -> Replace<Self>
+    where
+        Self::Mutant: Default,
+    {
+        Replace::replace(target, replacement)
+    }
+
     fn commit(self) -> Result<Self::Mutant, Self::Error>;
 
     fn commit_with<F, T, E>(mut self, f: F) -> Result<(Self::Mutant, T), Self::Error>
@@ -59,116 +66,89 @@ pub trait Mutate: Sized {
     fn abort(self) {}
 }
 
-pub struct Replace<'a, M, N, G>
+pub struct Replace<'a, M>
 where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
-    mutation: Option<(&'a mut M, N)>,
-    phantom: PhantomData<G>,
+    inner: Option<(&'a mut <M as Mutate>::Mutant, M)>,
 }
 
-impl<'a, M, N, G> Replace<'a, M, N, G>
+impl<'a, M> Replace<'a, M>
 where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
-    pub fn replace(container: <Self as Mutate>::Mutant, replacement: M) -> Self {
-        let mutant = mem::replace(container, replacement);
+    pub fn replace(
+        target: &'a mut <M as Mutate>::Mutant,
+        replacement: <M as Mutate>::Mutant,
+    ) -> Self {
+        let mutant = mem::replace(target, replacement);
         Replace {
-            mutation: Some((container, N::mutate(mutant))),
-            phantom: PhantomData,
+            inner: Some((target, M::mutate(mutant))),
         }
     }
 
-    fn drain(&mut self) -> (&'a mut M, N) {
-        self.mutation.take().unwrap()
+    fn drain(&mut self) -> (&'a mut <M as Mutate>::Mutant, M) {
+        self.inner.take().unwrap()
     }
 
     fn drain_and_commit(&mut self) -> Result<<Self as Mutate>::Mutant, <Self as Mutate>::Error> {
-        let (container, mutation) = self.drain();
-        let mutant = mutation.commit()?;
-        mem::replace(container, mutant);
-        Ok(container)
+        let (target, inner) = self.drain();
+        let mutant = inner.commit()?;
+        mem::replace(target, mutant);
+        Ok(target)
     }
 
     fn drain_and_abort(&mut self) {
-        let (_, mutation) = self.drain();
-        mutation.abort();
+        let (_, inner) = self.drain();
+        inner.abort();
     }
 }
 
-impl<'a, M, G> AsRef<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
+impl<'a, M> AsRef<M> for Replace<'a, M>
 where
-    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
-    fn as_ref(&self) -> &Mutation<M, G> {
-        &self.mutation.as_ref().unwrap().1
+    fn as_ref(&self) -> &M {
+        &self.inner.as_ref().unwrap().1
     }
 }
 
-impl<'a, M, G> AsMut<Mutation<M, G>> for Replace<'a, M, Mutation<M, G>, G>
+impl<'a, M> AsMut<M> for Replace<'a, M>
 where
-    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
-    fn as_mut(&mut self) -> &mut Mutation<M, G> {
-        &mut self.mutation.as_mut().unwrap().1
+    fn as_mut(&mut self) -> &mut M {
+        &mut self.inner.as_mut().unwrap().1
     }
 }
 
-impl<'a, M, N, G> Deref for Replace<'a, M, N, G>
+impl<'a, M> Drop for Replace<'a, M>
 where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
-{
-    type Target = N;
-
-    fn deref(&self) -> &Self::Target {
-        &self.mutation.as_ref().unwrap().1
-    }
-}
-
-impl<'a, M, N, G> DerefMut for Replace<'a, M, N, G>
-where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mutation.as_mut().unwrap().1
-    }
-}
-
-impl<'a, M, N, G> Drop for Replace<'a, M, N, G>
-where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
     fn drop(&mut self) {
-        self.drain_and_abort();
+        self.drain_and_abort()
     }
 }
 
-impl<'a, M, N, G> Mutate for Replace<'a, M, N, G>
+impl<'a, M> Mutate for Replace<'a, M>
 where
-    M: 'a + Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    N: Mutate<Mutant = M>,
-    G: 'a + GraphGeometry,
+    M: Mutate,
+    M::Mutant: Default,
 {
-    type Mutant = &'a mut M;
-    type Error = <N as Mutate>::Error;
+    type Mutant = &'a mut <M as Mutate>::Mutant;
+    type Error = <M as Mutate>::Error;
 
     fn mutate(mutant: Self::Mutant) -> Self {
-        Self::replace(mutant, M::default())
+        Self::replace(mutant, Default::default())
     }
 
-    fn commit(mut self) -> Result<<Self as Mutate>::Mutant, Self::Error> {
+    fn commit(mut self) -> Result<Self::Mutant, Self::Error> {
         let mutant = self.drain_and_commit();
         mem::forget(self);
         mutant
@@ -180,24 +160,14 @@ where
     }
 }
 
-/// Mesh mutation.
+/// Graph mutation.
 pub struct Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    mutation: FaceMutation<G>,
+    inner: FaceMutation<G>,
     phantom: PhantomData<M>,
-}
-
-impl<M, G> Mutation<M, G>
-where
-    M: Consistent + Default + From<OwnedCore<G>> + Into<OwnedCore<G>>,
-    G: GraphGeometry,
-{
-    pub fn replace(container: &mut M, replacement: M) -> Replace<M, Self, G> {
-        Replace::replace(container, replacement)
-    }
 }
 
 impl<M, G> AsRef<Self> for Mutation<M, G>
@@ -226,7 +196,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
-        self.mutation.as_arc_storage()
+        self.inner.as_arc_storage()
     }
 }
 
@@ -236,7 +206,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
-        self.mutation.as_face_storage()
+        self.inner.as_face_storage()
     }
 }
 
@@ -246,10 +216,11 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
-        self.mutation.as_vertex_storage()
+        self.inner.as_vertex_storage()
     }
 }
 
+// TODO: This is a hack. Replace this with delegation.
 impl<M, G> Deref for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
@@ -258,7 +229,7 @@ where
     type Target = FaceMutation<G>;
 
     fn deref(&self) -> &Self::Target {
-        &self.mutation
+        &self.inner
     }
 }
 
@@ -268,7 +239,7 @@ where
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mutation
+        &mut self.inner
     }
 }
 
@@ -280,15 +251,15 @@ where
     type Mutant = M;
     type Error = GraphError;
 
-    fn mutate(container: Self::Mutant) -> Self {
+    fn mutate(mutant: Self::Mutant) -> Self {
         Mutation {
-            mutation: FaceMutation::mutate(container.into()),
+            inner: FaceMutation::mutate(mutant.into()),
             phantom: PhantomData,
         }
     }
 
     fn commit(self) -> Result<Self::Mutant, Self::Error> {
-        self.mutation.commit().map(|core| core.into())
+        self.inner.commit().map(|core| core.into())
     }
 }
 
