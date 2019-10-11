@@ -180,10 +180,7 @@ pub trait VertexElementDecoder {
         definitions: &'a Header,
         elements: &'a Payload,
     ) -> Result<(&'a ElementDefinition, &'a Vec<Element>), PlyError> {
-        definitions
-            .get("vertex")
-            .ok_or_else(|| PlyError::ElementNotFound)
-            .map(|definition| (definition, elements.get(&definition.name).unwrap()))
+        decode_elements(definitions, elements, "vertex")
     }
 }
 
@@ -203,10 +200,7 @@ pub trait FaceElementDecoder {
         definitions: &'a Header,
         elements: &'a Payload,
     ) -> Result<(&'a ElementDefinition, &'a Vec<Element>), PlyError> {
-        definitions
-            .get("face")
-            .ok_or_else(|| PlyError::ElementNotFound)
-            .map(|definition| (definition, elements.get(&definition.name).unwrap()))
+        decode_elements(definitions, elements, "face")
     }
 }
 
@@ -329,6 +323,20 @@ where
             })
             .collect::<Result<_, _>>()
     }
+}
+
+pub fn decode_elements<'a, K>(
+    definitions: &'a Header,
+    elements: &'a Payload,
+    name: K,
+) -> Result<(&'a ElementDefinition, &'a Vec<Element>), PlyError>
+where
+    K: AsRef<str>,
+{
+    definitions
+        .get(name.as_ref())
+        .ok_or_else(|| PlyError::ElementNotFound)
+        .map(|definition| (definition, elements.get(&definition.name).unwrap()))
 }
 
 fn num_cast_scalar<T, U>(value: T) -> Result<U, PlyError>
