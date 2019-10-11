@@ -1,6 +1,11 @@
-![Plexus](https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.svg?sanitize=true)
+<div align="center">
+    <img alt="Plexus" src="https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.svg?sanitize=true" width="320"/>
+</div>
 
-**Plexus** is a Rust library for polygonal mesh processing.
+**Plexus** is a Rust library for polygonal mesh processing. See [the
+website](https://plexus.rs) for the most recent [API
+documentation](https://plexus.rs/rustdoc/plexus) and the [user
+guide](https://plexus.rs/user-guide/getting-started).
 
 [![CI](https://github.com/olson-sean-k/plexus/workflows/CI/badge.svg)](https://github.com/olson-sean-k/plexus/actions)
 [![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
@@ -36,20 +41,20 @@ render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 
 The [`decorum`](https://crates.io/crates/decorum) crate is used for
-floating-point values that can be hashed for fast indexing. See the
+floating-point values that can be hashed for fast indexing and signaling of
+unwanted values. See the
 [sphere](https://github.com/olson-sean-k/plexus/tree/master/examples/sphere.rs)
 and
 [teapot](https://github.com/olson-sean-k/plexus/tree/master/examples/teapot.rs)
-examples for rendering.
+examples for demonstrations of rendering.
 
 ## Half-Edge Graphs
 
 The `MeshGraph` type represents meshes as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list) and supports
-arbitrary geometry for vertices, arcs (half-edges), edges, and faces. Graphs
-are persistent and can be traversed and manipulated in ways that iterator
-expressions and linear buffers cannot, such as circulation, extrusion, merging,
-and splitting.
+arbitrary geometry for vertices, arcs (half-edges), edges, and faces. Graphs can
+be traversed and manipulated in ways that iterator expressions and linear
+buffers cannot, such as circulation, extrusion, merging, splitting, etc.
 
 ```rust
 use decorum::N64;
@@ -74,6 +79,9 @@ Plexus avoids exposing very basic topological operations like inserting
 individual vertices into a graph, because they can easily be done incorrectly.
 Instead, graphs are typically manipulated with higher-level operations like
 merging and splitting.
+
+See [the user guide](https://plexus.rs/user-guide/graphs) for more details about
+graphs.
 
 ## Geometric Traits
 
