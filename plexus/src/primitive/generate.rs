@@ -197,9 +197,7 @@ pub trait Generator: Sized {
     ///
     /// let cube = Cube::new();
     ///
-    /// let positions = cube
-    ///     .vertices::<Position<E3>>()
-    ///     .collect::<Vec<_>>();
+    /// let positions = cube.vertices::<Position<E3>>().collect::<Vec<_>>();
     /// let indices = cube
     ///     .indexing_polygons::<Position>()
     ///     .triangulate()

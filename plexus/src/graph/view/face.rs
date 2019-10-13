@@ -177,7 +177,12 @@ where
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
     /// let key = graph.faces().nth(0).unwrap().key();
-    /// let face = graph.face_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    /// let face = graph
+    ///     .face_mut(key)
+    ///     .unwrap()
+    ///     .extrude(1.0)
+    ///     .unwrap()
+    ///     .into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = face.into_arc();

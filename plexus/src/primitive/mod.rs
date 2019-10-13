@@ -122,7 +122,7 @@ pub trait Topological:
     ///     Trigon::from([
     ///         E2::from_xy(-1.0, 0.0),
     ///         E2::from_xy(0.0, 1.0),
-    ///         E2::from_xy(1.0, 0.0)
+    ///         E2::from_xy(1.0, 0.0),
     ///     ]),
     ///     1.0,
     /// );
@@ -890,8 +890,8 @@ impl<T> Topological for Polygon<T> {
 ///     cube.polygons::<Normal<E3>>(),
 ///     cube.polygons::<Plane>(),
 /// ))
-///     .triangulate()
-///     .collect::<Vec<_>>();
+/// .triangulate()
+/// .collect::<Vec<_>>();
 /// # }
 /// ```
 pub fn zip_vertices<T, U>(

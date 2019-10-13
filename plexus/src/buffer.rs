@@ -449,7 +449,8 @@ where
     /// let cube = Cube::new();
     /// let (indices, vertices) = primitive::zip_vertices((
     ///     cube.polygons::<Position<E3>>(),
-    ///     cube.polygons::<Normal<E3>>().map_vertices(|normal| normal.into_inner()),
+    ///     cube.polygons::<Normal<E3>>()
+    ///         .map_vertices(|normal| normal.into_inner()),
     /// ))
     /// .triangulate()
     /// .index_vertices::<Flat3, _>(HashIndexer::default());
@@ -689,7 +690,9 @@ where
     /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
-    ///     cube.indexing_polygons::<Position>().triangulate().vertices(),
+    ///     cube.indexing_polygons::<Position>()
+    ///         .triangulate()
+    ///         .vertices(),
     ///     cube.vertices::<Position<Point3<f32>>>(),
     /// )
     /// .unwrap();
