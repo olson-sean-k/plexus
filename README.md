@@ -1,6 +1,7 @@
 <div align="center">
     <img alt="Plexus" src="https://raw.githubusercontent.com/olson-sean-k/plexus/master/doc/plexus.svg?sanitize=true" width="320"/>
 </div>
+<br/>
 
 **Plexus** is a Rust library for polygonal mesh processing. See [the
 website](https://plexus.rs) for the most recent [API
