@@ -1,5 +1,6 @@
 pub mod edge;
 pub mod face;
+pub mod path;
 mod traverse;
 pub mod vertex;
 

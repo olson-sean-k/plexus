@@ -197,7 +197,7 @@ use crate::graph::view::{IntoView, Orphan};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
-use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry};
+use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, IteratorExt};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
@@ -207,6 +207,7 @@ pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan, EdgeView};
 pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
+pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
 pub use crate::graph::view::PayloadBinding;
 
@@ -534,6 +535,14 @@ where
             .map(|view| view.into())
     }
 
+    pub fn path(&self, keys: &[VertexKey]) -> Option<PathView<&Self, G>> {
+        (keys, self).into_view()
+    }
+
+    pub fn path_mut(&mut self, keys: &[VertexKey]) -> Option<PathView<&mut Self, G>> {
+        (keys, self).into_view()
+    }
+
     /// Gets an axis-aligned bounding box that encloses the graph.
     pub fn aabb(&self) -> Aabb<VertexPosition<G>>
     where
@@ -568,6 +577,13 @@ where
         }
     }
 
+    /// Smooths the positions of verticies in the graph.
+    ///
+    /// Each position is translated by its offset from its centroid scaled by
+    /// the given factor. The centroid of a vertex position is the mean of the
+    /// positions of its neighboring vertices. That is, given a centroid
+    /// function $\f{Q}$ and a factor $k$, each position $P$ becomes
+    /// $P+k(\f{P}-P)$.
     pub fn smooth<T>(&mut self, factor: T)
     where
         T: Into<Scalar<VertexPosition<G>>>,
@@ -587,6 +603,47 @@ where
         for mut vertex in self.vertex_orphans() {
             *vertex.geometry.as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
+    }
+
+    // TODO: Because `MeshGraph` supports some non-manifold structures like
+    //       singularities and unbounded edges, this operation is complicated.
+    //       However, support for these will likely be removed. Once these
+    //       structures can be ignored, implement this operation.
+    //
+    // This API is a bit unusual, but allows a view-like path to borrow a
+    // graph and remain consistent. It also (hopefully) makes it more clear
+    // that the _graph_ is split, not the path.
+    //
+    //   let mut path = graph.arc_mut(...).unwrap().into_path();
+    //   path.push(...).unwrap();
+    //   ...
+    //   let (a, b) = MeshGraph::split_at_path(path).unwrap();
+    /// Splits the graph into two disjoint sub-graphs along a path.
+    ///
+    /// The given path must either be closed or, if open, must begin and end
+    /// within the same ring. Such a path subdivides the graph.
+    ///
+    /// The subgraphs are disconnected from each other, copying any vertices,
+    /// arcs, and edges at their boundaries.
+    #[allow(clippy::type_complexity)]
+    pub fn split_at_path(
+        path: PathView<&mut Self, G>,
+    ) -> Result<(VertexView<&Self, G>, VertexView<&Self, G>), GraphError> {
+        if path.is_open() {
+            let first = path.vertices().nth(0).unwrap();
+            let last = path.vertices().last().unwrap();
+            // If the path is open, then the initiating and terminating
+            // vertices must be a part of the same ring and that ring must form
+            // a boundary (must not be a face).
+            first
+                .outgoing_arcs()
+                .flat_map(|arc| arc.into_boundary_arc())
+                .map(|arc| arc.into_ring())
+                .nth(0)
+                .and_then(|ring| ring.vertices().keys().find(|key| *key == last.key()))
+                .ok_or_else(|| GraphError::TopologyMalformed)?;
+        }
+        unimplemented!()
     }
 
     /// Gets an iterator over a vertex within each disjoint subgraph.
@@ -639,6 +696,11 @@ where
             subkeys.extend(vertex.traverse_by_depth().map(|vertex| vertex.key()));
         }
         vertices.into_iter()
+    }
+
+    /// Moves disjoint sub-graphs into separate graphs.
+    pub fn into_disjoint_subgraphs(self) -> Vec<Self> {
+        unimplemented!()
     }
 
     /// Creates a `MeshBuffer` from the graph.

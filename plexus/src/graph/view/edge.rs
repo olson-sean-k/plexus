@@ -17,6 +17,7 @@ use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
+use crate::graph::view::path::PathView;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
@@ -108,7 +109,7 @@ where
         self.inner.key()
     }
 
-    /// Returns true if this is a boundary arc.
+    /// Returns `true` if this is a boundary arc.
     ///
     /// A boundary arc has no associated face.
     pub fn is_boundary_arc(&self) -> bool {
@@ -355,6 +356,16 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: GraphGeometry,
 {
+    pub fn into_path(self) -> PathView<M, G> {
+        let (ab, storage) = self.into_inner().into_keyed_source();
+        let (a, b) = ab.into();
+        (&[a, b], storage).into_view().expect_consistent()
+    }
+
+    pub fn path(&self) -> PathView<&M::Target, G> {
+        self.interior_reborrow().into_path()
+    }
+
     /// Converts the arc into its source vertex.
     pub fn into_source_vertex(self) -> VertexView<M, G> {
         self.into_reachable_source_vertex().expect_consistent()
@@ -1126,9 +1137,9 @@ where
         self.reachable_arc().expect_consistent()
     }
 
-    pub fn is_unbounded_edge(&self) -> bool {
+    pub fn is_boundary_edge(&self) -> bool {
         let arc = self.arc();
-        arc.is_boundary_arc() && arc.opposite_arc().is_boundary_arc()
+        arc.is_boundary_arc() || arc.opposite_arc().is_boundary_arc()
     }
 }
 
