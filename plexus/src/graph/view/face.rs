@@ -1,6 +1,7 @@
 use either::Either;
 use smallvec::SmallVec;
 use std::cmp;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -28,6 +29,7 @@ use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
+use crate::IteratorExt;
 
 use Selector::ByIndex;
 
@@ -885,6 +887,17 @@ where
     }
 }
 
+impl<M, G> PartialEq for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<FacePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
 impl<M, G> Ring<M, G> for FaceView<M, G>
 where
     M: Reborrow,
@@ -1218,6 +1231,18 @@ where
     fn into(self) -> View<M, ArcPayload<G>> {
         let RingView { inner, .. } = self;
         inner
+    }
+}
+
+impl<M, G> PartialEq for RingView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        let keys = |ring: &Self| ring.interior_arcs().keys().collect::<HashSet<_>>();
+        keys(self) == keys(other)
     }
 }
 

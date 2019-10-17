@@ -489,6 +489,17 @@ where
     }
 }
 
+impl<M, G> PartialEq for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<VertexPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
 impl<M, G> PayloadBinding for VertexView<M, G>
 where
     M: Reborrow,

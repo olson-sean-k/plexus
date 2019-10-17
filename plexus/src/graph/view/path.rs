@@ -2,6 +2,7 @@ use fool::BoolExt;
 use indexmap::{indexset, IndexSet};
 use itertools::Itertools;
 use std::borrow::Borrow;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use crate::graph::borrow::Reborrow;
@@ -15,6 +16,7 @@ use crate::graph::view::edge::ArcView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::{GraphError, OptionExt, Selector};
+use crate::IteratorExt;
 
 // TODO: It would probably better for `PathView` to behave as a double-ended
 //       queue. That would avoid the need for `pop_swap` and allow paths to be
@@ -249,6 +251,18 @@ where
             path.push(Selector::ByKey(key)).ok()?;
         }
         Some(path)
+    }
+}
+
+impl<M, G> PartialEq for PathView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        let keys = |path: &Self| path.arcs().keys().collect::<HashSet<_>>();
+        keys(self) == keys(other)
     }
 }
 

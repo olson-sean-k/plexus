@@ -10,6 +10,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::core::Bind;
+use crate::graph::mutation::Consistent;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::payload::Payload;
 use crate::graph::storage::{AsStorage, AsStorageMut};
@@ -231,6 +232,18 @@ where
     fn into_keyed_source(self) -> (T::Key, M) {
         let View { key, storage, .. } = self;
         (key, storage)
+    }
+}
+
+// TODO: Consider implementing `Eq` for views.
+impl<M, T> PartialEq for View<M, T>
+where
+    M: Reborrow,
+    M::Target: AsStorage<T> + Consistent,
+    T: Payload,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
     }
 }
 

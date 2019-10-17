@@ -939,6 +939,17 @@ where
     }
 }
 
+impl<M, G> PartialEq for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<ArcPayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
 impl<M, G> PayloadBinding for ArcView<M, G>
 where
     M: Reborrow,
@@ -1254,6 +1265,17 @@ where
     fn into(self) -> View<M, EdgePayload<G>> {
         let EdgeView { inner, .. } = self;
         inner
+    }
+}
+
+impl<M, G> PartialEq for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<EdgePayload<G>> + Consistent,
+    G: GraphGeometry,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
