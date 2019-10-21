@@ -79,13 +79,13 @@
 //! # }
 //! ```
 
-use failure::Fail;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
 use std::iter::FromIterator;
 use theon::ops::Map;
 use theon::FromItems;
+use thiserror::Error;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
@@ -98,11 +98,11 @@ use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
 use crate::{Arity, FromRawBuffers};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
-    #[fail(display = "index into vertex data out of bounds")]
+    #[error("index into vertex data out of bounds")]
     IndexOutOfBounds,
-    #[fail(display = "conflicting arity")]
+    #[error("conflicting arity")]
     ArityConflict,
 }
 

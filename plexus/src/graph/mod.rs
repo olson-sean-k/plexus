@@ -171,7 +171,6 @@ mod storage;
 mod view;
 
 use decorum::N64;
-use failure::Fail;
 use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -184,6 +183,7 @@ use theon::ops::Map;
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use theon::AsPosition;
+use thiserror::Error;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
@@ -214,31 +214,30 @@ pub use crate::graph::view::PayloadBinding;
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum GraphError {
-    #[fail(display = "required topology not found")]
+    #[error("required topology not found")]
     TopologyNotFound,
-    #[fail(display = "conflicting topology found")]
+    #[error("conflicting topology found")]
     TopologyConflict,
-    #[fail(display = "topology malformed")]
+    #[error("topology malformed")]
     TopologyMalformed,
-    #[fail(display = "arity is non-polygonal")]
+    #[error("arity is non-polygonal")]
     ArityNonPolygonal,
-    #[fail(
-        display = "conflicting arity; expected {}, but got {}",
-        expected, actual
-    )]
+    #[error("conflicting arity; expected {expected}, but got {actual}")]
     ArityConflict { expected: usize, actual: usize },
-    #[fail(display = "arity is non-uniform")]
+    #[error("arity is non-uniform")]
     ArityNonUniform,
-    #[fail(display = "geometric operation failed")]
+    #[error("geometric operation failed")]
     Geometry,
+    #[error("encoding operation failed")]
+    Encoding,
 }
 
 impl From<BufferError> for GraphError {
     fn from(_: BufferError) -> Self {
         // TODO: How should buffer errors be handled? Is this sufficient?
-        GraphError::TopologyMalformed
+        GraphError::Encoding
     }
 }
 
