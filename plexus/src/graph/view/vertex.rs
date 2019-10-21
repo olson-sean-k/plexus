@@ -22,7 +22,7 @@ use crate::graph::view::traverse::{
 use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
-use crate::graph::{GraphError, OptionExt, ResultExt};
+use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 
 /// View of a vertex.
 ///

@@ -86,7 +86,7 @@ use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::IteratorExt;
+use crate::IteratorExt as _;
 
 pub trait Topological:
     AsMut<[<Self as Composite>::Item]>

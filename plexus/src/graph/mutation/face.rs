@@ -20,7 +20,7 @@ use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
-use crate::IteratorExt;
+use crate::IteratorExt as _;
 
 pub struct FaceMutation<G>
 where

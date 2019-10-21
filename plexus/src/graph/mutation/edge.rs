@@ -16,7 +16,7 @@ use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
-use crate::IteratorExt;
+use crate::IteratorExt as _;
 
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdgePayload<G> = (EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>));

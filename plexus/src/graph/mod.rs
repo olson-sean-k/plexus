@@ -197,7 +197,7 @@ use crate::graph::view::{IntoView, Orphan};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
-use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, IteratorExt};
+use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, IteratorExt as _};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,

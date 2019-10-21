@@ -1,4 +1,4 @@
-use fool::BoolExt;
+use fool::BoolExt as _;
 use indexmap::{indexset, IndexSet};
 use itertools::Itertools;
 use std::borrow::Borrow;
@@ -15,8 +15,8 @@ use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
-use crate::graph::{GraphError, OptionExt, Selector};
-use crate::IteratorExt;
+use crate::graph::{GraphError, OptionExt as _, Selector};
+use crate::IteratorExt as _;
 
 // TODO: It would probably better for `PathView` to behave as a double-ended
 //       queue. That would avoid the need for `pop_swap` and allow paths to be

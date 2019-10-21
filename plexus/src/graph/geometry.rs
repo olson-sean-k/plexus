@@ -80,7 +80,7 @@ use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, CompositeEdge};
 use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::{GraphError, OptionExt};
+use crate::graph::{GraphError, OptionExt as _};
 
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 

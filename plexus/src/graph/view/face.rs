@@ -28,8 +28,8 @@ use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
-use crate::graph::{GraphError, OptionExt, ResultExt, Selector};
-use crate::IteratorExt;
+use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::IteratorExt as _;
 
 use Selector::ByIndex;
 
