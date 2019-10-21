@@ -577,13 +577,13 @@ where
         }
     }
 
-    /// Smooths the positions of verticies in the graph.
+    /// Smooths the positions of vertices in the graph.
     ///
     /// Each position is translated by its offset from its centroid scaled by
     /// the given factor. The centroid of a vertex position is the mean of the
-    /// positions of its neighboring vertices. That is, given a centroid
-    /// function $\f{Q}$ and a factor $k$, each position $P$ becomes
-    /// $P+k(\f{P}-P)$.
+    /// positions of its neighboring vertices. That is, given a factor $k$ and
+    /// a vertex with position $P$ and centroid $Q$, its position becomes
+    /// $P+k(Q-P)$.
     pub fn smooth<T>(&mut self, factor: T)
     where
         T: Into<Scalar<VertexPosition<G>>>,
@@ -623,7 +623,7 @@ where
     /// The given path must either be closed or, if open, must begin and end
     /// within the same ring. Such a path subdivides the graph.
     ///
-    /// The subgraphs are disconnected from each other, copying any vertices,
+    /// The sub-graphs are disconnected from each other, copying any vertices,
     /// arcs, and edges at their boundaries.
     #[allow(clippy::type_complexity)]
     pub fn split_at_path(
