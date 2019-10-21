@@ -71,24 +71,22 @@ where
         M::Target: AsStorage<VertexPayload<G>>,
     {
         let arity = self.arity();
-        let select = |selector: Selector<_>| {
-            selector
-                .index_or_else(|key| {
-                    self.vertices()
-                        .map(|vertex| vertex.key())
-                        .enumerate()
-                        .find(|(_, a)| *a == key)
-                        .map(|(index, _)| index)
-                        .ok_or_else(|| GraphError::TopologyNotFound)
-                })
-                .and_then(|index| {
-                    if index >= arity {
-                        Err(GraphError::TopologyNotFound)
-                    }
-                    else {
-                        Ok(index)
-                    }
-                })
+        let select = |selector: Selector<_>| match selector {
+            Selector::ByKey(key) => self
+                .vertices()
+                .keys()
+                .enumerate()
+                .find(|(_, a)| *a == key)
+                .map(|(index, _)| index)
+                .ok_or_else(|| GraphError::TopologyNotFound),
+            Selector::ByIndex(index) => {
+                if index >= arity {
+                    Err(GraphError::TopologyNotFound)
+                }
+                else {
+                    Ok(index)
+                }
+            }
         };
         let source = select(source)? as isize;
         let destination = select(destination)? as isize;
