@@ -41,12 +41,13 @@
 //! is present within an ring, the arcs will refer to that face and the face
 //! will refer to exactly one of the arcs in the ring (this is the leading arc
 //! of the face). An arc with no associated face is known as a _boundary arc_.
-//! If both of an edge's arcs are boundary arcs, then that edge is an
-//! _unbounded edge_.
+//! If either of an edge's arcs is a boundary arc, then that edge is a
+//! _boundary edge_.
 //!
 //! A path that terminates is _open_ and a path that forms a loop is _closed_.
 //! Rings are always closed. A path over vertices $A$, $B$, and $C$ is
-//! notated $\overrightarrow{\\{A, B, C\\}}$.
+//! notated $\overrightarrow{\\{A,B,C\\}}$. This path notation is used to
+//! describe rings and faces.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find

@@ -95,14 +95,16 @@ where
     }
 }
 
-/// View of a face.
+/// View of a face in a graph.
 ///
 /// Provides traversals, queries, and mutations related to faces in a graph.
 /// See the module documentation for more information about topological views.
 ///
-/// Faces are notated similarly to paths. A triangular face with a perimeter
-/// formed by vertices $A$, $B$, and $C$ is notated $\Overrightarrow{\\{A, B,
-/// C\\}}$ (using a double-struck arrow).
+/// Faces are notated by the path of their associated ring. A triangular face
+/// with a perimeter formed by vertices $A$, $B$, and $C$ is notated
+/// $\overrightarrow{\\{A,B,C\\}}$. While the precise ordering of vertices is
+/// determined by a face's leading arc, the same face may be notated using
+/// rotations of this set, such as $\overrightarrow{\\{B,C,A\\}}$.
 pub struct FaceView<M, G>
 where
     M: Reborrow,
@@ -452,10 +454,11 @@ where
     /// This can be thought of as the opposite of `merge`.
     ///
     /// Returns the inserted arc that spans from the source vertex to the
-    /// destination vertex if successful. If a face $\Overrightarrow{\\{A, B,
-    /// C, D\\}}$ is split from $A$ to $C$, then it will be decomposed into
-    /// $\Overrightarrow{\\{A, B, C\\}}$ and $\Overrightarrow{\\{C, D, A\\}}$
-    /// and the arc $\overrightarrow{AC}$ will be returned.
+    /// destination vertex if successful. If a face $\overrightarrow{\\{A,B,
+    /// C,D\\}}$ is split from $A$ to $C$, then it will be decomposed into
+    /// faces in the rings $\overrightarrow{\\{A,B,C\\}}$ and
+    /// $\overrightarrow{\\{C,D,A\\}}$ and the arc $\overrightarrow{AC}$ will
+    /// be returned.
     ///
     /// # Errors
     ///
@@ -996,19 +999,21 @@ where
     }
 }
 
-/// View of a ring.
+/// View of a ring in a graph.
 ///
-/// Interior paths are closed paths formed by arcs and their immediate
-/// neighboring arcs. In a consistent graph, every arc forms such a path. Such
-/// paths may or may not be occupied by faces.
+/// Rings are closed paths formed by arcs and their immediate neighboring arcs.
+/// In a consistent graph, every arc forms such a path. Such paths may or may
+/// not be occupied by faces. When no face is present, the ring forms a
+/// boundary.
 ///
-/// Interior paths have no associated payload and do not directly expose
-/// geometry (`RingView` does not implement `Deref`).
+/// Rings have no associated payload and do not directly expose geometry
+/// (`RingView` does not implement `Deref` or expose a `geometry` field). See
+/// the module documentation for more information about topological views.
 ///
-/// A ring with a perimeter formed by vertices $A$, $B$, and $C$ is notated
-/// $\overrightarrow{\\{A, B, C\\}}$.
-///
-/// See the module documentation for more information about topological views.
+/// Rings are notated by their path. A ring with a perimeter formed by vertices
+/// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
+/// rotations of the set of vertices are equivalent, such as
+/// $\overrightarrow{\\{B,C,A\\}}$.
 pub struct RingView<M, G>
 where
     M: Reborrow,

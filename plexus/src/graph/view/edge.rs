@@ -35,7 +35,7 @@ where
     fn into_edge(self) -> EdgeView<M, G>;
 }
 
-/// View of an arc.
+/// View of an arc in a graph.
 ///
 /// Provides traversals, queries, and mutations related to arcs in a graph. See
 /// the module documentation for more information about topological views.
@@ -46,6 +46,7 @@ where
 /// emit deterministic results (this is not true of edges).
 ///
 /// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
+/// This is shorthand for the path notation $\overrightarrow{\\{A,B\\}}$.
 ///
 /// # Examples
 ///
@@ -671,8 +672,8 @@ where
     /// boundary arcs with an orientation that allows them to form a ring.
     ///
     /// Bridging two compatible arcs $\overrightarrow{AB}$ and
-    /// $\overrightarrow{CD}$ will result in a ring $\overrightarrow{\\{A, B,
-    /// C, D\\}}$.
+    /// $\overrightarrow{CD}$ will result in a ring $\overrightarrow{\\{A,B,
+    /// C,D\\}}$.
     ///
     /// Arcs can be bridged within a ring. The destination arc can be chosen by
     /// key or index, where an index selects the $n^\text{th}$ arc from the
@@ -1035,7 +1036,7 @@ where
     }
 }
 
-/// View of an edge.
+/// View of an edge in a graph.
 ///
 /// Provides traversals, queries, and mutations related to edges in a graph.
 /// See the module documentation for more information about topological views.

@@ -23,12 +23,16 @@ use crate::IteratorExt as _;
 //       re-rooted (the initiating vertex could be changed). This would not
 //       work well with `IndexSet`.
 
-/// View of a path.
+/// View of a path in a graph.
 ///
 /// Provides a representation of **non-intersecting** paths in a graph. A path
 /// is conceptually an ordered set of vertices that are joined by arcs. A path
 /// over vertices $A$, $B$, and $C$ is notated $\overrightarrow{\\{A, B,
 /// C\\}}$.
+///
+/// Paths have no associated payload and do not directly expose geometry
+/// (`PathView` does not implement `Deref` or expose a `geometry` field). See
+/// the module documentation for more information about topological views.
 #[derive(Clone)]
 pub struct PathView<M, G>
 where

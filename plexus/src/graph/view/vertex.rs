@@ -24,13 +24,10 @@ use crate::graph::view::{
 };
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 
-/// View of a vertex.
+/// View of a vertex in a graph.
 ///
 /// Provides traversals, queries, and mutations related to vertices in a graph.
 /// See the module documentation for more information about topological views.
-///
-/// Disjoint vertices with no leading arc are disallowed. Any mutation that
-/// would yield a disjoint vertex will also remove that vertex.
 pub struct VertexView<M, G>
 where
     M: Reborrow,
