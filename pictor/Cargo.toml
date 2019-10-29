@@ -26,7 +26,7 @@ gfx = "0.18.0"
 gfx_device_gl = "0.16.0"
 gfx_window_glutin = "0.29.0"
 glutin = "0.19.0"
-nalgebra = "^0.18.0"
+nalgebra = "^0.19.0"
 num = "^0.2.0"
 rand = "^0.7.0"
 
@@ -42,7 +42,7 @@ features = [
 
 [dependencies.theon]
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "811ea063ffae86beeba6b5c6a58c26c1065ae8a9"
+rev = "ed0782cf93785a0a4be66dfcc23948d587e09aae"
 default-features = false
 features = [
     "geometry-nalgebra",
