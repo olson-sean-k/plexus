@@ -71,7 +71,7 @@ where
         M::Target: AsStorage<VertexPayload<G>>,
     {
         let arity = self.arity();
-        let select = |selector: Selector<_>| match selector {
+        let index_of_selector = |selector: Selector<_>| match selector {
             Selector::ByKey(key) => self
                 .vertices()
                 .keys()
@@ -88,8 +88,8 @@ where
                 }
             }
         };
-        let source = select(source)? as isize;
-        let destination = select(destination)? as isize;
+        let source = index_of_selector(source)? as isize;
+        let destination = index_of_selector(destination)? as isize;
         let difference = (source - destination).abs() as usize;
         Ok(cmp::min(difference, arity - difference))
     }
@@ -499,18 +499,14 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<ArcView<&'a mut M, G>, GraphError> {
-        let source = source.key_or_else(|index| {
+        let key_at_index = |index| {
             self.vertices()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
-        })?;
-        let destination = destination.key_or_else(|index| {
-            self.vertices()
-                .nth(index)
-                .ok_or_else(|| GraphError::TopologyNotFound)
-                .map(|vertex| vertex.key())
-        })?;
+        };
+        let source = source.key_or_else(key_at_index)?;
+        let destination = destination.key_or_else(key_at_index)?;
         let (abc, storage) = self.into_inner().into_keyed_source();
         // Errors can easily be caused by inputs to this function. Allow errors
         // from the snapshot to propagate.
