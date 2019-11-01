@@ -222,8 +222,8 @@ where
     }
 }
 
-// TODO: `FromKeyedSource` does not provide error information.
-
+// TODO: Do not implement `FromKeyedSource`. Instead, provide an
+//       explicit/inherent mechanism to construct paths and report errors.
 impl<I, M, G> FromKeyedSource<(I, M)> for PathView<M, G>
 where
     I: IntoIterator,
@@ -233,18 +233,10 @@ where
     G: GraphGeometry,
 {
     fn from_keyed_source(source: (I, M)) -> Option<Self> {
-        // TODO: `Result`s are mapped into `Option`s to comply with
-        //       `FromKeyedSource`.
         let (keys, storage) = source;
         let mut keys = keys.into_iter().map(|key| *key.borrow());
-        let head = keys
-            .next()
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .ok()?;
-        let tail = keys
-            .next()
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .ok()?;
+        let head = keys.next()?;
+        let tail = keys.next()?;
         let mut path = PathView {
             head,
             tail: indexset![tail],
