@@ -71,7 +71,7 @@ indexmap = "^1.2.0"
 itertools = "^0.8.0"
 num = "^0.2.0"
 slotmap = "^0.4.0"
-smallvec = "^0.6.9"
+smallvec = "^1.0.0"
 thiserror = "^1.0.3"
 typenum = "^1.10.0"
 
