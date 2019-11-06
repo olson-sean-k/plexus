@@ -4,7 +4,6 @@ pub mod path;
 mod traverse;
 pub mod vertex;
 
-use either::Either;
 use fool::BoolExt as _;
 use std::ops::{Deref, DerefMut};
 
@@ -38,13 +37,68 @@ where
     }
 }
 
+/// A view into a graph that is bound to a payload by its key.
+///
+/// This trait is implemented by views that operate over a specific topology in
+/// a graph, such as a vertex or face. Note that rings and paths are exposed as
+/// _meta-views_, and as such do not implement this trait.
 pub trait PayloadBinding: Deref<Target = <Self as PayloadBinding>::Payload> {
     // This associated type is redundant, but avoids re-exporting the
     // `Payload` trait and simplifies the use of this trait.
     type Key: OpaqueKey;
     type Payload: Payload<Key = Self::Key>;
 
+    /// Gets the key for the view.
     fn key(&self) -> Self::Key;
+
+    /// Rekeys a view into another.
+    ///
+    /// Rekeying a view allows its underlying storage to be reinterpretted. The
+    /// output view must also be bound to a payload.
+    ///
+    /// # Examples
+    ///
+    /// Perform a fallible traversal and preserve mutability of the resulting
+    /// view:
+    ///
+    /// ```rust,no_run
+    /// # use plexus::graph::{PayloadBinding, MeshGraph};
+    /// # use plexus::prelude::*;
+    /// #
+    /// # let mut graph = MeshGraph::<()>::default();
+    /// # let key = graph.faces().keys().nth(0).unwrap();
+    /// // ...
+    /// let face = graph.face_mut(key).unwrap();
+    /// // Find a face along a boundary. If no such face is found, continue to use the
+    /// // initiating face.
+    /// let mut face = {
+    ///     let key = face
+    ///         .traverse_by_depth()
+    ///         .find(|face| {
+    ///             face.interior_arcs()
+    ///                 .map(|arc| arc.into_opposite_arc())
+    ///                 .any(|arc| arc.is_boundary_arc())
+    ///         })
+    ///         .map(|face| face.key());
+    ///     if let Some(key) = key {
+    ///         face.rekey(key).unwrap() // Rekey into the boundary face.
+    ///     }
+    ///     else {
+    ///         face
+    ///     }
+    /// };
+    /// ```
+    fn rekey<T, M>(self, key: T::Key) -> Result<T, GraphError>
+    where
+        Self: Into<View<M, <Self as PayloadBinding>::Payload>>,
+        T: From<View<M, <T as PayloadBinding>::Payload>> + PayloadBinding,
+        M: Reborrow,
+        M::Target: AsStorage<Self::Payload> + AsStorage<T::Payload>,
+    {
+        self.into()
+            .rekey_map::<_, T::Payload>(key)
+            .ok_or_else(|| GraphError::TopologyNotFound)
+    }
 }
 
 pub struct View<M, T>
@@ -131,25 +185,6 @@ where
     pub fn into_ref(self) -> View<&'a M, T> {
         let (key, storage) = self.into_keyed_source();
         (key, &*storage).into_view().unwrap()
-    }
-
-    // TODO: Can this be shared somehow (without an explosion of type
-    //       parameters)?
-    pub fn with_ref<U, F>(self, f: F) -> Either<Result<View<&'a mut M, U>, GraphError>, Self>
-    where
-        U: Payload,
-        F: FnOnce(View<&M, T>) -> Option<U::Key>,
-        M: AsStorage<U>,
-    {
-        if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_keyed_source();
-            Either::Left(
-                View::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
-            )
-        }
-        else {
-            Either::Right(self)
-        }
     }
 }
 
@@ -247,20 +282,6 @@ where
     }
 }
 
-impl<M, T> PayloadBinding for View<M, T>
-where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Payload,
-{
-    type Key = <T as Payload>::Key;
-    type Payload = T;
-
-    fn key(&self) -> Self::Key {
-        View::key(self)
-    }
-}
-
 pub struct Orphan<'a, T>
 where
     T: Payload,
@@ -314,17 +335,5 @@ where
             .as_storage_mut()
             .get_mut(&key)
             .map(|payload| Orphan { key, payload })
-    }
-}
-
-impl<'a, T> PayloadBinding for Orphan<'a, T>
-where
-    T: 'a + Payload,
-{
-    type Key = <T as Payload>::Key;
-    type Payload = T;
-
-    fn key(&self) -> Self::Key {
-        Orphan::key(self)
     }
 }

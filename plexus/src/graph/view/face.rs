@@ -1,4 +1,3 @@
-use either::Either;
 use smallvec::SmallVec;
 use std::cmp;
 use std::collections::HashSet;
@@ -193,30 +192,6 @@ where
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M, G> {
         self.into_inner().into_ref().into()
-    }
-
-    /// Reborrows the view and constructs another mutable view from a given
-    /// key.
-    ///
-    /// This allows for fallible traversals from a mutable view without the
-    /// need for direct access to the source `MeshGraph`. If the given function
-    /// emits a key, then that key will be used to convert this view into
-    /// another. If no key is emitted, then the original mutable view is
-    /// returned.
-    pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
-    where
-        T: FromKeyedSource<(K, &'a mut M)>,
-        F: FnOnce(FaceView<&M, G>) -> Option<K>,
-    {
-        if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_inner().into_keyed_source();
-            Either::Left(
-                T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
-            )
-        }
-        else {
-            Either::Right(self)
-        }
     }
 }
 
@@ -1056,30 +1031,6 @@ where
     /// access is desired.
     pub fn into_ref(self) -> RingView<&'a M, G> {
         self.into_inner().into_ref().into()
-    }
-
-    /// Reborrows the view and constructs another mutable view from a given
-    /// key.
-    ///
-    /// This allows for fallible traversals from a mutable view without the
-    /// need for direct access to the source `MeshGraph`. If the given function
-    /// emits a key, then that key will be used to convert this view into
-    /// another. If no key is emitted, then the original mutable view is
-    /// returned.
-    pub fn with_ref<T, K, F>(self, f: F) -> Either<Result<T, GraphError>, Self>
-    where
-        T: FromKeyedSource<(K, &'a mut M)>,
-        F: FnOnce(RingView<&M, G>) -> Option<K>,
-    {
-        if let Some(key) = f(self.interior_reborrow()) {
-            let (_, storage) = self.into_inner().into_keyed_source();
-            Either::Left(
-                T::from_keyed_source((key, storage)).ok_or_else(|| GraphError::TopologyNotFound),
-            )
-        }
-        else {
-            Either::Right(self)
-        }
     }
 }
 
