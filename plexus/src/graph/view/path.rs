@@ -57,11 +57,23 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: GraphGeometry,
 {
+    fn keys(&self) -> impl Iterator<Item = &VertexKey> {
+        let head = Some(&self.head);
+        head.into_iter().chain(self.tail.iter())
+    }
+
+    fn span(&self) -> (VertexKey, VertexKey) {
+        (
+            self.head,
+            self.tail.iter().cloned().last().expect("path tail empty"),
+        )
+    }
+
     /// Pushes a vertex onto the path.
     pub fn push(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
         self.is_open()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
-        let a = self.last();
+        let (a, _) = self.span();
         let b = match destination {
             Selector::ByKey(b) => {
                 self.storage
@@ -129,20 +141,18 @@ where
         }
     }
 
-    /// Gets an iterator over the keys of the vertices in the path.
-    pub fn keys(&self) -> impl Iterator<Item = &VertexKey> {
-        let head = Some(&self.head);
-        head.into_iter().chain(self.tail.iter())
-    }
-
     /// Gets the initiating vertex of the path.
-    pub fn first(&self) -> VertexKey {
-        self.head
+    pub fn first(&self) -> VertexView<&M::Target, G> {
+        let (key, _) = self.span();
+        let storage = self.storage.reborrow();
+        (key, storage).into_view().expect_consistent()
     }
 
     /// Gets the terminating vertex of the path.
-    pub fn last(&self) -> VertexKey {
-        self.tail.iter().cloned().last().expect("path tail empty")
+    pub fn last(&self) -> VertexView<&M::Target, G> {
+        let (_, key) = self.span();
+        let storage = self.storage.reborrow();
+        (key, storage).into_view().expect_consistent()
     }
 
     /// Gets an iterator over the vertices in the path.
@@ -176,11 +186,12 @@ where
     /// include arcs that do not participate in loops. `PathView` disallows
     /// such paths.
     pub fn is_closed(&self) -> bool {
-        self.first() == self.last()
+        let (a, b) = self.span();
+        a == b
     }
 
     fn push_unchecked(&mut self, b: VertexKey) -> ArcKey {
-        let a = self.last();
+        let (_, a) = self.span();
         self.tail.insert(b);
         (a, b).into()
     }
