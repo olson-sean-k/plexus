@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 1
-      - run: ./rustfmt.sh --all -- --check
+      - run: ./rustfmt.sh -- --check
   clippy:
     name: Lint
     runs-on: ubuntu-latest
@@ -41,5 +41,5 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 1
-      - run: cargo test --no-default-features --verbose
-      - run: cargo test --all-features --verbose
+      - run: cargo test --manifest-path=plexus/Cargo.toml --no-default-features --verbose
+      - run: cargo test --manifest-path=plexus/Cargo.toml --all-features --verbose
