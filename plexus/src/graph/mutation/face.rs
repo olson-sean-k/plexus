@@ -544,6 +544,8 @@ where
 }
 
 // TODO: Does this require a cache (or consistency)?
+// TODO: This may need to be more destructive to maintain consistency. Edges,
+//       arcs, and vertices may also need to be removed.
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: FaceRemoveCache<G>,

@@ -754,13 +754,13 @@ where
 
     /// Removes the face.
     ///
-    /// Returns the ring of the face.
-    pub fn remove(self) -> RingView<&'a mut M, G> {
+    /// Returns the remaining ring of the face if it is not entirely disjoint.
+    pub fn remove(self) -> Option<RingView<&'a mut M, G>> {
         let (abc, storage) = self.into_inner().into_keyed_source();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
-            .map(|(storage, face)| (face.arc, storage).into_view().expect_consistent())
+            .map(|(storage, face)| (face.arc, storage).into_view())
             .expect_consistent()
     }
 }
