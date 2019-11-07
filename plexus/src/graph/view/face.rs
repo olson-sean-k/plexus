@@ -1591,7 +1591,7 @@ mod tests {
             let face = graph.face_mut(abc).unwrap();
             assert_eq!(3, face.arity()); // The face should be triangular.
 
-            let path = face.remove().into_ref();
+            let path = face.remove().unwrap().into_ref();
             assert_eq!(3, path.arity()); // The path should also be triangular.
         }
 
