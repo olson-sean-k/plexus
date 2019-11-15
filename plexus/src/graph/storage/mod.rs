@@ -10,6 +10,10 @@
 //! most data, but hash maps are used for arcs. This allows for $O(1)$ queries
 //! for arcs, which is a core design assumption of `MeshGraph`.
 
+pub mod alias;
+pub mod key;
+pub mod payload;
+
 use fnv::FnvBuildHasher;
 use slotmap::hop::HopSlotMap;
 use slotmap::Key as SlotKey;
@@ -18,10 +22,6 @@ use std::hash::{BuildHasher, Hash};
 
 use crate::graph::storage::key::{InnerKey, OpaqueKey};
 use crate::graph::storage::payload::Payload;
-
-pub mod alias;
-pub mod key;
-pub mod payload;
 
 pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Payload>::Key>, T>;
 pub type HashStorage<T> = HashMap<InnerKey<<T as Payload>::Key>, T, FnvBuildHasher>;

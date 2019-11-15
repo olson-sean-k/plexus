@@ -4,12 +4,6 @@
 //! unstable! Use exact version constraints when specifying a dependency to
 //! avoid spurious breakage.
 
-// TODO: Documentation comments include static image content from the GitHub
-//       repository. This is fragile and difficult to maintain. Use a mechanism
-//       provided by rustdoc or doxidize for this instead.
-
-use std::fmt::Debug;
-
 // Feature modules. These are empty unless features are enabled.
 mod cgmath;
 mod mint;
@@ -21,10 +15,12 @@ pub mod graph;
 pub mod index;
 pub mod primitive;
 
-pub use theon::{AsPosition, Position};
-pub use typenum::{U2, U3, U4};
+use std::fmt::Debug;
 
 use crate::graph::PayloadBinding;
+
+pub use theon::{AsPosition, Position};
+pub use typenum::{U2, U3, U4};
 
 pub mod prelude {
     //! Re-exports commonly used types and traits.
