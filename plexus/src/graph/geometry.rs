@@ -212,12 +212,12 @@ where
         M: Reborrow,
         M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
     {
-        VertexPosition::<Self>::centroid(
+        Ok(VertexPosition::<Self>::centroid(
             vertex
                 .neighboring_vertices()
                 .map(|vertex| *vertex.geometry.as_position()),
         )
-        .ok_or_else(|| GraphError::TopologyNotFound)
+        .expect_consistent())
     }
 }
 
@@ -246,7 +246,7 @@ where
                 .map(<Self as FaceNormal>::normal)
                 .collect::<Result<Vec<_>, _>>()?,
         )
-        .ok_or_else(|| GraphError::TopologyNotFound)?
+        .expect_consistent()
         .normalize()
         .ok_or_else(|| GraphError::Geometry)
     }
