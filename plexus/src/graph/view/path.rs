@@ -57,16 +57,24 @@ where
     M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
     G: GraphGeometry,
 {
-    fn keys(&self) -> impl Iterator<Item = &VertexKey> {
-        let head = Some(&self.head);
-        head.into_iter().chain(self.tail.iter())
-    }
-
-    fn span(&self) -> (VertexKey, VertexKey) {
-        (
-            self.head,
-            self.tail.iter().cloned().last().expect("path tail empty"),
-        )
+    pub(in crate::graph) fn try_from_keys<I>(storage: M, keys: I) -> Result<Self, GraphError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<VertexKey>,
+    {
+        let mut keys = keys.into_iter().map(|key| *key.borrow());
+        let head = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
+        let tail = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
+        let mut path = PathView {
+            head,
+            tail: indexset![tail],
+            storage,
+            phantom: PhantomData,
+        };
+        for key in keys {
+            path.push(Selector::ByKey(key))?;
+        }
+        Ok(path)
     }
 
     /// Pushes a vertex onto the path.
@@ -190,6 +198,18 @@ where
         a == b
     }
 
+    fn keys(&self) -> impl Iterator<Item = &VertexKey> {
+        let head = Some(&self.head);
+        head.into_iter().chain(self.tail.iter())
+    }
+
+    fn span(&self) -> (VertexKey, VertexKey) {
+        (
+            self.head,
+            self.tail.iter().cloned().last().expect("path tail empty"),
+        )
+    }
+
     fn push_unchecked(&mut self, b: VertexKey) -> ArcKey {
         let (_, a) = self.span();
         self.tail.insert(b);
@@ -230,34 +250,6 @@ where
             storage: &*storage,
             phantom: PhantomData,
         }
-    }
-}
-
-// TODO: Do not implement `FromKeyedSource`. Instead, provide an
-//       explicit/inherent mechanism to construct paths and report errors.
-impl<I, M, G> FromKeyedSource<(I, M)> for PathView<M, G>
-where
-    I: IntoIterator,
-    I::Item: Borrow<VertexKey>,
-    M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
-    G: GraphGeometry,
-{
-    fn from_keyed_source(source: (I, M)) -> Option<Self> {
-        let (keys, storage) = source;
-        let mut keys = keys.into_iter().map(|key| *key.borrow());
-        let head = keys.next()?;
-        let tail = keys.next()?;
-        let mut path = PathView {
-            head,
-            tail: indexset![tail],
-            storage,
-            phantom: PhantomData,
-        };
-        for key in keys {
-            path.push(Selector::ByKey(key)).ok()?;
-        }
-        Some(path)
     }
 }
 

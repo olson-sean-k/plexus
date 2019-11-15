@@ -335,7 +335,7 @@ where
     pub fn into_path(self) -> PathView<M, G> {
         let (ab, storage) = self.into_inner().into_keyed_source();
         let (a, b) = ab.into();
-        (&[a, b], storage).into_view().expect_consistent()
+        PathView::try_from_keys(storage, &[a, b]).unwrap()
     }
 
     pub fn path(&self) -> PathView<&M::Target, G> {

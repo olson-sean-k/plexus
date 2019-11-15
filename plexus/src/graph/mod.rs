@@ -175,6 +175,7 @@ use decorum::N64;
 use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -535,12 +536,20 @@ where
             .map(|view| view.into())
     }
 
-    pub fn path(&self, keys: &[VertexKey]) -> Option<PathView<&Self, G>> {
-        (keys, self).into_view()
+    pub fn path<I>(&self, keys: I) -> Result<PathView<&Self, G>, GraphError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<VertexKey>,
+    {
+        PathView::try_from_keys(self, keys)
     }
 
-    pub fn path_mut(&mut self, keys: &[VertexKey]) -> Option<PathView<&mut Self, G>> {
-        (keys, self).into_view()
+    pub fn path_mut<I>(&mut self, keys: I) -> Result<PathView<&mut Self, G>, GraphError>
+    where
+        I: IntoIterator,
+        I::Item: Borrow<VertexKey>,
+    {
+        PathView::try_from_keys(self, keys)
     }
 
     /// Gets an axis-aligned bounding box that encloses the graph.
