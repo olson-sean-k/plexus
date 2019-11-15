@@ -4,15 +4,11 @@
 //! unstable! Use exact version constraints when specifying a dependency to
 //! avoid spurious breakage.
 
-// Feature modules. These are empty unless features are enabled.
-mod cgmath;
-mod mint;
-mod nalgebra;
-
 pub mod buffer;
 pub mod encoding;
 pub mod graph;
 pub mod index;
+mod integration;
 pub mod primitive;
 
 use std::fmt::Debug;
