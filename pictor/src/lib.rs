@@ -5,9 +5,7 @@ pub mod camera;
 pub mod pipeline;
 pub mod renderer;
 
-use glutin::{
-    ContextBuilder, ControlFlow, Event, EventsLoop, GlWindow, WindowBuilder, WindowEvent,
-};
+use glutin::{ContextBuilder, ControlFlow, Event, EventsLoop, WindowBuilder, WindowEvent};
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
 use num::cast;
 use num::{NumCast, One};
@@ -107,15 +105,15 @@ where
 
     let mut event_loop = EventsLoop::new();
     let mut renderer = Renderer::from_glutin_window(
-        GlWindow::new(
-            WindowBuilder::new()
-                .with_title("Plexus")
-                .with_dimensions((WIDTH, HEIGHT).into())
-                .with_resizable(false),
-            ContextBuilder::new(),
-            &event_loop,
-        )
-        .expect("window"),
+        ContextBuilder::new()
+            .build_windowed(
+                WindowBuilder::new()
+                    .with_title("Plexus")
+                    .with_dimensions((WIDTH, HEIGHT).into())
+                    .with_resizable(false),
+                &event_loop,
+            )
+            .expect("window"),
     );
     event_loop.run_forever(move |event| match event {
         Event::WindowEvent {

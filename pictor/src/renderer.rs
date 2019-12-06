@@ -5,7 +5,7 @@ use gfx::traits::FactoryExt;
 use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
 use gfx_device_gl;
 use gfx_window_glutin;
-use glutin::GlWindow;
+use glutin::{NotCurrent, PossiblyCurrent, WindowedContext};
 use plexus::buffer::MeshBuffer3;
 
 use crate::pipeline::{self, Data, Meta, Transform, Vertex};
@@ -16,9 +16,9 @@ pub trait SwapBuffers {
     fn swap_buffers(&mut self) -> Result<(), ()>;
 }
 
-impl SwapBuffers for GlWindow {
+impl SwapBuffers for WindowedContext<PossiblyCurrent> {
     fn swap_buffers(&mut self) -> Result<(), ()> {
-        match GlWindow::swap_buffers(self) {
+        match WindowedContext::swap_buffers(self) {
             Ok(_) => Ok(()),
             Err(_) => Err(()),
         }
@@ -36,7 +36,7 @@ where
     );
 }
 
-impl UpdateFrameBufferView<gfx_device_gl::Resources> for GlWindow {
+impl UpdateFrameBufferView<gfx_device_gl::Resources> for WindowedContext<PossiblyCurrent> {
     fn update_frame_buffer_view(
         &self,
         color: &mut RenderTargetView<gfx_device_gl::Resources, Rgba8>,
@@ -57,7 +57,7 @@ pub trait Binding {
 pub enum GlutinBinding {}
 
 impl Binding for GlutinBinding {
-    type Window = GlWindow;
+    type Window = WindowedContext<PossiblyCurrent>;
     type Resources = gfx_device_gl::Resources;
     type Factory = gfx_device_gl::Factory;
     type CommandBuffer = gfx_device_gl::CommandBuffer;
@@ -77,8 +77,8 @@ where
 }
 
 impl Renderer<GlutinBinding> {
-    pub fn from_glutin_window(window: GlWindow) -> Self {
-        let (device, mut factory, color, depth) = gfx_window_glutin::init_existing(&window);
+    pub fn from_glutin_window(window: WindowedContext<NotCurrent>) -> Self {
+        let (window, device, mut factory, color, depth) = gfx_window_glutin::init_existing(window);
         let encoder = factory.create_command_buffer().into();
         Renderer::new(window, factory, device, encoder, color, depth)
     }
