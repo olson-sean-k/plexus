@@ -767,6 +767,18 @@ impl<T, U> Fold<U> for Polygon<T> {
     }
 }
 
+impl<T> From<[T; 3]> for Polygon<T> {
+    fn from(array: [T; 3]) -> Self {
+        Polygon::N3(array.into())
+    }
+}
+
+impl<T> From<[T; 4]> for Polygon<T> {
+    fn from(array: [T; 4]) -> Self {
+        Polygon::N4(array.into())
+    }
+}
+
 impl<T> From<Trigon<T>> for Polygon<T> {
     fn from(trigon: Trigon<T>) -> Self {
         Polygon::N3(trigon)

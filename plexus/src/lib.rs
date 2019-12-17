@@ -5,11 +5,13 @@
 //! avoid spurious breakage.
 
 pub mod buffer;
+pub mod builder;
 pub mod encoding;
 pub mod graph;
 pub mod index;
 mod integration;
 pub mod primitive;
+mod transact;
 
 use std::fmt::Debug;
 
@@ -42,6 +44,7 @@ pub mod prelude {
     //! `Selector` is often used when mutating `MeshGraph`s.
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
+    pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
     pub use crate::graph::Selector;
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{

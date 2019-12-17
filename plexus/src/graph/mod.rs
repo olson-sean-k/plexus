@@ -165,6 +165,7 @@
 //! ```
 
 mod borrow;
+mod builder;
 mod core;
 mod geometry;
 mod mutation;
@@ -189,9 +190,11 @@ use thiserror::Error;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
+use crate::builder::Buildable;
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
+use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Bind, Core, OwnedCore};
-use crate::graph::mutation::{Consistent, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
@@ -199,6 +202,7 @@ use crate::graph::view::{IntoView, Orphan};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
+use crate::transact::Transact;
 use crate::{Arity, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, IteratorExt as _};
 
 pub use crate::graph::geometry::{
@@ -914,6 +918,52 @@ where
     }
 }
 
+/// Exposes a `MeshBuilder` that can be used to construct a `MeshGraph`
+/// incrementally from _surfaces_ and _facets_.
+///
+/// See the documentation for the `builder` module for more.
+///
+/// # Examples
+///
+/// Creating a graph from a triangle:
+///
+/// ```rust
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use nalgebra::Point2;
+/// use plexus::builder::Buildable;
+/// use plexus::graph::MeshGraph;
+/// use plexus::prelude::*;
+///
+/// # fn main() {
+/// let mut builder = MeshGraph::<Point2<f64>>::builder();
+/// builder
+///     .surface_with(|builder| {
+///         let a = builder.insert_vertex((0.0, 0.0))?;
+///         let b = builder.insert_vertex((1.0, 0.0))?;
+///         let c = builder.insert_vertex((0.0, 1.0))?;
+///         builder.facets_with(|builder| builder.insert_facet(&[a, b, c], ()))
+///     })
+///     .unwrap();
+/// let graph = builder.build().unwrap();
+/// # }
+/// ```
+impl<G> Buildable for MeshGraph<G>
+where
+    G: GraphGeometry,
+{
+    type Builder = GraphBuilder<G>;
+    type Error = GraphError;
+
+    type Vertex = G::Vertex;
+    type Facet = G::Face;
+
+    fn builder() -> Self::Builder {
+        Default::default()
+    }
+}
+
 impl<G> Consistent for MeshGraph<G> where G: GraphGeometry {}
 
 impl<G> Default for MeshGraph<G>
@@ -947,7 +997,7 @@ where
         vertices: <E as VertexDecoder>::Output,
         faces: <E as FaceDecoder>::Output,
     ) -> Result<Self, Self::Error> {
-        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let mut mutation = Mutation::from(MeshGraph::new());
         let keys = vertices
             .into_iter()
             .map(|geometry| mutation.insert_vertex(geometry.into_geometry()))
@@ -981,7 +1031,7 @@ where
         I: IntoIterator<Item = P>,
         N: Indexer<P, P::Vertex>,
     {
-        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let mut mutation = Mutation::from(MeshGraph::new());
         let (indices, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
@@ -1028,7 +1078,7 @@ where
         I: IntoIterator<Item = P>,
         J: IntoIterator<Item = H>,
     {
-        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let mut mutation = Mutation::from(MeshGraph::new());
         let vertices = vertices
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
@@ -1100,7 +1150,7 @@ where
         if arity < 3 {
             return Err(GraphError::ArityNonPolygonal);
         }
-        let mut mutation = Mutation::mutate(MeshGraph::new());
+        let mut mutation = Mutation::from(MeshGraph::new());
         let vertices = vertices
             .into_iter()
             .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))

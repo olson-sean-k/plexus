@@ -15,7 +15,7 @@ use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
-use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
@@ -28,6 +28,7 @@ use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
 use Selector::ByIndex;

@@ -79,6 +79,8 @@
 //! # }
 //! ```
 
+mod builder;
+
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::hash::Hash;
@@ -88,6 +90,8 @@ use theon::FromItems;
 use thiserror::Error;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
+use crate::buffer::builder::BufferBuilder;
+use crate::builder::{Buildable, MeshBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::index::{
     Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer,
@@ -159,6 +163,13 @@ where
     R: Grouping,
     Vec<R::Item>: IndexBuffer<R>,
 {
+    pub(in crate::buffer) fn from_raw_buffers_unchecked(
+        indices: Vec<R::Item>,
+        vertices: Vec<G>,
+    ) -> Self {
+        MeshBuffer { indices, vertices }
+    }
+
     /// Creates an empty `MeshBuffer`.
     ///
     /// # Examples
@@ -234,6 +245,56 @@ where
     /// Gets a slice of the vertex data.
     pub fn as_vertex_slice(&self) -> &[G] {
         self.vertices.as_slice()
+    }
+}
+
+/// Exposes a `MeshBuilder` that can be used to construct a `MeshBuffer`
+/// incrementally from _surfaces_ and _facets_.
+///
+/// Note that the facet geometry for `MeshBuffer` is always the unit type `()`.
+///
+/// See the documentation for the `builder` module for more.
+///
+/// # Examples
+///
+/// Creating a buffer from a triangle:
+///
+/// ```rust
+/// # extern crate nalgebra;
+/// # extern crate plexus;
+/// #
+/// use nalgebra::Point2;
+/// use plexus::buffer::MeshBuffer3;
+/// use plexus::builder::Buildable;
+/// use plexus::prelude::*;
+///
+/// # fn main() {
+/// let mut builder = MeshBuffer3::<usize, Point2<f64>>::builder();
+/// builder
+///     .surface_with(|builder| {
+///         let a = builder.insert_vertex((0.0, 0.0))?;
+///         let b = builder.insert_vertex((1.0, 0.0))?;
+///         let c = builder.insert_vertex((0.0, 1.0))?;
+///         builder.facets_with(|builder| builder.insert_facet(&[a, b, c], ()))
+///     })
+///     .unwrap();
+/// let buffer = builder.build().unwrap();
+/// # }
+/// ```
+impl<R, G> Buildable for MeshBuffer<R, G>
+where
+    R: Grouping,
+    Vec<R::Item>: IndexBuffer<R>,
+    BufferBuilder<R, G>: MeshBuilder<Error = BufferError, Output = Self, Vertex = G, Facet = ()>,
+{
+    type Builder = BufferBuilder<R, G>;
+    type Error = BufferError;
+
+    type Vertex = G;
+    type Facet = ();
+
+    fn builder() -> Self::Builder {
+        BufferBuilder::default()
     }
 }
 

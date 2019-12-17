@@ -8,7 +8,7 @@ use crate::graph::core::{Bind, Core};
 use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
-use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -16,10 +16,19 @@ use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
+use crate::transact::Transact;
 use crate::IteratorExt as _;
 
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdgePayload<G> = (EdgePayload<G>, (ArcPayload<G>, ArcPayload<G>));
+
+#[allow(clippy::type_complexity)]
+type Mutant<G> = Core<
+    StorageProxy<VertexPayload<G>>,
+    StorageProxy<ArcPayload<G>>,
+    StorageProxy<EdgePayload<G>>,
+    (),
+>;
 
 pub struct EdgeMutation<G>
 where
@@ -150,47 +159,6 @@ where
     }
 }
 
-impl<G> Mutate for EdgeMutation<G>
-where
-    G: GraphGeometry,
-{
-    #[allow(clippy::type_complexity)]
-    type Mutant = Core<
-        StorageProxy<VertexPayload<G>>,
-        StorageProxy<ArcPayload<G>>,
-        StorageProxy<EdgePayload<G>>,
-        (),
-    >;
-    type Error = GraphError;
-
-    fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, arcs, edges, ..) = mutant.into_storage();
-        EdgeMutation {
-            inner: VertexMutation::mutate(Core::empty().bind(vertices)),
-            storage: (arcs, edges),
-        }
-    }
-
-    fn commit(self) -> Result<Self::Mutant, Self::Error> {
-        let EdgeMutation {
-            inner,
-            storage: (arcs, edges),
-            ..
-        } = self;
-        // In a consistent graph, all arcs must have neighboring arcs and an
-        // associated edge.
-        for (_, arc) in arcs.iter() {
-            if !(and!(&arc.next, &arc.previous, &arc.edge)) {
-                return Err(GraphError::TopologyMalformed);
-            }
-        }
-        inner.commit().and_then(move |mutant| {
-            let (vertices, ..) = mutant.into_storage();
-            Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
-        })
-    }
-}
-
 // TODO: This is a hack. Replace this with delegation.
 impl<G> Deref for EdgeMutation<G>
 where
@@ -209,6 +177,46 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+
+impl<G> From<Mutant<G>> for EdgeMutation<G>
+where
+    G: GraphGeometry,
+{
+    fn from(core: Mutant<G>) -> Self {
+        let (vertices, arcs, edges, ..) = core.into_storage();
+        EdgeMutation {
+            inner: Core::empty().bind(vertices).into(),
+            storage: (arcs, edges),
+        }
+    }
+}
+
+impl<G> Transact<Mutant<G>> for EdgeMutation<G>
+where
+    G: GraphGeometry,
+{
+    type Output = Mutant<G>;
+    type Error = GraphError;
+
+    fn commit(self) -> Result<Self::Output, Self::Error> {
+        let EdgeMutation {
+            inner,
+            storage: (arcs, edges),
+            ..
+        } = self;
+        // In a consistent graph, all arcs must have neighboring arcs and an
+        // associated edge.
+        for (_, arc) in arcs.iter() {
+            if !(and!(&arc.next, &arc.previous, &arc.edge)) {
+                return Err(GraphError::TopologyMalformed);
+            }
+        }
+        inner.commit().and_then(move |core| {
+            let (vertices, ..) = core.into_storage();
+            Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
+        })
     }
 }
 

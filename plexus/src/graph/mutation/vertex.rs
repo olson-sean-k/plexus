@@ -2,13 +2,16 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::key::{ArcKey, VertexKey};
 use crate::graph::storage::payload::VertexPayload;
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
+use crate::transact::Transact;
+
+type Mutant<G> = Core<StorageProxy<VertexPayload<G>>, (), (), ()>;
 
 pub struct VertexMutation<G>
 where
@@ -51,14 +54,24 @@ where
     }
 }
 
-impl<G> Mutate for VertexMutation<G>
+impl<G> From<Mutant<G>> for VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    type Mutant = Core<StorageProxy<VertexPayload<G>>, (), (), ()>;
+    fn from(core: Mutant<G>) -> Self {
+        let (vertices, ..) = core.into_storage();
+        VertexMutation { storage: vertices }
+    }
+}
+
+impl<G> Transact<Mutant<G>> for VertexMutation<G>
+where
+    G: GraphGeometry,
+{
+    type Output = Mutant<G>;
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Mutant, Self::Error> {
+    fn commit(self) -> Result<Self::Output, Self::Error> {
         let VertexMutation {
             storage: vertices, ..
         } = self;
@@ -69,11 +82,6 @@ where
             }
         }
         Ok(Core::empty().bind(vertices))
-    }
-
-    fn mutate(mutant: Self::Mutant) -> Self {
-        let (vertices, ..) = mutant.into_storage();
-        VertexMutation { storage: vertices }
     }
 }
 

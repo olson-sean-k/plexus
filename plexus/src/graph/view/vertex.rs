@@ -8,7 +8,7 @@ use theon::AsPosition;
 use crate::graph::borrow::{Reborrow, ReborrowMut};
 use crate::graph::geometry::{GraphGeometry, VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
@@ -22,6 +22,7 @@ use crate::graph::view::{
     FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
 };
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
+use crate::transact::{Mutate, Transact};
 
 /// View of a vertex in a graph.
 ///

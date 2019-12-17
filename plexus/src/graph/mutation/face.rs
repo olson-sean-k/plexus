@@ -10,7 +10,7 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
 use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
-use crate::graph::mutation::{Consistent, Mutable, Mutate, Mutation};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{ArcPayload, FacePayload, VertexPayload};
@@ -20,7 +20,10 @@ use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
+use crate::transact::Transact;
 use crate::IteratorExt as _;
+
+type Mutant<G> = OwnedCore<G>;
 
 pub struct FaceMutation<G>
 where
@@ -170,39 +173,6 @@ where
     }
 }
 
-impl<G> Mutate for FaceMutation<G>
-where
-    G: GraphGeometry,
-{
-    type Mutant = OwnedCore<G>;
-    type Error = GraphError;
-
-    fn mutate(mutant: Self::Mutant) -> Self {
-        // TODO: Include edges.
-        let (vertices, arcs, edges, faces) = mutant.into_storage();
-        FaceMutation {
-            storage: faces,
-            inner: EdgeMutation::mutate(Core::empty().bind(vertices).bind(arcs).bind(edges)),
-        }
-    }
-
-    fn commit(self) -> Result<Self::Mutant, Self::Error> {
-        let FaceMutation {
-            inner,
-            storage: faces,
-            ..
-        } = self;
-        inner.commit().and_then(move |mutant| {
-            let (vertices, arcs, edges, ..) = mutant.into_storage();
-            Ok(Core::empty()
-                .bind(vertices)
-                .bind(arcs)
-                .bind(edges)
-                .bind(faces))
-        })
-    }
-}
-
 // TODO: This is a hack. Replace this with delegation.
 impl<G> Deref for FaceMutation<G>
 where
@@ -221,6 +191,43 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+
+impl<G> From<Mutant<G>> for FaceMutation<G>
+where
+    G: GraphGeometry,
+{
+    fn from(core: Mutant<G>) -> Self {
+        let (vertices, arcs, edges, faces) = core.into_storage();
+        FaceMutation {
+            storage: faces,
+            inner: Core::empty().bind(vertices).bind(arcs).bind(edges).into(),
+        }
+    }
+}
+
+impl<G> Transact<Mutant<G>> for FaceMutation<G>
+where
+    G: GraphGeometry,
+{
+    type Output = Mutant<G>;
+    type Error = GraphError;
+
+    fn commit(self) -> Result<Self::Output, Self::Error> {
+        let FaceMutation {
+            inner,
+            storage: faces,
+            ..
+        } = self;
+        inner.commit().and_then(move |core| {
+            let (vertices, arcs, edges, ..) = core.into_storage();
+            Ok(Core::empty()
+                .bind(vertices)
+                .bind(arcs)
+                .bind(edges)
+                .bind(faces))
+        })
     }
 }
 
