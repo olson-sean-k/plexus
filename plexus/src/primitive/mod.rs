@@ -307,7 +307,7 @@ pub trait Rotate {
 }
 
 pub trait Zip {
-    type Output: FromItems + Topological;
+    type Output: Topological;
 
     fn zip(self) -> Self::Output;
 }
