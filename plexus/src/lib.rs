@@ -161,7 +161,6 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// type E3 = Point3<R64>;
     ///
-    /// # fn main() {
     /// let mut graph = UvSphere::new(6, 6)
     ///     .polygons::<Position<E3>>()
     ///     .collect::<MeshGraph<E3>>();
@@ -174,7 +173,6 @@ pub trait IteratorExt: Iterator + Sized {
     /// for key in keys {
     ///     graph.face_mut(key).unwrap().poke_with_offset(0.5);
     /// }
-    /// # }
     /// ```
     fn keys(self) -> Keys<Self>
     where

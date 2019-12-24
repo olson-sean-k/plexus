@@ -38,13 +38,11 @@ pub trait Attribute {}
 /// use plexus::primitive::generate::Normal;
 /// use plexus::primitive::sphere::UvSphere;
 ///
-/// # fn main() {
 /// let (indices, normals) = UvSphere::new(8, 8)
 ///     .polygons::<Normal<Point3<N64>>>()
 ///     .map_vertices(|normal| normal.into_inner())
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
-/// # }
 /// ```
 pub struct Normal<S = ()> {
     phantom: PhantomData<S>,
@@ -75,12 +73,10 @@ impl<S> Attribute for Normal<S> {}
 /// use plexus::primitive::generate::Position;
 /// use plexus::primitive::Polygon;
 ///
-/// # fn main() {
 /// let (indices, positions) = Cube::new()
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Polygon<usize>, _>(HashIndexer::default());
-/// # }
 /// ```
 pub struct Position<S = ()> {
     phantom: PhantomData<S>,
@@ -192,7 +188,6 @@ pub trait Generator: Sized {
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// # fn main() {
     /// type E3 = Point3<f64>;
     ///
     /// let cube = Cube::new();
@@ -203,7 +198,6 @@ pub trait Generator: Sized {
     ///     .triangulate()
     ///     .vertices()
     ///     .collect::<Vec<_>>();
-    /// # }
     /// ```
     fn vertices<A>(
         &self,
@@ -244,11 +238,9 @@ pub trait Generator: Sized {
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::Tetragon;
     ///
-    /// # fn main() {
     /// let (indices, positions) = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
-    /// # }
     /// ```
     fn polygons<A>(
         &self,
@@ -296,13 +288,11 @@ pub trait Generator: Sized {
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// # fn main() {
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>().vertices(),
     ///     cube.vertices::<Position<Point3<f64>>>(),
     /// );
-    /// # }
     /// ```
     fn indexing_polygons<A>(&self) -> Generate<Self, (), Self::Output>
     where

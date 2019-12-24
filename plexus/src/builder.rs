@@ -41,12 +41,10 @@
 //!     builder.build()
 //! }
 //!
-//! # fn main() {
 //! // `MeshBuffer` and `MeshGraph` implement the `Buildable` trait.
 //! let graph: MeshGraph<Point2<f64>> = trigon([(0.0, 0.0), (0.0, 1.0), (1.0, 1.0)]).unwrap();
 //! let buffer: MeshBuffer3<usize, Point2<f64>> =
 //!     trigon([(0.0, 0.0), (0.0, 1.0), (1.0, 1.0)]).unwrap();
-//! # }
 //! ```
 
 // TODO: Is it useful to use a separate `FacetBuilder` type?

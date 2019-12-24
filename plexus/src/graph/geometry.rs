@@ -34,7 +34,6 @@
 //! use plexus::AsPosition;
 //! use smallvec::SmallVec;
 //!
-//! # fn main() {
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
 //! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
 //! where
@@ -55,7 +54,6 @@
 //!     }
 //!     face
 //! }
-//! # }
 //! ```
 
 // TODO: Integrate this module documentation into the `graph` module.
@@ -138,7 +136,6 @@ pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 ///     }
 /// }
 ///
-/// # fn main() {
 /// // Create a mesh from a sphere primitive and map the geometry data.
 /// let mut graph = UvSphere::new(8, 8)
 ///     .polygons::<Position<Point3<N64>>>()
@@ -147,7 +144,6 @@ pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 ///         color: Zero::zero(),
 ///     })
 ///     .collect::<MeshGraph<Vertex>>();
-/// # }
 /// ```
 pub trait GraphGeometry: Sized {
     type Vertex: Copy;

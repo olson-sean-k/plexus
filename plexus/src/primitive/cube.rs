@@ -14,11 +14,9 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
 //!
-//! # fn main() {
 //! let mut graph = Cube::new()
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
-//! # }
 //! ```
 
 use num::One;

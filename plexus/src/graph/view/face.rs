@@ -174,7 +174,6 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// # fn main() {
     /// let mut graph = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
@@ -189,7 +188,6 @@ where
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = face.into_arc();
     /// let _ = face.into_arc().into_next_arc();
-    /// # }
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M, G> {
         self.into_inner().into_ref().into()
@@ -455,7 +453,6 @@ where
     /// use plexus::prelude::*;
     /// use plexus::primitive::Tetragon;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
     ///     vec![Tetragon::new(0usize, 1, 2, 3)],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -468,7 +465,6 @@ where
     ///     .split(ByIndex(0), ByIndex(2))
     ///     .unwrap()
     ///     .into_ref();
-    /// # }
     /// ```
     pub fn split(
         self,
@@ -521,7 +517,6 @@ where
     /// use plexus::prelude::*;
     /// use plexus::primitive::Tetragon;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
     ///     vec![Tetragon::new(0usize, 1, 2, 3), Tetragon::new(0, 3, 4, 5)],
     ///     vec![
@@ -542,7 +537,6 @@ where
     ///     .merge(ByIndex(0))
     ///     .unwrap()
     ///     .into_ref();
-    /// # }
     /// ```
     pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
         let destination = destination.key_or_else(|index| {
@@ -631,7 +625,6 @@ where
     /// use plexus::primitive::Trigon;
     /// use plexus::AsPosition;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(
     ///     vec![Trigon::new(0usize, 1, 2)],
     ///     vec![(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 2.0, 0.0)],
@@ -647,7 +640,6 @@ where
     ///     *geometry.as_position_mut() = position;
     ///     geometry
     /// });
-    /// # }
     /// ```
     pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M, G>
     where
@@ -705,7 +697,6 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
-    /// # fn main() {
     /// let mut graph = UvSphere::new(16, 8)
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<f64>>>();
@@ -713,7 +704,6 @@ where
     /// for key in keys {
     ///     graph.face_mut(key).unwrap().poke_with_offset(0.5).unwrap();
     /// }
-    /// # }
     /// ```
     pub fn poke_with_offset<T>(self, offset: T) -> Result<VertexView<&'a mut M, G>, GraphError>
     where

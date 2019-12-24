@@ -29,10 +29,8 @@
 //!     # ply
 //! }
 //!
-//! # fn main() {
 //! let encoding = PositionEncoding::<E3>::default();
 //! let (graph, _) = MeshGraph::<E3>::from_ply(encoding, read()).unwrap();
-//! # }
 //! ```
 
 #![cfg(feature = "encoding-ply")]

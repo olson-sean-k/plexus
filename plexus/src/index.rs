@@ -45,13 +45,11 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
 //!
-//! # fn main() {
 //! let (indices, positions) = Cube::new()
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
-//! # }
 //! ```
 
 use itertools::{Itertools, MinMaxResult};
@@ -283,12 +281,10 @@ where
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
 ///
-/// # fn main() {
 /// let (indices, positions) = Cube::new()
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
-/// # }
 /// ```
 pub struct HashIndexer<T, K>
 where
@@ -370,12 +366,10 @@ where
 /// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 ///
-/// # fn main() {
 /// let (indices, positions) = UvSphere::new(8, 8)
 ///     .polygons::<Position<Point3<f64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(64));
-/// # }
 /// ```
 pub struct LruIndexer<T, K>
 where
@@ -546,13 +540,11 @@ where
 /// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 ///
-/// # fn main() {
 /// let sphere = UvSphere::new(32, 32);
 /// let (indices, positions) = sphere
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
-/// # }
 /// ```
 pub trait IndexVertices<P>
 where
@@ -588,14 +580,12 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::Trigon;
     ///
-    /// # fn main() {
     /// // `indices` contains `Trigon`s with index data.
     /// let (indices, positions) = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .subdivide()
     ///     .triangulate()
     ///     .index_vertices::<Trigon<usize>, _>(HashIndexer::default());
-    /// # }
     /// ```
     fn index_vertices<R, N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
@@ -663,12 +653,10 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::index::HashIndexer;
     ///
-    /// # fn main() {
     /// let graph = Cube::new()
     ///     .polygons::<Position<Point3<N32>>>()
     ///     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
     ///     .unwrap();
-    /// # }
     fn collect_with_indexer<T, N>(self, indexer: N) -> Result<T, T::Error>
     where
         T: FromIndexer<P, Q>,

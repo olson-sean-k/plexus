@@ -104,7 +104,6 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// # fn main() {
     /// let mut graph = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .collect::<MeshGraph<Point3<N64>>>();
@@ -118,7 +117,6 @@ where
     ///     .into_opposite_arc()
     ///     .into_face()
     ///     .unwrap();
-    /// # }
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M, G> {
         self.into_inner().into_ref().into()

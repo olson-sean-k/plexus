@@ -58,13 +58,11 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// # fn main() {
     /// let (indices, positions) = Cube::new()
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
     ///     .index_vertices::<Flat4, _>(HashIndexer::default());
-    /// # }
     /// ```
     pub fn remap(self, n: usize) -> Decompose<impl Iterator<Item = P>, P, P, R> {
         let Decompose { input, output, f } = self;

@@ -17,14 +17,12 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! # fn main() {
 //! type E3 = Point3<N64>;
 //!
 //! let mut graph = UvSphere::new(16, 8)
 //!     .polygons::<Position<E3>>()
 //!     .collect_with_indexer::<MeshGraph<E3>, _>(HashIndexer::default())
 //!     .unwrap();
-//! # }
 //! ```
 
 use decorum::Real;

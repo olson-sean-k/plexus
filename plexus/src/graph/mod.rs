@@ -101,11 +101,9 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! # fn main() {
 //! let mut graph = UvSphere::default()
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
-//! # }
 //! ```
 //!
 //! Extruding a face in a graph:
@@ -122,13 +120,11 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! # fn main() {
 //! let mut graph = UvSphere::new(8, 8)
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
 //! let face = graph.face_mut(key).unwrap().extrude(1.0); // Extrude the face.
-//! # }
 //! ```
 //!
 //! Traversing and circulating over a graph:
@@ -142,7 +138,6 @@
 //! use plexus::prelude::*;
 //! use plexus::primitive::Tetragon;
 //!
-//! # fn main() {
 //! let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
 //!     vec![Tetragon::new(0u32, 1, 2, 3)],
 //!     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -161,7 +156,6 @@
 //! for mut face in vertex.neighboring_face_orphans() {
 //!     // `face.geometry` is mutable here.
 //! }
-//! # }
 //! ```
 
 mod borrow;
@@ -299,7 +293,6 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
 ///
-/// # fn main() {
 /// let mut graph = Cube::new()
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .collect::<MeshGraph<Point3<N64>>>();
@@ -309,7 +302,6 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 ///     .unwrap()
 ///     .split(ByIndex(0), ByIndex(2))
 ///     .unwrap();
-/// # }
 /// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Selector<K> {
@@ -676,7 +668,6 @@ where
     /// use plexus::prelude::*;
     /// use plexus::primitive::Trigon;
     ///
-    /// # fn main() {
     /// type E2 = Point2<f64>;
     ///
     /// // Create a graph from two disjoint triangles.
@@ -697,7 +688,6 @@ where
     /// for vertex in graph.disjoint_subgraph_vertices() {
     ///     // ...
     /// }
-    /// # }
     /// ```
     pub fn disjoint_subgraph_vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
         let keys = self.as_vertex_storage().keys().collect::<HashSet<_>>();
@@ -936,7 +926,6 @@ where
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 ///
-/// # fn main() {
 /// let mut builder = MeshGraph::<Point2<f64>>::builder();
 /// builder
 ///     .surface_with(|builder| {
@@ -947,7 +936,6 @@ where
 ///     })
 ///     .unwrap();
 /// let graph = builder.build().unwrap();
-/// # }
 /// ```
 impl<G> Buildable for MeshGraph<G>
 where
@@ -1129,14 +1117,12 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
-    /// # fn main() {
     /// let (indices, positions) = UvSphere::new(16, 16)
     ///     .polygons::<Position<Point3<f64>>>()
     ///     .triangulate()
     ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(256));
     /// let mut graph =
     ///     MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3).unwrap();
-    /// # }
     /// ```
     fn from_raw_buffers_with_arity<I, J>(
         indices: I,
@@ -1222,14 +1208,12 @@ where
     /// use plexus::prelude::*;
     /// use std::convert::TryFrom;
     ///
-    /// # fn main() {
     /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
     ///     vec![0u64, 1, 2, 3],
     ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
     /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
-    /// # }
     /// ```
     fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
         let arity = match buffer.arity() {
@@ -1270,14 +1254,12 @@ where
     /// use plexus::primitive::Tetragon;
     /// use std::convert::TryFrom;
     ///
-    /// # fn main() {
     /// let buffer = MeshBuffer::<Tetragon<u64>, _>::from_raw_buffers(
     ///     vec![Tetragon::new(0u64, 1, 2, 3)],
     ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
     /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
-    /// # }
     /// ```
     fn try_from(buffer: MeshBuffer<P, H>) -> Result<Self, Self::Error> {
         let (indices, vertices) = buffer.into_raw_buffers();

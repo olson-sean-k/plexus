@@ -24,7 +24,6 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! # fn main() {
 //! let sphere = UvSphere::new(16, 16);
 //!
 //! // Generate the unique set of positional vertices.
@@ -39,7 +38,6 @@
 //!     .triangulate()
 //!     .vertices()
 //!     .collect::<Vec<_>>();
-//! # }
 //! ```
 //!
 //! Generating raw buffers with positional data for a cube using an indexer:
@@ -56,12 +54,10 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
 //!
-//! # fn main() {
 //! let (indices, positions) = Cube::new()
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
-//! # }
 //! ```
 
 pub mod cube;
@@ -892,7 +888,6 @@ impl<T> Topological for Polygon<T> {
 /// use plexus::primitive::cube::{Cube, Plane};
 /// use plexus::primitive::generate::{Normal, Position};
 ///
-/// # fn main() {
 /// type E3 = Point3<N64>;
 ///
 /// let cube = Cube::new();
@@ -904,7 +899,6 @@ impl<T> Topological for Polygon<T> {
 /// ))
 /// .triangulate()
 /// .collect::<Vec<_>>();
-/// # }
 /// ```
 pub fn zip_vertices<T, U>(
     tuple: U,

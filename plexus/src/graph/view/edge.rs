@@ -65,7 +65,6 @@ where
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
 ///
-/// # fn main() {
 /// let mut graph = Cube::new()
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
@@ -80,7 +79,6 @@ where
 ///     .into_opposite_arc()
 ///     .into_face()
 ///     .unwrap();
-/// # }
 /// ```
 pub struct ArcView<M, G>
 where
@@ -154,7 +152,6 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers_with_arity(
     ///     vec![0u32, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -171,7 +168,6 @@ where
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = arc.into_next_arc().into_next_arc().into_face();
     /// let _ = arc.into_opposite_arc().into_face();
-    /// # }
     /// ```
     pub fn into_ref(self) -> ArcView<&'a M, G> {
         self.into_inner().into_ref().into()
@@ -615,7 +611,6 @@ where
     /// use plexus::prelude::*;
     /// use plexus::primitive::Trigon;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
     ///     vec![Trigon::new(0usize, 1, 2)],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
@@ -623,7 +618,6 @@ where
     /// .unwrap();
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint();
-    /// # }
     /// ```
     pub fn split_at_midpoint(self) -> VertexView<&'a mut M, G>
     where
@@ -677,7 +671,6 @@ where
     /// use plexus::primitive::NGon;
     /// use plexus::IntoGeometry;
     ///
-    /// # fn main() {
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>
     /// where
     ///     I: IntoIterator<Item = VertexView<&'a MeshGraph<G>, G>>,
@@ -714,7 +707,6 @@ where
     ///     .unwrap()
     ///     .bridge(ByKey((c, d).into()))
     ///     .unwrap();
-    /// # }
     /// ```
     pub fn bridge(
         self,
@@ -769,7 +761,6 @@ where
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     ///
-    /// # fn main() {
     /// let mut graph = MeshGraph::<Point2<f64>>::from_raw_buffers_with_arity(
     ///     vec![0usize, 1, 2, 3],
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -782,7 +773,6 @@ where
     ///     .map(|arc| arc.key())
     ///     .unwrap();
     /// graph.arc_mut(key).unwrap().extrude(1.0).unwrap();
-    /// # }
     /// ```
     pub fn extrude<T>(self, offset: T) -> Result<ArcView<&'a mut M, G>, GraphError>
     where
