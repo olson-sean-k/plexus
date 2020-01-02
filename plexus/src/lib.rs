@@ -190,6 +190,7 @@ impl<I> IteratorExt for I where I: Iterator {}
 /// the beginning and end of the iteration, forming a perimeter. Given a
 /// collection of ordered elements $\\{a, b, c\\}$, this iterator yields the
 /// ordered items $\\{(a, b), (b, c), (c, a)\\}$.
+#[derive(Clone)]
 pub struct Perimeter<I>
 where
     I: Iterator,
@@ -239,6 +240,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct Keys<I>
 where
     I: Iterator,
