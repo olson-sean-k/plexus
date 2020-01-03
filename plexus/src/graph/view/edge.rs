@@ -18,9 +18,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
 use crate::graph::view::path::PathView;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
-use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
-};
+use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
@@ -863,6 +861,20 @@ where
     }
 }
 
+impl<M, G> Entry for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>>,
+    G: GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = Arc<G>;
+
+    fn key(&self) -> Self::Key {
+        ArcView::key(self)
+    }
+}
+
 impl<M, G> From<View<M, Arc<G>>> for ArcView<M, G>
 where
     M: Reborrow,
@@ -908,20 +920,6 @@ where
     }
 }
 
-impl<M, G> PayloadBinding for ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>>,
-    G: GraphGeometry,
-{
-    type Key = ArcKey;
-    type Payload = Arc<G>;
-
-    fn key(&self) -> Self::Key {
-        ArcView::key(self)
-    }
-}
-
 /// Orphan view of an arc.
 ///
 /// Provides mutable access to an arc's geometry. See the module documentation
@@ -962,6 +960,18 @@ where
     }
 }
 
+impl<'a, G> Entry for ArcOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = Arc<G>;
+
+    fn key(&self) -> Self::Key {
+        ArcOrphan::key(self)
+    }
+}
+
 impl<'a, G> From<Orphan<'a, Arc<G>>> for ArcOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -978,18 +988,6 @@ where
 {
     fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
         Orphan::<Arc<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-impl<'a, G> PayloadBinding for ArcOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    type Key = ArcKey;
-    type Payload = Arc<G>;
-
-    fn key(&self) -> Self::Key {
-        ArcOrphan::key(self)
     }
 }
 
@@ -1165,6 +1163,20 @@ where
     }
 }
 
+impl<M, G> Entry for EdgeView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Edge<G>>,
+    G: GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Payload = Edge<G>;
+
+    fn key(&self) -> Self::Key {
+        EdgeView::key(self)
+    }
+}
+
 impl<M, G> From<View<M, Edge<G>>> for EdgeView<M, G>
 where
     M: Reborrow,
@@ -1210,20 +1222,6 @@ where
     }
 }
 
-impl<M, G> PayloadBinding for EdgeView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Edge<G>>,
-    G: GraphGeometry,
-{
-    type Key = EdgeKey;
-    type Payload = Edge<G>;
-
-    fn key(&self) -> Self::Key {
-        EdgeView::key(self)
-    }
-}
-
 /// Orphan view of an edge.
 ///
 /// Provides mutable access to an edge's geometry. See the module documentation
@@ -1264,6 +1262,18 @@ where
     }
 }
 
+impl<'a, G> Entry for EdgeOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Payload = Edge<G>;
+
+    fn key(&self) -> Self::Key {
+        EdgeOrphan::key(self)
+    }
+}
+
 impl<'a, G> From<Orphan<'a, Edge<G>>> for EdgeOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -1280,18 +1290,6 @@ where
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
         Orphan::<Edge<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-impl<'a, G> PayloadBinding for EdgeOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    type Key = EdgeKey;
-    type Payload = Edge<G>;
-
-    fn key(&self) -> Self::Key {
-        EdgeOrphan::key(self)
     }
 }
 

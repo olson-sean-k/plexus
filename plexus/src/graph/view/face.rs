@@ -24,9 +24,7 @@ use crate::graph::view::traverse::{
     Adjacency, BreadthTraversal, CirculatorTrace, DepthTraversal, TraceFirst,
 };
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
-use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
-};
+use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
@@ -807,6 +805,20 @@ where
     }
 }
 
+impl<M, G> Entry for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Face<G>>,
+    G: GraphGeometry,
+{
+    type Key = FaceKey;
+    type Payload = Face<G>;
+
+    fn key(&self) -> Self::Key {
+        FaceView::key(self)
+    }
+}
+
 impl<M, G> From<View<M, Face<G>>> for FaceView<M, G>
 where
     M: Reborrow,
@@ -867,20 +879,6 @@ where
     }
 }
 
-impl<M, G> PayloadBinding for FaceView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
-    G: GraphGeometry,
-{
-    type Key = FaceKey;
-    type Payload = Face<G>;
-
-    fn key(&self) -> Self::Key {
-        FaceView::key(self)
-    }
-}
-
 /// Orphan view of a face.
 ///
 /// Provides mutable access to a face's geometry. See the module documentation
@@ -921,6 +919,18 @@ where
     }
 }
 
+impl<'a, G> Entry for FaceOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = FaceKey;
+    type Payload = Face<G>;
+
+    fn key(&self) -> Self::Key {
+        FaceOrphan::key(self)
+    }
+}
+
 impl<'a, G> From<Orphan<'a, Face<G>>> for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -937,18 +947,6 @@ where
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
         Orphan::<Face<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-impl<'a, G> PayloadBinding for FaceOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    type Key = FaceKey;
-    type Payload = Face<G>;
-
-    fn key(&self) -> Self::Key {
-        FaceOrphan::key(self)
     }
 }
 

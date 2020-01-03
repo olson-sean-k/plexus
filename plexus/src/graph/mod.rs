@@ -209,7 +209,7 @@ pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan
 pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
-pub use crate::graph::view::PayloadBinding;
+pub use crate::graph::view::Entry;
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

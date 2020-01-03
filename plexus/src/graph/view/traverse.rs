@@ -4,18 +4,18 @@ use std::marker::PhantomData;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::AsStorage;
-use crate::graph::view::{FromKeyedSource, IntoKeyedSource, IntoView, PayloadBinding, View};
+use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, View};
 use crate::graph::GraphError;
 
-pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as PayloadBinding>::Key>, T, M>;
-pub type DepthTraversal<T, M> = Traversal<Vec<<T as PayloadBinding>::Key>, T, M>;
+pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as Entry>::Key>, T, M>;
+pub type DepthTraversal<T, M> = Traversal<Vec<<T as Entry>::Key>, T, M>;
 
 /// Expresses adjacency of like topology.
 ///
 /// View types that implement this trait provide some notion of _adjacency_,
 /// where some topology has neighboring topology of the same type. For example,
 /// vertices are connected to neighbors via arcs.
-pub trait Adjacency: PayloadBinding {
+pub trait Adjacency: Entry {
     type Output: IntoIterator<Item = Self::Key>;
 
     /// Gets the keys of neighboring topology.
@@ -61,7 +61,7 @@ impl<T> TraversalBuffer<T> for VecDeque<T> {
 pub struct Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: PayloadBinding,
+    T: Entry,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -74,7 +74,7 @@ where
 impl<B, T, M> Clone for Traversal<B, T, M>
 where
     B: Clone + TraversalBuffer<T::Key>,
-    T: PayloadBinding,
+    T: Entry,
     M: Clone + Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -91,7 +91,7 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Into<View<M, <T as PayloadBinding>::Payload>> + PayloadBinding,
+    T: Into<View<M, <T as Entry>::Payload>> + Entry,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -111,8 +111,8 @@ where
 
 impl<'a, B, T, M> Iterator for Traversal<B, T, &'a M>
 where
-    B: TraversalBuffer<<T as PayloadBinding>::Key>,
-    T: Adjacency + Copy + FromKeyedSource<(<T as PayloadBinding>::Key, &'a M)>,
+    B: TraversalBuffer<<T as Entry>::Key>,
+    T: Adjacency + Copy + FromKeyedSource<(<T as Entry>::Key, &'a M)>,
     M: 'a + AsStorage<T::Payload>,
 {
     type Item = T;

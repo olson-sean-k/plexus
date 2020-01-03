@@ -18,9 +18,7 @@ use crate::graph::view::face::{FaceOrphan, FaceView};
 use crate::graph::view::traverse::{
     Adjacency, BreadthTraversal, CirculatorTrace, DepthTraversal, TraceAny, TraceFirst,
 };
-use crate::graph::view::{
-    FromKeyedSource, IntoKeyedSource, IntoView, Orphan, PayloadBinding, View,
-};
+use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::transact::{Mutate, Transact};
 
@@ -417,6 +415,20 @@ where
     }
 }
 
+impl<M, G> Entry for VertexView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Vertex<G>>,
+    G: GraphGeometry,
+{
+    type Key = VertexKey;
+    type Payload = Vertex<G>;
+
+    fn key(&self) -> Self::Key {
+        VertexView::key(self)
+    }
+}
+
 impl<M, G> From<View<M, Vertex<G>>> for VertexView<M, G>
 where
     M: Reborrow,
@@ -459,20 +471,6 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
-    }
-}
-
-impl<M, G> PayloadBinding for VertexView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Vertex<G>>,
-    G: GraphGeometry,
-{
-    type Key = VertexKey;
-    type Payload = Vertex<G>;
-
-    fn key(&self) -> Self::Key {
-        VertexView::key(self)
     }
 }
 
@@ -523,6 +521,18 @@ where
     }
 }
 
+impl<'a, G> Entry for VertexOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = VertexKey;
+    type Payload = Vertex<G>;
+
+    fn key(&self) -> Self::Key {
+        VertexOrphan::key(self)
+    }
+}
+
 impl<'a, G> From<Orphan<'a, Vertex<G>>> for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -539,18 +549,6 @@ where
 {
     fn from_keyed_source(source: (VertexKey, &'a mut M)) -> Option<Self> {
         Orphan::<Vertex<_>>::from_keyed_source(source).map(|view| view.into())
-    }
-}
-
-impl<'a, G> PayloadBinding for VertexOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    type Key = VertexKey;
-    type Payload = Vertex<G>;
-
-    fn key(&self) -> Self::Key {
-        VertexOrphan::key(self)
     }
 }
 

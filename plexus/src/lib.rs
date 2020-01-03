@@ -15,7 +15,7 @@ mod transact;
 
 use std::fmt::Debug;
 
-use crate::graph::PayloadBinding;
+use crate::graph::Entry;
 
 pub use theon::{AsPosition, Position};
 pub use typenum::{U2, U3, U4};
@@ -176,7 +176,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     fn keys(self) -> Keys<Self>
     where
-        Self::Item: PayloadBinding,
+        Self::Item: Entry,
     {
         Keys::new(self)
     }
@@ -244,7 +244,7 @@ where
 pub struct Keys<I>
 where
     I: Iterator,
-    I::Item: PayloadBinding,
+    I::Item: Entry,
 {
     input: I,
 }
@@ -252,7 +252,7 @@ where
 impl<I> Keys<I>
 where
     I: Iterator,
-    I::Item: PayloadBinding,
+    I::Item: Entry,
 {
     fn new(input: I) -> Self {
         Keys { input }
@@ -262,9 +262,9 @@ where
 impl<I> Iterator for Keys<I>
 where
     I: Iterator,
-    I::Item: PayloadBinding,
+    I::Item: Entry,
 {
-    type Item = <I::Item as PayloadBinding>::Key;
+    type Item = <I::Item as Entry>::Key;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|view| view.key())

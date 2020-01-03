@@ -37,12 +37,12 @@ where
     }
 }
 
-/// A view into a graph that is bound to a payload by its key.
+/// A key paired with storage in a graph.
 ///
-/// This trait is implemented by views that operate over a specific topology in
-/// a graph, such as a vertex or face. Note that rings and paths are exposed as
-/// _meta-views_, and as such do not implement this trait.
-pub trait PayloadBinding: Deref<Target = <Self as PayloadBinding>::Payload> {
+/// This trait is implemented by views over specific structures in a graph,
+/// such as a vertex or face. Note that rings and paths are views over various
+/// structures, and as such do not implement this trait.
+pub trait Entry: Deref<Target = <Self as Entry>::Payload> {
     // This associated type is redundant, but avoids re-exporting the
     // `Payload` trait and simplifies the use of this trait.
     type Key: OpaqueKey;
@@ -62,7 +62,7 @@ pub trait PayloadBinding: Deref<Target = <Self as PayloadBinding>::Payload> {
     /// view:
     ///
     /// ```rust,no_run
-    /// # use plexus::graph::{PayloadBinding, MeshGraph};
+    /// # use plexus::graph::{Entry, MeshGraph};
     /// # use plexus::prelude::*;
     /// #
     /// # let mut graph = MeshGraph::<()>::default();
@@ -90,8 +90,8 @@ pub trait PayloadBinding: Deref<Target = <Self as PayloadBinding>::Payload> {
     /// ```
     fn rekey<T, M>(self, key: T::Key) -> Result<T, GraphError>
     where
-        Self: Into<View<M, <Self as PayloadBinding>::Payload>>,
-        T: From<View<M, <T as PayloadBinding>::Payload>> + PayloadBinding,
+        Self: Into<View<M, <Self as Entry>::Payload>>,
+        T: From<View<M, <T as Entry>::Payload>> + Entry,
         M: Reborrow,
         M::Target: AsStorage<Self::Payload> + AsStorage<T::Payload>,
     {
