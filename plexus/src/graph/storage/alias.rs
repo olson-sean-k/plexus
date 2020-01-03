@@ -1,139 +1,139 @@
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
-pub trait AsVertexStorage<G>: AsStorage<VertexPayload<G>>
+pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_vertex_storage(&self) -> &StorageProxy<VertexPayload<G>> {
+    fn as_vertex_storage(&self) -> &StorageProxy<Vertex<G>> {
         self.as_storage()
     }
 }
 
 impl<T, G> AsVertexStorage<G> for T
 where
-    T: AsStorage<VertexPayload<G>>,
+    T: AsStorage<Vertex<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsVertexStorageMut<G>: AsStorageMut<VertexPayload<G>>
+pub trait AsVertexStorageMut<G>: AsStorageMut<Vertex<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_vertex_storage_mut(&mut self) -> &mut StorageProxy<VertexPayload<G>> {
+    fn as_vertex_storage_mut(&mut self) -> &mut StorageProxy<Vertex<G>> {
         self.as_storage_mut()
     }
 }
 
 impl<T, G> AsVertexStorageMut<G> for T
 where
-    T: AsStorageMut<VertexPayload<G>>,
+    T: AsStorageMut<Vertex<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsArcStorage<G>: AsStorage<ArcPayload<G>>
+pub trait AsArcStorage<G>: AsStorage<Arc<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_arc_storage(&self) -> &StorageProxy<ArcPayload<G>> {
+    fn as_arc_storage(&self) -> &StorageProxy<Arc<G>> {
         self.as_storage()
     }
 }
 
 impl<T, G> AsArcStorage<G> for T
 where
-    T: AsStorage<ArcPayload<G>>,
+    T: AsStorage<Arc<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsArcStorageMut<G>: AsStorageMut<ArcPayload<G>>
+pub trait AsArcStorageMut<G>: AsStorageMut<Arc<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_arc_storage_mut(&mut self) -> &mut StorageProxy<ArcPayload<G>> {
+    fn as_arc_storage_mut(&mut self) -> &mut StorageProxy<Arc<G>> {
         self.as_storage_mut()
     }
 }
 
 impl<T, G> AsArcStorageMut<G> for T
 where
-    T: AsStorageMut<ArcPayload<G>>,
+    T: AsStorageMut<Arc<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsEdgeStorage<G>: AsStorage<EdgePayload<G>>
+pub trait AsEdgeStorage<G>: AsStorage<Edge<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_edge_storage(&self) -> &StorageProxy<EdgePayload<G>> {
+    fn as_edge_storage(&self) -> &StorageProxy<Edge<G>> {
         self.as_storage()
     }
 }
 
 impl<T, G> AsEdgeStorage<G> for T
 where
-    T: AsStorage<EdgePayload<G>>,
+    T: AsStorage<Edge<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsEdgeStorageMut<G>: AsStorageMut<EdgePayload<G>>
+pub trait AsEdgeStorageMut<G>: AsStorageMut<Edge<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_edge_storage_mut(&mut self) -> &mut StorageProxy<EdgePayload<G>> {
+    fn as_edge_storage_mut(&mut self) -> &mut StorageProxy<Edge<G>> {
         self.as_storage_mut()
     }
 }
 
 impl<T, G> AsEdgeStorageMut<G> for T
 where
-    T: AsStorageMut<EdgePayload<G>>,
+    T: AsStorageMut<Edge<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsFaceStorage<G>: AsStorage<FacePayload<G>>
+pub trait AsFaceStorage<G>: AsStorage<Face<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_face_storage(&self) -> &StorageProxy<FacePayload<G>> {
+    fn as_face_storage(&self) -> &StorageProxy<Face<G>> {
         self.as_storage()
     }
 }
 
 impl<T, G> AsFaceStorage<G> for T
 where
-    T: AsStorage<FacePayload<G>>,
+    T: AsStorage<Face<G>>,
     G: GraphGeometry,
 {
 }
 
-pub trait AsFaceStorageMut<G>: AsStorageMut<FacePayload<G>>
+pub trait AsFaceStorageMut<G>: AsStorageMut<Face<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_face_storage_mut(&mut self) -> &mut StorageProxy<FacePayload<G>> {
+    fn as_face_storage_mut(&mut self) -> &mut StorageProxy<Face<G>> {
         self.as_storage_mut()
     }
 }
 
 impl<T, G> AsFaceStorageMut<G> for T
 where
-    T: AsStorageMut<FacePayload<G>>,
+    T: AsStorageMut<Face<G>>,
     G: GraphGeometry,
 {
 }

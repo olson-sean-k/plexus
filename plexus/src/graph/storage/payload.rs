@@ -1,11 +1,16 @@
 //! Graph payloads.
 //!
-//! This module provides types that store the user geometry and connectivity of
-//! graphs. A limited subset of fields from these types are exposed via `Deref`
-//! implementations in views. Most notably, user geometry is exposed via the
-//! `geometry` field.
+//! A _payload_ is data contained in graph storage (via `StorageProxy` and
+//! related types). For graphs, payloads are the most basic types that
+//! represent a graph, including its connectivity and user geometry.
 //!
-//! These types are stored using the `storage` module and `StorageProxy`.
+//! Views are built atop these types to provide the graph API. A limited subset
+//! of fields from these types are exposed via `Deref` implementations in
+//! views. Most notably, user geometry is exposed via `geometry` fields.
+//!
+//! Connectivity fields are sometimes `Option` types, but may be required in a
+//! consistent graph. These fields are only `Option` types because payloads may
+//! have dependencies that cannot be realized when they are initialized.
 
 use derivative::Derivative;
 
@@ -13,6 +18,7 @@ use crate::graph::geometry::GraphGeometry;
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
 use crate::graph::storage::{Get, HashStorage, Remove, Sequence, SlotStorage};
 
+/// A payload contained in graph storage.
 pub trait Payload: Copy + Sized {
     type Key: OpaqueKey;
     type Attribute: Clone;
@@ -23,33 +29,37 @@ pub trait Payload: Copy + Sized {
     type Storage: Default + Get<Self> + Remove<Self> + Sequence<Self>;
 }
 
-/// Vertex payload.
+/// Graph vertex.
 ///
-/// Contains the vertex attribute of `GraphGeometry`.
+/// A vertex is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
-pub struct VertexPayload<G>
+pub struct Vertex<G>
 where
     G: GraphGeometry,
 {
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Vertex,
+    /// Required key into the leading arc.
     pub(in crate::graph) arc: Option<ArcKey>,
 }
 
-impl<G> VertexPayload<G>
+impl<G> Vertex<G>
 where
     G: GraphGeometry,
 {
     pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
-        VertexPayload {
+        Vertex {
             geometry,
             arc: None,
         }
     }
 }
 
-impl<G> Payload for VertexPayload<G>
+impl<G> Payload for Vertex<G>
 where
     G: GraphGeometry,
 {
@@ -58,38 +68,45 @@ where
     type Storage = SlotStorage<Self>;
 }
 
-// Unlike other topological structures, the vertex connectivity of arcs is
-// immutable and encoded within the key for each arc. An arc key consists of
-// its source and destination vertex keys. This provides fast and reliable arc
-// lookups, even when a mesh is in an inconsistent state. However, it also
-// complicates basic mutations of vertices and arcs, requiring arcs to be
-// rekeyed.
-//
-// For this reason, `ArcPayload` has no fields for storing its destination
-// vertex key or opposite arc key, as these would be redundant.
-/// Arc payload.
+// Unlike other graph structures, the vertex connectivity of an arc is
+// immutable and encoded within its key. This provides fast and reliable
+// lookups even when a graph is in an inconsistent state.  However, it also
+// complicates certain topological mutations and sometimes requires that arcs
+// be rekeyed.  For this reason, `Arc` has no fields representing its source
+// and destination vertices nor its opposite arc; such fields would be
+// redundant.
+/// Graph arc.
 ///
-/// Contains the arc attribute of `GraphGeometry`.
+/// An arc is represented by keys into its next and previous arcs, a key into
+/// its edge, and an optional key into its face (for which is may be a leading
+/// arc). Additional information is encoded in arc keys.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
-pub struct ArcPayload<G>
+pub struct Arc<G>
 where
     G: GraphGeometry,
 {
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Arc,
+    /// Required key into the next arc.
     pub(in crate::graph) next: Option<ArcKey>,
+    /// Required key into the previous arc.
     pub(in crate::graph) previous: Option<ArcKey>,
+    /// Required key into the edge.
     pub(in crate::graph) edge: Option<EdgeKey>,
+    /// Optional key into the face.
     pub(in crate::graph) face: Option<FaceKey>,
 }
 
-impl<G> ArcPayload<G>
+impl<G> Arc<G>
 where
     G: GraphGeometry,
 {
     pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
-        ArcPayload {
+        Arc {
             geometry,
             next: None,
             previous: None,
@@ -99,7 +116,7 @@ where
     }
 }
 
-impl<G> Payload for ArcPayload<G>
+impl<G> Payload for Arc<G>
 where
     G: GraphGeometry,
 {
@@ -108,30 +125,34 @@ where
     type Storage = HashStorage<Self>;
 }
 
-/// Edge payload.
+/// Graph edge.
 ///
-/// Contains the edge attribute of `GraphGeometry`.
+/// An edge is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
-pub struct EdgePayload<G>
+pub struct Edge<G>
 where
     G: GraphGeometry,
 {
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Edge,
+    /// Required key into the leading arc.
     pub(in crate::graph) arc: ArcKey,
 }
 
-impl<G> EdgePayload<G>
+impl<G> Edge<G>
 where
     G: GraphGeometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
-        EdgePayload { geometry, arc }
+        Edge { geometry, arc }
     }
 }
 
-impl<G> Payload for EdgePayload<G>
+impl<G> Payload for Edge<G>
 where
     G: GraphGeometry,
 {
@@ -140,30 +161,34 @@ where
     type Storage = SlotStorage<Self>;
 }
 
-/// Face payload.
+/// Graph face.
 ///
-/// Contains the face attribute of `GraphGeometry`.
+/// A face is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
-pub struct FacePayload<G>
+pub struct Face<G>
 where
     G: GraphGeometry,
 {
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub geometry: G::Face,
+    /// Required key into the leading arc.
     pub(in crate::graph) arc: ArcKey,
 }
 
-impl<G> FacePayload<G>
+impl<G> Face<G>
 where
     G: GraphGeometry,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
-        FacePayload { geometry, arc }
+        Face { geometry, arc }
     }
 }
 
-impl<G> Payload for FacePayload<G>
+impl<G> Payload for Face<G>
 where
     G: GraphGeometry,
 {

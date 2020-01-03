@@ -73,7 +73,7 @@ use typenum::U3;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::mutation::Consistent;
-use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, CompositeEdge};
 use crate::graph::view::face::Ring;
@@ -206,7 +206,7 @@ where
     fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         Ok(VertexPosition::<Self>::centroid(
             vertex
@@ -231,10 +231,8 @@ where
     fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<FacePayload<Self>>
-            + AsStorage<VertexPayload<Self>>
-            + Consistent,
+        M::Target:
+            AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         Vector::<VertexPosition<Self>>::mean(
             vertex
@@ -262,7 +260,7 @@ where
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
 
 impl<G> ArcNormal for G
@@ -275,7 +273,7 @@ where
     fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         let (a, b) = FromItems::from_items(arc.vertices().map(|vertex| *vertex.position()))
             .expect_consistent();
@@ -295,10 +293,8 @@ where
     where
         E: CompositeEdge<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<EdgePayload<Self>>
-            + AsStorage<VertexPayload<Self>>
-            + Consistent;
+        M::Target:
+            AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
 
 impl<G> EdgeMidpoint for G
@@ -311,10 +307,8 @@ where
     where
         E: CompositeEdge<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>>
-            + AsStorage<EdgePayload<Self>>
-            + AsStorage<VertexPayload<Self>>
-            + Consistent,
+        M::Target:
+            AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         let arc = edge.into_arc();
         let (a, b) =
@@ -331,7 +325,7 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         Ok(
             VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
@@ -355,7 +349,7 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
 
 impl<G> FaceNormal for G
@@ -369,7 +363,7 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         let (a, b) =
             FromItems::from_items(ring.vertices().take(2).map(|vertex| *vertex.position()))
@@ -390,7 +384,7 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent;
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
 
 // TODO: The `array` feature only supports Linux. See
@@ -416,7 +410,7 @@ mod array {
         where
             R: Ring<M, Self>,
             M: Reborrow,
-            M::Target: AsStorage<ArcPayload<Self>> + AsStorage<VertexPayload<Self>> + Consistent,
+            M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
         {
             let points = ring
                 .vertices()

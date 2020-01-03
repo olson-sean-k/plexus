@@ -4,20 +4,20 @@ use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::key::{ArcKey, VertexKey};
-use crate::graph::storage::payload::VertexPayload;
+use crate::graph::storage::payload::Vertex;
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::vertex::VertexView;
 use crate::graph::view::FromKeyedSource;
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
-type Mutant<G> = Core<StorageProxy<VertexPayload<G>>, (), (), ()>;
+type Mutant<G> = Core<StorageProxy<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    storage: StorageProxy<VertexPayload<G>>,
+    storage: StorageProxy<Vertex<G>>,
 }
 
 impl<G> VertexMutation<G>
@@ -25,7 +25,7 @@ where
     G: GraphGeometry,
 {
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.storage.insert(VertexPayload::new(geometry))
+        self.storage.insert(Vertex::new(geometry))
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
@@ -45,11 +45,11 @@ where
     }
 }
 
-impl<G> AsStorage<VertexPayload<G>> for VertexMutation<G>
+impl<G> AsStorage<Vertex<G>> for VertexMutation<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
         &self.storage
     }
 }
@@ -99,7 +99,7 @@ where
     pub fn snapshot<M>(storage: M, a: VertexKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<VertexPayload<G>> + Consistent,
+        M::Target: AsStorage<Vertex<G>> + Consistent,
     {
         let _ = (storage, a);
         unimplemented!()
@@ -109,7 +109,7 @@ where
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: VertexRemoveCache<G>,
-) -> Result<VertexPayload<G>, GraphError>
+) -> Result<Vertex<G>, GraphError>
 where
     N: AsMut<Mutation<M, G>>,
     M: Mutable<G>,

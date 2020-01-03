@@ -9,7 +9,7 @@ use crate::graph::core::OwnedCore;
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::storage::alias::*;
-use crate::graph::storage::payload::{ArcPayload, FacePayload, VertexPayload};
+use crate::graph::storage::payload::{Arc, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::GraphError;
 use crate::transact::Transact;
@@ -62,32 +62,32 @@ where
     }
 }
 
-impl<M, G> AsStorage<ArcPayload<G>> for Mutation<M, G>
+impl<M, G> AsStorage<Arc<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Arc<G>> {
         self.inner.as_arc_storage()
     }
 }
 
-impl<M, G> AsStorage<FacePayload<G>> for Mutation<M, G>
+impl<M, G> AsStorage<Face<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Face<G>> {
         self.inner.as_face_storage()
     }
 }
 
-impl<M, G> AsStorage<VertexPayload<G>> for Mutation<M, G>
+impl<M, G> AsStorage<Vertex<G>> for Mutation<M, G>
 where
     M: Consistent + From<OwnedCore<G>> + Into<OwnedCore<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
         self.inner.as_vertex_storage()
     }
 }

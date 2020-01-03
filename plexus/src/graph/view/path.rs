@@ -10,7 +10,7 @@ use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::Consistent;
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, VertexKey};
-use crate::graph::storage::payload::{ArcPayload, VertexPayload};
+use crate::graph::storage::payload::{Arc, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::vertex::VertexView;
@@ -37,7 +37,7 @@ use crate::IteratorExt as _;
 pub struct PathView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
     // Paths are represented using a head and tail, where the head is the
@@ -54,7 +54,7 @@ where
 impl<M, G> PathView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
     pub(in crate::graph) fn try_from_keys<I>(storage: M, keys: I) -> Result<Self, GraphError>
@@ -226,10 +226,10 @@ where
 impl<'a, M, G> PathView<&'a mut M, G>
 where
     M: 'a
-        + AsStorage<ArcPayload<G>>
-        + AsStorage<VertexPayload<G>>
-        + AsStorageMut<ArcPayload<G>>
-        + AsStorageMut<VertexPayload<G>>
+        + AsStorage<Arc<G>>
+        + AsStorage<Vertex<G>>
+        + AsStorageMut<Arc<G>>
+        + AsStorageMut<Vertex<G>>
         + Consistent,
     G: 'a + GraphGeometry,
 {
@@ -256,7 +256,7 @@ where
 impl<M, G> PartialEq for PathView<M, G>
 where
     M: Reborrow,
-    M::Target: AsStorage<ArcPayload<G>> + AsStorage<VertexPayload<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
     fn eq(&self, other: &Self) -> bool {

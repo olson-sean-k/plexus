@@ -204,7 +204,7 @@ pub use crate::graph::geometry::{
     VertexNormal, VertexPosition,
 };
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-pub use crate::graph::storage::payload::{ArcPayload, EdgePayload, FacePayload, VertexPayload};
+pub use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan, EdgeView};
 pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
 pub use crate::graph::view::path::PathView;
@@ -385,10 +385,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(StorageProxy::<VertexPayload<G>>::new())
-                .bind(StorageProxy::<ArcPayload<G>>::new())
-                .bind(StorageProxy::<EdgePayload<G>>::new())
-                .bind(StorageProxy::<FacePayload<G>>::new()),
+                .bind(StorageProxy::<Vertex<G>>::new())
+                .bind(StorageProxy::<Arc<G>>::new())
+                .bind(StorageProxy::<Edge<G>>::new())
+                .bind(StorageProxy::<Face<G>>::new()),
         )
     }
 
@@ -836,74 +836,74 @@ where
     }
 }
 
-impl<G> AsStorage<VertexPayload<G>> for MeshGraph<G>
+impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<VertexPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
         self.core.as_vertex_storage()
     }
 }
 
-impl<G> AsStorage<ArcPayload<G>> for MeshGraph<G>
+impl<G> AsStorage<Arc<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<ArcPayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Arc<G>> {
         self.core.as_arc_storage()
     }
 }
 
-impl<G> AsStorage<EdgePayload<G>> for MeshGraph<G>
+impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<EdgePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Edge<G>> {
         self.core.as_edge_storage()
     }
 }
 
-impl<G> AsStorage<FacePayload<G>> for MeshGraph<G>
+impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<FacePayload<G>> {
+    fn as_storage(&self) -> &StorageProxy<Face<G>> {
         self.core.as_face_storage()
     }
 }
 
-impl<G> AsStorageMut<VertexPayload<G>> for MeshGraph<G>
+impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<VertexPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<Vertex<G>> {
         self.core.as_vertex_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<ArcPayload<G>> for MeshGraph<G>
+impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<ArcPayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<Arc<G>> {
         self.core.as_arc_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<EdgePayload<G>> for MeshGraph<G>
+impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<EdgePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<Edge<G>> {
         self.core.as_edge_storage_mut()
     }
 }
 
-impl<G> AsStorageMut<FacePayload<G>> for MeshGraph<G>
+impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<FacePayload<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageProxy<Face<G>> {
         self.core.as_face_storage_mut()
     }
 }
