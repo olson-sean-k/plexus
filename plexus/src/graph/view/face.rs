@@ -134,7 +134,7 @@ where
 
 impl<M, G> FaceView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Face<G>>,
     G: GraphGeometry,
 {
@@ -327,7 +327,7 @@ where
 
 impl<M, G> FaceView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -339,7 +339,7 @@ where
 
 impl<M, G> FaceView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -351,7 +351,7 @@ where
 
 impl<M, G> FaceView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -792,7 +792,7 @@ where
 
 impl<M, G> DerefMut for FaceView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorageMut<Face<G>>,
     G: GraphGeometry,
 {

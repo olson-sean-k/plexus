@@ -64,7 +64,7 @@ where
 
 impl<M, G> VertexView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Vertex<G>>,
     G: GraphGeometry,
 {
@@ -227,7 +227,7 @@ where
 
 impl<M, G> VertexView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -240,7 +240,7 @@ where
 
 impl<M, G> VertexView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorageMut<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -280,7 +280,7 @@ where
 
 impl<M, G> VertexView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
@@ -402,7 +402,7 @@ where
 
 impl<M, G> DerefMut for VertexView<M, G>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorageMut<Vertex<G>>,
     G: GraphGeometry,
 {

@@ -163,7 +163,7 @@ where
 
 impl<M, T> View<M, T>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorage<T>,
     T: Payload,
 {
@@ -229,7 +229,7 @@ where
 
 impl<M, T> DerefMut for View<M, T>
 where
-    M: Reborrow + ReborrowMut,
+    M: ReborrowMut,
     M::Target: AsStorageMut<T>,
     T: Payload,
 {
