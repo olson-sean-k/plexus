@@ -174,7 +174,7 @@ where
 
 impl<'a, M, T> View<&'a mut M, T>
 where
-    M: 'a + AsStorage<T> + AsStorageMut<T>,
+    M: 'a + AsStorageMut<T>,
     T: 'a + Payload,
 {
     pub fn into_orphan(self) -> Orphan<'a, T> {
@@ -230,7 +230,7 @@ where
 impl<M, T> DerefMut for View<M, T>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<T> + AsStorageMut<T>,
+    M::Target: AsStorageMut<T>,
     T: Payload,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -326,7 +326,7 @@ where
 
 impl<'a, M, T> FromKeyedSource<(T::Key, &'a mut M)> for Orphan<'a, T>
 where
-    M: AsStorage<T> + AsStorageMut<T>,
+    M: AsStorageMut<T>,
     T: 'a + Payload,
 {
     fn from_keyed_source(source: (T::Key, &'a mut M)) -> Option<Self> {

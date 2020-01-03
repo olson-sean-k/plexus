@@ -145,7 +145,7 @@ where
 
 impl<'a, M, G> FaceView<&'a mut M, G>
 where
-    M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M: 'a + AsStorageMut<Face<G>>,
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
@@ -328,7 +328,7 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    M::Target: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
@@ -340,7 +340,7 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over neighboring faces.
@@ -352,11 +352,7 @@ where
 impl<M, G> FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>>
-        + AsStorage<Face<G>>
-        + AsStorage<Vertex<G>>
-        + AsStorageMut<Vertex<G>>
-        + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
@@ -797,7 +793,7 @@ where
 impl<M, G> DerefMut for FaceView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M::Target: AsStorageMut<Face<G>>,
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -942,7 +938,7 @@ where
 
 impl<'a, M, G> FromKeyedSource<(FaceKey, &'a mut M)> for FaceOrphan<'a, G>
 where
-    M: AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M: AsStorageMut<Face<G>>,
     G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (FaceKey, &'a mut M)) -> Option<Self> {
@@ -1002,7 +998,7 @@ where
 
 impl<'a, M, G> RingView<&'a mut M, G>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Arc<G>> + Consistent,
+    M: AsStorageMut<Arc<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.
@@ -1255,7 +1251,7 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Consistent,
+    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
     type Item = VertexOrphan<'a, G>;
@@ -1389,7 +1385,7 @@ where
 
 impl<'a, M, G> Iterator for ArcCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Arc<G>> + Consistent,
+    M: 'a + AsStorageMut<Arc<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
     type Item = ArcOrphan<'a, G>;
@@ -1487,7 +1483,7 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Consistent,
+    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
     type Item = FaceOrphan<'a, G>;

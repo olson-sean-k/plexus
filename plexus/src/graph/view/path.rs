@@ -225,12 +225,7 @@ where
 
 impl<'a, M, G> PathView<&'a mut M, G>
 where
-    M: 'a
-        + AsStorage<Arc<G>>
-        + AsStorage<Vertex<G>>
-        + AsStorageMut<Arc<G>>
-        + AsStorageMut<Vertex<G>>
-        + Consistent,
+    M: 'a + AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.

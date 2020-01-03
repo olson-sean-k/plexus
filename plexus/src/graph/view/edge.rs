@@ -127,7 +127,7 @@ where
 
 impl<'a, M, G> ArcView<&'a mut M, G>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Arc<G>>,
+    M: 'a + AsStorageMut<Arc<G>>,
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
@@ -449,7 +449,7 @@ where
 impl<M, G> ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the vertices connected by the
@@ -474,7 +474,7 @@ where
 impl<M, G> ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Face<G>> + Consistent,
+    M::Target: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
@@ -853,7 +853,7 @@ where
 impl<M, G> DerefMut for ArcView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorageMut<Arc<G>>,
+    M::Target: AsStorageMut<Arc<G>>,
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -983,7 +983,7 @@ where
 
 impl<'a, M, G> FromKeyedSource<(ArcKey, &'a mut M)> for ArcOrphan<'a, G>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Arc<G>>,
+    M: AsStorageMut<Arc<G>>,
     G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
@@ -1031,7 +1031,7 @@ where
 
 impl<'a, M, G> EdgeView<&'a mut M, G>
 where
-    M: 'a + AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
+    M: 'a + AsStorageMut<Edge<G>>,
     G: 'a + GraphGeometry,
 {
     /// Converts a mutable view into an orphan view.
@@ -1155,7 +1155,7 @@ where
 impl<M, G> DerefMut for EdgeView<M, G>
 where
     M: Reborrow + ReborrowMut,
-    M::Target: AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
+    M::Target: AsStorageMut<Edge<G>>,
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -1285,7 +1285,7 @@ where
 
 impl<'a, M, G> FromKeyedSource<(EdgeKey, &'a mut M)> for EdgeOrphan<'a, G>
 where
-    M: AsStorage<Edge<G>> + AsStorageMut<Edge<G>>,
+    M: AsStorageMut<Edge<G>>,
     G: 'a + GraphGeometry,
 {
     fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
@@ -1365,7 +1365,7 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Vertex<G>> + AsStorageMut<Vertex<G>>,
+    M: 'a + AsStorageMut<Vertex<G>>,
     G: 'a + GraphGeometry,
 {
     type Item = VertexOrphan<'a, G>;
@@ -1467,7 +1467,7 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
 where
-    M: 'a + AsStorage<Face<G>> + AsStorageMut<Face<G>>,
+    M: 'a + AsStorageMut<Face<G>>,
     G: 'a + GraphGeometry,
 {
     type Item = FaceOrphan<'a, G>;

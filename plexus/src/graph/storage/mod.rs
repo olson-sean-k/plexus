@@ -55,7 +55,7 @@ where
     }
 }
 
-pub trait AsStorageMut<T>
+pub trait AsStorageMut<T>: AsStorage<T>
 where
     T: Payload,
 {
