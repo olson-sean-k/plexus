@@ -1,3 +1,4 @@
+use fool::BoolExt;
 use smallvec::SmallVec;
 use std::cmp;
 use std::collections::HashSet;
@@ -21,7 +22,7 @@ use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::traverse::{
-    Adjacency, BreadthTraversal, CirculatorTrace, DepthTraversal, TraceFirst,
+    Adjacency, BreadthTraversal, DepthTraversal, Trace, TraceFirst,
 };
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
@@ -1294,14 +1295,7 @@ where
 {
     fn next(&mut self) -> Option<ArcKey> {
         self.arc
-            .and_then(|arc| {
-                if self.trace.visit(arc).unwrap() {
-                    None
-                }
-                else {
-                    Some(arc)
-                }
-            })
+            .and_then(|arc| self.trace.insert(arc).some(arc))
             .map(|arc| {
                 self.arc = self
                     .storage

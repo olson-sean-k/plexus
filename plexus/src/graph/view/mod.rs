@@ -4,7 +4,7 @@ pub mod path;
 mod traverse;
 pub mod vertex;
 
-use fool::BoolExt as _;
+use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};

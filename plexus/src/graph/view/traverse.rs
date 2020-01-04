@@ -5,7 +5,6 @@ use std::marker::PhantomData;
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::AsStorage;
 use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, View};
-use crate::graph::GraphError;
 
 pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as Entry>::Key>, T, M>;
 pub type DepthTraversal<T, M> = Traversal<Vec<<T as Entry>::Key>, T, M>;
@@ -142,31 +141,23 @@ where
     }
 }
 
-/// Trace of a circulator path.
-///
-/// Circulator traces determine when a circulator should terminate.
-pub trait CirculatorTrace<T> {
-    // TODO: How useful is `Result` here? When used in iterators, there aren't
-    //       many choices for handling errors.
-    /// Visits a topology.
+/// Trace of a path.
+pub trait Trace<T> {
+    /// Inserts the given breadcrumb into the trace.
     ///
-    /// This function accepts a _breadcrumb_ representing the topology, which
-    /// is examined and may be stored. If the breadcrumb has been visited
-    /// before (or the traversal should otherwise be terminated), then this
-    /// function returns `true`, otherwise `false`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if an unexpected breadcrumb is encountered. The
-    /// semantics of this error depend on the implementation. Some
-    /// implementations may never return an error.
-    fn visit(&mut self, breadcrumb: T) -> Result<bool, GraphError>;
+    /// If an intersection with the trace is detected, then this function
+    /// returns `false` and otherwise returns `true` (similarly to collections
+    /// like `HashSet). If `false` is returned, then the iteration should
+    /// terminate.
+    fn insert(&mut self, breadcrumb: T) -> bool;
 }
 
-/// Trace that detects the first breadcrumb that is visited.
+/// Trace that detects the first breadcrumb that is encountered.
 ///
 /// This trace only stores the first breadcrumb in a traversal and should
-/// **not** be used when traversing a graph with unknown consistency.
+/// **not** be used when traversing a graph with unknown consistency, because
+/// it may never signal that the iteration should terminate. However, it
+/// requires very little space and time to operate.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TraceFirst<T>
 where
@@ -175,49 +166,39 @@ where
     breadcrumb: Option<T>,
 }
 
-impl<T> CirculatorTrace<T> for TraceFirst<T>
+impl<T> Trace<T> for TraceFirst<T>
 where
     T: Copy + Eq,
 {
-    fn visit(&mut self, breadcrumb: T) -> Result<bool, GraphError> {
-        Ok(match self.breadcrumb {
-            Some(intersection) => intersection == breadcrumb,
+    fn insert(&mut self, breadcrumb: T) -> bool {
+        match self.breadcrumb {
+            Some(intersection) => intersection != breadcrumb,
             None => {
                 self.breadcrumb = Some(breadcrumb);
-                false
+                true
             }
-        })
+        }
     }
 }
 
-/// Trace that detects any breadcrumb that has been visited.
+/// Trace that detects any breadcrumb that has been previously encountered.
 ///
-/// This trace stores all breadcrumbs and detects any and all collisions.
-/// Additionally, a `TraceFirst` is used to detect premature collisions, which
-/// result in a `TopologyMalformed` error.
+/// This trace stores all breadcrumbs and detects any and all collisions. This
+/// is very robust, but requires space for breadcrumbs and must hash
+/// breadcrumbs to detect collisions.
 #[derive(Clone, Debug, Default)]
 pub struct TraceAny<T>
 where
     T: Copy + Eq + Hash,
 {
-    trace: TraceFirst<T>,
     breadcrumbs: HashSet<T>,
 }
 
-impl<T> CirculatorTrace<T> for TraceAny<T>
+impl<T> Trace<T> for TraceAny<T>
 where
     T: Copy + Eq + Hash,
 {
-    fn visit(&mut self, breadcrumb: T) -> Result<bool, GraphError> {
-        let expected = self.trace.visit(breadcrumb)?;
-        if self.breadcrumbs.insert(breadcrumb) {
-            Ok(false)
-        }
-        else if expected {
-            Ok(true)
-        }
-        else {
-            Err(GraphError::TopologyMalformed)
-        }
+    fn insert(&mut self, breadcrumb: T) -> bool {
+        self.breadcrumbs.insert(breadcrumb)
     }
 }

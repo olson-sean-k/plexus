@@ -1,4 +1,4 @@
-use fool::BoolExt as _;
+use fool::BoolExt;
 use indexmap::{indexset, IndexSet};
 use itertools::Itertools;
 use std::borrow::Borrow;

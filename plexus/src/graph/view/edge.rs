@@ -1,5 +1,5 @@
 use arrayvec::ArrayVec;
-use fool::prelude::*;
+use fool::BoolExt;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
