@@ -62,6 +62,7 @@ pub mod prelude {
     pub use Selector::ByKey;
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Arity {
     Uniform(usize),
     NonUniform(usize, usize),

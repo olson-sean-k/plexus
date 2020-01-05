@@ -63,7 +63,7 @@ use theon::ops::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{ConstantArity, Polygon, Topological};
+use crate::primitive::{Polygon, StaticArity, Topological};
 use crate::Arity;
 
 /// Index buffer.
@@ -97,7 +97,7 @@ where
 
 impl<P> IndexBuffer<P> for Vec<P>
 where
-    P: ConstantArity + Topological,
+    P: StaticArity + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Index = P::Vertex;
@@ -135,7 +135,7 @@ impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    P: ConstantArity + IntoVertices + Topological<Vertex = N>,
+    P: IntoVertices + StaticArity + Topological<Vertex = N>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {

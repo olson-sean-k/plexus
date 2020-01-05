@@ -250,7 +250,7 @@ pub trait Polygonal: Topological {
     }
 }
 
-pub trait ConstantArity {
+pub trait StaticArity {
     const ARITY: usize;
 }
 
@@ -318,7 +318,7 @@ where
     }
 }
 
-/// $n$-gon with fixed arity.
+/// $n$-gon with static arity.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with neighboring elements being connected
@@ -463,23 +463,23 @@ where
     }
 }
 
-macro_rules! impl_constant_arity_ngon {
+macro_rules! impl_static_arity_ngon {
     (length => $n:expr) => (
-        impl<T> ConstantArity for NGon<[T; $n]> {
+        impl<T> StaticArity for NGon<[T; $n]> {
             const ARITY: usize = $n;
         }
 
         impl<T> Polygonal for NGon<[T; $n]> {}
     );
     (lengths => $($n:expr),*$(,)?) => (
-        impl<T> ConstantArity for NGon<[T; 2]> {
+        impl<T> StaticArity for NGon<[T; 2]> {
             const ARITY: usize = 1;
         }
 
-        $(impl_constant_arity_ngon!(length => $n);)*
+        $(impl_static_arity_ngon!(length => $n);)*
     );
 }
-impl_constant_arity_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+impl_static_arity_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 macro_rules! impl_zip_ngon {
     (composite => $c:ident, length => $n:expr) => (
@@ -560,7 +560,7 @@ macro_rules! impl_ngon {
             type Vertex = T;
 
             fn arity(&self) -> usize {
-                <Self as ConstantArity>::ARITY
+                <Self as StaticArity>::ARITY
             }
         }
 
