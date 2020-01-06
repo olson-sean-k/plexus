@@ -18,7 +18,7 @@ fn main() {
 
         // Convert the graph into a buffer that can be rendered for viewing.
         graph
-            .to_mesh_buffer_by_vertex_with(|vertex| {
+            .to_buildable_by_vertex_with(|vertex| {
                 Vertex::new(
                     *vertex.position(),
                     vertex.normal().unwrap(),

@@ -61,8 +61,8 @@
 //! #
 //! use decorum::N64;
 //! use nalgebra::Point3;
+//! use plexus::buffer::MeshBuffer4;
 //! use plexus::graph::MeshGraph;
-//! use plexus::index::Flat4;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
@@ -71,7 +71,7 @@
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! let buffer = graph
-//!     .to_mesh_buffer_by_vertex::<Flat4, Point3<N64>>()
+//!     .to_buildable_by_vertex::<MeshBuffer4<usize, Point3<N64>>>()
 //!     .unwrap();
 //! ```
 
@@ -810,7 +810,6 @@ mod tests {
 
     use crate::buffer::{MeshBuffer, MeshBuffer3, MeshBufferN};
     use crate::graph::MeshGraph;
-    use crate::index::Flat3;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
@@ -861,7 +860,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_vertex::<Flat3<u32>, Point3<f64>>()
+            .to_buildable_by_vertex::<MeshBuffer3<u32, Point3<f64>>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
@@ -874,7 +873,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_face::<Flat3<u32>, Point3<f64>>()
+            .to_buildable_by_face::<MeshBuffer3<u32, Point3<f64>>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
