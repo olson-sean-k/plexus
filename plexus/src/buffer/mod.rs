@@ -62,16 +62,16 @@
 //! use decorum::N64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
+//! use plexus::index::Flat4;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
-//! use plexus::U4;
 //!
 //! let graph = Cube::new()
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! let buffer = graph
-//!     .to_mesh_buffer_by_vertex::<U4, usize, Point3<N64>>()
+//!     .to_mesh_buffer_by_vertex::<Flat4, Point3<N64>>()
 //!     .unwrap();
 //! ```
 
@@ -102,8 +102,10 @@ use crate::{Arity, FromRawBuffers};
 pub enum BufferError {
     #[error("index into vertex data out of bounds")]
     IndexOutOfBounds,
-    #[error("conflicting arity")]
-    ArityConflict,
+    #[error("index buffer conflicts with arity")]
+    IndexUnaligned,
+    #[error("conflicting arity; expected {expected}, but got {actual}")]
+    ArityConflict { expected: usize, actual: usize },
 }
 
 /// Alias for a flat and triangular `MeshBuffer`. Prefer this alias.
@@ -263,15 +265,15 @@ where
 /// use plexus::prelude::*;
 ///
 /// let mut builder = MeshBuffer3::<usize, Point2<f64>>::builder();
-/// builder
+/// let buffer = builder
 ///     .surface_with(|builder| {
 ///         let a = builder.insert_vertex((0.0, 0.0))?;
 ///         let b = builder.insert_vertex((1.0, 0.0))?;
 ///         let c = builder.insert_vertex((0.0, 1.0))?;
 ///         builder.facets_with(|builder| builder.insert_facet(&[a, b, c], ()))
 ///     })
+///     .and_then(|_| builder.build())
 ///     .unwrap();
-/// let buffer = builder.build().unwrap();
 /// ```
 impl<R, G> Buildable for MeshBuffer<R, G>
 where
@@ -516,7 +518,7 @@ where
             .map(|index| <<Flat<A, N> as Grouping>::Item as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
         if indices.len() % A::USIZE != 0 {
-            Err(BufferError::ArityConflict)
+            Err(BufferError::IndexUnaligned)
         }
         else {
             let vertices = vertices.into_iter().collect::<Vec<_>>();
@@ -805,10 +807,10 @@ where
 mod tests {
     use decorum::N64;
     use nalgebra::Point3;
-    use typenum::U3;
 
     use crate::buffer::{MeshBuffer, MeshBuffer3, MeshBufferN};
     use crate::graph::MeshGraph;
+    use crate::index::Flat3;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
@@ -859,7 +861,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_vertex::<U3, u32, Point3<f64>>()
+            .to_mesh_buffer_by_vertex::<Flat3<u32>, Point3<f64>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
@@ -872,7 +874,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_mesh_buffer_by_face::<U3, u32, Point3<f64>>()
+            .to_mesh_buffer_by_face::<Flat3<u32>, Point3<f64>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());

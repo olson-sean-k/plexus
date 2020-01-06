@@ -68,6 +68,22 @@ pub enum Arity {
     NonUniform(usize, usize),
 }
 
+impl Arity {
+    pub fn upper_bound(&self) -> usize {
+        match *self {
+            Arity::Uniform(arity) => arity,
+            Arity::NonUniform(_, max) => max,
+        }
+    }
+
+    pub fn lower_bound(&self) -> usize {
+        match *self {
+            Arity::Uniform(arity) => arity,
+            Arity::NonUniform(min, _) => min,
+        }
+    }
+}
+
 pub trait FromRawBuffers<N, G>: Sized {
     type Error: Debug;
 

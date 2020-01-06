@@ -67,7 +67,10 @@ where
             Ok(())
         }
         else {
-            Err(BufferError::ArityConflict)
+            Err(BufferError::ArityConflict {
+                expected: A::USIZE,
+                actual: keys.len(),
+            })
         }
     }
 }
@@ -94,7 +97,10 @@ where
             Ok(())
         }
         else {
-            Err(BufferError::ArityConflict)
+            Err(BufferError::ArityConflict {
+                expected: A::CAPACITY,
+                actual: keys.len(),
+            })
         }
     }
 }
@@ -117,7 +123,10 @@ where
         let polygon = match keys.len() {
             3 => Ok(Polygon::N3(NGon::from_items(keys.iter().cloned()).unwrap())),
             4 => Ok(Polygon::N4(NGon::from_items(keys.iter().cloned()).unwrap())),
-            _ => Err(BufferError::ArityConflict),
+            _ => Err(BufferError::ArityConflict {
+                expected: 0, // TODO: Cannot report a non-uniform arity.
+                actual: keys.len(),
+            }),
         }?;
         self.indices.push(polygon);
         Ok(())

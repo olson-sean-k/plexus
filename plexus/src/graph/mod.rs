@@ -184,7 +184,7 @@ use thiserror::Error;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
-use crate::builder::Buildable;
+use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Bind, Core, OwnedCore};
@@ -234,10 +234,15 @@ pub enum GraphError {
     Encoding,
 }
 
+// TODO: How should buffer errors be handled? Is this sufficient?
 impl From<BufferError> for GraphError {
-    fn from(_: BufferError) -> Self {
-        // TODO: How should buffer errors be handled? Is this sufficient?
-        GraphError::Encoding
+    fn from(error: BufferError) -> Self {
+        match error {
+            BufferError::ArityConflict { expected, actual } => {
+                GraphError::ArityConflict { expected, actual }
+            }
+            _ => GraphError::Encoding,
+        }
     }
 }
 
@@ -710,16 +715,46 @@ where
     ///
     /// The buffer is created using the vertex geometry of each unique vertex.
     ///
+    /// # Examples
+    ///
+    /// Creating a buffer from a graph used to modify a cube:
+    ///
+    /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
+    /// use plexus::primitive::Polygon;
+    ///
+    /// type E3 = Point3<N64>;
+    ///
+    /// let mut graph = Cube::new()
+    ///     .polygons::<Position<E3>>()
+    ///     .collect::<MeshGraph<E3>>();
+    /// let key = graph.faces().nth(0).unwrap().key();
+    /// graph.face_mut(key).unwrap().extrude(1.0);
+    ///
+    /// let buffer = graph
+    ///     .to_mesh_buffer_by_vertex::<Polygon<usize>, E3>()
+    ///     .unwrap();
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
-    pub fn to_mesh_buffer_by_vertex<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
+    pub fn to_mesh_buffer_by_vertex<R, H>(&self) -> Result<MeshBuffer<R, H>, GraphError>
     where
         G::Vertex: IntoGeometry<H>,
-        A: NonZero + typenum::Unsigned,
-        N: Copy + Integer + NumCast + Unsigned,
+        R: Grouping,
+        MeshBuffer<R, H>: Buildable<Vertex = H, Facet = (), Error = BufferError>,
     {
         self.to_mesh_buffer_by_vertex_with(|vertex| vertex.geometry.into_geometry())
     }
@@ -734,105 +769,134 @@ where
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
-    pub fn to_mesh_buffer_by_vertex_with<A, N, H, F>(
+    pub fn to_mesh_buffer_by_vertex_with<R, H, F>(
         &self,
         mut f: F,
-    ) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
+    ) -> Result<MeshBuffer<R, H>, GraphError>
     where
-        A: NonZero + typenum::Unsigned,
-        N: Copy + Integer + NumCast + Unsigned,
+        R: Grouping,
+        MeshBuffer<R, H>: Buildable<Vertex = H, Facet = (), Error = BufferError>,
         F: FnMut(VertexView<&Self, G>) -> H,
     {
-        let (keys, vertices) = {
-            let mut keys = HashMap::with_capacity(self.vertex_count());
-            let mut vertices = Vec::with_capacity(self.vertex_count());
-            for (n, vertex) in self.vertices().enumerate() {
-                keys.insert(vertex.key(), n);
-                vertices.push(f(vertex));
-            }
-            (keys, vertices)
-        };
-        let indices = {
-            let arity = A::USIZE;
-            let mut indices = Vec::with_capacity(arity * self.face_count());
-            for face in self.faces() {
-                if face.arity() != arity {
-                    return Err(GraphError::ArityConflict {
-                        expected: arity,
-                        actual: face.arity(),
-                    });
+        let mut builder = MeshBuffer::<R, H>::builder();
+        builder
+            .surface_with(|builder| {
+                let mut keys = HashMap::with_capacity(self.vertex_count());
+                for vertex in self.vertices() {
+                    keys.insert(vertex.key(), builder.insert_vertex(f(vertex))?);
                 }
-                for vertex in face.vertices() {
-                    indices.push(N::from(keys[&vertex.key()]).unwrap());
-                }
-            }
-            indices
-        };
-        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(indices, vertices)
+                builder.facets_with(|builder| {
+                    for face in self.faces() {
+                        let indices = face
+                            .vertices()
+                            .map(|vertex| keys[&vertex.key()])
+                            .collect::<SmallVec<[_; 8]>>();
+                        builder.insert_facet(indices.as_slice(), ())?;
+                    }
+                    Ok(())
+                })
+            })
+            .and_then(|_| builder.build())
             .map_err(|error| error.into())
     }
 
     /// Creates a `MeshBuffer` from the graph.
     ///
-    /// The buffer is created using the vertex geometry of each face. Shared
-    /// vertices are included for each face to which they belong.
+    /// The buffer is created from each face in the graph. For each face, the
+    /// associated vertex geometry is inserted into the buffer. This means that
+    /// a vertex is inserted for each of its adjacent faces.
     ///
     /// # Errors
     ///
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
-    pub fn to_mesh_buffer_by_face<A, N, H>(&self) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
+    pub fn to_mesh_buffer_by_face<R, H>(&self) -> Result<MeshBuffer<R, H>, GraphError>
     where
         G::Vertex: IntoGeometry<H>,
-        A: NonZero + typenum::Unsigned,
-        N: Copy + Integer + NumCast + Unsigned,
+        R: Grouping,
+        MeshBuffer<R, H>: Buildable<Vertex = H, Facet = (), Error = BufferError>,
     {
         self.to_mesh_buffer_by_face_with(|_, vertex| vertex.geometry.into_geometry())
     }
 
     /// Creates a `MeshBuffer` from the graph.
     ///
-    /// The buffer is created from each face, which is converted into the
-    /// buffer geometry by the given function.
+    /// The buffer is created from each face in the graph. The given function
+    /// is called for each vertex of each face and converts the vertex geometry
+    /// into the buffer geometry. This means that a vertex is inserted for each
+    /// of its adjacent faces.
+    ///
+    /// # Examples
+    ///
+    /// Creating a buffer from a graph loaded from PLY data and used to compute
+    /// normals:
+    ///
+    /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// # extern crate theon;
+    /// #
+    /// use decorum::N64;
+    /// use nalgebra::Point3;
+    /// use plexus::encoding::ply::{FromPly, PositionEncoding};
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Polygon;
+    /// use theon::space::Vector;
+    ///
+    /// type E3 = Point3<N64>;
+    ///
+    /// #[derive(Clone, Copy, Hash)]
+    /// pub struct Vertex {
+    ///     pub position: E3,
+    ///     pub normal: Vector<E3>,
+    /// }
+    ///
+    /// let ply: &[u8] = {
+    ///     // ...
+    /// #     include_bytes!("../../../data/cube.ply")
+    /// };
+    /// let encoding = PositionEncoding::<E3>::default();
+    /// let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).unwrap();
+    ///
+    /// let buffer = graph
+    ///     .to_mesh_buffer_by_face_with::<Polygon<usize>, Vertex, _>(|face, vertex| Vertex {
+    ///         position: *vertex.position(),
+    ///         normal: face.normal().unwrap(),
+    ///     })
+    ///     .unwrap();
+    /// ```
     ///
     /// # Errors
     ///
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
-    pub fn to_mesh_buffer_by_face_with<A, N, H, F>(
+    pub fn to_mesh_buffer_by_face_with<R, H, F>(
         &self,
         mut f: F,
-    ) -> Result<MeshBuffer<Flat<A, N>, H>, GraphError>
+    ) -> Result<MeshBuffer<R, H>, GraphError>
     where
-        A: NonZero + typenum::Unsigned,
-        N: Copy + Integer + NumCast + Unsigned,
+        R: Grouping,
+        MeshBuffer<R, H>: Buildable<Vertex = H, Facet = (), Error = BufferError>,
         F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> H,
     {
-        let vertices = {
-            let arity = A::USIZE;
-            let mut vertices = Vec::with_capacity(arity * self.face_count());
-            for face in self.faces() {
-                if face.arity() != arity {
-                    return Err(GraphError::ArityConflict {
-                        expected: arity,
-                        actual: face.arity(),
-                    });
+        let mut builder = MeshBuffer::<R, H>::builder();
+        builder
+            .surface_with(|builder| {
+                for face in self.faces() {
+                    let indices = face
+                        .vertices()
+                        .map(|vertex| builder.insert_vertex(f(face, vertex)))
+                        .collect::<Result<SmallVec<[_; 8]>, _>>()?;
+                    builder.facets_with(|builder| builder.insert_facet(indices.as_slice(), ()))?;
                 }
-                for vertex in face.vertices() {
-                    // TODO: Can some sort of dereference be used here?
-                    vertices.push(f(face, vertex));
-                }
-            }
-            vertices
-        };
-        MeshBuffer::<Flat<_, _>, _>::from_raw_buffers(
-            // TODO: Cannot use the bound `N: Step`, which is unstable.
-            (0..vertices.len()).map(|index| N::from(index).unwrap()),
-            vertices,
-        )
-        .map_err(|error| error.into())
+                Ok(())
+            })
+            .and_then(|_| builder.build())
+            .map_err(|error| error.into())
     }
 }
 
@@ -927,15 +991,15 @@ where
 /// use plexus::prelude::*;
 ///
 /// let mut builder = MeshGraph::<Point2<f64>>::builder();
-/// builder
+/// let graph = builder
 ///     .surface_with(|builder| {
 ///         let a = builder.insert_vertex((0.0, 0.0))?;
 ///         let b = builder.insert_vertex((1.0, 0.0))?;
 ///         let c = builder.insert_vertex((0.0, 1.0))?;
 ///         builder.facets_with(|builder| builder.insert_facet(&[a, b, c], ()))
 ///     })
+///     .and_then(|_| builder.build())
 ///     .unwrap();
-/// let graph = builder.build().unwrap();
 /// ```
 impl<G> Buildable for MeshGraph<G>
 where
@@ -1272,9 +1336,9 @@ mod tests {
     use decorum::N64;
     use nalgebra::{Point2, Point3, Vector3};
     use num::Zero;
-    use typenum::U3;
 
     use crate::graph::{GraphError, GraphGeometry, MeshGraph};
+    use crate::index::Flat3;
     use crate::prelude::*;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
@@ -1353,7 +1417,7 @@ mod tests {
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
         graph
-            .to_mesh_buffer_by_face_with::<U3, usize, _, _>(|_, vertex| vertex.geometry)
+            .to_mesh_buffer_by_face_with::<Flat3, _, _>(|_, vertex| vertex.geometry)
             .unwrap();
     }
 
