@@ -8,7 +8,7 @@ use nalgebra::{MatrixMN, Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
-use crate::FromGeometry;
+use crate::{FromGeometry, UnitGeometry};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -117,6 +117,14 @@ where
     type Arc = ();
     type Edge = ();
     type Face = ();
+}
+
+impl<T, D> UnitGeometry for Point<T, D>
+where
+    T: Scalar,
+    D: DimName,
+    DefaultAllocator: Allocator<T, D>,
+{
 }
 
 macro_rules! impl_from_geometry_ordered {

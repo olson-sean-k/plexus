@@ -5,7 +5,7 @@ use decorum::{Finite, NotNan, Ordered, Primitive};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
-use crate::FromGeometry;
+use crate::{FromGeometry, UnitGeometry};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -75,6 +75,8 @@ where
     }
 }
 
+impl<T> UnitGeometry for Point2<T> {}
+
 impl<T, U> FromGeometry<(U, U, U)> for Point3<T>
 where
     T: NumCast,
@@ -122,6 +124,8 @@ where
     type Edge = ();
     type Face = ();
 }
+
+impl<T> UnitGeometry for Point3<T> {}
 
 macro_rules! impl_from_geometry_ordered {
     (geometry => $g:ident,proxy => $p:ident) => {
