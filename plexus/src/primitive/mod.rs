@@ -82,19 +82,18 @@ use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::IteratorExt as _;
+use crate::{DynamicArity, Homomorphic, IteratorExt as _, StaticArity};
 
 pub trait Topological:
     AsMut<[<Self as Composite>::Item]>
     + AsRef<[<Self as Composite>::Item]>
     + Composite<Item = <Self as Topological>::Vertex>
+    + DynamicArity<Dynamic = usize>
     + Sized
     + IntoIterator<Item = <Self as Composite>::Item>
     + Sized
 {
     type Vertex;
-
-    fn arity(&self) -> usize;
 
     /// Embeds an $n$-gon from $\Reals^2$ into $\Reals^3$.
     ///
@@ -248,10 +247,6 @@ pub trait Polygonal: Topological {
         }
         (sum / (pi + pi)).round().abs() == One::one()
     }
-}
-
-pub trait StaticArity {
-    const ARITY: usize;
 }
 
 pub trait Rotate {
@@ -463,23 +458,31 @@ where
     }
 }
 
-macro_rules! impl_static_arity_ngon {
+macro_rules! impl_homomorphic_ngon {
     (length => $n:expr) => (
+        impl<T> Homomorphic for NGon<[T; $n]> {}
+
         impl<T> StaticArity for NGon<[T; $n]> {
-            const ARITY: usize = $n;
+            type Static = usize;
+
+            const ARITY: Self::Static = $n;
         }
 
         impl<T> Polygonal for NGon<[T; $n]> {}
     );
     (lengths => $($n:expr),*$(,)?) => (
+        impl<T> Homomorphic for NGon<[T; 2]> {}
+
         impl<T> StaticArity for NGon<[T; 2]> {
-            const ARITY: usize = 1;
+            type Static = usize;
+
+            const ARITY: Self::Static = 1;
         }
 
-        $(impl_static_arity_ngon!(length => $n);)*
+        $(impl_homomorphic_ngon!(length => $n);)*
     );
 }
-impl_static_arity_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+impl_homomorphic_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 macro_rules! impl_zip_ngon {
     (composite => $c:ident, length => $n:expr) => (
@@ -545,6 +548,14 @@ macro_rules! impl_ngon {
             }
         }
 
+        impl<T> DynamicArity for NGon<[T; $n]> {
+            type Dynamic = usize;
+
+            fn arity(&self) -> Self::Dynamic {
+                <Self as StaticArity>::ARITY
+            }
+        }
+
         impl<T, U> Map<U> for NGon<[T; $n]> {
             type Output = NGon<[U; $n]>;
 
@@ -558,10 +569,6 @@ macro_rules! impl_ngon {
 
         impl<T> Topological for NGon<[T; $n]> {
             type Vertex = T;
-
-            fn arity(&self) -> usize {
-                <Self as StaticArity>::ARITY
-            }
         }
 
         impl_zip_ngon!(composite => NGon, length => $n);
@@ -707,6 +714,17 @@ impl<T> Composite for Polygon<T> {
     type Item = T;
 }
 
+impl<T> DynamicArity for Polygon<T> {
+    type Dynamic = usize;
+
+    fn arity(&self) -> Self::Dynamic {
+        match *self {
+            Polygon::N3(..) => Trigon::<T>::ARITY,
+            Polygon::N4(..) => Tetragon::<T>::ARITY,
+        }
+    }
+}
+
 impl<T, U> Fold<U> for Polygon<T> {
     fn fold<F>(self, mut seed: U, mut f: F) -> U
     where
@@ -808,15 +826,14 @@ impl<T> Rotate for Polygon<T> {
     }
 }
 
+impl<T> StaticArity for Polygon<T> {
+    type Static = (usize, usize);
+
+    const ARITY: Self::Static = (3, 4);
+}
+
 impl<T> Topological for Polygon<T> {
     type Vertex = T;
-
-    fn arity(&self) -> usize {
-        match *self {
-            Polygon::N3(..) => Trigon::<T>::ARITY,
-            Polygon::N4(..) => Tetragon::<T>::ARITY,
-        }
-    }
 }
 
 /// Zips the vertices and topologies from multiple iterators into a single

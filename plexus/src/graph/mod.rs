@@ -198,7 +198,8 @@ use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{
-    Arity, FromGeometry, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, IteratorExt as _,
+    DynamicArity, FromGeometry, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry,
+    IteratorExt as _, MeshArity, StaticArity,
 };
 
 pub use crate::graph::geometry::{
@@ -564,23 +565,6 @@ where
         Aabb::from_points(self.vertices().map(|vertex| *vertex.geometry.as_position()))
     }
 
-    /// Gets the arity of the graph.
-    ///
-    /// If all faces in the graph have the same arity, then `Arity::Uniform` is
-    /// returned with the singular arity of the graph. If the graph contains
-    /// faces with differing arity, then `Arity::NonUniform` is returned with
-    /// the minimum and maximum arity.
-    ///
-    /// `Arity::Uniform` is returned with zero if there are no faces in the
-    /// graph.
-    pub fn arity(&self) -> Arity {
-        match self.faces().map(|face| face.arity()).minmax() {
-            MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
-            MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
-            _ => Arity::Uniform(0),
-        }
-    }
-
     /// Triangulates the graph, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
         let faces = self.as_face_storage().keys().collect::<Vec<_>>();
@@ -848,7 +832,6 @@ where
     ///
     /// type E3 = Point3<N64>;
     ///
-    /// #[derive(Clone, Copy, Hash)]
     /// pub struct Vertex {
     ///     pub position: E3,
     ///     pub normal: Vector<E3>,
@@ -1021,6 +1004,31 @@ where
 {
     fn default() -> Self {
         MeshGraph::new()
+    }
+}
+
+impl<G> DynamicArity for MeshGraph<G>
+where
+    G: GraphGeometry,
+{
+    type Dynamic = MeshArity;
+
+    // TODO: Update this documentation.
+    /// Gets the arity of the graph.
+    ///
+    /// If all faces in the graph have the same arity, then `Arity::Uniform` is
+    /// returned with the singular arity of the graph. If the graph contains
+    /// faces with differing arity, then `Arity::NonUniform` is returned with
+    /// the minimum and maximum arity.
+    ///
+    /// `Arity::Uniform` is returned with zero if there are no faces in the
+    /// graph.
+    fn arity(&self) -> Self::Dynamic {
+        match self.faces().map(|face| face.arity()).minmax() {
+            MinMaxResult::OneElement(exact) => MeshArity::Uniform(exact),
+            MinMaxResult::MinMax(min, max) => MeshArity::NonUniform(min, max),
+            _ => MeshArity::Uniform(0),
+        }
     }
 }
 
@@ -1239,6 +1247,15 @@ where
     }
 }
 
+impl<G> StaticArity for MeshGraph<G>
+where
+    G: GraphGeometry,
+{
+    type Static = (usize, Option<usize>);
+
+    const ARITY: Self::Static = (3, None);
+}
+
 impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
 where
     A: NonZero + typenum::Unsigned,
@@ -1277,10 +1294,7 @@ where
     /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
     /// ```
     fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
-        let arity = match buffer.arity() {
-            Arity::Uniform(arity) => arity,
-            _ => panic!("non-uniform flat index buffer arity"),
-        };
+        let arity = buffer.arity();
         let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)
     }

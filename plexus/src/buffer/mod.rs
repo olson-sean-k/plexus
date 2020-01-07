@@ -96,7 +96,7 @@ use crate::index::{
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
-use crate::{Arity, FromRawBuffers};
+use crate::{DynamicArity, FromRawBuffers, Homomorphic, MeshArity, StaticArity};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
@@ -180,10 +180,6 @@ where
     /// ```
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn arity(&self) -> Arity {
-        self.indices.arity()
     }
 }
 
@@ -303,6 +299,52 @@ where
             vertices: Default::default(),
         }
     }
+}
+
+impl<A, N, G> DynamicArity for MeshBuffer<Flat<A, N>, G>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Dynamic = <Flat<A, N> as StaticArity>::Static;
+
+    fn arity(&self) -> Self::Dynamic {
+        Flat::<A, N>::ARITY
+    }
+}
+
+impl<P, G> DynamicArity for MeshBuffer<P, G>
+where
+    P: Grouping + Homomorphic + Polygonal,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+{
+    type Dynamic = <P as StaticArity>::Static;
+
+    fn arity(&self) -> Self::Dynamic {
+        P::ARITY
+    }
+}
+
+impl<N, G> DynamicArity for MeshBuffer<Polygon<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Dynamic = MeshArity;
+
+    fn arity(&self) -> Self::Dynamic {
+        MeshArity::from_components::<Polygon<N>, _>(self.indices.iter())
+    }
+}
+
+impl<R, G> Homomorphic for MeshBuffer<R, G> where R: Grouping + Homomorphic {}
+
+impl<R, G> StaticArity for MeshBuffer<R, G>
+where
+    R: Grouping,
+{
+    type Static = <R as StaticArity>::Static;
+
+    const ARITY: Self::Static = R::ARITY;
 }
 
 impl<A, N, G> MeshBuffer<Flat<A, N>, G>

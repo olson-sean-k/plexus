@@ -13,6 +13,8 @@ mod integration;
 pub mod primitive;
 mod transact;
 
+use itertools::{Itertools, MinMaxResult};
+use std::borrow::Borrow;
 use std::fmt::Debug;
 
 use crate::graph::Entry;
@@ -55,31 +57,81 @@ pub mod prelude {
     pub use crate::primitive::{MapVertices as _, Polygonal as _, Topological as _};
     pub use crate::IteratorExt as _;
     pub use crate::{
-        FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _, IntoGeometry as _,
+        DynamicArity as _, FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _,
+        IntoGeometry as _,
     };
 
     pub use Selector::ByIndex;
     pub use Selector::ByKey;
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Arity {
+pub trait Arity: Copy {
+    fn into_interval(self) -> (usize, Option<usize>);
+}
+
+impl Arity for usize {
+    fn into_interval(self) -> (usize, Option<usize>) {
+        (self, Some(self))
+    }
+}
+
+impl Arity for (usize, usize) {
+    fn into_interval(self) -> (usize, Option<usize>) {
+        let (min, max) = self;
+        (min, Some(max))
+    }
+}
+
+impl Arity for (usize, Option<usize>) {
+    fn into_interval(self) -> (usize, Option<usize>) {
+        self
+    }
+}
+
+pub trait StaticArity {
+    type Static: Arity;
+
+    const ARITY: Self::Static;
+}
+
+pub trait DynamicArity: StaticArity {
+    type Dynamic: Arity;
+
+    fn arity(&self) -> Self::Dynamic;
+}
+
+pub trait Homomorphic: StaticArity<Static = usize> {}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MeshArity {
     Uniform(usize),
     NonUniform(usize, usize),
 }
 
-impl Arity {
-    pub fn upper_bound(&self) -> usize {
-        match *self {
-            Arity::Uniform(arity) => arity,
-            Arity::NonUniform(_, max) => max,
+impl MeshArity {
+    pub fn from_components<T, I>(components: I) -> Self
+    where
+        T: DynamicArity<Dynamic = usize>,
+        I: IntoIterator,
+        I::Item: Borrow<T>,
+    {
+        match components
+            .into_iter()
+            .map(|component| component.borrow().arity())
+            .minmax()
+        {
+            MinMaxResult::OneElement(exact) => MeshArity::Uniform(exact),
+            MinMaxResult::MinMax(min, max) => MeshArity::NonUniform(min, max),
+            _ => MeshArity::Uniform(0),
         }
     }
+}
 
-    pub fn lower_bound(&self) -> usize {
-        match *self {
-            Arity::Uniform(arity) => arity,
-            Arity::NonUniform(min, _) => min,
+impl Arity for MeshArity {
+    fn into_interval(self) -> (usize, Option<usize>) {
+        match self {
+            MeshArity::Uniform(exact) => (exact, Some(exact)),
+            MeshArity::NonUniform(min, max) => (min, Some(max)),
         }
     }
 }

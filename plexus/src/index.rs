@@ -52,7 +52,6 @@
 //! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
 //! ```
 
-use itertools::{Itertools, MinMaxResult};
 use num::{Integer, NumCast, Unsigned};
 use std::cmp;
 use std::collections::HashMap;
@@ -63,9 +62,14 @@ use theon::ops::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Polygon, StaticArity, Topological};
-use crate::Arity;
+use crate::primitive::{Polygon, Topological};
+use crate::{Homomorphic, StaticArity};
 
+// Note that it isn't possible for `IndexBuffer` types to implement
+// `DynamicArity`, because they are typically parameterized by `R` (see
+// implementations for `Vec<_>`). Instead, `DynamicArity` is implemented for
+// `MeshBuffer`, which can bind a `Grouping` and its implementation of
+// `StaticArity` with the underlying index buffer type.
 /// Index buffer.
 ///
 /// This trait is implemented by types that can be used as an index buffer. The
@@ -79,8 +83,6 @@ where
 {
     /// The type of individual indices in the buffer.
     type Index: Copy + Integer + NumCast + Unsigned;
-
-    fn arity(&self) -> Arity;
 }
 
 impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
@@ -89,22 +91,14 @@ where
     N: Copy + Integer + NumCast + Unsigned,
 {
     type Index = N;
-
-    fn arity(&self) -> Arity {
-        Arity::Uniform(A::USIZE)
-    }
 }
 
 impl<P> IndexBuffer<P> for Vec<P>
 where
-    P: StaticArity + Topological,
+    P: Homomorphic + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Index = P::Vertex;
-
-    fn arity(&self) -> Arity {
-        Arity::Uniform(P::ARITY)
-    }
 }
 
 impl<N> IndexBuffer<Polygon<N>> for Vec<Polygon<N>>
@@ -112,14 +106,6 @@ where
     N: Copy + Integer + NumCast + Unsigned,
 {
     type Index = <Polygon<N> as Topological>::Vertex;
-
-    fn arity(&self) -> Arity {
-        match self.iter().map(|polygon| polygon.arity()).minmax() {
-            MinMaxResult::OneElement(arity) => Arity::Uniform(arity),
-            MinMaxResult::MinMax(min, max) => Arity::NonUniform(min, max),
-            _ => Arity::Uniform(0),
-        }
-    }
 }
 
 pub trait Push<R, P>: IndexBuffer<R>
@@ -135,7 +121,7 @@ impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    P: IntoVertices + StaticArity + Topological<Vertex = N>,
+    P: Homomorphic + IntoVertices + Topological<Vertex = N>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {
@@ -156,7 +142,7 @@ where
     }
 }
 
-pub trait Grouping {
+pub trait Grouping: StaticArity {
     type Item;
 }
 
@@ -200,6 +186,16 @@ where
     /// Flat index buffers directly contain indices. These indices are
     /// implicitly grouped by the arity of the buffer.
     type Item = N;
+}
+
+impl<A, N> StaticArity for Flat<A, N>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+    type Static = usize;
+
+    const ARITY: Self::Static = A::USIZE;
 }
 
 /// Alias for a flat and triangular index buffer.
