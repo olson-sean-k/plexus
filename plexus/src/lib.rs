@@ -68,12 +68,17 @@ pub trait Arity: Copy {
     fn into_interval(self) -> (usize, Option<usize>);
 }
 
+/// Singular arity.
 impl Arity for usize {
     fn into_interval(self) -> (usize, Option<usize>) {
         (self, Some(self))
     }
 }
 
+/// Closed interval arity.
+///
+/// This type represents a _closed interval_ arity with a minimum and maximum
+/// inclusive range.
 impl Arity for (usize, usize) {
     fn into_interval(self) -> (usize, Option<usize>) {
         let (min, max) = self;
@@ -81,29 +86,69 @@ impl Arity for (usize, usize) {
     }
 }
 
+/// Open interval arity.
+///
+/// This type represents an _open interval_ arity with a minimum and optional
+/// maximum inclusive range. When there is no maximum (`None`), the maximum
+/// arity is unspecified. This typically means that there is no theoretical
+/// maximum.
 impl Arity for (usize, Option<usize>) {
     fn into_interval(self) -> (usize, Option<usize>) {
         self
     }
 }
 
+/// Type-level arity.
+///
+/// This trait specifies the arity that a type supports. Values of a
+/// `StaticArity` type have an arity that reflects this constant, which may be
+/// any type or form implementing the `Arity` trait.
 pub trait StaticArity {
     type Static: Arity;
 
     const ARITY: Self::Static;
 }
 
+/// Value-level arity.
+///
+/// This trait specifies the arity of a value at runtime. This is often
+/// distinct from the type-level arity of the `StaticArity` trait, which
+/// expresses the capabilities of a type.
 pub trait DynamicArity: StaticArity {
     type Dynamic: Arity;
 
     fn arity(&self) -> Self::Dynamic;
 }
 
+/// Topological types with fixed and singular arity.
+///
+/// Types are _homomorphic_ if they have a fixed and singular arity as types
+/// and values. For example, `Trigon` always and only represents a trigon
+/// (triangle) with an arity of three. `Trigon` values always have an arity of
+/// three and types composed of only `Trigon`s have a compound arity of three.
+///
+/// This contrasts _polymorphic_ types like `Polygon`, which have an interval
+/// arity at the type-level and a singular but varying arity for values
+/// (because a `Polygon` value may be either a trigon or tertragon).
 pub trait Homomorphic: StaticArity<Static = usize> {}
 
+/// Arity of a compound structure.
+///
+/// `MeshArity` represents the arity of a compound structure, which may be
+/// _uniform_ or _non-uniform_. This is typically the value-level arity for
+/// mesh data structures like `MeshGraph` and `MeshBuffer`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MeshArity {
+    /// A compound structure has _uniform_ arity if all of its components have
+    /// the same arity, such as a `MeshBuffer` composed entirely of trigons.
     Uniform(usize),
+    /// A compound structure has _non-uniform_ arity if the arity of its
+    /// components differ, such as a `MeshGraph` composed of trigons and
+    /// tetragons.
+    ///
+    /// Non-uniform arity is represented as an inclusive range known as an
+    /// _interval_. This is the minimum and maximum arity of the components, in
+    /// that order.
     NonUniform(usize, usize),
 }
 
@@ -194,14 +239,14 @@ where
 /// For a geometric type `T`, the following table illustrates the elisions in
 /// which `T` may participate:
 ///
-/// | Bounds                      | From | Into |
-/// |-----------------------------|------|------|
-/// | `T: UnitGeometry`           | `T`  | `()` |
-/// | `T: Default + UnitGeometry` | `()` | `T`  |
+/// | Bounds on `T`            | From | Into |
+/// |--------------------------|------|------|
+/// | `UnitGeometry`           | `T`  | `()` |
+/// | `Default + UnitGeometry` | `()` | `T`  |
 ///
 /// These conversions are useful when converting between mesh data structures
 /// with incompatible geometry, such as from a `MeshGraph` with face geometry
-/// to a `MeshBuffer` that cannot support it.
+/// to a `MeshBuffer` that cannot support such geometry.
 ///
 /// When geometry features are enabled, `UnitGeometry` is implemented for
 /// integrated foreign types.
