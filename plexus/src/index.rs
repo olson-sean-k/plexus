@@ -188,6 +188,13 @@ where
     type Item = N;
 }
 
+impl<A, N> Homomorphic for Flat<A, N>
+where
+    A: NonZero + typenum::Unsigned,
+    N: Copy + Integer + NumCast + Unsigned,
+{
+}
+
 impl<A, N> StaticArity for Flat<A, N>
 where
     A: NonZero + typenum::Unsigned,
