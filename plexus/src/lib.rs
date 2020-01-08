@@ -1,8 +1,7 @@
 //! **Plexus** is a library for polygonal mesh processing.
 //!
 //! Please note that versions in the `0.0.*` series are experimental and
-//! unstable! Use exact version constraints when specifying a dependency to
-//! avoid spurious breakage.
+//! unstable.
 
 pub mod buffer;
 pub mod builder;
@@ -25,9 +24,9 @@ pub use typenum::{U2, U3, U4};
 pub mod prelude {
     //! Re-exports commonly used types and traits.
     //!
-    //! Importing the contents of this module is recommended when working with
-    //! generators and iterator expressions, as those operations are expressed
-    //! mostly through traits.
+    //! Importing the contents of this module is recommended, especially when
+    //! working with generators and iterator expressions, as those operations
+    //! are expressed mostly through traits.
     //!
     //! # Traits
     //!
@@ -168,6 +167,7 @@ impl<T> FromGeometry<T> for T {
     }
 }
 
+/// Geometry elision into `()`.
 impl<T> FromGeometry<T> for ()
 where
     T: UnitGeometry,
@@ -175,6 +175,7 @@ where
     fn from_geometry(_: T) -> Self {}
 }
 
+/// Geometry elision from `()`.
 impl<T> FromGeometry<()> for T
 where
     T: UnitGeometry + Default,
@@ -184,6 +185,26 @@ where
     }
 }
 
+/// Geometry elision.
+///
+/// Geometric types that implement this trait may be elided. In particular,
+/// these types may be converted into and from `()` via the `FromGeometry` and
+/// `IntoGeometry` traits.
+///
+/// For a geometric type `T`, the following table illustrates the elisions in
+/// which `T` may participate:
+///
+/// | Bounds                      | From | Into |
+/// |-----------------------------|------|------|
+/// | `T: UnitGeometry`           | `T`  | `()` |
+/// | `T: Default + UnitGeometry` | `()` | `T`  |
+///
+/// These conversions are useful when converting between mesh data structures
+/// with incompatible geometry, such as from a `MeshGraph` with face geometry
+/// to a `MeshBuffer` that cannot support it.
+///
+/// When geometry features are enabled, `UnitGeometry` is implemented for
+/// integrated foreign types.
 pub trait UnitGeometry {}
 
 pub trait IntoGeometry<T> {
