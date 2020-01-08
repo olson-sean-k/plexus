@@ -167,7 +167,7 @@ mod storage;
 mod view;
 
 use decorum::N64;
-use itertools::{Itertools, MinMaxResult};
+use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
 use std::borrow::Borrow;
@@ -1013,22 +1013,8 @@ where
 {
     type Dynamic = MeshArity;
 
-    // TODO: Update this documentation.
-    /// Gets the arity of the graph.
-    ///
-    /// If all faces in the graph have the same arity, then `Arity::Uniform` is
-    /// returned with the singular arity of the graph. If the graph contains
-    /// faces with differing arity, then `Arity::NonUniform` is returned with
-    /// the minimum and maximum arity.
-    ///
-    /// `Arity::Uniform` is returned with zero if there are no faces in the
-    /// graph.
     fn arity(&self) -> Self::Dynamic {
-        match self.faces().map(|face| face.arity()).minmax() {
-            MinMaxResult::OneElement(exact) => MeshArity::Uniform(exact),
-            MinMaxResult::MinMax(min, max) => MeshArity::NonUniform(min, max),
-            _ => MeshArity::Uniform(0),
-        }
+        MeshArity::from_components(self.faces())
     }
 }
 

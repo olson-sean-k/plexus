@@ -21,7 +21,7 @@ use crate::graph::view::vertex::VertexView;
 use crate::graph::view::{FromKeyedSource, IntoView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
-use crate::IteratorExt as _;
+use crate::{DynamicArity, IteratorExt as _};
 
 type Mutant<G> = OwnedCore<G>;
 

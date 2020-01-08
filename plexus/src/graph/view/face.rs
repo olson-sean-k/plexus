@@ -26,9 +26,9 @@ use crate::graph::view::traverse::{
 };
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
-use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
-use crate::IteratorExt as _;
+use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
 
@@ -40,7 +40,7 @@ use Selector::ByIndex;
 //       is the most notable difference, keeping in mind that in a consistent
 //       graph all arcs are part of a ring.
 
-pub trait Ring<M, G>
+pub trait Ring<M, G>: DynamicArity<Dynamic = usize>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
@@ -56,10 +56,6 @@ where
     }
 
     fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>;
-
-    fn arity(&self) -> usize {
-        self.interior_arcs().count()
-    }
 
     fn distance(
         &self,
@@ -270,12 +266,6 @@ where
     /// Gets an iterator of views over neighboring faces.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(<Self as Ring<_, _>>::interior_arcs(self))
-    }
-
-    /// Gets the arity of the face. This is the number of arcs that form the
-    /// face's ring.
-    pub fn arity(&self) -> usize {
-        <Self as Ring<_, _>>::arity(self)
     }
 }
 
@@ -802,6 +792,21 @@ where
     }
 }
 
+impl<M, G> DynamicArity for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    G: GraphGeometry,
+{
+    type Dynamic = usize;
+
+    /// Gets the arity of the face. This is the number of arcs that form the
+    /// face's ring.
+    fn arity(&self) -> Self::Dynamic {
+        self.interior_arcs().count()
+    }
+}
+
 impl<M, G> Entry for FaceView<M, G>
 where
     M: Reborrow,
@@ -874,6 +879,17 @@ where
     fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
+}
+
+impl<M, G> StaticArity for FaceView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Face<G>>,
+    G: GraphGeometry,
+{
+    type Static = <MeshGraph<G> as StaticArity>::Static;
+
+    const ARITY: Self::Static = MeshGraph::<G>::ARITY;
 }
 
 /// Orphan view of a face.
@@ -979,12 +995,6 @@ where
 {
     fn into_inner(self) -> View<M, Arc<G>> {
         self.into()
-    }
-
-    /// Gets the arity of the ring. This is the number of arcs that form the
-    /// path.
-    pub fn arity(&self) -> usize {
-        <Self as Ring<_, _>>::arity(self)
     }
 
     /// Gets an iterator of views over the arcs within the ring.
@@ -1123,6 +1133,21 @@ where
     }
 }
 
+impl<M, G> DynamicArity for RingView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>> + Consistent,
+    G: GraphGeometry,
+{
+    type Dynamic = usize;
+
+    /// Gets the arity of the ring. This is the number of arcs that form the
+    /// path.
+    fn arity(&self) -> Self::Dynamic {
+        self.interior_arcs().count()
+    }
+}
+
 impl<M, G> From<View<M, Arc<G>>> for RingView<M, G>
 where
     M: Reborrow,
@@ -1182,6 +1207,17 @@ where
     fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
         ArcCirculator::from(self.interior_reborrow())
     }
+}
+
+impl<M, G> StaticArity for RingView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>> + Consistent,
+    G: GraphGeometry,
+{
+    type Static = <MeshGraph<G> as StaticArity>::Static;
+
+    const ARITY: Self::Static = MeshGraph::<G>::ARITY;
 }
 
 pub struct VertexCirculator<M, G>
