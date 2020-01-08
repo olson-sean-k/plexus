@@ -3,13 +3,19 @@
 //! This module provides composable primitives that can form polygonal
 //! structures. This includes simple _$n$-gons_ like triangles, _generators_
 //! that form more complex polytopes like spheres, and _iterator expressions_
-//! that compose and decompose streams of topological and geometric data.
+//! that compose and decompose streams of primitives.
 //!
 //! Plexus uses the terms _trigon_ and _tetragon_ for its types, which mean
 //! _triangle_ and _quadrilateral_, respectively. This is done for consistency
 //! with higher arity polygon names (e.g., _decagon_). In some contexts, the
 //! term _triangle_ is still used, such as in functions concerning
 //! _triangulation_.
+//!
+//! Types in this module are not strictly geometric and the data they contain
+//! may be arbitrary. For example, polygons are defined in $\Reals^2$, but
+//! `Polygonal` types may be used to approximate polygons embedded into
+//! higher-dimensional Euclidean spaces or as simple indices. These types are
+//! defined in terms of adjacency.
 //!
 //! # Examples
 //!
@@ -84,6 +90,11 @@ use typenum::{Greater, U2, U3};
 use crate::primitive::decompose::IntoVertices;
 use crate::{DynamicArity, Homomorphic, IteratorExt as _, StaticArity};
 
+/// Primitive topological structure.
+///
+/// Types implementing `Topological` provide some notion of adjacency between
+/// vertices of their `Vertex` type. These types typically represents polygonal
+/// structures, but may also include degenerate forms like monogons.
 pub trait Topological:
     AsMut<[<Self as Composite>::Item]>
     + AsRef<[<Self as Composite>::Item]>
@@ -226,8 +237,14 @@ pub trait Topological:
     }
 }
 
+/// Primitive polygonal structure.
+///
+/// `Polygonal` types are `Topological` types with three or more edges. These
+/// types are strictly topological and do not necessarily represent geometric
+/// concepts like polygons, which are only defined in $\Reals^2$. However,
+/// `Polygonal` types are often used as a geometric approximation of polygons.
 pub trait Polygonal: Topological {
-    /// Determines if a polygon is convex.
+    /// Determines if a polygonal structure is convex.
     ///
     /// This function rejects degenerate polygons, such as polygons with
     /// collinear or converged vertices.
@@ -313,7 +330,7 @@ where
     }
 }
 
-/// $n$-gon with static arity.
+/// Homomorphic $n$-gon.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with neighboring elements being connected
@@ -327,13 +344,6 @@ where
 /// _digon_, as it represents a single undirected edge rather than two distinct
 /// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the
 /// `Edge` type definition.
-///
-/// Polygons are defined in $\Reals^2$, but `NGon` supports arbitrary vertex
-/// data. This includes positional data in Euclidean spaces of arbitrary
-/// dimension. As such, `NGon` does not represent a pure polygon, but instead a
-/// superset defined solely by its topology. `NGon`s in $\Reals^3$ are useful
-/// for representing polygons embedded into three-dimensional space, but
-/// **there are no restrictions on the geometry of vertices**.
 #[derive(Clone, Copy, Debug)]
 pub struct NGon<A>(pub A)
 where
@@ -681,10 +691,10 @@ impl<T> Rotate for Tetragon<T> {
     }
 }
 
-/// $n$-gon with dynamic arity.
+/// Polymorphic $n$-gon.
 ///
-/// `Polygon` represents an $n$-gon with three or more edges where $n$ is not
-/// fixed at runtime. `Polygon` does not support all polygons that can be
+/// `Polygon` represents an $n$-gon with three or more edges where $n$ may
+/// change at runtime. `Polygon` does not support all polygons that can be
 /// represented by `NGon`; only common arities used by generators are provided.
 #[derive(Clone, Copy, Debug)]
 pub enum Polygon<T> {
