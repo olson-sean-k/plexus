@@ -96,6 +96,7 @@ become available.
 use decorum::N64;
 use nalgebra::{Point3, Vector3};
 use plexus::graph::GraphGeometry;
+use plexus::prelude::*;
 use plexus::AsPosition;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -154,6 +155,7 @@ and `MeshBuffer`s to be serialized and deserialized to and from various formats.
 use nalgebra::Point3;
 use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
+use plexus::prelude::*;
 use std::fs::File;
 
 let ply = File::open("cube.ply").unwrap();
