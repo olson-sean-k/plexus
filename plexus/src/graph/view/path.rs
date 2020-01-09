@@ -14,7 +14,7 @@ use crate::graph::storage::payload::{Arc, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{FromKeyedSource, IntoView};
+use crate::graph::view::{Entry, FromKeyedSource, IntoView};
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::IteratorExt as _;
 

@@ -122,11 +122,6 @@ where
     fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
         self.inner.interior_reborrow().into()
     }
-
-    /// Gets the key for the face.
-    pub fn key(&self) -> FaceKey {
-        self.inner.key()
-    }
 }
 
 impl<M, G> FaceView<M, G>
@@ -816,8 +811,9 @@ where
     type Key = FaceKey;
     type Payload = Face<G>;
 
+    /// Gets the key for the face.
     fn key(&self) -> Self::Key {
-        FaceView::key(self)
+        self.inner.key()
     }
 }
 
@@ -903,15 +899,6 @@ where
     inner: Orphan<'a, Face<G>>,
 }
 
-impl<'a, G> FaceOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    pub fn key(&self) -> FaceKey {
-        self.inner.key()
-    }
-}
-
 impl<'a, G> Deref for FaceOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -940,7 +927,7 @@ where
     type Payload = Face<G>;
 
     fn key(&self) -> Self::Key {
-        FaceOrphan::key(self)
+        self.inner.key()
     }
 }
 

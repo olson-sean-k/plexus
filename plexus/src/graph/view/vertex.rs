@@ -50,11 +50,6 @@ where
         self.inner.interior_reborrow().into()
     }
 
-    /// Gets the key for the vertex.
-    pub fn key(&self) -> VertexKey {
-        self.inner.key()
-    }
-
     pub fn position(&self) -> &VertexPosition<G>
     where
         G::Vertex: AsPosition,
@@ -421,8 +416,9 @@ where
     type Key = VertexKey;
     type Payload = Vertex<G>;
 
+    /// Gets the key for the vertex.
     fn key(&self) -> Self::Key {
-        VertexView::key(self)
+        self.inner.key()
     }
 }
 
@@ -486,10 +482,6 @@ impl<'a, G> VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    pub fn key(&self) -> VertexKey {
-        self.inner.key()
-    }
-
     pub fn position(&self) -> &VertexPosition<G>
     where
         G::Vertex: AsPosition,
@@ -526,7 +518,7 @@ where
     type Payload = Vertex<G>;
 
     fn key(&self) -> Self::Key {
-        VertexOrphan::key(self)
+        self.inner.key()
     }
 }
 

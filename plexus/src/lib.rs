@@ -46,7 +46,7 @@ pub mod prelude {
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
     pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
-    pub use crate::graph::Selector;
+    pub use crate::graph::{Entry as _, Selector};
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,

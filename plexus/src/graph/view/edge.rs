@@ -101,11 +101,6 @@ where
         self.inner.interior_reborrow().into()
     }
 
-    /// Gets the key for the arc.
-    pub fn key(&self) -> ArcKey {
-        self.inner.key()
-    }
-
     /// Returns `true` if this is a boundary arc.
     ///
     /// A boundary arc has no associated face.
@@ -870,8 +865,9 @@ where
     type Key = ArcKey;
     type Payload = Arc<G>;
 
+    /// Gets the key for the arc.
     fn key(&self) -> Self::Key {
-        ArcView::key(self)
+        self.inner.key()
     }
 }
 
@@ -931,15 +927,6 @@ where
     inner: Orphan<'a, Arc<G>>,
 }
 
-impl<'a, G> ArcOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    pub fn key(&self) -> ArcKey {
-        self.inner.key()
-    }
-}
-
 impl<'a, G> Deref for ArcOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -968,7 +955,7 @@ where
     type Payload = Arc<G>;
 
     fn key(&self) -> Self::Key {
-        ArcOrphan::key(self)
+        self.inner.key()
     }
 }
 
@@ -1021,11 +1008,6 @@ where
 
     fn interior_reborrow(&self) -> EdgeView<&M::Target, G> {
         self.inner.interior_reborrow().into()
-    }
-
-    /// Gets the key for the edge.
-    pub fn key(&self) -> EdgeKey {
-        self.inner.key()
     }
 }
 
@@ -1172,8 +1154,9 @@ where
     type Key = EdgeKey;
     type Payload = Edge<G>;
 
+    /// Gets the key for the edge.
     fn key(&self) -> Self::Key {
-        EdgeView::key(self)
+        self.inner.key()
     }
 }
 
@@ -1233,15 +1216,6 @@ where
     inner: Orphan<'a, Edge<G>>,
 }
 
-impl<'a, G> EdgeOrphan<'a, G>
-where
-    G: 'a + GraphGeometry,
-{
-    pub fn key(&self) -> EdgeKey {
-        self.inner.key()
-    }
-}
-
 impl<'a, G> Deref for EdgeOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -1270,7 +1244,7 @@ where
     type Payload = Edge<G>;
 
     fn key(&self) -> Self::Key {
-        EdgeOrphan::key(self)
+        self.inner.key()
     }
 }
 

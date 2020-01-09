@@ -18,7 +18,7 @@ use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{FromKeyedSource, IntoView};
+use crate::graph::view::{Entry, FromKeyedSource, IntoView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
