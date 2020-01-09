@@ -22,6 +22,11 @@ use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orph
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
+/// Component of a composite edge. Abstracts arcs and edges.
+///
+/// Types implementing this trait participate in a composite edge and can be
+/// converted into an arc or edge that is a part of that composite edge. This
+/// trait allows edge structures to be abstracted.
 pub trait CompositeEdge<M, G>
 where
     M: Reborrow,

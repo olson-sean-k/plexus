@@ -40,6 +40,11 @@ use Selector::ByIndex;
 //       is the most notable difference, keeping in mind that in a consistent
 //       graph all arcs are part of a ring.
 
+/// Component of a ring. Abstracts faces and rings.
+///
+/// Types that implement this trait participate in a ring and can be converted
+/// into an arc that is part of that ring. This trait allows ring structures to
+/// be abstracted.
 pub trait Ring<M, G>: DynamicArity<Dynamic = usize>
 where
     M: Reborrow,
