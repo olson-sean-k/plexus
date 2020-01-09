@@ -206,6 +206,17 @@ where
     fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
     where
         M: Reborrow,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+}
+
+impl<G> VertexCentroid for G
+where
+    G: GraphGeometry,
+    G::Vertex: AsPosition,
+{
+    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
+    where
+        M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
         Ok(VertexPosition::<Self>::centroid(
@@ -217,16 +228,21 @@ where
     }
 }
 
-impl<G> VertexCentroid for G
-where
-    G: GraphGeometry,
-    G::Vertex: AsPosition,
-{
-}
-
 pub trait VertexNormal: FaceNormal
 where
     Self::Vertex: AsPosition,
+{
+    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    where
+        M: Reborrow,
+        M::Target:
+            AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Consistent;
+}
+
+impl<G> VertexNormal for G
+where
+    G: FaceNormal,
+    G::Vertex: AsPosition,
 {
     fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
@@ -244,13 +260,6 @@ where
         .normalize()
         .ok_or_else(|| GraphError::Geometry)
     }
-}
-
-impl<G> VertexNormal for G
-where
-    G: FaceNormal,
-    G::Vertex: AsPosition,
-{
 }
 
 pub trait ArcNormal: GraphGeometry
@@ -325,13 +334,7 @@ where
     where
         R: Ring<M, Self>,
         M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
-    {
-        Ok(
-            VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
-                .expect_consistent(),
-        )
-    }
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
 
 impl<G> FaceCentroid for G
@@ -339,6 +342,17 @@ where
     G: GraphGeometry,
     G::Vertex: AsPosition,
 {
+    fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
+    where
+        R: Ring<M, Self>,
+        M: Reborrow,
+        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+    {
+        Ok(
+            VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
+                .expect_consistent(),
+        )
+    }
 }
 
 pub trait FaceNormal: GraphGeometry
