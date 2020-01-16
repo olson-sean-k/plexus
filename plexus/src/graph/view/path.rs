@@ -14,7 +14,7 @@ use crate::graph::storage::payload::{Arc, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{Entry, FromKeyedSource, IntoView};
+use crate::graph::view::{Binding, View};
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::IteratorExt as _;
 
@@ -98,7 +98,7 @@ where
             }
             Selector::ByIndex(index) => {
                 let storage = self.storage.reborrow();
-                let vertex = VertexView::from_keyed_source((a, storage)).expect_consistent();
+                let vertex = VertexView::from(View::bind(storage, a).expect_consistent());
                 let vertex = vertex
                     .neighboring_vertices()
                     .nth(index)
@@ -153,14 +153,14 @@ where
     pub fn first(&self) -> VertexView<&M::Target, G> {
         let (key, _) = self.span();
         let storage = self.storage.reborrow();
-        (key, storage).into_view().expect_consistent()
+        View::bind_into(storage, key).expect_consistent()
     }
 
     /// Gets the terminating vertex of the path.
     pub fn last(&self) -> VertexView<&M::Target, G> {
         let (_, key) = self.span();
         let storage = self.storage.reborrow();
-        (key, storage).into_view().expect_consistent()
+        View::bind_into(storage, key).expect_consistent()
     }
 
     /// Gets an iterator over the vertices in the path.
@@ -168,7 +168,7 @@ where
         let storage = self.storage.reborrow();
         self.keys()
             .cloned()
-            .map(move |key| (key, storage).into_view().expect_consistent())
+            .map(move |key| View::bind_into(storage, key).expect_consistent())
     }
 
     /// Gets an iterator over the arcs in the path.

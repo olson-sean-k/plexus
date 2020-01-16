@@ -17,14 +17,14 @@ pub type RefCore<'a, G> = Core<
     &'a StorageProxy<Face<G>>,
 >;
 
-pub trait Bind<T, M>
+pub trait Fuse<T, M>
 where
     T: Payload,
     M: AsStorage<T>,
 {
     type Output;
 
-    fn bind(self, source: M) -> Self::Output;
+    fn fuse(self, source: M) -> Self::Output;
 }
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
@@ -42,9 +42,9 @@ where
 /// field is unbound, its type is `()`. An unbound field has no value and is
 /// zero-sized. A bound field has any type other than `()`. These fields should
 /// provide storage for their corresponding topology, though this is not
-/// enforced directly in `Core`. The `Bind` trait can be used to transition
-/// from `()` to some other type. `Bind` implementations enforce storage
-/// constraints.
+/// enforced directly in `Core`. The `Fuse` trait can be used to transition
+/// from `()` to some other type by _fusing_ storage into a `Core`. `Fuse`
+/// implementations enforce storage constraints.
 ///
 /// A `Core` with no unbound fields is _complete_.
 pub struct Core<V = (), A = (), E = (), F = ()> {
@@ -66,7 +66,7 @@ impl Core {
 }
 
 impl<V, A, E, F> Core<V, A, E, F> {
-    pub fn into_storage(self) -> (V, A, E, F) {
+    pub fn unfuse(self) -> (V, A, E, F) {
         let Core {
             vertices,
             arcs,
@@ -158,14 +158,14 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Vertex<G>, V> for Core<(), A, E, F>
+impl<V, A, E, F, G> Fuse<Vertex<G>, V> for Core<(), A, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
-    fn bind(self, vertices: V) -> Self::Output {
+    fn fuse(self, vertices: V) -> Self::Output {
         let Core {
             arcs, edges, faces, ..
         } = self;
@@ -178,14 +178,14 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Arc<G>, A> for Core<V, (), E, F>
+impl<V, A, E, F, G> Fuse<Arc<G>, A> for Core<V, (), E, F>
 where
     A: AsStorage<Arc<G>>,
     G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
-    fn bind(self, arcs: A) -> Self::Output {
+    fn fuse(self, arcs: A) -> Self::Output {
         let Core {
             vertices,
             edges,
@@ -201,14 +201,14 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Edge<G>, E> for Core<V, A, (), F>
+impl<V, A, E, F, G> Fuse<Edge<G>, E> for Core<V, A, (), F>
 where
     E: AsStorage<Edge<G>>,
     G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
-    fn bind(self, edges: E) -> Self::Output {
+    fn fuse(self, edges: E) -> Self::Output {
         let Core {
             vertices,
             arcs,
@@ -224,14 +224,14 @@ where
     }
 }
 
-impl<V, A, E, F, G> Bind<Face<G>, F> for Core<V, A, E, ()>
+impl<V, A, E, F, G> Fuse<Face<G>, F> for Core<V, A, E, ()>
 where
     F: AsStorage<Face<G>>,
     G: GraphGeometry,
 {
     type Output = Core<V, A, E, F>;
 
-    fn bind(self, faces: F) -> Self::Output {
+    fn fuse(self, faces: F) -> Self::Output {
         let Core {
             vertices,
             arcs,

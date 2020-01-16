@@ -7,7 +7,7 @@ use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Bind, Core, OwnedCore, RefCore};
+use crate::graph::core::{Core, Fuse, OwnedCore, RefCore};
 use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -18,7 +18,7 @@ use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{Entry, FromKeyedSource, IntoView};
+use crate::graph::view::{Binding, View};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
@@ -39,10 +39,10 @@ where
 {
     fn core(&self) -> RefCore<G> {
         Core::empty()
-            .bind(self.as_vertex_storage())
-            .bind(self.as_arc_storage())
-            .bind(self.as_edge_storage())
-            .bind(self.as_face_storage())
+            .fuse(self.as_vertex_storage())
+            .fuse(self.as_arc_storage())
+            .fuse(self.as_edge_storage())
+            .fuse(self.as_face_storage())
     }
 
     pub fn insert_face(
@@ -115,37 +115,41 @@ where
         ),
     ) -> Result<(), GraphError> {
         let (incoming, outgoing) = connectivity;
-        for ab in arcs {
-            let (a, b) = ab.clone().into();
+        for ab in arcs.iter().cloned() {
+            let (a, b) = ab.into();
             let ba = ab.into_opposite();
             let neighbors = {
-                let core = self.core();
-                if ArcView::from_keyed_source((ba, &core))
+                let core = &self.core();
+                if View::bind(core, ba)
+                    .map(ArcView::from)
                     .ok_or_else(|| GraphError::TopologyMalformed)?
                     .is_boundary_arc()
                 {
-                    // The next edge of B-A is the outgoing edge of the
-                    // destination vertex A that is also a boundary
-                    // edge or, if there is no such outgoing edge, the
-                    // next exterior edge of the face. The previous
-                    // edge is similar.
+                    // The next arc of BA is the outgoing arc of the
+                    // destination vertex A that is also a boundary arc or, if
+                    // there is no such outgoing arc, the next exterior arc of
+                    // the face. The previous arc is similar.
                     let ax = outgoing[&a]
                         .iter()
-                        .flat_map(|ax| ArcView::from_keyed_source((*ax, &core)))
+                        .cloned()
+                        .flat_map(|ax| View::bind(core, ax).map(ArcView::from))
                         .find(|next| next.is_boundary_arc())
                         .or_else(|| {
-                            ArcView::from_keyed_source((*ab, &core))
-                                .and_then(|edge| edge.into_reachable_previous_arc())
+                            View::bind(core, ab)
+                                .map(ArcView::from)
+                                .and_then(|arc| arc.into_reachable_previous_arc())
                                 .and_then(|previous| previous.into_reachable_opposite_arc())
                         })
                         .map(|next| next.key());
                     let xb = incoming[&b]
                         .iter()
-                        .flat_map(|xb| ArcView::from_keyed_source((*xb, &core)))
+                        .cloned()
+                        .flat_map(|xb| View::bind(core, xb).map(ArcView::from))
                         .find(|previous| previous.is_boundary_arc())
                         .or_else(|| {
-                            ArcView::from_keyed_source((*ab, &core))
-                                .and_then(|edge| edge.into_reachable_next_arc())
+                            View::bind(core, ab)
+                                .map(ArcView::from)
+                                .and_then(|arc| arc.into_reachable_next_arc())
                                 .and_then(|next| next.into_reachable_opposite_arc())
                         })
                         .map(|previous| previous.key());
@@ -199,10 +203,10 @@ where
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
-        let (vertices, arcs, edges, faces) = core.into_storage();
+        let (vertices, arcs, edges, faces) = core.unfuse();
         FaceMutation {
             storage: faces,
-            inner: Core::empty().bind(vertices).bind(arcs).bind(edges).into(),
+            inner: Core::empty().fuse(vertices).fuse(arcs).fuse(edges).into(),
         }
     }
 }
@@ -220,14 +224,7 @@ where
             storage: faces,
             ..
         } = self;
-        inner.commit().and_then(move |core| {
-            let (vertices, arcs, edges, ..) = core.into_storage();
-            Ok(Core::empty()
-                .bind(vertices)
-                .bind(arcs)
-                .bind(edges)
-                .bind(faces))
-        })
+        inner.commit().map(move |core| core.fuse(faces))
     }
 }
 
@@ -266,7 +263,8 @@ where
         let storage = storage.reborrow();
         let vertices = keys
             .iter()
-            .flat_map(|key| (*key, storage).into_view())
+            .cloned()
+            .flat_map(|key| View::bind_into(storage, key))
             .collect::<SmallVec<[VertexView<_, _>; 4]>>();
         if vertices.len() != arity {
             // Vertex keys refer to nonexistent vertices.
@@ -274,8 +272,9 @@ where
         }
         for (previous, next) in keys
             .iter()
+            .cloned()
             .perimeter()
-            .map(|(a, b)| ArcView::from_keyed_source(((*a, *b).into(), storage)))
+            .map(|keys| View::bind(storage, keys.into()).map(ArcView::from))
             .perimeter()
         {
             if let Some(previous) = previous {
@@ -337,7 +336,8 @@ where
         M: Reborrow,
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
-        let face = FaceView::from_keyed_source((abc, storage))
+        let face = View::bind(storage, abc)
+            .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let arcs = face.interior_arcs().map(|arc| arc.key()).collect();
         Ok(FaceRemoveCache {
@@ -373,7 +373,8 @@ where
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let face = FaceView::from_keyed_source((abc, storage))
+        let face = View::bind(storage, abc)
+            .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         face.ring()
             .distance(source.into(), destination.into())
@@ -432,7 +433,8 @@ where
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let vertices = FaceView::from_keyed_source((abc, storage))
+        let vertices = View::bind(storage, abc)
+            .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .vertices()
             .map(|vertex| vertex.key())
@@ -473,9 +475,11 @@ where
             FaceRemoveCache::snapshot(storage, destination)?,
         );
         // Ensure that the opposite face exists and has the same arity.
-        let source = FaceView::from_keyed_source((source, storage))
+        let source = View::bind(storage, source)
+            .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination = FaceView::from_keyed_source((destination, storage))
+        let destination = View::bind(storage, destination)
+            .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonUniform);
@@ -514,7 +518,9 @@ where
     {
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
-        let face = FaceView::from_keyed_source((abc, storage)).unwrap();
+        let face = View::bind(storage, abc)
+            .map(FaceView::from)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
 
         let sources = face.vertices().map(|vertex| vertex.key()).collect();
         let destinations = face

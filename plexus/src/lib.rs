@@ -16,7 +16,7 @@ use itertools::{Itertools, MinMaxResult};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::graph::Entry;
+use crate::graph::Binding;
 
 pub use theon::{AsPosition, Position};
 pub use typenum::{U2, U3, U4};
@@ -46,7 +46,7 @@ pub mod prelude {
 
     pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
     pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
-    pub use crate::graph::{Entry as _, Selector};
+    pub use crate::graph::{Binding as _, Selector};
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,
@@ -318,7 +318,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     fn keys(self) -> Keys<Self>
     where
-        Self::Item: Entry,
+        Self::Item: Binding,
     {
         Keys::new(self)
     }
@@ -386,7 +386,7 @@ where
 pub struct Keys<I>
 where
     I: Iterator,
-    I::Item: Entry,
+    I::Item: Binding,
 {
     input: I,
 }
@@ -394,7 +394,7 @@ where
 impl<I> Keys<I>
 where
     I: Iterator,
-    I::Item: Entry,
+    I::Item: Binding,
 {
     fn new(input: I) -> Self {
         Keys { input }
@@ -404,9 +404,9 @@ where
 impl<I> Iterator for Keys<I>
 where
     I: Iterator,
-    I::Item: Entry,
+    I::Item: Binding,
 {
-    type Item = <I::Item as Entry>::Key;
+    type Item = <I::Item as Binding>::Key;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|view| view.key())

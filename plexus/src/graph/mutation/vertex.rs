@@ -1,13 +1,12 @@
 use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Bind, Core};
+use crate::graph::core::{Core, Fuse};
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::key::{ArcKey, VertexKey};
 use crate::graph::storage::payload::Vertex;
 use crate::graph::storage::{AsStorage, StorageProxy};
-use crate::graph::view::vertex::VertexView;
-use crate::graph::view::FromKeyedSource;
+use crate::graph::view::View;
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
@@ -29,7 +28,7 @@ where
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
-        VertexView::from_keyed_source((a, &mut self.storage))
+        View::bind(&mut self.storage, a)
             .ok_or_else(|| GraphError::TopologyNotFound)
             .map(|mut vertex| {
                 vertex.arc = Some(ab);
@@ -39,7 +38,7 @@ where
     // TODO: See `edge::split_with_cache`.
     #[allow(dead_code)]
     pub fn disconnect_outgoing_arc(&mut self, a: VertexKey) -> Result<Option<ArcKey>, GraphError> {
-        VertexView::from_keyed_source((a, &mut self.storage))
+        View::bind(&mut self.storage, a)
             .ok_or_else(|| GraphError::TopologyNotFound)
             .map(|mut vertex| vertex.arc.take())
     }
@@ -59,7 +58,7 @@ where
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
-        let (vertices, ..) = core.into_storage();
+        let (vertices, ..) = core.unfuse();
         VertexMutation { storage: vertices }
     }
 }
@@ -81,7 +80,7 @@ where
                 return Err(GraphError::TopologyMalformed);
             }
         }
-        Ok(Core::empty().bind(vertices))
+        Ok(Core::empty().fuse(vertices))
     }
 }
 

@@ -4,7 +4,7 @@ use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Bind, Core};
+use crate::graph::core::{Core, Fuse};
 use crate::graph::geometry::{GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
@@ -14,7 +14,7 @@ use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
-use crate::graph::view::{Entry, FromKeyedSource};
+use crate::graph::view::{Binding, View};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 use crate::IteratorExt as _;
@@ -177,9 +177,9 @@ where
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
-        let (vertices, arcs, edges, ..) = core.into_storage();
+        let (vertices, arcs, edges, ..) = core.unfuse();
         EdgeMutation {
-            inner: Core::empty().bind(vertices).into(),
+            inner: Core::empty().fuse(vertices).into(),
             storage: (arcs, edges),
         }
     }
@@ -205,10 +205,7 @@ where
                 return Err(GraphError::TopologyMalformed);
             }
         }
-        inner.commit().and_then(move |core| {
-            let (vertices, ..) = core.into_storage();
-            Ok(Core::empty().bind(vertices).bind(arcs).bind(edges))
-        })
+        inner.commit().map(move |core| core.fuse(arcs).fuse(edges))
     }
 }
 
@@ -232,7 +229,8 @@ where
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     {
         let storage = storage.reborrow();
-        let arc = ArcView::from_keyed_source((ab, storage))
+        let arc = View::bind(storage, ab)
+            .map(ArcView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         // If the edge has no neighbors, then `xa` and `bx` will refer to the
         // opposite arc of `ab`. In this case, the vertices `a` and `b` should
@@ -281,7 +279,8 @@ where
             + Consistent,
     {
         let storage = storage.reborrow();
-        let arc = ArcView::from_keyed_source((ab, storage))
+        let arc = View::bind(storage, ab)
+            .map(ArcView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
@@ -319,7 +318,8 @@ where
         M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
-        let arc = ArcView::from_keyed_source((ab, storage))
+        let arc = View::bind(storage, ab)
+            .map(ArcView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let opposite = arc
             .reachable_opposite_arc()
@@ -366,9 +366,11 @@ where
         M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
     {
         let storage = storage.reborrow();
-        let source = ArcView::from_keyed_source((source, storage))
+        let source = View::bind(storage, source)
+            .map(ArcView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination = ArcView::from_keyed_source((destination, storage))
+        let destination = View::bind(storage, destination)
+            .map(ArcView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = source
             .reachable_source_vertex()
@@ -393,7 +395,7 @@ where
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| ArcView::from_keyed_source((ab.into(), storage)))
+            .flat_map(|ab| View::bind(storage, ab.into()).map(ArcView::from))
         {
             if !arc.is_boundary_arc() {
                 return Err(GraphError::TopologyConflict);
@@ -440,7 +442,8 @@ where
     {
         // Get the extruded geometry.
         let (vertices, arc) = {
-            let arc = ArcView::from_keyed_source((ab, storage))
+            let arc = View::bind(storage, ab)
+                .map(ArcView::from)
                 .ok_or_else(|| GraphError::TopologyNotFound)?;
             if !arc.is_boundary_arc() {
                 return Err(GraphError::TopologyConflict);
@@ -676,9 +679,9 @@ where
         .map(|(_, (cd, _))| cd)?;
     let cache = ArcBridgeCache::snapshot(
         &Core::empty()
-            .bind(mutation.as_vertex_storage())
-            .bind(mutation.as_arc_storage())
-            .bind(mutation.as_face_storage()),
+            .fuse(mutation.as_vertex_storage())
+            .fuse(mutation.as_arc_storage())
+            .fuse(mutation.as_face_storage()),
         ab,
         cd,
     )?;

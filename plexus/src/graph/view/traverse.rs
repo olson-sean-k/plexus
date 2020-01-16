@@ -4,17 +4,17 @@ use std::marker::PhantomData;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::AsStorage;
-use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, View};
+use crate::graph::view::{Binding, View};
 
-pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as Entry>::Key>, T, M>;
-pub type DepthTraversal<T, M> = Traversal<Vec<<T as Entry>::Key>, T, M>;
+pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as Binding>::Key>, T, M>;
+pub type DepthTraversal<T, M> = Traversal<Vec<<T as Binding>::Key>, T, M>;
 
 /// Expresses adjacency of like topology.
 ///
 /// View types that implement this trait provide some notion of _adjacency_,
 /// where some topology has neighboring topology of the same type. For example,
 /// vertices are connected to neighbors via arcs.
-pub trait Adjacency: Entry {
+pub trait Adjacency: Binding {
     type Output: IntoIterator<Item = Self::Key>;
 
     /// Gets the keys of neighboring topology.
@@ -60,7 +60,7 @@ impl<T> TraversalBuffer<T> for VecDeque<T> {
 pub struct Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Entry,
+    T: Binding,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -73,7 +73,7 @@ where
 impl<B, T, M> Clone for Traversal<B, T, M>
 where
     B: Clone + TraversalBuffer<T::Key>,
-    T: Entry,
+    T: Binding,
     M: Clone + Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
@@ -90,12 +90,12 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Into<View<M, <T as Entry>::Payload>> + Entry,
+    T: Into<View<M, <T as Binding>::Payload>> + Binding,
     M: Reborrow,
     M::Target: AsStorage<T::Payload>,
 {
     fn from(view: T) -> Self {
-        let (key, storage) = view.into().into_keyed_source();
+        let (storage, key) = view.into().unbind();
         let capacity = storage.reborrow().as_storage().len();
         let mut buffer = B::default();
         buffer.push(key);
@@ -110,8 +110,8 @@ where
 
 impl<'a, B, T, M> Iterator for Traversal<B, T, &'a M>
 where
-    B: TraversalBuffer<<T as Entry>::Key>,
-    T: Adjacency + Copy + FromKeyedSource<(<T as Entry>::Key, &'a M)>,
+    B: TraversalBuffer<<T as Binding>::Key>,
+    T: Adjacency + Copy + From<View<&'a M, <T as Binding>::Payload>>,
     M: 'a + AsStorage<T::Payload>,
 {
     type Item = T;
@@ -120,7 +120,7 @@ where
         while let Some(view) = self
             .buffer
             .pop()
-            .and_then(|key| -> Option<T> { (key, self.storage).into_view() })
+            .and_then(|key| -> Option<T> { View::bind_into(self.storage, key) })
         {
             if self.breadcrumbs.insert(view.key()) {
                 self.buffer.extend(view.adjacency());

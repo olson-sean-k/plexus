@@ -187,12 +187,12 @@ use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::graph::builder::GraphBuilder;
-use crate::graph::core::{Bind, Core, OwnedCore};
+use crate::graph::core::{Core, Fuse, OwnedCore};
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::{IntoView, Orphan};
+use crate::graph::view::{Orphan, View};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
@@ -212,7 +212,7 @@ pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan
 pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
-pub use crate::graph::view::Entry;
+pub use crate::graph::view::Binding;
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
@@ -393,10 +393,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .bind(StorageProxy::<Vertex<G>>::new())
-                .bind(StorageProxy::<Arc<G>>::new())
-                .bind(StorageProxy::<Edge<G>>::new())
-                .bind(StorageProxy::<Face<G>>::new()),
+                .fuse(StorageProxy::<Vertex<G>>::new())
+                .fuse(StorageProxy::<Arc<G>>::new())
+                .fuse(StorageProxy::<Edge<G>>::new())
+                .fuse(StorageProxy::<Face<G>>::new()),
         )
     }
 
@@ -407,12 +407,12 @@ where
 
     /// Gets an immutable view of the vertex with the given key.
     pub fn vertex(&self, key: VertexKey) -> Option<VertexView<&Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the vertex with the given key.
     pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexView<&mut Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -420,7 +420,8 @@ where
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
         self.as_vertex_storage()
             .keys()
-            .map(move |key| (key, self).into_view().unwrap())
+            .map(move |key| View::bind_unchecked(self, key))
+            .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the vertices in the graph.
@@ -431,8 +432,8 @@ where
     pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
-            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
-            .map(|view| view.into())
+            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(From::from)
     }
 
     /// Gets the number of arcs in the graph.
@@ -442,12 +443,12 @@ where
 
     /// Gets an immutable view of the arc with the given key.
     pub fn arc(&self, key: ArcKey) -> Option<ArcView<&Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the arc with the given key.
     pub fn arc_mut(&mut self, key: ArcKey) -> Option<ArcView<&mut Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -455,7 +456,8 @@ where
     pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self, G>> {
         self.as_arc_storage()
             .keys()
-            .map(move |key| (key, self).into_view().unwrap())
+            .map(move |key| View::bind_unchecked(self, key))
+            .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the arcs in the graph.
@@ -466,8 +468,8 @@ where
     pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
-            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
-            .map(|view| view.into())
+            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(From::from)
     }
 
     /// Gets the number of edges in the graph.
@@ -477,12 +479,12 @@ where
 
     /// Gets an immutable view of the edge with the given key.
     pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the edge with the given key.
     pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -490,7 +492,8 @@ where
     pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self, G>> {
         self.as_edge_storage()
             .keys()
-            .map(move |key| (key, self).into_view().unwrap())
+            .map(move |key| View::bind_unchecked(self, key))
+            .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the edges in the graph.
@@ -501,8 +504,8 @@ where
     pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
-            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
-            .map(|view| view.into())
+            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(From::from)
     }
 
     /// Gets the number of faces in the graph.
@@ -512,12 +515,12 @@ where
 
     /// Gets an immutable view of the face with the given key.
     pub fn face(&self, key: FaceKey) -> Option<FaceView<&Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the face with the given key.
     pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceView<&mut Self, G>> {
-        (key, self).into_view()
+        View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -525,7 +528,8 @@ where
     pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self, G>> {
         self.as_face_storage()
             .keys()
-            .map(move |key| (key, self).into_view().unwrap())
+            .map(move |key| View::bind_unchecked(self, key))
+            .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the faces in the graph.
@@ -536,8 +540,8 @@ where
     pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         self.as_face_storage_mut()
             .iter_mut()
-            .map(|(key, source)| Orphan::from_keyed_source_unchecked((key, source)))
-            .map(|view| view.into())
+            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(From::from)
     }
 
     pub fn path<I>(&self, keys: I) -> Result<PathView<&Self, G>, GraphError>
@@ -685,7 +689,7 @@ where
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_, _>; 4]>::new();
         while let Some(key) = keys.difference(&subkeys).nth(0) {
-            let vertex = (*key, self).into_view().unwrap();
+            let vertex = VertexView::from(View::bind_unchecked(self, *key));
             vertices.push(vertex);
             subkeys.extend(vertex.traverse_by_depth().map(|vertex| vertex.key()));
         }

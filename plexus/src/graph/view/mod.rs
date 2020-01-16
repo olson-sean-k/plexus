@@ -8,41 +8,23 @@ use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::core::Bind;
 use crate::graph::mutation::Consistent;
 use crate::graph::storage::key::OpaqueKey;
 use crate::graph::storage::payload::Payload;
 use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::GraphError;
 
-pub trait IntoKeyedSource<T>: Sized {
-    fn into_keyed_source(self) -> T;
-}
+// TODO: Use `bind_unchecked` whenever possible (that is, when it is logically
+//       consistent to assume that the key is present in storage).
+// TODO: Consider `Bind` and `Unbind` traits and decomposing the `Binding`
+//       trait.
 
-pub trait FromKeyedSource<T>: Sized {
-    fn from_keyed_source(source: T) -> Option<Self>;
-}
-
-pub trait IntoView<T>: Sized {
-    fn into_view(self) -> Option<T>;
-}
-
-impl<T, U> IntoView<U> for T
-where
-    T: Sized,
-    U: FromKeyedSource<T>,
-{
-    fn into_view(self) -> Option<U> {
-        U::from_keyed_source(self)
-    }
-}
-
-/// A key paired with storage in a graph.
+/// A key bound to storage in a graph.
 ///
 /// This trait is implemented by views over specific structures in a graph,
 /// such as a vertex or face. Note that rings and paths are views over various
 /// structures, and as such do not implement this trait.
-pub trait Entry: Deref<Target = <Self as Entry>::Payload> {
+pub trait Binding: Deref<Target = <Self as Binding>::Payload> {
     // This associated type is redundant, but avoids re-exporting the
     // `Payload` trait and simplifies the use of this trait.
     type Key: OpaqueKey;
@@ -51,10 +33,10 @@ pub trait Entry: Deref<Target = <Self as Entry>::Payload> {
     /// Gets the key for the view.
     fn key(&self) -> Self::Key;
 
-    /// Rekeys a view into another.
+    /// Rebinds a view's storage with the given key.
     ///
-    /// Rekeying a view allows its underlying storage to be reinterpretted. The
-    /// output view must also be bound to a payload.
+    /// Rebinding a view allows its underlying storage to be reinterpretted.
+    /// The output view must also be bound to a payload.
     ///
     /// # Examples
     ///
@@ -62,7 +44,7 @@ pub trait Entry: Deref<Target = <Self as Entry>::Payload> {
     /// view:
     ///
     /// ```rust,no_run
-    /// # use plexus::graph::{Entry, MeshGraph};
+    /// # use plexus::graph::{Binding, MeshGraph};
     /// # use plexus::prelude::*;
     /// #
     /// # let mut graph = MeshGraph::<()>::default();
@@ -81,22 +63,22 @@ pub trait Entry: Deref<Target = <Self as Entry>::Payload> {
     ///         })
     ///         .map(|face| face.key());
     ///     if let Some(key) = key {
-    ///         face.rekey(key).unwrap() // Rekey into the boundary face.
+    ///         face.rebind(key).unwrap() // Rebind into the boundary face.
     ///     }
     ///     else {
     ///         face
     ///     }
     /// };
     /// ```
-    fn rekey<T, M>(self, key: T::Key) -> Result<T, GraphError>
+    fn rebind<T, M>(self, key: T::Key) -> Result<T, GraphError>
     where
-        Self: Into<View<M, <Self as Entry>::Payload>>,
-        T: From<View<M, <T as Entry>::Payload>> + Entry,
+        Self: Into<View<M, <Self as Binding>::Payload>>,
+        T: From<View<M, <T as Binding>::Payload>> + Binding,
         M: Reborrow,
         M::Target: AsStorage<Self::Payload> + AsStorage<T::Payload>,
     {
         self.into()
-            .rekey_map::<_, T::Payload>(key)
+            .rebind_into::<_, T::Payload>(key)
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
 }
@@ -107,8 +89,8 @@ where
     M::Target: AsStorage<T>,
     T: Payload,
 {
-    key: T::Key,
     storage: M,
+    key: T::Key,
 }
 
 impl<M, T> View<M, T>
@@ -117,47 +99,54 @@ where
     M::Target: AsStorage<T>,
     T: Payload,
 {
-    fn from_keyed_source_unchecked(source: (T::Key, M)) -> Self {
-        let (key, storage) = source;
-        View { key, storage }
+    pub fn bind(storage: M, key: T::Key) -> Option<Self> {
+        storage
+            .reborrow()
+            .as_storage()
+            .contains_key(&key)
+            .some(View::bind_unchecked(storage, key))
+    }
+
+    pub fn bind_into<U>(storage: M, key: T::Key) -> Option<U>
+    where
+        U: From<Self>,
+    {
+        View::bind(storage, key).map(U::from)
+    }
+
+    pub fn unbind(self) -> (M, T::Key) {
+        let View { storage, key, .. } = self;
+        (storage, key)
+    }
+
+    pub fn rebind<U>(self, key: U::Key) -> Option<View<M, U>>
+    where
+        U: Payload,
+        M::Target: AsStorage<U>,
+    {
+        let (storage, _) = self.unbind();
+        View::bind(storage, key)
+    }
+
+    pub fn rebind_into<V, U>(self, key: U::Key) -> Option<V>
+    where
+        V: From<View<M, U>>,
+        U: Payload,
+        M::Target: AsStorage<U>,
+    {
+        self.rebind(key).map(V::from)
     }
 
     pub fn key(&self) -> T::Key {
         self.key
     }
 
-    pub fn bind<U, N>(self, storage: N) -> View<<M as Bind<U, N>>::Output, T>
-    where
-        U: Payload,
-        N: AsStorage<U>,
-        M: Bind<U, N>,
-        M::Output: Reborrow,
-        <M::Output as Reborrow>::Target: AsStorage<T>,
-    {
-        let (key, source) = self.into_keyed_source();
-        View::from_keyed_source_unchecked((key, source.bind(storage)))
-    }
-
-    pub fn rekey<U>(self, key: U::Key) -> Option<View<M, U>>
-    where
-        U: Payload,
-        M::Target: AsStorage<U>,
-    {
-        let (_, storage) = self.into_keyed_source();
-        (key, storage).into_view()
-    }
-
-    pub fn rekey_map<V, U>(self, key: U::Key) -> Option<V>
-    where
-        V: From<View<M, U>>,
-        U: Payload,
-        M::Target: AsStorage<U>,
-    {
-        self.rekey(key).map(V::from)
-    }
-
     pub fn interior_reborrow(&self) -> View<&M::Target, T> {
-        View::from_keyed_source_unchecked((self.key, self.storage.reborrow()))
+        View::bind_unchecked(self.storage.reborrow(), self.key)
+    }
+
+    pub(in crate::graph) fn bind_unchecked(storage: M, key: T::Key) -> Self {
+        View { storage, key }
     }
 }
 
@@ -168,7 +157,7 @@ where
     T: Payload,
 {
     pub fn interior_reborrow_mut(&mut self) -> View<&mut M::Target, T> {
-        View::from_keyed_source_unchecked((self.key, self.storage.reborrow_mut()))
+        View::bind_unchecked(self.storage.reborrow_mut(), self.key)
     }
 }
 
@@ -177,14 +166,9 @@ where
     M: 'a + AsStorageMut<T>,
     T: 'a + Payload,
 {
-    pub fn into_orphan(self) -> Orphan<'a, T> {
-        let (key, storage) = self.into_keyed_source();
-        (key, storage).into_view().unwrap()
-    }
-
     pub fn into_ref(self) -> View<&'a M, T> {
-        let (key, storage) = self.into_keyed_source();
-        (key, &*storage).into_view().unwrap()
+        let (storage, key) = self.unbind();
+        View::bind(&*storage, key).unwrap()
     }
 }
 
@@ -242,34 +226,6 @@ where
     }
 }
 
-impl<M, T> FromKeyedSource<(T::Key, M)> for View<M, T>
-where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Payload,
-{
-    fn from_keyed_source(source: (T::Key, M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
-            .reborrow()
-            .as_storage()
-            .contains_key(&key)
-            .some(View::from_keyed_source_unchecked((key, storage)))
-    }
-}
-
-impl<M, T> IntoKeyedSource<(T::Key, M)> for View<M, T>
-where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Payload,
-{
-    fn into_keyed_source(self) -> (T::Key, M) {
-        let View { key, storage, .. } = self;
-        (key, storage)
-    }
-}
-
 // TODO: Consider implementing `Eq` for views.
 impl<M, T> PartialEq for View<M, T>
 where
@@ -286,21 +242,35 @@ pub struct Orphan<'a, T>
 where
     T: Payload,
 {
-    key: T::Key,
     payload: &'a mut T,
+    key: T::Key,
 }
 
 impl<'a, T> Orphan<'a, T>
 where
     T: 'a + Payload,
 {
-    pub fn from_keyed_source_unchecked(source: (T::Key, &'a mut T)) -> Self {
-        let (key, payload) = source;
-        Orphan { key, payload }
+    pub fn bind<M>(storage: &'a mut M, key: T::Key) -> Option<Self>
+    where
+        M: AsStorageMut<T>,
+    {
+        View::bind(storage, key).map(Orphan::from)
+    }
+
+    pub fn bind_into<U, M>(storage: &'a mut M, key: T::Key) -> Option<U>
+    where
+        U: From<Self>,
+        M: AsStorageMut<T>,
+    {
+        Orphan::bind(storage, key).map(U::from)
     }
 
     pub fn key(&self) -> T::Key {
         self.key
+    }
+
+    pub(in crate::graph) fn bind_unchecked(payload: &'a mut T, key: T::Key) -> Self {
+        Orphan { payload, key }
     }
 }
 
@@ -324,16 +294,17 @@ where
     }
 }
 
-impl<'a, M, T> FromKeyedSource<(T::Key, &'a mut M)> for Orphan<'a, T>
+impl<'a, T, M> From<View<&'a mut M, T>> for Orphan<'a, T>
 where
-    M: AsStorageMut<T>,
     T: 'a + Payload,
+    M: AsStorageMut<T>,
 {
-    fn from_keyed_source(source: (T::Key, &'a mut M)) -> Option<Self> {
-        let (key, storage) = source;
-        storage
+    fn from(view: View<&'a mut M, T>) -> Self {
+        let (storage, key) = view.unbind();
+        let payload = storage
             .as_storage_mut()
             .get_mut(&key)
-            .map(|payload| Orphan { key, payload })
+            .expect("view key invalidated");
+        Orphan::bind_unchecked(payload, key)
     }
 }

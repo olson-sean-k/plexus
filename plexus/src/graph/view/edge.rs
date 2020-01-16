@@ -18,7 +18,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
 use crate::graph::view::path::PathView;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
-use crate::graph::view::{Entry, FromKeyedSource, IntoKeyedSource, IntoView, Orphan, View};
+use crate::graph::view::{Binding, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
@@ -130,11 +130,6 @@ where
     M: 'a + AsStorageMut<Arc<G>>,
     G: 'a + GraphGeometry,
 {
-    /// Converts a mutable view into an orphan view.
-    pub fn into_orphan(self) -> ArcOrphan<'a, G> {
-        self.into_inner().into_orphan().into()
-    }
-
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
@@ -191,19 +186,19 @@ where
 
     pub(in crate::graph) fn into_reachable_opposite_arc(self) -> Option<Self> {
         let key = self.key().into_opposite();
-        self.into_inner().rekey_map(key)
+        self.into_inner().rebind_into(key)
     }
 
     pub(in crate::graph) fn into_reachable_next_arc(self) -> Option<Self> {
         let inner = self.into_inner();
         let key = inner.next;
-        key.and_then(move |key| inner.rekey_map(key))
+        key.and_then(move |key| inner.rebind_into(key))
     }
 
     pub(in crate::graph) fn into_reachable_previous_arc(self) -> Option<Self> {
         let inner = self.into_inner();
         let key = inner.previous;
-        key.and_then(move |key| inner.rekey_map(key))
+        key.and_then(move |key| inner.rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_boundary_arc(&self) -> Option<ArcView<&M::Target, G>> {
@@ -218,17 +213,17 @@ where
 
     pub(in crate::graph) fn reachable_opposite_arc(&self) -> Option<ArcView<&M::Target, G>> {
         let key = self.key().into_opposite();
-        self.inner.interior_reborrow().rekey_map(key)
+        self.inner.interior_reborrow().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_next_arc(&self) -> Option<ArcView<&M::Target, G>> {
         self.next
-            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
+            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_previous_arc(&self) -> Option<ArcView<&M::Target, G>> {
         self.previous
-            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
+            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
     }
 }
 
@@ -240,8 +235,8 @@ where
 {
     /// Converts the arc into its ring.
     pub fn into_ring(self) -> RingView<M, G> {
-        let (key, storage) = self.into_inner().into_keyed_source();
-        (key, storage).into_view().expect_consistent()
+        let (storage, key) = self.into_inner().unbind();
+        View::bind(storage, key).expect_consistent().into()
     }
 
     /// Returns the arc if it is a boundary arc, otherwise `None`.
@@ -266,8 +261,8 @@ where
 
     /// Gets the ring of the arc.
     pub fn ring(&self) -> RingView<&M::Target, G> {
-        let (key, storage) = self.inner.interior_reborrow().into_keyed_source();
-        (key, storage).into_view().expect_consistent()
+        let (storage, key) = self.inner.interior_reborrow().unbind();
+        View::bind_into(storage, key).expect_consistent()
     }
 
     /// Returns the same arc if it is a boundary arc, otherwise `None`.
@@ -300,24 +295,24 @@ where
 {
     pub(in crate::graph) fn into_reachable_source_vertex(self) -> Option<VertexView<M, G>> {
         let (key, _) = self.key().into();
-        self.into_inner().rekey_map(key)
+        self.into_inner().rebind_into(key)
     }
 
     pub(in crate::graph) fn into_reachable_destination_vertex(self) -> Option<VertexView<M, G>> {
         let (_, key) = self.key().into();
-        self.into_inner().rekey_map(key)
+        self.into_inner().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M::Target, G>> {
         let (key, _) = self.key().into();
-        self.inner.interior_reborrow().rekey_map(key)
+        self.inner.interior_reborrow().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_destination_vertex(
         &self,
     ) -> Option<VertexView<&M::Target, G>> {
         let (_, key) = self.key().into();
-        self.inner.interior_reborrow().rekey_map(key)
+        self.inner.interior_reborrow().rebind_into(key)
     }
 }
 
@@ -328,7 +323,7 @@ where
     G: GraphGeometry,
 {
     pub fn into_path(self) -> PathView<M, G> {
-        let (ab, storage) = self.into_inner().into_keyed_source();
+        let (storage, ab) = self.into_inner().unbind();
         let (a, b) = ab.into();
         PathView::try_from_keys(storage, &[a, b]).unwrap()
     }
@@ -368,12 +363,12 @@ where
     pub(in crate::graph) fn into_reachable_edge(self) -> Option<EdgeView<M, G>> {
         let inner = self.into_inner();
         let key = inner.edge;
-        key.and_then(move |key| inner.rekey_map(key))
+        key.and_then(move |key| inner.rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_edge(&self) -> Option<EdgeView<&M::Target, G>> {
         self.edge
-            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
+            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
     }
 }
 
@@ -404,12 +399,12 @@ where
     pub(in crate::graph) fn into_reachable_face(self) -> Option<FaceView<M, G>> {
         let inner = self.into_inner();
         let key = inner.face;
-        key.and_then(move |key| inner.rekey_map(key))
+        key.and_then(move |key| inner.rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_face(&self) -> Option<FaceView<&M::Target, G>> {
         self.face
-            .and_then(|key| self.inner.interior_reborrow().rekey_map(key))
+            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
     }
 }
 
@@ -561,11 +556,11 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (ab, storage) = self.into_inner().into_keyed_source();
+        let (storage, ab) = self.into_inner().unbind();
         let cache = EdgeSplitCache::snapshot(&storage, ab, f()).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
-            .map(|(storage, m)| (m, storage).into_view().expect_consistent())
+            .map(|(storage, m)| View::bind_into(storage, m).expect_consistent())
             .expect_consistent()
     }
 
@@ -708,13 +703,13 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
         })?;
-        let (source, storage) = self.into_inner().into_keyed_source();
+        let (storage, source) = self.into_inner().unbind();
         // Errors can easily be caused by inputs to this function. Allow errors
         // from the snapshot to propagate.
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
-            .map(|(storage, face)| (face, storage).into_view().expect_consistent())
+            .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
             .expect_consistent())
     }
 
@@ -771,11 +766,11 @@ where
         VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal() * offset.into();
-        let (ab, storage) = self.into_inner().into_keyed_source();
+        let (storage, ab) = self.into_inner().unbind();
         let cache = ArcExtrudeCache::snapshot(&storage, ab, translation).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
-            .map(|(storage, arc)| (arc, storage).into_view().expect_consistent())
+            .map(|(storage, arc)| View::bind_into(storage, arc).expect_consistent())
             .expect_consistent())
     }
 
@@ -790,12 +785,27 @@ where
     /// then $A$ is returned.
     pub fn remove(self) -> Option<VertexView<&'a mut M, G>> {
         let a = self.source_vertex().key();
-        let (ab, storage) = self.into_inner().into_keyed_source();
+        let (storage, ab) = self.into_inner().unbind();
         let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
-            .map(|(storage, _)| (a, storage).into_view())
+            .map(|(storage, _)| View::bind_into(storage, a))
             .expect_consistent()
+    }
+}
+
+impl<M, G> Binding for ArcView<M, G>
+where
+    M: Reborrow,
+    M::Target: AsStorage<Arc<G>>,
+    G: GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = Arc<G>;
+
+    /// Gets the key for the arc.
+    fn key(&self) -> Self::Key {
+        self.inner.key()
     }
 }
 
@@ -861,21 +871,6 @@ where
     }
 }
 
-impl<M, G> Entry for ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>>,
-    G: GraphGeometry,
-{
-    type Key = ArcKey;
-    type Payload = Arc<G>;
-
-    /// Gets the key for the arc.
-    fn key(&self) -> Self::Key {
-        self.inner.key()
-    }
-}
-
 impl<M, G> From<View<M, Arc<G>>> for ArcView<M, G>
 where
     M: Reborrow,
@@ -884,17 +879,6 @@ where
 {
     fn from(view: View<M, Arc<G>>) -> Self {
         ArcView { inner: view }
-    }
-}
-
-impl<M, G> FromKeyedSource<(ArcKey, M)> for ArcView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>>,
-    G: GraphGeometry,
-{
-    fn from_keyed_source(source: (ArcKey, M)) -> Option<Self> {
-        View::<_, Arc<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -932,6 +916,18 @@ where
     inner: Orphan<'a, Arc<G>>,
 }
 
+impl<'a, G> Binding for ArcOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = ArcKey;
+    type Payload = Arc<G>;
+
+    fn key(&self) -> Self::Key {
+        self.inner.key()
+    }
+}
+
 impl<'a, G> Deref for ArcOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -952,15 +948,13 @@ where
     }
 }
 
-impl<'a, G> Entry for ArcOrphan<'a, G>
+impl<'a, M, G> From<ArcView<&'a mut M, G>> for ArcOrphan<'a, G>
 where
+    M: AsStorageMut<Arc<G>>,
     G: 'a + GraphGeometry,
 {
-    type Key = ArcKey;
-    type Payload = Arc<G>;
-
-    fn key(&self) -> Self::Key {
-        self.inner.key()
+    fn from(arc: ArcView<&'a mut M, G>) -> Self {
+        Orphan::from(arc.into_inner()).into()
     }
 }
 
@@ -968,18 +962,8 @@ impl<'a, G> From<Orphan<'a, Arc<G>>> for ArcOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    fn from(view: Orphan<'a, Arc<G>>) -> Self {
-        ArcOrphan { inner: view }
-    }
-}
-
-impl<'a, M, G> FromKeyedSource<(ArcKey, &'a mut M)> for ArcOrphan<'a, G>
-where
-    M: AsStorageMut<Arc<G>>,
-    G: 'a + GraphGeometry,
-{
-    fn from_keyed_source(source: (ArcKey, &'a mut M)) -> Option<Self> {
-        Orphan::<Arc<_>>::from_keyed_source(source).map(|view| view.into())
+    fn from(inner: Orphan<'a, Arc<G>>) -> Self {
+        ArcOrphan { inner }
     }
 }
 
@@ -1021,11 +1005,6 @@ where
     M: 'a + AsStorageMut<Edge<G>>,
     G: 'a + GraphGeometry,
 {
-    /// Converts a mutable view into an orphan view.
-    pub fn into_orphan(self) -> EdgeOrphan<'a, G> {
-        self.into_inner().into_orphan().into()
-    }
-
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
@@ -1044,12 +1023,12 @@ where
 {
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
         let key = self.arc;
-        self.into_inner().rekey_map(key)
+        self.into_inner().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M::Target, G>> {
         let key = self.arc;
-        self.inner.interior_reborrow().rekey_map(key)
+        self.inner.interior_reborrow().rebind_into(key)
     }
 }
 
@@ -1150,7 +1129,7 @@ where
     }
 }
 
-impl<M, G> Entry for EdgeView<M, G>
+impl<M, G> Binding for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>>,
@@ -1173,17 +1152,6 @@ where
 {
     fn from(view: View<M, Edge<G>>) -> Self {
         EdgeView { inner: view }
-    }
-}
-
-impl<M, G> FromKeyedSource<(EdgeKey, M)> for EdgeView<M, G>
-where
-    M: Reborrow,
-    M::Target: AsStorage<Edge<G>>,
-    G: GraphGeometry,
-{
-    fn from_keyed_source(source: (EdgeKey, M)) -> Option<Self> {
-        View::<_, Edge<_>>::from_keyed_source(source).map(|view| view.into())
     }
 }
 
@@ -1221,6 +1189,18 @@ where
     inner: Orphan<'a, Edge<G>>,
 }
 
+impl<'a, G> Binding for EdgeOrphan<'a, G>
+where
+    G: 'a + GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Payload = Edge<G>;
+
+    fn key(&self) -> Self::Key {
+        self.inner.key()
+    }
+}
+
 impl<'a, G> Deref for EdgeOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
@@ -1241,15 +1221,13 @@ where
     }
 }
 
-impl<'a, G> Entry for EdgeOrphan<'a, G>
+impl<'a, M, G> From<EdgeView<&'a mut M, G>> for EdgeOrphan<'a, G>
 where
+    M: AsStorageMut<Edge<G>>,
     G: 'a + GraphGeometry,
 {
-    type Key = EdgeKey;
-    type Payload = Edge<G>;
-
-    fn key(&self) -> Self::Key {
-        self.inner.key()
+    fn from(edge: EdgeView<&'a mut M, G>) -> Self {
+        Orphan::from(edge.into_inner()).into()
     }
 }
 
@@ -1257,18 +1235,8 @@ impl<'a, G> From<Orphan<'a, Edge<G>>> for EdgeOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
-    fn from(view: Orphan<'a, Edge<G>>) -> Self {
-        EdgeOrphan { inner: view }
-    }
-}
-
-impl<'a, M, G> FromKeyedSource<(EdgeKey, &'a mut M)> for EdgeOrphan<'a, G>
-where
-    M: AsStorageMut<Edge<G>>,
-    G: 'a + GraphGeometry,
-{
-    fn from_keyed_source(source: (EdgeKey, &'a mut M)) -> Option<Self> {
-        Orphan::<Edge<_>>::from_keyed_source(source).map(|view| view.into())
+    fn from(inner: Orphan<'a, Edge<G>>) -> Self {
+        EdgeOrphan { inner }
     }
 }
 
@@ -1279,7 +1247,7 @@ where
     G: GraphGeometry,
 {
     storage: M,
-    input: <ArrayVec<[VertexKey; 2]> as IntoIterator>::IntoIter,
+    inner: <ArrayVec<[VertexKey; 2]> as IntoIterator>::IntoIter,
     phantom: PhantomData<G>,
 }
 
@@ -1290,7 +1258,7 @@ where
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<VertexKey> {
-        self.input.next()
+        self.inner.next()
     }
 }
 
@@ -1302,10 +1270,10 @@ where
 {
     fn from(arc: ArcView<M, G>) -> Self {
         let (a, b) = arc.key().into();
-        let (_, storage) = arc.into_inner().into_keyed_source();
+        let (storage, _) = arc.into_inner().unbind();
         VertexCirculator {
             storage,
-            input: ArrayVec::<_>::from([a, b]).into_iter(),
+            inner: ArrayVec::<_>::from([a, b]).into_iter(),
             phantom: PhantomData,
         }
     }
@@ -1320,7 +1288,7 @@ where
     fn clone(&self) -> Self {
         VertexCirculator {
             storage: self.storage.clone(),
-            input: self.input.clone(),
+            inner: self.inner.clone(),
             phantom: PhantomData,
         }
     }
@@ -1334,7 +1302,7 @@ where
     type Item = VertexView<&'a M, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| (key, self.storage).into_view())
+        VertexCirculator::next(self).and_then(|key| View::bind_into(self.storage, key))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1351,12 +1319,12 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
-            (key, unsafe {
+            let storage = unsafe {
                 mem::transmute::<&'_ mut StorageProxy<Vertex<G>>, &'a mut StorageProxy<Vertex<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            })
-                .into_view()
+            };
+            Orphan::bind_into(storage, key)
         })
     }
 
@@ -1372,7 +1340,7 @@ where
     G: GraphGeometry,
 {
     storage: M,
-    input: <ArrayVec<[FaceKey; 2]> as IntoIterator>::IntoIter,
+    inner: <ArrayVec<[FaceKey; 2]> as IntoIterator>::IntoIter,
     phantom: PhantomData<G>,
 }
 
@@ -1383,7 +1351,7 @@ where
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
-        self.input.next()
+        self.inner.next()
     }
 }
 
@@ -1396,7 +1364,7 @@ where
     fn clone(&self) -> Self {
         FaceCirculator {
             storage: self.storage.clone(),
-            input: self.input.clone(),
+            inner: self.inner.clone(),
             phantom: PhantomData,
         }
     }
@@ -1409,7 +1377,7 @@ where
     G: GraphGeometry,
 {
     fn from(arc: ArcView<M, G>) -> Self {
-        let input = arc
+        let inner = arc
             .face
             .into_iter()
             .chain(
@@ -1419,10 +1387,10 @@ where
             )
             .collect::<ArrayVec<_>>()
             .into_iter();
-        let (_, storage) = arc.into_inner().into_keyed_source();
+        let (storage, _) = arc.into_inner().unbind();
         FaceCirculator {
             storage,
-            input,
+            inner,
             phantom: PhantomData,
         }
     }
@@ -1436,7 +1404,7 @@ where
     type Item = FaceView<&'a M, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| (key, self.storage).into_view())
+        FaceCirculator::next(self).and_then(|key| View::bind_into(self.storage, key))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1453,12 +1421,12 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
-            (key, unsafe {
+            let storage = unsafe {
                 mem::transmute::<&'_ mut StorageProxy<Face<G>>, &'a mut StorageProxy<Face<G>>>(
                     self.storage.as_storage_mut(),
                 )
-            })
-                .into_view()
+            };
+            Orphan::bind_into(storage, key)
         })
     }
 
