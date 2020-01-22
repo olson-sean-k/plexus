@@ -436,7 +436,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the vertices connected by the arc.
-    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
+    pub fn vertices(&self) -> impl Clone + ExactSizeIterator<Item = VertexView<&M::Target, G>> {
         VertexCirculator::from(self.interior_reborrow())
     }
 }
@@ -449,7 +449,7 @@ where
 {
     /// Gets an iterator of orphan views over the vertices connected by the
     /// arc.
-    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
+    pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         VertexCirculator::from(self.interior_reborrow_mut())
     }
 }
@@ -461,7 +461,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the faces connected to the arc.
-    pub fn faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn faces(&self) -> impl Clone + ExactSizeIterator<Item = FaceView<&M::Target, G>> {
         FaceCirculator::from(self.interior_reborrow())
     }
 }
@@ -473,7 +473,7 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
-    pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
+    pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         FaceCirculator::from(self.interior_reborrow_mut())
     }
 }
@@ -1294,6 +1294,15 @@ where
     }
 }
 
+impl<M, G> ExactSizeIterator for VertexCirculator<M, G>
+where
+    Self: Iterator,
+    M: Reborrow,
+    M::Target: AsStorage<Vertex<G>>,
+    G: GraphGeometry,
+{
+}
+
 impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
 where
     M: 'a + AsStorage<Vertex<G>>,
@@ -1306,7 +1315,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(2))
+        (0, Some(self.inner.len()))
     }
 }
 
@@ -1329,7 +1338,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(2))
+        (0, Some(self.inner.len()))
     }
 }
 
@@ -1370,6 +1379,15 @@ where
     }
 }
 
+impl<M, G> ExactSizeIterator for FaceCirculator<M, G>
+where
+    Self: Iterator,
+    M: Reborrow,
+    M::Target: AsStorage<Face<G>>,
+    G: GraphGeometry,
+{
+}
+
 impl<M, G> From<ArcView<M, G>> for FaceCirculator<M, G>
 where
     M: Reborrow,
@@ -1408,7 +1426,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(2))
+        (0, Some(self.inner.len()))
     }
 }
 
@@ -1431,7 +1449,7 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(2))
+        (0, Some(self.inner.len()))
     }
 }
 

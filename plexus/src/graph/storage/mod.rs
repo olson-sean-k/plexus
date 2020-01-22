@@ -80,11 +80,11 @@ where
 {
     fn len(&self) -> usize;
 
-    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a>;
+    fn iter<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &T)> + 'a>;
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a>;
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &mut T)> + 'a>;
 
-    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a>;
+    fn keys<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = T::Key> + 'a>;
 }
 
 pub trait Get<T>
@@ -142,21 +142,21 @@ where
         self.len()
     }
 
-    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a> {
+    fn iter<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &T)> + 'a> {
         Box::new(
             self.iter()
                 .map(|(key, payload)| (T::Key::from_inner(*key), payload)),
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a> {
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &mut T)> + 'a> {
         Box::new(
             self.iter_mut()
                 .map(|(key, payload)| (T::Key::from_inner(*key), payload)),
         )
     }
 
-    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a> {
+    fn keys<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = T::Key> + 'a> {
         Box::new(self.keys().map(|key| T::Key::from_inner(*key)))
     }
 }
@@ -206,21 +206,21 @@ where
         self.len()
     }
 
-    fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (T::Key, &T)> + 'a> {
+    fn iter<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &T)> + 'a> {
         Box::new(
             self.iter()
                 .map(|(key, payload)| (T::Key::from_inner(key), payload)),
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = (T::Key, &mut T)> + 'a> {
+    fn iter_mut<'a>(&'a mut self) -> Box<dyn ExactSizeIterator<Item = (T::Key, &mut T)> + 'a> {
         Box::new(
             self.iter_mut()
                 .map(|(key, payload)| (T::Key::from_inner(key), payload)),
         )
     }
 
-    fn keys<'a>(&'a self) -> Box<dyn Iterator<Item = T::Key> + 'a> {
+    fn keys<'a>(&'a self) -> Box<dyn ExactSizeIterator<Item = T::Key> + 'a> {
         Box::new(self.keys().map(T::Key::from_inner))
     }
 }
@@ -279,16 +279,16 @@ where
     }
 
     // TODO: Return `Clone + Iterator`.
-    pub fn iter(&self) -> impl Iterator<Item = (T::Key, &T)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (T::Key, &T)> {
         self.inner.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (T::Key, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (T::Key, &mut T)> {
         self.inner.iter_mut()
     }
 
     // TODO: Return `Clone + Iterator`.
-    pub fn keys<'a>(&'a self) -> impl Iterator<Item = T::Key> + 'a {
+    pub fn keys<'a>(&'a self) -> impl ExactSizeIterator<Item = T::Key> + 'a {
         self.inner.keys()
     }
 

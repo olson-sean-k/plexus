@@ -417,7 +417,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
+    pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self, G>> {
         self.as_vertex_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -429,7 +429,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
-    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
+    pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
             .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
@@ -453,7 +453,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
-    pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self, G>> {
+    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self, G>> {
         self.as_arc_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -465,7 +465,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `arc_mut` instead.
-    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
+    pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
             .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
@@ -489,7 +489,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
-    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self, G>> {
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self, G>> {
         self.as_edge_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -501,7 +501,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `edge_mut` instead.
-    pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
+    pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
             .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
@@ -525,7 +525,7 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
-    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self, G>> {
+    pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self, G>> {
         self.as_face_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -537,7 +537,7 @@ where
     /// Because this only yields orphan views, only geometry can be mutated.
     /// For topological mutations, collect the necessary keys and use
     /// `face_mut` instead.
-    pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
+    pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         self.as_face_storage_mut()
             .iter_mut()
             .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
@@ -684,7 +684,9 @@ where
     ///     // ...
     /// }
     /// ```
-    pub fn disjoint_subgraph_vertices(&self) -> impl Iterator<Item = VertexView<&Self, G>> {
+    pub fn disjoint_subgraph_vertices(
+        &self,
+    ) -> impl ExactSizeIterator<Item = VertexView<&Self, G>> {
         let keys = self.as_vertex_storage().keys().collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_, _>; 4]>::new();
