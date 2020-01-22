@@ -75,8 +75,8 @@ use crate::graph::borrow::Reborrow;
 use crate::graph::mutation::Consistent;
 use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::AsStorage;
-use crate::graph::view::edge::{ArcView, CompositeEdge};
-use crate::graph::view::face::Ring;
+use crate::graph::view::edge::{ArcView, Edgoid};
+use crate::graph::view::face::Ringoid;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::{GraphError, OptionExt as _};
 
@@ -300,7 +300,7 @@ where
 {
     fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
     where
-        E: CompositeEdge<M, Self>,
+        E: Edgoid<M, Self>,
         M: Reborrow,
         M::Target:
             AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent;
@@ -314,7 +314,7 @@ where
 {
     fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
     where
-        E: CompositeEdge<M, Self>,
+        E: Edgoid<M, Self>,
         M: Reborrow,
         M::Target:
             AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent,
@@ -332,7 +332,7 @@ where
 {
     fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
     where
-        R: Ring<M, Self>,
+        R: Ringoid<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
@@ -344,7 +344,7 @@ where
 {
     fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
     where
-        R: Ring<M, Self>,
+        R: Ringoid<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
@@ -361,7 +361,7 @@ where
 {
     fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        R: Ring<M, Self>,
+        R: Ringoid<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
@@ -375,7 +375,7 @@ where
 {
     fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        R: Ring<M, Self>,
+        R: Ringoid<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
     {
@@ -396,7 +396,7 @@ where
 {
     fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<Self>>, GraphError>
     where
-        R: Ring<M, Self>,
+        R: Ringoid<M, Self>,
         M: Reborrow,
         M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
 }
@@ -422,7 +422,7 @@ mod array {
     {
         fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<G>>, GraphError>
         where
-            R: Ring<M, Self>,
+            R: Ringoid<M, Self>,
             M: Reborrow,
             M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
         {

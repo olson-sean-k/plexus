@@ -22,12 +22,12 @@ use crate::graph::view::{Binding, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
-/// Component of a composite edge. Abstracts arcs and edges.
+/// Edge-like structure. Abstracts arcs and edges.
 ///
 /// Types implementing this trait participate in a composite edge and can be
 /// converted into an arc or edge that is a part of that composite edge. This
 /// trait allows edge structures to be abstracted.
-pub trait CompositeEdge<M, G>
+pub trait Edgoid<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent,
@@ -823,7 +823,7 @@ where
     }
 }
 
-impl<M, G> CompositeEdge<M, G> for ArcView<M, G>
+impl<M, G> Edgoid<M, G> for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent,
@@ -1081,7 +1081,7 @@ where
     }
 }
 
-impl<M, G> CompositeEdge<M, G> for EdgeView<M, G>
+impl<M, G> Edgoid<M, G> for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent,

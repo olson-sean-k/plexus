@@ -40,12 +40,12 @@ use Selector::ByIndex;
 //       is the most notable difference, keeping in mind that in a consistent
 //       graph all arcs are part of a ring.
 
-/// Component of a ring. Abstracts faces and rings.
+/// Ring-like structure. Abstracts faces and rings.
 ///
 /// Types that implement this trait participate in a ring and can be converted
 /// into an arc that is part of that ring. This trait allows ring structures to
 /// be abstracted.
-pub trait Ring<M, G>: DynamicArity<Dynamic = usize>
+pub trait Ringoid<M, G>: DynamicArity<Dynamic = usize>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,
@@ -255,12 +255,12 @@ where
 
     /// Gets an iterator of views over the arcs in the face's ring.
     pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as Ring<_, _>>::interior_arcs(self)
+        <Self as Ringoid<_, _>>::interior_arcs(self)
     }
 
     /// Gets an iterator of views over neighboring faces.
     pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(<Self as Ring<_, _>>::interior_arcs(self))
+        FaceCirculator::from(<Self as Ringoid<_, _>>::interior_arcs(self))
     }
 }
 
@@ -277,12 +277,12 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        <Self as Ring<_, _>>::distance(self, source, destination)
+        <Self as Ringoid<_, _>>::distance(self, source, destination)
     }
 
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as Ring<_, _>>::vertices(self)
+        <Self as Ringoid<_, _>>::vertices(self)
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -854,7 +854,7 @@ where
     }
 }
 
-impl<M, G> Ring<M, G> for FaceView<M, G>
+impl<M, G> Ringoid<M, G> for FaceView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
@@ -978,7 +978,7 @@ where
 
     /// Gets an iterator of views over the arcs within the ring.
     pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as Ring<_, _>>::interior_arcs(self)
+        <Self as Ringoid<_, _>>::interior_arcs(self)
     }
 
     fn interior_reborrow(&self) -> RingView<&M::Target, G> {
@@ -1030,12 +1030,12 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        <Self as Ring<_, _>>::distance(self, source, destination)
+        <Self as Ringoid<_, _>>::distance(self, source, destination)
     }
 
     /// Gets an iterator of views over the vertices within the ring.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as Ring<_, _>>::vertices(self)
+        <Self as Ringoid<_, _>>::vertices(self)
     }
 }
 
@@ -1162,7 +1162,7 @@ where
     }
 }
 
-impl<M, G> Ring<M, G> for RingView<M, G>
+impl<M, G> Ringoid<M, G> for RingView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>> + Consistent,

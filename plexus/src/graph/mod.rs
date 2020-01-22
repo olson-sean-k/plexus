@@ -208,8 +208,8 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
-pub use crate::graph::view::edge::{ArcOrphan, ArcView, CompositeEdge, EdgeOrphan, EdgeView};
-pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, RingView};
+pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edgoid};
+pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
 pub use crate::graph::view::Binding;
