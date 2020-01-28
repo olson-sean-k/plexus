@@ -198,8 +198,8 @@ use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{
-    DynamicArity, FromGeometry, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry,
-    IteratorExt as _, MeshArity, StaticArity,
+    DynamicArity, FromGeometry, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, MeshArity,
+    StaticArity,
 };
 
 pub use crate::graph::geometry::{
@@ -549,7 +549,7 @@ where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
     {
-        PathView::try_from_keys(self, keys)
+        PathView::bind(self, keys)
     }
 
     pub fn path_mut<I>(&mut self, keys: I) -> Result<PathView<&mut Self, G>, GraphError>
@@ -557,7 +557,7 @@ where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
     {
-        PathView::try_from_keys(self, keys)
+        PathView::bind(self, keys)
     }
 
     /// Gets an axis-aligned bounding box that encloses the graph.
@@ -609,6 +609,9 @@ where
     //       singularities and unbounded edges, this operation is complicated.
     //       However, support for these will likely be removed. Once these
     //       structures can be ignored, implement this operation.
+    // TODO: It is possible to split along non-bisecting paths by copying
+    //       vertex and edge data to form a ring. Geometrically, this ring
+    //       would be collapsed, but would be topologically consistent.
     //
     // This API is a bit unusual, but allows a view-like path to borrow a
     // graph and remain consistent. It also (hopefully) makes it more clear
@@ -629,18 +632,11 @@ where
     pub fn split_at_path(
         path: PathView<&mut Self, G>,
     ) -> Result<(VertexView<&Self, G>, VertexView<&Self, G>), GraphError> {
-        if path.is_open() {
-            let first = path.vertices().nth(0).unwrap();
-            let last = path.vertices().last().unwrap();
-            // If the path is open, then the initiating and terminating
-            // vertices must be a part of the same ring and that ring must form
-            // a boundary (must not be a face).
-            first
-                .outgoing_arcs()
-                .flat_map(|arc| arc.into_boundary_arc())
-                .map(|arc| arc.into_ring())
-                .nth(0)
-                .and_then(|ring| ring.vertices().keys().find(|key| *key == last.key()))
+        if path.is_closed() {
+        }
+        else {
+            let _ = path
+                .bisected_ring()
                 .ok_or_else(|| GraphError::TopologyMalformed)?;
         }
         unimplemented!()

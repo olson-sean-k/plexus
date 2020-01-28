@@ -325,7 +325,7 @@ where
     pub fn into_path(self) -> PathView<M, G> {
         let (storage, ab) = self.into_inner().unbind();
         let (a, b) = ab.into();
-        PathView::try_from_keys(storage, &[a, b]).unwrap()
+        PathView::bind(storage, &[a, b]).unwrap()
     }
 
     pub fn path(&self) -> PathView<&M::Target, G> {
