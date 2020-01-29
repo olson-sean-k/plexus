@@ -80,10 +80,10 @@ where
     ///
     /// The given vertex must be a source vertex of an arc formed with the the
     /// back of the path. That is, if the given vertex is $X$, then
-    /// $\overrightarrow{\\{X,A\\}}$ must exist.
+    /// $\overrightarrow{XA}$ must exist.
     ///
-    /// Returns the key of the arc $\overrightarrow{\\{X,A\\}}$ inserted into
-    /// the path using the given source vertex $X$.
+    /// Returns the key of the arc $\overrightarrow{XA}$ inserted into the path
+    /// using the given source vertex $X$.
     pub fn push_back(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
         self.is_open()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
@@ -140,10 +140,10 @@ where
     ///
     /// The given vertex must be a destination vertex of an arc formed with the
     /// the front of the path. That is, if the given vertex is $X$, then
-    /// $\overrightarrow{\\{B,X\\}}$ must exist.
+    /// $\overrightarrow{BX}$ must exist.
     ///
-    /// Returns the key of the arc $\overrightarrow{\\{B,X\\}}$ inserted into
-    /// the path using the given source vertex $X$.
+    /// Returns the key of the arc $\overrightarrow{BX}$ inserted into the path
+    /// using the given source vertex $X$.
     pub fn push_front(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
         self.is_open()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
