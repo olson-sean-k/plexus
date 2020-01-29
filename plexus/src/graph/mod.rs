@@ -623,11 +623,52 @@ where
     //   let (a, b) = MeshGraph::split_at_path(path).unwrap();
     /// Splits the graph into two disjoint sub-graphs along a path.
     ///
-    /// The given path must either be closed or, if open, must begin and end
-    /// within the same ring. Such a path subdivides the graph.
+    /// The given path must be a _bisecting path_. Such a path is either closed
+    /// or, if open, must bisect a ring in the graph. To bisect a ring, a path
+    /// must begin and end within the ring and not be a boundary path (it must
+    /// enter the interior of the ring).
     ///
     /// The sub-graphs are disconnected from each other, copying any vertices,
     /// arcs, and edges at their boundaries.
+    ///
+    /// Returns vertices within the disjoint sub-graphs resulting from the
+    /// split.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use nalgebra::Point2;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::Trigon;
+    ///
+    /// type E2 = Point2<f64>;
+    ///
+    /// // Create a graph from two triangles.
+    /// let mut graph = MeshGraph::<E2>::from_raw_buffers(
+    ///     vec![Trigon::new(0usize, 1, 2), Trigon::new(2, 1, 3)],
+    ///     vec![
+    ///         (-1.0, 0.0),
+    ///         (0.0, -1.0),
+    ///         (0.0, 1.0),
+    ///         (1.0, 0.0),
+    ///     ],
+    /// )
+    /// .unwrap();
+    ///
+    /// // Find the shared edge that bisects the triangles and then construct a path
+    /// // along the edge and split the graph.
+    /// let key = graph
+    ///     .edges()
+    ///     .find(|edge| !edge.is_boundary_edge())
+    ///     .map(|edge| edge.into_arc().key())
+    ///     .unwrap();
+    /// let mut path = graph.arc_mut(key).unwrap().into_path();
+    /// let (a, b) = MeshGraph::split_at_path(path).unwrap();
+    /// ```
     #[allow(clippy::type_complexity)]
     pub fn split_at_path(
         path: PathView<&mut Self, G>,
