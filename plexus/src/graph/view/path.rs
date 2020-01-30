@@ -357,9 +357,10 @@ where
 mod tests {
     use nalgebra::Point2;
 
+    use crate::buffer::FromRawBuffers;
     use crate::graph::{Binding, MeshGraph, Selector};
     use crate::primitive::Trigon;
-    use crate::{FromRawBuffers, IteratorExt};
+    use crate::IteratorExt;
 
     use Selector::ByKey;
 

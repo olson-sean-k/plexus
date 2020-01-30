@@ -79,6 +79,7 @@ mod builder;
 
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use theon::ops::Map;
@@ -96,7 +97,7 @@ use crate::index::{
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
-use crate::{DynamicArity, FromRawBuffers, Homomorphic, MeshArity, StaticArity};
+use crate::{DynamicArity, Homomorphic, MeshArity, StaticArity};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
@@ -119,6 +120,28 @@ pub type MeshBuffer4<N, G> = MeshBuffer<Flat4<N>, G>;
 
 /// Alias for a structured and polygonal `MeshBuffer`.
 pub type MeshBufferN<N, G> = MeshBuffer<Polygon<N>, G>;
+
+pub trait FromRawBuffers<N, G>: Sized {
+    type Error: Debug;
+
+    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = G>;
+}
+
+pub trait FromRawBuffersWithArity<N, G>: Sized {
+    type Error: Debug;
+
+    fn from_raw_buffers_with_arity<I, J>(
+        indices: I,
+        vertices: J,
+        arity: usize,
+    ) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = N>,
+        J: IntoIterator<Item = G>;
+}
 
 pub trait IntoFlatIndex<A, G>
 where

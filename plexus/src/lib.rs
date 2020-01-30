@@ -44,7 +44,10 @@ pub mod prelude {
     //! The `Selector` enum and its variants are re-exported for convenience.
     //! `Selector` is often used when mutating `MeshGraph`s.
 
-    pub use crate::buffer::{IntoFlatIndex as _, IntoStructuredIndex as _};
+    pub use crate::buffer::{
+        FromRawBuffers as _, FromRawBuffersWithArity as _, IntoFlatIndex as _,
+        IntoStructuredIndex as _,
+    };
     pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
     pub use crate::graph::{Binding as _, Selector};
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
@@ -55,10 +58,7 @@ pub mod prelude {
     pub use crate::primitive::generate::Generator as _;
     pub use crate::primitive::{MapVertices as _, Polygonal as _, Topological as _};
     pub use crate::IteratorExt as _;
-    pub use crate::{
-        DynamicArity as _, FromGeometry as _, FromRawBuffers as _, FromRawBuffersWithArity as _,
-        IntoGeometry as _,
-    };
+    pub use crate::{DynamicArity as _, FromGeometry as _, IntoGeometry as _};
 
     pub use Selector::ByIndex;
     pub use Selector::ByKey;
@@ -178,28 +178,6 @@ impl Arity for MeshArity {
             MeshArity::NonUniform(min, max) => (min, Some(max)),
         }
     }
-}
-
-pub trait FromRawBuffers<N, G>: Sized {
-    type Error: Debug;
-
-    fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, Self::Error>
-    where
-        I: IntoIterator<Item = N>,
-        J: IntoIterator<Item = G>;
-}
-
-pub trait FromRawBuffersWithArity<N, G>: Sized {
-    type Error: Debug;
-
-    fn from_raw_buffers_with_arity<I, J>(
-        indices: I,
-        vertices: J,
-        arity: usize,
-    ) -> Result<Self, Self::Error>
-    where
-        I: IntoIterator<Item = N>,
-        J: IntoIterator<Item = G>;
 }
 
 pub trait FromGeometry<T> {

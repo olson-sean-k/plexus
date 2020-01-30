@@ -183,7 +183,7 @@ use theon::AsPosition;
 use thiserror::Error;
 use typenum::{self, NonZero};
 
-use crate::buffer::{BufferError, MeshBuffer};
+use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::graph::builder::GraphBuilder;
@@ -197,10 +197,7 @@ use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexV
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
-use crate::{
-    DynamicArity, FromGeometry, FromRawBuffers, FromRawBuffersWithArity, IntoGeometry, MeshArity,
-    StaticArity,
-};
+use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
