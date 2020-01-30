@@ -71,7 +71,7 @@
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
 //! let buffer = graph
-//!     .to_buildable_by_vertex::<MeshBuffer4<usize, Point3<N64>>>()
+//!     .to_mesh_by_vertex::<MeshBuffer4<usize, Point3<N64>>>()
 //!     .unwrap();
 //! ```
 
@@ -925,7 +925,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_buildable_by_vertex::<MeshBuffer3<u32, Point3<f64>>>()
+            .to_mesh_by_vertex::<MeshBuffer3<u32, Point3<f64>>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());
@@ -938,7 +938,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
         let buffer = graph
-            .to_buildable_by_face::<MeshBuffer3<u32, Point3<f64>>>()
+            .to_mesh_by_face::<MeshBuffer3<u32, Point3<f64>>>()
             .unwrap();
 
         assert_eq!(18, buffer.as_index_slice().len());

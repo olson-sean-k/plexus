@@ -737,7 +737,7 @@ where
         unimplemented!()
     }
 
-    /// Creates a `Buildable` from the graph.
+    /// Creates a `Buildable` mesh data structure from the graph.
     ///
     /// The output is created from each unique vertex in the graph. No face
     /// geometry is used, and the `Facet` type is always `()`.
@@ -767,9 +767,7 @@ where
     /// let key = graph.faces().nth(0).unwrap().key();
     /// graph.face_mut(key).unwrap().extrude(1.0);
     ///
-    /// let buffer = graph
-    ///     .to_buildable_by_vertex::<MeshBufferN<usize, E3>>()
-    ///     .unwrap();
+    /// let buffer = graph.to_mesh_by_vertex::<MeshBufferN<usize, E3>>().unwrap();
     /// ```
     ///
     /// # Errors
@@ -777,15 +775,15 @@ where
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
-    pub fn to_buildable_by_vertex<B>(&self) -> Result<B, B::Error>
+    pub fn to_mesh_by_vertex<B>(&self) -> Result<B, B::Error>
     where
         B: Buildable<Facet = ()>,
         B::Vertex: FromGeometry<G::Vertex>,
     {
-        self.to_buildable_by_vertex_with(|vertex| vertex.geometry.into_geometry())
+        self.to_mesh_by_vertex_with(|vertex| vertex.geometry.into_geometry())
     }
 
-    /// Creates a `Buildable` from the graph.
+    /// Creates a `Buildable` mesh data structure from the graph.
     ///
     /// The output is created from each unique vertex in the graph, which is
     /// converted into the output geometry by the given function. No face
@@ -796,7 +794,7 @@ where
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
-    pub fn to_buildable_by_vertex_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
+    pub fn to_mesh_by_vertex_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
     where
         B: Buildable<Vertex = T, Facet = ()>,
         F: FnMut(VertexView<&Self, G>) -> T,
@@ -821,7 +819,7 @@ where
         builder.build()
     }
 
-    /// Creates a `Buildable` from the graph.
+    /// Creates a `Buildable` mesh data structure from the graph.
     ///
     /// The output is created from each face in the graph. For each face, the
     /// face geometry and associated vertex geometry is inserted into the
@@ -833,16 +831,16 @@ where
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
-    pub fn to_buildable_by_face<B>(&self) -> Result<B, B::Error>
+    pub fn to_mesh_by_face<B>(&self) -> Result<B, B::Error>
     where
         B: Buildable,
         B::Vertex: FromGeometry<G::Vertex>,
         B::Facet: FromGeometry<G::Face>,
     {
-        self.to_buildable_by_face_with(|_, vertex| vertex.geometry.into_geometry())
+        self.to_mesh_by_face_with(|_, vertex| vertex.geometry.into_geometry())
     }
 
-    /// Creates a `Buildable` from the graph.
+    /// Creates a `Buildable` mesh data structure from the graph.
     ///
     /// The output is created from each face in the graph. The given function
     /// is called for each vertex of each face and converts the vertex geometry
@@ -885,7 +883,7 @@ where
     /// let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).unwrap();
     ///
     /// let buffer: MeshBuffer<Polygon<usize>, _> = graph
-    ///     .to_buildable_by_face_with(|face, vertex| Vertex {
+    ///     .to_mesh_by_face_with(|face, vertex| Vertex {
     ///         position: *vertex.position(),
     ///         normal: face.normal().unwrap(),
     ///     })
@@ -897,7 +895,7 @@ where
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
-    pub fn to_buildable_by_face_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
+    pub fn to_mesh_by_face_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
     where
         B: Buildable<Vertex = T>,
         B::Facet: FromGeometry<G::Face>,
@@ -1453,7 +1451,7 @@ mod tests {
             .collect::<MeshGraph<E3>>();
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
-        let _: MeshBuffer3<usize, E3> = graph.to_buildable_by_face().unwrap();
+        let _: MeshBuffer3<usize, E3> = graph.to_mesh_by_face().unwrap();
     }
 
     #[test]
