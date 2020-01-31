@@ -97,7 +97,7 @@ use crate::index::{
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
-use crate::{DynamicArity, Homomorphic, MeshArity, StaticArity};
+use crate::{DynamicArity, MeshArity, Monomorphic, StaticArity};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
@@ -338,7 +338,7 @@ where
 
 impl<P, G> DynamicArity for MeshBuffer<P, G>
 where
-    P: Grouping + Homomorphic + Polygonal,
+    P: Grouping + Monomorphic + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Dynamic = <P as StaticArity>::Static;
@@ -359,7 +359,7 @@ where
     }
 }
 
-impl<R, G> Homomorphic for MeshBuffer<R, G> where R: Grouping + Homomorphic {}
+impl<R, G> Monomorphic for MeshBuffer<R, G> where R: Grouping + Monomorphic {}
 
 impl<R, G> StaticArity for MeshBuffer<R, G>
 where

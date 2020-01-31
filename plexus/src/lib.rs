@@ -122,7 +122,7 @@ pub trait DynamicArity: StaticArity {
 
 /// Topological types with fixed and singular arity.
 ///
-/// Types are _homomorphic_ if they have a fixed and singular arity as types
+/// Types are _monomorphic_ if they have a fixed and singular arity as types
 /// and values. For example, `Trigon` always and only represents a trigon
 /// (triangle) with an arity of three. `Trigon` values always have an arity of
 /// three and types composed of only `Trigon`s have a compound arity of three.
@@ -130,7 +130,7 @@ pub trait DynamicArity: StaticArity {
 /// This contrasts _polymorphic_ types like `Polygon`, which have an interval
 /// arity at the type-level and a singular but varying arity for values
 /// (because a `Polygon` value may be either a trigon or tertragon).
-pub trait Homomorphic: StaticArity<Static = usize> {}
+pub trait Monomorphic: StaticArity<Static = usize> {}
 
 /// Arity of a compound structure.
 ///

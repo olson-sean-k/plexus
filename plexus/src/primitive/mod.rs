@@ -88,7 +88,7 @@ use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::{DynamicArity, Homomorphic, IteratorExt as _, StaticArity};
+use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 
 /// Primitive topological structure.
 ///
@@ -330,7 +330,7 @@ where
     }
 }
 
-/// Homomorphic $n$-gon.
+/// Monomorphic $n$-gon.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with neighboring elements being connected
@@ -468,9 +468,9 @@ where
     }
 }
 
-macro_rules! impl_homomorphic_ngon {
+macro_rules! impl_monomorphic_ngon {
     (length => $n:expr) => (
-        impl<T> Homomorphic for NGon<[T; $n]> {}
+        impl<T> Monomorphic for NGon<[T; $n]> {}
 
         impl<T> StaticArity for NGon<[T; $n]> {
             type Static = usize;
@@ -481,7 +481,7 @@ macro_rules! impl_homomorphic_ngon {
         impl<T> Polygonal for NGon<[T; $n]> {}
     );
     (lengths => $($n:expr),*$(,)?) => (
-        impl<T> Homomorphic for NGon<[T; 2]> {}
+        impl<T> Monomorphic for NGon<[T; 2]> {}
 
         impl<T> StaticArity for NGon<[T; 2]> {
             type Static = usize;
@@ -489,10 +489,10 @@ macro_rules! impl_homomorphic_ngon {
             const ARITY: Self::Static = 1;
         }
 
-        $(impl_homomorphic_ngon!(length => $n);)*
+        $(impl_monomorphic_ngon!(length => $n);)*
     );
 }
-impl_homomorphic_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+impl_monomorphic_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 macro_rules! impl_zip_ngon {
     (composite => $c:ident, length => $n:expr) => (

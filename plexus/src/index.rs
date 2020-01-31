@@ -63,7 +63,7 @@ use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{Polygon, Topological};
-use crate::{Homomorphic, StaticArity};
+use crate::{Monomorphic, StaticArity};
 
 // Note that it isn't possible for `IndexBuffer` types to implement
 // `DynamicArity`, because they are typically parameterized by `R` (see
@@ -95,7 +95,7 @@ where
 
 impl<P> IndexBuffer<P> for Vec<P>
 where
-    P: Homomorphic + Topological,
+    P: Monomorphic + Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Index = P::Vertex;
@@ -121,7 +121,7 @@ impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    P: Homomorphic + IntoVertices + Topological<Vertex = N>,
+    P: Monomorphic + IntoVertices + Topological<Vertex = N>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {
@@ -188,7 +188,7 @@ where
     type Item = N;
 }
 
-impl<A, N> Homomorphic for Flat<A, N>
+impl<A, N> Monomorphic for Flat<A, N>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
