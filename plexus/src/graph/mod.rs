@@ -45,9 +45,18 @@
 //! _boundary edge_.
 //!
 //! A path that terminates is _open_ and a path that forms a loop is _closed_.
-//! Rings are always closed. A path over vertices $A$, $B$, and $C$ is
-//! notated $\overrightarrow{\\{A,B,C\\}}$. This path notation is used to
-//! describe rings and faces.
+//! Rings are always closed. Paths may be notated using _sequence_ or _set
+//! notation_ and both forms are used to describe rings and faces.
+//!
+//! Sequence notation is formed from the ordered sequence of vertices that a
+//! path traverses, including the source vertex of the first arc and the
+//! destination vertex of the last arc. Set notation is similar, but is
+//! implicitly closed and only includes the ordered and unique set of vertices
+//! traversed by the path. An open path over vertices $A$, $B$, and $C$ is
+//! notated as a sequence $\overrightarrow{(A,B,C)}$. A closed path over
+//! vertices $A$, $B$, and $C$ includes the arc $\overrightarrow{CA}$ and is
+//! notated as a sequence $\overrightarrow{(A,B,C,A)}$ or a set
+//! $\overrightarrow{\\{A,B,C\\}}$.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find

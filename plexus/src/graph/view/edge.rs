@@ -49,7 +49,7 @@ where
 /// emit deterministic results (this is not true of edges).
 ///
 /// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
-/// This is shorthand for the path notation $\overrightarrow{\\{A,B\\}}$.
+/// This is shorthand for the path notation $\overrightarrow{(A,B)}$.
 ///
 /// # Examples
 ///

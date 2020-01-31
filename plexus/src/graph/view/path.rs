@@ -18,14 +18,16 @@ use crate::IteratorExt as _;
 
 /// View of a path in a graph.
 ///
-/// Provides a representation of non-intersecting paths in a graph. A path
-/// is conceptually an ordered set of vertices that are joined by arcs. A path
-/// over vertices $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$.
+/// Provides a representation of non-intersecting paths in a graph. A path is
+/// conceptually an ordered set of vertices that are joined by arcs. Paths are
+/// notated as either sequences or sets. An open path over vertices $A$, $B$,
+/// and $C$ is notated $\overrightarrow{(A,B,C)}$ and a closed path over the
+/// same vertices is notated $\overrightarrow{\\{A,B,C\\}}$.
 ///
-/// `PathView` represents paths of the form
-/// $\overrightarrow{\\{A,\cdots,B\\}}$, where $A$ is the back of the path and
-/// $B$ is the front of the path. By convention, $A$ and $B$ label the
-/// endpoints of such a path.
+/// `PathView` represents paths of the form $\overrightarrow{(A,\cdots,B)}$,
+/// where $A$ is the back of the path and $B$ is the front of the path. Note
+/// that closed paths are always of the form $\overrightarrow{(A,\cdots,A)}$,
+/// where the back and front vertices are both $A$ (the same).
 ///
 /// Paths have no associated payload and do not directly expose geometry
 /// (`PathView` does not implement `Deref` or expose a `geometry` field). See
@@ -75,8 +77,8 @@ where
 
     /// Pushes a vertex onto the back of the path.
     ///
-    /// The back of a path $\overrightarrow{\\{A,\cdots,B\\}}$ is the vertex
-    /// $A$. This is the source vertex of the first arc that forms the path.
+    /// The back of a path $\overrightarrow{(A,\cdots)}$ is the vertex $A$.
+    /// This is the source vertex of the first arc that forms the path.
     ///
     /// The given vertex must be a source vertex of an arc formed with the the
     /// back of the path. That is, if the given vertex is $X$, then
@@ -84,6 +86,11 @@ where
     ///
     /// Returns the key of the arc $\overrightarrow{XA}$ inserted into the path
     /// using the given source vertex $X$.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is closed, the given vertex is not found,
+    /// or the given vertex does not form an arc with the back of the path.
     pub fn push_back(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
         self.is_open()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
@@ -134,9 +141,8 @@ where
 
     /// Pushes a vertex onto the front of the path.
     ///
-    /// The front of a path $\overrightarrow{\\{A,\cdots,B\\}}$ is the vertex
-    /// $B$. This is the destination vertex of the last arc that forms the
-    /// path.
+    /// The front of a path $\overrightarrow{(\cdots,B)}$ is the vertex $B$.
+    /// This is the destination vertex of the last arc that forms the path.
     ///
     /// The given vertex must be a destination vertex of an arc formed with the
     /// the front of the path. That is, if the given vertex is $X$, then
@@ -144,6 +150,11 @@ where
     ///
     /// Returns the key of the arc $\overrightarrow{BX}$ inserted into the path
     /// using the given source vertex $X$.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is closed, the given vertex is not found,
+    /// or the given vertex does not form an arc with the front of the path.
     pub fn push_front(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
         self.is_open()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
