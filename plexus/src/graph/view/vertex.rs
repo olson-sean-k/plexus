@@ -207,6 +207,16 @@ where
             .map(|arc| arc.into_opposite_arc())
     }
 
+    /// Gets the valence of the vertex.
+    ///
+    /// A vertex's _valence_ is the number of neighboring vertices to which it
+    /// is connected by arcs. The valence of a vertex is the same as its
+    /// _degree_, which is the number of edges to which the vertex is
+    /// connected.
+    pub fn valence(&self) -> usize {
+        self.neighboring_vertices().count()
+    }
+
     pub fn centroid(&self) -> VertexPosition<G>
     where
         G: VertexCentroid,
