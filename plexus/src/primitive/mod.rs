@@ -1,25 +1,27 @@
 //! Primitive topological structures.
 //!
-//! This module provides composable primitives that can form polygonal
+//! This module provides composable primitives that describe polygonal
 //! structures. This includes simple _$n$-gons_ like triangles, _generators_
-//! that form more complex polytopes like spheres, and _iterator expressions_
-//! that compose and decompose streams of primitives.
+//! that form polytopes like spheres, and _iterator expressions_ that compose
+//! and decompose streams of primitives.
 //!
-//! Plexus uses the terms _trigon_ and _tetragon_ for its types, which mean
-//! _triangle_ and _quadrilateral_, respectively. This is done for consistency
-//! with higher arity polygon names (e.g., _decagon_). In some contexts, the
-//! term _triangle_ is still used, such as in functions concerning
-//! _triangulation_.
+//! Types in this module generally describe [_cycle
+//! graphs_](https://en.wikipedia.org/wiki/cycle_graph) and are not strictly
+//! geometric. For example, `Polygonal` types may be geometrically degenerate
+//! (e.g., collinear, converged, etc.) or used to approximate polygons from
+//! $\Reals^2$ embedded into higher-dimensional Euclidean spaces. These types
+//! are also used for indexing, in which case their representation and data are
+//! both entirely topological.
 //!
-//! Types in this module are not strictly geometric and the data they contain
-//! may be arbitrary. For example, polygons are defined in $\Reals^2$, but
-//! `Polygonal` types may be used to approximate polygons embedded into
-//! higher-dimensional Euclidean spaces or as simple indices. These types are
-//! defined in terms of adjacency.
+//! Plexus uses the terms _trigon_ and _tetragon_ for its polygon types, which
+//! mean _triangle_ and _quadrilateral_, respectively. This is done for
+//! consistency with higher arity polygon names (e.g., _decagon_). In some
+//! contexts, the term _triangle_ is still used, such as in functions
+//! concerning _triangulation_.
 //!
 //! # Examples
 //!
-//! Generating raw buffers with the positional data for a sphere:
+//! Generating raw buffers with the positional data for a sphere approximation:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -37,8 +39,9 @@
 //!     .vertices::<Position<Point3<f64>>>()
 //!     .collect::<Vec<_>>();
 //!
-//! // Generate polygons that index the unique set of positional vertices.
-//! // The polygons are decomposed into triangles and then into vertices (indices).
+//! // Generate polygons that index the unique set of positional vertices. The
+//! // polygons are decomposed into triangles and then into vertices, where each
+//! // vertex is an index into the position data.
 //! let indices = sphere
 //!     .indexing_polygons::<Position>()
 //!     .triangulate()
@@ -93,8 +96,9 @@ use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 /// Primitive topological structure.
 ///
 /// Types implementing `Topological` provide some notion of adjacency between
-/// vertices of their `Vertex` type. These types typically represents polygonal
-/// structures, but may also include degenerate forms like monogons.
+/// vertices of their `Vertex` type. These types typically represent cycle
+/// graphs and polygonal structures, but may also include degenerate forms like
+/// monogons.
 pub trait Topological:
     AsMut<[<Self as Composite>::Item]>
     + AsRef<[<Self as Composite>::Item]>
@@ -239,10 +243,17 @@ pub trait Topological:
 
 /// Primitive polygonal structure.
 ///
-/// `Polygonal` types are `Topological` types with three or more edges. These
-/// types are strictly topological and do not necessarily represent geometric
-/// concepts like polygons, which are only defined in $\Reals^2$. However,
-/// `Polygonal` types are often used as a geometric approximation of polygons.
+/// `Polygonal` types form _cycle graphs_ and extend `Topological` types with
+/// the additional constraint that all vertices have a degree and valence of
+/// two. This requires at least three edges and forbids degenerate structures
+/// like monogons.
+///
+/// These types are topological and do not necessarily represent geometric
+/// concepts like polygons in the most strict sense. Polygons are only defined
+/// in $\Reals^2$ and cannot have converged or collinear vertices, but
+/// `Polygonal` types support this kind of data. However, `Polygonal` types are
+/// often used as a geometric approximation of polygons. Moreover, `Polygonal`
+/// types often contain non-geometric data, especially index data.
 pub trait Polygonal: Topological {
     /// Determines if a polygonal structure is convex.
     ///
@@ -893,7 +904,8 @@ where
     OuterZip::from(tuple).map(|item| item.zip())
 }
 
-/// Gets the relative angles between adjacent line segments in a polygon.
+/// Gets the relative angles between adjacent line segments in a `Polygonal`
+/// with positional data in $\Reals^2$.
 ///
 /// Computes the angle between line segments at each vertex in order. The
 /// angles are wrapped into the interval $(-\pi,\pi]$. The sign of each angle
@@ -965,7 +977,7 @@ mod tests {
         );
         assert!(trigon.is_convex());
 
-        // Convex qudrilateral.
+        // Convex quadrilateral.
         let tetragon = Tetragon::new(
             E2::from_xy(1.0, 1.0),
             E2::from_xy(1.0, -1.0),
