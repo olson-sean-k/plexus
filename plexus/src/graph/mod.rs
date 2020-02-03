@@ -3,8 +3,8 @@
 //! This module provides a flexible representation of meshes as a [half-edge
 //! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list).
 //! _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
-//! respectively. Meshes can store arbitrary geometric data associated with
-//! any topological structure (vertices, arcs, edges, and faces).
+//! respectively. Meshes can store arbitrary geometric data associated with any
+//! topological structure (vertices, arcs, edges, and faces).
 //!
 //! Geometry is vertex-based, meaning that geometric operations depend on
 //! vertices exposing some notion of positional data. See the `geometry` module
@@ -22,27 +22,26 @@
 //! ![Half-Edge Graph Figure](https://plexus.rs/img/heg.svg)
 //!
 //! Arcs are directed and connect vertices. An arc that is directed toward a
-//! vertex $A$ is an _incoming arc_ with respect to $A$.  Similarly, an arc
+//! vertex $A$ is an _incoming arc_ with respect to $A$. Similarly, an arc
 //! directed away from such a vertex is an _outgoing arc_. Every vertex is
 //! associated with exactly one _leading arc_, which is always an outgoing arc.
-//! The vertex toward which an arc is directed is the arc's _destination
-//! vertex_ and the other is its _source vertex_.
+//! The vertex toward which an arc is directed is the arc's _destination vertex_
+//! and the other is its _source vertex_.
 //!
 //! Every arc is paired with an _opposite arc_ with an opposing direction.
 //! Given an arc from a vertex $A$ to a vertex $B$, that arc will have an
 //! opposite arc from $B$ to $A$. Such arcs are notated $\overrightarrow{AB}$
-//! and $\overrightarrow{BA}$. Together, these arcs form an _edge_, which is
-//! not directed. An edge and its two arcs are together called a _composite
-//! edge_.
+//! and $\overrightarrow{BA}$. Together, these arcs form an _edge_, which is not
+//! directed. An edge and its two arcs are together called a _composite edge_.
 //!
 //! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
 //! A traversal along a series of arcs is a _path_. The path formed by
-//! traversing from an arc to its next arc and so on is a _ring_.  When a face
-//! is present within an ring, the arcs will refer to that face and the face
-//! will refer to exactly one of the arcs in the ring (this is the leading arc
-//! of the face). An arc with no associated face is known as a _boundary arc_.
-//! If either of an edge's arcs is a boundary arc, then that edge is a
-//! _boundary edge_.
+//! traversing from an arc to its next arc and so on is a _ring_. When a face is
+//! present within an ring, the arcs will refer to that face and the face will
+//! refer to exactly one of the arcs in the ring (this is the leading arc of the
+//! face). An arc with no associated face is known as a _boundary arc_.  If
+//! either of an edge's arcs is a boundary arc, then that edge is a _boundary
+//! edge_.
 //!
 //! A path that terminates is _open_ and a path that forms a loop is _closed_.
 //! Rings are always closed. Paths may be notated using _sequence_ or _set
@@ -71,10 +70,9 @@
 //! # Topological Views
 //!
 //! `MeshGraph`s expose _views_ over their topological structures (vertices,
-//! arcs, edges, and faces). Views are accessed via keys or iteration and
-//! behave similarly to references. They provide the primary API for
-//! interacting with a `MeshGraph`'s topology and geometry. There are three
-//! types summarized below:
+//! arcs, edges, and faces). Views are accessed via keys or iteration and behave
+//! similarly to references. They provide the primary API for interacting with a
+//! `MeshGraph`'s topology and geometry. There are three types summarized below:
 //!
 //! | Type      | Traversal | Exclusive | Geometry  | Topology  |
 //! |-----------|-----------|-----------|-----------|-----------|
@@ -87,9 +85,9 @@
 //! mutate both the geometry and topology of a graph but are exclusive.
 //!
 //! _Orphan views_ are similar to mutable views in that they may mutate the
-//! geometry of a graph, but they do not have access to the topology of a
-//! graph. Because they do not know about other vertices, arcs, etc., an orphan
-//! view cannot traverse a graph in any way. These views are most useful for
+//! geometry of a graph, but they do not have access to the topology of a graph.
+//! Because they do not know about other vertices, arcs, etc., an orphan view
+//! cannot traverse a graph in any way. These views are most useful for
 //! modifying the geometry of a graph and, unlike mutable views, they are not
 //! exclusive. Iterators over topological structures in a graph sometimes emit
 //! orphan views.
@@ -282,11 +280,11 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 
 /// Topology selector.
 ///
-/// Identifies topology by key or index. Keys behave as an absolute selector
-/// and uniquely identify a single topological structure. Indices behave as a
-/// relative selector and identify topological structures relative to some
-/// other structure. `Selector` is used by operations that support both of
-/// these selection mechanisms.
+/// Identifies topology by key or index. Keys behave as an absolute selector and
+/// uniquely identify a single topological structure. Indices behave as a
+/// relative selector and identify topological structures relative to some other
+/// structure. `Selector` is used by operations that support both of these
+/// selection mechanisms.
 ///
 /// An index is typically used to select a neighbor or contained (and ordered)
 /// topological structure, such as a neighboring face.
@@ -469,8 +467,8 @@ where
     /// Gets an iterator of orphan views over the arcs in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use
-    /// `arc_mut` instead.
+    /// For topological mutations, collect the necessary keys and use `arc_mut`
+    /// instead.
     pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
@@ -505,8 +503,8 @@ where
     /// Gets an iterator of orphan views over the edges in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use
-    /// `edge_mut` instead.
+    /// For topological mutations, collect the necessary keys and use `edge_mut`
+    /// instead.
     pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
@@ -541,8 +539,8 @@ where
     /// Gets an iterator of orphan views over the faces in the graph.
     ///
     /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use
-    /// `face_mut` instead.
+    /// For topological mutations, collect the necessary keys and use `face_mut`
+    /// instead.
     pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         self.as_face_storage_mut()
             .iter_mut()
@@ -587,8 +585,8 @@ where
     ///
     /// Each position is translated by its offset from its centroid scaled by
     /// the given factor. The centroid of a vertex position is the mean of the
-    /// positions of its neighboring vertices. That is, given a factor $k$ and
-    /// a vertex with position $P$ and centroid $Q$, its position becomes
+    /// positions of its neighboring vertices. That is, given a factor $k$ and a
+    /// vertex with position $P$ and centroid $Q$, its position becomes
     /// $P+k(Q-P)$.
     pub fn smooth<T>(&mut self, factor: T)
     where
@@ -615,13 +613,13 @@ where
     //       singularities and unbounded edges, this operation is complicated.
     //       However, support for these will likely be removed. Once these
     //       structures can be ignored, implement this operation.
-    // TODO: It is possible to split along non-bisecting paths by copying
-    //       vertex and edge data to form a ring. Geometrically, this ring
-    //       would be collapsed, but would be topologically consistent.
+    // TODO: It is possible to split along non-bisecting paths by copying vertex
+    //       and edge data to form a ring. Geometrically, this ring would be
+    //       collapsed, but would be topologically consistent.
     //
-    // This API is a bit unusual, but allows a view-like path to borrow a
-    // graph and remain consistent. It also (hopefully) makes it more clear
-    // that the _graph_ is split, not the path.
+    // This API is a bit unusual, but allows a view-like path to borrow a graph
+    // and remain consistent. It also (hopefully) makes it more clear that the
+    // _graph_ is split, not the path.
     //
     //   let mut path = graph.arc_mut(...).unwrap().into_path();
     //   path.push(...).unwrap();
@@ -831,9 +829,9 @@ where
     /// Creates a `Buildable` mesh data structure from the graph.
     ///
     /// The output is created from each face in the graph. For each face, the
-    /// face geometry and associated vertex geometry is inserted into the
-    /// buffer via `FromGeometry`.  This means that a vertex is inserted for
-    /// each of its adjacent faces.
+    /// face geometry and associated vertex geometry is inserted into the buffer
+    /// via `FromGeometry`. This means that a vertex is inserted for each of its
+    /// adjacent faces.
     ///
     /// # Errors
     ///
@@ -851,11 +849,11 @@ where
 
     /// Creates a `Buildable` mesh data structure from the graph.
     ///
-    /// The output is created from each face in the graph. The given function
-    /// is called for each vertex of each face and converts the vertex geometry
+    /// The output is created from each face in the graph. The given function is
+    /// called for each vertex of each face and converts the vertex geometry
     /// into the output geometry. This means that a vertex is inserted for each
-    /// of its adjacent faces. The face geometry is inserted into the output
-    /// via `FromGeometry`.
+    /// of its adjacent faces. The face geometry is inserted into the output via
+    /// `FromGeometry`.
     ///
     /// # Examples
     ///
@@ -1203,8 +1201,8 @@ where
     /// # Errors
     ///
     /// Returns an error if the arity of the index buffer is not constant, any
-    /// index is out of bounds, or there is an error inserting topology into
-    /// the graph.
+    /// index is out of bounds, or there is an error inserting topology into the
+    /// graph.
     ///
     /// # Examples
     ///
@@ -1489,8 +1487,8 @@ mod tests {
             type Face = u64;
         }
 
-        // Create a graph with a floating point value associated with each
-        // face.  Use a mutable iterator to write to the geometry of each face.
+        // Create a graph with a floating point value associated with each face.
+        // Use a mutable iterator to write to the geometry of each face.
         let mut graph = UvSphere::new(4, 4)
             .polygons::<Position<E3>>()
             .collect::<MeshGraph<ValueGeometry>>();

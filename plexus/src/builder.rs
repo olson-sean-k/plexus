@@ -4,11 +4,11 @@
 //! structures. This API allows for meshes to be constructed in a way that is
 //! agnostic to the specific data structure used to represent the mesh.
 //!
-//! `Buildable` is the primary trait of this API. It is implemented by mesh
-//! data structures and exposes various associated types that can be used to
+//! `Buildable` is the primary trait of this API. It is implemented by mesh data
+//! structures and exposes various associated types that can be used to
 //! constrain geometry. `Buildable` exposes a builder type via the `builder`
-//! function. This builder type in turn provides additional builders that can
-//! be used to construct a mesh from _surfaces_ and _facets_.
+//! function. This builder type in turn provides additional builders that can be
+//! used to construct a mesh from _surfaces_ and _facets_.
 //!
 //! # Examples
 //!
@@ -48,10 +48,10 @@
 //! ```
 
 // TODO: Is it useful to use a separate `FacetBuilder` type?
-// TODO: Keys are not opaque. Especially for `MeshBuffer`, it may be possible
-//       to "forge" keys. This could be prevented by using a wrapper type that
-//       is not exported, but would introduce a performance cost to map and
-//       collect slices of keys.
+// TODO: Keys are not opaque. Especially for `MeshBuffer`, it may be possible to
+//       "forge" keys. This could be prevented by using a wrapper type that is
+//       not exported, but would introduce a performance cost to map and collect
+//       slices of keys.
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -62,8 +62,8 @@ use crate::IntoGeometry;
 /// Mesh data structure that can be built incrementally.
 ///
 /// This trait is the primary entrypoint into the builder API. Types that
-/// implement this trait expose a `MeshBuilder` that can be used to construct
-/// an instance of the type from surfaces and facets.
+/// implement this trait expose a `MeshBuilder` that can be used to construct an
+/// instance of the type from surfaces and facets.
 pub trait Buildable: Sized {
     type Builder: MeshBuilder<
         Output = Self,
@@ -99,14 +99,14 @@ pub trait Buildable: Sized {
 /// This trait exposes types that allow for mesh data structures to be
 /// constructed incrementally from _surfaces_ and _facets_. A _surface_ is a
 /// collection of vertices and facets connecting those verticies and typically
-/// describes a _manifold_. A _facet_ is the connectivity between verticies in
-/// a surface. Facets may also include associated geometry.
+/// describes a _manifold_. A _facet_ is the connectivity between verticies in a
+/// surface. Facets may also include associated geometry.
 ///
-/// Construction is hierarchical, beginning with a surface and its verticies
-/// and then facets. The association between a surface, its verticies, and
-/// facets is enforced by the API, which accepts functions that operate on
-/// increasingly specific builder types. The `build` function is used to
-/// complete the construction of a mesh.
+/// Construction is hierarchical, beginning with a surface and its verticies and
+/// then facets. The association between a surface, its verticies, and facets is
+/// enforced by the API, which accepts functions that operate on increasingly
+/// specific builder types. The `build` function is used to complete the
+/// construction of a mesh.
 ///
 /// Builders may emit errors at any stage and errors depend on the
 /// implementation of the builder types (and by extension the details of the
@@ -119,8 +119,8 @@ pub trait MeshBuilder: ClosedInput {
 
     /// Constructs a surface.
     ///
-    /// The given function is invoked with a `SurfaceBuilder`, which can be
-    /// used to insert vertices and construct facets.
+    /// The given function is invoked with a `SurfaceBuilder`, which can be used
+    /// to insert vertices and construct facets.
     fn surface_with<F, T, E>(&mut self, f: F) -> Result<T, Self::Error>
     where
         Self::Error: From<E>,

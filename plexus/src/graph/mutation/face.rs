@@ -125,10 +125,10 @@ where
                     .ok_or_else(|| GraphError::TopologyMalformed)?
                     .is_boundary_arc()
                 {
-                    // The next arc of BA is the outgoing arc of the
-                    // destination vertex A that is also a boundary arc or, if
-                    // there is no such outgoing arc, the next exterior arc of
-                    // the face. The previous arc is similar.
+                    // The next arc of BA is the outgoing arc of the destination
+                    // vertex A that is also a boundary arc or, if there is no
+                    // such outgoing arc, the next exterior arc of the face. The
+                    // previous arc is similar.
                     let ax = outgoing[&a]
                         .iter()
                         .cloned()
@@ -283,14 +283,12 @@ where
                     return Err(GraphError::TopologyConflict);
                 }
                 // Let the previous arc be AB and the next arc be BC. The
-                // vertices A, B, and C lie within the implied ring in
-                // order.
+                // vertices A, B, and C lie within the implied ring in order.
                 //
                 // If BC does not exist and AB is neighbors with some arc BX,
-                // then X must not lie within the implied ring (the
-                // ordered set of vertices given to this function). If X is
-                // within the path, then BX must bisect the implied ring
-                // (because X cannot be C).
+                // then X must not lie within the implied ring (the ordered set
+                // of vertices given to this function). If X is within the path,
+                // then BX must bisect the implied ring (because X cannot be C).
                 if next.is_none() {
                     if let Some(next) = previous.reachable_next_arc() {
                         let (_, destination) = next.key().into();
@@ -661,8 +659,8 @@ where
         .into_iter()
         .map(|a| mutation.as_mut().insert_vertex(a))
         .collect::<Vec<_>>();
-    // Use the keys for the existing vertices and the translated geometries
-    // to construct the extruded face and its connective faces.
+    // Use the keys for the existing vertices and the translated geometries to
+    // construct the extruded face and its connective faces.
     let extrusion = mutation
         .as_mut()
         .insert_face(&destinations, (Default::default(), geometry))?;

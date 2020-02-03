@@ -10,10 +10,10 @@
 //! |----------------|---------|----------|------|-------|
 //! | `encoding-ply` | No      | PLY      | Yes  | No    |
 //!
-//! This module provides traits used by all encodings. These traits describe
-//! the outputs and inputs of decoders and encoders, respectively. Generally,
-//! these traits should **not** be used directly. Instead, prefer the
-//! conversion traits exposed for specific encodings.
+//! This module provides traits used by all encodings. These traits describe the
+//! outputs and inputs of decoders and encoders, respectively. Generally, these
+//! traits should **not** be used directly. Instead, prefer the conversion
+//! traits exposed for specific encodings.
 
 pub mod ply;
 

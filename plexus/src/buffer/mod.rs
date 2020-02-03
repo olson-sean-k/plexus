@@ -1,16 +1,16 @@
 //! Linear representation of meshes.
 //!
 //! This module provides a `MeshBuffer` that represents a mesh as a linear
-//! collection of vertex geometry and an ordered collection of indices into
-//! that vertex geometry. These two buffers are called the _vertex buffer_ and
-//! _index buffer_, respectively. `MeshBuffer` combines these buffers and
-//! exposes them as slices. This layout is well-suited for graphics pipelines.
+//! collection of vertex geometry and an ordered collection of indices into that
+//! vertex geometry. These two buffers are called the _vertex buffer_ and _index
+//! buffer_, respectively. `MeshBuffer` combines these buffers and exposes them
+//! as slices. This layout is well-suited for graphics pipelines.
 //!
 //! # Vertex Buffers
 //!
-//! Vertex buffers describe the geometry of a `MeshBuffer`. Only vertex
-//! geometry is supported; there is no way to associate geometry with an edge
-//! nor face, for example.
+//! Vertex buffers describe the geometry of a `MeshBuffer`. Only vertex geometry
+//! is supported; there is no way to associate geometry with an edge nor face,
+//! for example.
 //!
 //! `MeshBuffer`s use _composite_ vertex buffers. Each element of the vertex
 //! buffer completely describes the geometry of that vertex. For example, if
@@ -21,8 +21,8 @@
 //!
 //! # Index Buffers
 //!
-//! Index buffers describe the topology of a `MeshBuffer`. Both _structured_
-//! and _flat_ index buffers are supported. See the `index` module for more
+//! Index buffers describe the topology of a `MeshBuffer`. Both _structured_ and
+//! _flat_ index buffers are supported. See the `index` module for more
 //! information about index buffer formats.
 //!
 //! The `MeshBuffer3` and `MeshBufferN` type definitions avoid verbose type
@@ -109,7 +109,7 @@ pub enum BufferError {
     ArityConflict { expected: usize, actual: usize },
 }
 
-/// Alias for a flat and triangular `MeshBuffer`. Prefer this alias.
+/// Alias for a flat and triangular `MeshBuffer`.
 ///
 /// For most applications, this alias can be used to avoid more complex and
 /// verbose type parameters. Flat and triangular index buffers are most common
@@ -542,8 +542,8 @@ where
     /// # Errors
     ///
     /// Returns an error if the index data is out of bounds within the vertex
-    /// buffer or if the number of indices disagrees with the arity of the
-    /// index buffer.
+    /// buffer or if the number of indices disagrees with the arity of the index
+    /// buffer.
     ///
     /// # Examples
     ///

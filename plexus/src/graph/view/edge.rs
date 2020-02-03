@@ -447,8 +447,7 @@ where
     M::Target: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Gets an iterator of orphan views over the vertices connected by the
-    /// arc.
+    /// Gets an iterator of orphan views over the vertices connected by the arc.
     pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         VertexCirculator::from(self.interior_reborrow_mut())
     }
@@ -576,9 +575,9 @@ where
     /// $\overrightarrow{MB}$ and is a part of the same ring as the initiating
     /// arc.
     ///
-    /// This function is only available if a graph's geometry exposes
-    /// positional data in its vertices and that data supports interpolation.
-    /// See the `geometry` module.
+    /// This function is only available if a graph's geometry exposes positional
+    /// data in its vertices and that data supports interpolation. See the
+    /// `geometry` module.
     ///
     /// Returns the inserted vertex.
     ///
@@ -616,9 +615,9 @@ where
         })
     }
 
-    // TODO: What if an edge in the bridging quadrilateral is collapsed, such
-    //       as bridging arcs within a triangular ring? Document these
-    //       edge cases (no pun intended).
+    // TODO: What if an edge in the bridging quadrilateral is collapsed, such as
+    //       bridging arcs within a triangular ring? Document these edge cases
+    //       (no pun intended).
     /// Connects a boundary arc to another boundary arc with a face.
     ///
     /// Bridging arcs inserts a new face and, as needed, new arcs and edges.
@@ -776,13 +775,12 @@ where
 
     /// Removes the arc and its composite edge.
     ///
-    /// Any and all dependent topology is also removed, such as connected
-    /// faces, disjoint vertices, etc.
+    /// Any and all dependent topology is also removed, such as connected faces,
+    /// disjoint vertices, etc.
     ///
-    /// Returns the source vertex of the initiating arc or `None` if that
-    /// vertex becomes disjoint and is also removed. If an arc
-    /// $\overrightarrow{AB}$ is removed and its source vertex is not disjoint,
-    /// then $A$ is returned.
+    /// Returns the source vertex of the initiating arc or `None` if that vertex
+    /// becomes disjoint and is also removed. If an arc $\overrightarrow{AB}$ is
+    /// removed and its source vertex is not disjoint, then $A$ is returned.
     pub fn remove(self) -> Option<VertexView<&'a mut M, G>> {
         let a = self.source_vertex().key();
         let (storage, ab) = self.into_inner().unbind();

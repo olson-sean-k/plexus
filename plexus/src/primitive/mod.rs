@@ -16,8 +16,8 @@
 //! Plexus uses the terms _trigon_ and _tetragon_ for its polygon types, which
 //! mean _triangle_ and _quadrilateral_, respectively. This is done for
 //! consistency with higher arity polygon names (e.g., _decagon_). In some
-//! contexts, the term _triangle_ is still used, such as in functions
-//! concerning _triangulation_.
+//! contexts, the term _triangle_ is still used, such as in functions concerning
+//! _triangulation_.
 //!
 //! # Examples
 //!
@@ -344,8 +344,8 @@ where
 /// Monomorphic $n$-gon.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
-/// represents vertex data in order with neighboring elements being connected
-/// by an implicit undirected edge. For example, an `NGon` with three vertices
+/// represents vertex data in order with neighboring elements being connected by
+/// an implicit undirected edge. For example, an `NGon` with three vertices
 /// (`NGon<[T; 3]>`) would represent a triangle (trigon). Generally these
 /// elements are labeled $A$, $B$, $C$, etc.
 ///
@@ -353,8 +353,8 @@ where
 /// two vertices (`NGon<[T; 2]>`) is considered a _monogon_ despite common
 /// definitions specifying a single vertex. Such an `NGon` is not considered a
 /// _digon_, as it represents a single undirected edge rather than two distinct
-/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the
-/// `Edge` type definition.
+/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the `Edge`
+/// type definition.
 #[derive(Clone, Copy, Debug)]
 pub struct NGon<A>(pub A)
 where
@@ -861,8 +861,8 @@ impl<T> Topological for Polygon<T> {
 /// iterator.
 ///
 /// This is useful for zipping different attributes of a primitive generator.
-/// For example, it can be used to combine position, plane, and normal data
-/// data of a cube into a single topology stream.
+/// For example, it can be used to combine position, plane, and normal data data
+/// of a cube into a single topology stream.
 ///
 /// # Examples
 ///
@@ -907,11 +907,11 @@ where
 /// Gets the relative angles between adjacent line segments in a `Polygonal`
 /// with positional data in $\Reals^2$.
 ///
-/// Computes the angle between line segments at each vertex in order. The
-/// angles are wrapped into the interval $(-\pi,\pi]$. The sign of each angle
-/// specifies the orientation of adjacent line segments. Given a square,
-/// exactly four angles of $\plusmn\frac{\pi}{2}$ will be returned, with the
-/// sign depending on the winding of the square.
+/// Computes the angle between line segments at each vertex in order. The angles
+/// are wrapped into the interval $(-\pi,\pi]$. The sign of each angle specifies
+/// the orientation of adjacent line segments. Given a square, exactly four
+/// angles of $\plusmn\frac{\pi}{2}$ will be returned, with the sign depending
+/// on the winding of the square.
 ///
 /// Adjacent vertices with the same position are ignored, as there is no
 /// meaningful line segment between such vertices. Because of this, it is

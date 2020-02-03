@@ -77,8 +77,8 @@ where
                 self.connect_arc_to_edge(ba, ab_ba)?;
                 Ok((ab_ba, (ab, ba)))
             }
-            // It should not be possible to insert or remove individual arcs
-            // and mutations should not allow arcs to be assigned to edges
+            // It should not be possible to insert or remove individual arcs and
+            // mutations should not allow arcs to be assigned to edges
             // independently of their opposite arcs.
             _ => Err(GraphError::TopologyMalformed),
         }
@@ -388,9 +388,9 @@ where
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
-        // At this point, we can assume the vertices a, b, c, and d exist in
-        // the mesh. Before mutating the mesh, ensure that existing interior
-        // arcs are boundaries.
+        // At this point, we can assume the vertices a, b, c, and d exist in the
+        // mesh. Before mutating the mesh, ensure that existing interior arcs
+        // are boundaries.
         for arc in [a, b, c, d]
             .iter()
             .cloned()
@@ -464,10 +464,10 @@ where
     }
 }
 
-// TODO: Removing arcs must also remove disjoint vertices. More importantly,
-//       the leading arc of vertices may be invalidated by this operation and
-//       must be healed. This code does not handle these cases, and so can
-//       become inconsistent.
+// TODO: Removing arcs must also remove disjoint vertices. More importantly, the
+//       leading arc of vertices may be invalidated by this operation and must
+//       be healed. This code does not handle these cases, and so can become
+//       inconsistent.
 pub fn remove_with_cache<M, N, G>(
     mut mutation: N,
     cache: EdgeRemoveCache<G>,
@@ -551,7 +551,7 @@ where
         G: GraphGeometry,
     {
         // TODO: Is is probably more correct to disconnect the source vertex
-        //       from its leading arc.  However, this interacts poorly with
+        //       from its leading arc. However, this interacts poorly with
         //       `split_at_vertex`, and on the second pass will orphan the
         //       vertex B.
         //

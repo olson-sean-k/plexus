@@ -224,8 +224,8 @@ where
     /// `None`.
     pub fn into_bisected_ring(self) -> Option<RingView<M, G>> {
         // The path may bisect a ring if it is open and is not a boundary path.
-        // Note that open boundary paths cannot bisect a ring, so such paths
-        // are ignored.
+        // Note that open boundary paths cannot bisect a ring, so such paths are
+        // ignored.
         if self.is_open() && !self.is_boundary_path() {
             let back = self.back();
             let front = self.front();
@@ -237,8 +237,8 @@ where
                 .map(|arc| arc.into_ring())
                 .nth(0);
             // If there is such a ring and it also includes the vertex at the
-            // front of the path, then it is bisected. Rebind the path's
-            // storage into a `RingView`.
+            // front of the path, then it is bisected. Rebind the path's storage
+            // into a `RingView`.
             ring.filter(|ring| ring.vertices().keys().any(|key| key == front.key()))
                 .map(|ring| ring.into_arc().key())
                 .map(move |key| {
@@ -292,17 +292,17 @@ where
 
     /// Returns `true` if the path is a boundary path.
     ///
-    /// A _boundary path_ is a path where all arcs forming the path are
-    /// boundary arcs.
+    /// A _boundary path_ is a path where all arcs forming the path are boundary
+    /// arcs.
     pub fn is_boundary_path(&self) -> bool {
         !self.arcs().any(|arc| !arc.is_boundary_arc())
     }
 
     /// Returns `true` if the path is a bisecting path.
     ///
-    /// A _bisecting path_ is a path that bisects a surface in a graph. A
-    /// closed path is always a bisecting path, but open paths are not
-    /// necessarily bisecting. See `into_bisected_ring`.
+    /// A _bisecting path_ is a path that bisects a surface in a graph. A closed
+    /// path is always a bisecting path, but open paths are not necessarily
+    /// bisecting. See `into_bisected_ring`.
     pub fn is_bisecting_path(&self) -> bool {
         self.is_closed() || self.bisected_ring().is_some()
     }

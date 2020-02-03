@@ -23,8 +23,8 @@ pub trait Adjacency: Binding {
 
 /// Linear buffer used for graph traversals.
 ///
-/// The ordering of pushes and pops determines the ordering of a graph
-/// traversal using the buffer.
+/// The ordering of pushes and pops determines the ordering of a graph traversal
+/// using the buffer.
 pub trait TraversalBuffer<T>: Default + Extend<T> {
     fn push(&mut self, item: T);
     fn pop(&mut self) -> Option<T>;
@@ -155,9 +155,9 @@ pub trait Trace<T> {
 /// Trace that detects the first breadcrumb that is encountered.
 ///
 /// This trace only stores the first breadcrumb in a traversal and should
-/// **not** be used when traversing a graph with unknown consistency, because
-/// it may never signal that the iteration should terminate. However, it
-/// requires very little space and time to operate.
+/// **not** be used when traversing a graph with unknown consistency, because it
+/// may never signal that the iteration should terminate. However, it requires
+/// very little space and time to operate.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TraceFirst<T>
 where
@@ -184,8 +184,8 @@ where
 /// Trace that detects any breadcrumb that has been previously encountered.
 ///
 /// This trace stores all breadcrumbs and detects any and all collisions. This
-/// is very robust, but requires space for breadcrumbs and must hash
-/// breadcrumbs to detect collisions.
+/// is very robust, but requires space for breadcrumbs and must hash breadcrumbs
+/// to detect collisions.
 #[derive(Clone, Debug, Default)]
 pub struct TraceAny<T>
 where

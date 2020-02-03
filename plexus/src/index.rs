@@ -1,16 +1,16 @@
 //! Indexing and aggregation.
 //!
-//! This module provides _indexers_, which disambiguate geometry and produce
-//! the minimal set of topological and geometric data. This is primarily used
-//! to index streams of $n$-gons (`NGon`, `Trigon`, etc.) into raw buffers or
+//! This module provides _indexers_, which disambiguate geometry and produce the
+//! minimal set of topological and geometric data. This is primarily used to
+//! index streams of $n$-gons (`NGon`, `Trigon`, etc.) into raw buffers or
 //! polygonal mesh data structures like `MeshBuffer`.
 //!
 //! Indexing produces an _index buffer_ and _vertex buffer_. The index buffer
-//! describes the topology of a mesh by providing ordered groups of indices
-//! into the vertex buffer. Each group of indices represents a polygon. The
-//! vertex buffer contains geometric data associated with a vertex, such as
-//! positions or surface normals. Plexus supports both _structured_ and _flat
-//! index buffers_.
+//! describes the topology of a mesh by providing ordered groups of indices into
+//! the vertex buffer. Each group of indices represents a polygon. The vertex
+//! buffer contains geometric data associated with a vertex, such as positions
+//! or surface normals. Plexus supports both _structured_ and _flat index
+//! buffers_.
 //!
 //! Flat index buffers directly store individual indices, such as `Vec<usize>`.
 //! Because there is no explicit structure, arity must by constant, but
@@ -235,8 +235,8 @@ where
     P: Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
-    /// `Topological` index buffers contain $n$-gons that explicitly group
-    /// their indices.
+    /// `Topological` index buffers contain $n$-gons that explicitly group their
+    /// indices.
     type Item = P;
 }
 
@@ -349,8 +349,8 @@ where
 /// LRU caching vertex indexer.
 ///
 /// This indexer uses a _least recently used_ (LRU) cache to form an index. To
-/// function correctly, an adequate cache capacity is necessary. If the
-/// capacity is insufficient, then redundant vertex data may be emitted. See
+/// function correctly, an adequate cache capacity is necessary. If the capacity
+/// is insufficient, then redundant vertex data may be emitted. See
 /// `with_capacity`.
 ///
 /// This indexer is useful if the vertex key data cannot be hashed (does not
@@ -553,8 +553,8 @@ pub trait IndexVertices<P>
 where
     P: Topological,
 {
-    /// Indexes a stream of $n$-gons into raw index and vertex buffers using
-    /// the given grouping, indexer, and keying function.
+    /// Indexes a stream of $n$-gons into raw index and vertex buffers using the
+    /// given grouping, indexer, and keying function.
     fn index_vertices_with<R, N, K, F>(self, indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
     where
         Self: GroupedIndexVertices<R, P>,
@@ -565,8 +565,8 @@ where
         GroupedIndexVertices::<R, P>::index_vertices_with(self, indexer, f)
     }
 
-    /// Indexes a stream of $n$-gons into raw index and vertex buffers using
-    /// the given grouping and indexer.
+    /// Indexes a stream of $n$-gons into raw index and vertex buffers using the
+    /// given grouping and indexer.
     ///
     /// # Examples
     ///
@@ -631,8 +631,8 @@ where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
-    /// Collects a stream of $n$-gons into a mesh data structure using the
-    /// given indexer.
+    /// Collects a stream of $n$-gons into a mesh data structure using the given
+    /// indexer.
     ///
     /// Unlike `collect`, this function allows the indexer to be specified.
     ///

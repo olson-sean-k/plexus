@@ -173,9 +173,8 @@ where
         BreadthTraversal::from(self.interior_reborrow())
     }
 
-    /// Gets an iterator that traverses the vertices of the graph in
-    /// depth-first order beginning with the vertex on which this function is
-    /// called.
+    /// Gets an iterator that traverses the vertices of the graph in depth-first
+    /// order beginning with the vertex on which this function is called.
     ///
     /// The traversal moves from the vertex to its neighboring vertices and so
     /// on. If there are disjoint subgraphs in the graph, then a traversal will
@@ -192,16 +191,16 @@ where
 
     /// Gets an iterator of views over the incoming arcs of the vertex.
     ///
-    /// The ordering of arcs is deterministic and is based on the leading arc
-    /// of the vertex.
+    /// The ordering of arcs is deterministic and is based on the leading arc of
+    /// the vertex.
     pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow())
     }
 
     /// Gets an iterator of views over the outgoing arcs of the vertex.
     ///
-    /// The ordering of arcs is deterministic and is based on the leading arc
-    /// of the vertex.
+    /// The ordering of arcs is deterministic and is based on the leading arc of
+    /// the vertex.
     pub fn outgoing_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
         ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow())
             .map(|arc| arc.into_opposite_arc())
@@ -211,8 +210,7 @@ where
     ///
     /// A vertex's _valence_ is the number of neighboring vertices to which it
     /// is connected by arcs. The valence of a vertex is the same as its
-    /// _degree_, which is the number of edges to which the vertex is
-    /// connected.
+    /// _degree_, which is the number of edges to which the vertex is connected.
     pub fn valence(&self) -> usize {
         self.neighboring_vertices().count()
     }
@@ -247,8 +245,8 @@ where
 {
     /// Gets an iterator of orphan views over the incoming arcs of the vertex.
     ///
-    /// The ordering of arcs is deterministic and is based on the leading arc
-    /// of the vertex.
+    /// The ordering of arcs is deterministic and is based on the leading arc of
+    /// the vertex.
     pub fn incoming_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         ArcCirculator::<TraceFirst<_>, _, _>::from(self.interior_reborrow_mut())
     }
@@ -776,8 +774,8 @@ where
                 return Some(face);
             }
             else {
-                // Skip arcs with no face. This can occur within non
-                // -enclosed meshes.
+                // Skip arcs with no face. This can occur within non-enclosed
+                // meshes.
                 continue;
             }
         }

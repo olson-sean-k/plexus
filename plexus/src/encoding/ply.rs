@@ -57,8 +57,8 @@ pub use ply_rs::ply::{
 // TODO: These traits only allow a single element to be read for each topology
 //       (vertices, faces, etc.). It may be useful to allow code to aggregate
 //       various elements to produce an output for a single topology.
-// TODO: Consider using the new-type pattern to hide underlying types and
-//       expose a smaller and more tailored API surface.
+// TODO: Consider using the new-type pattern to hide underlying types and expose
+//       a smaller and more tailored API surface.
 
 pub type Header = KeyMap<ElementDefinition>;
 pub type Payload = KeyMap<Vec<Element>>;

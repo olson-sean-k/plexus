@@ -19,9 +19,8 @@ use crate::transact::Transact;
 ///
 /// This trait is only implemented by representations that ensure that their
 /// storage is only ever mutated via the mutation API (and therefore is
-/// consistent). Note that `Core` does not implement this trait and instead
-/// acts as a raw container for topological storage that can be freely
-/// manipulated.
+/// consistent). Note that `Core` does not implement this trait and instead acts
+/// as a raw container for topological storage that can be freely manipulated.
 ///
 /// This trait allows code to make assumptions about the data it operates
 /// against. For example, views expose an API to user code that assumes that

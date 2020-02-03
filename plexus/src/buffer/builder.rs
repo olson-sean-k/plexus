@@ -12,9 +12,9 @@ use crate::transact::{ClosedInput, Transact};
 use crate::IntoGeometry;
 
 // TODO: It should not be possible to manufacture keys without placing
-//       additional constraints on the type bounds of `FacetBuilder`
-//       (for example, `FacetBuilder<Key = usize>`). Is it important to
-//       check for out-of-bounds indices in `insert_facet`?
+//       additional constraints on the type bounds of `FacetBuilder` (for
+//       example, `FacetBuilder<Key = usize>`). Is it important to check for
+//       out-of-bounds indices in `insert_facet`?
 
 pub type VertexKey<R> = <Vec<<R as Grouping>::Item> as IndexBuffer<R>>::Index;
 

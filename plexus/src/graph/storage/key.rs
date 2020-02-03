@@ -1,8 +1,8 @@
 //! Keys for graph storage.
 //!
 //! This module defines opaque keys for looking up graph data in storage. Keys
-//! do not expose their underling data and enforce that lookups for a
-//! particular topology use an appropriate key type.
+//! do not expose their underling data and enforce that lookups for a particular
+//! topology use an appropriate key type.
 //!
 //! Unlike other topologies, arc keys expose some behaviors that reflect their
 //! semantics. In particular, it is possible to convert an arc key into an

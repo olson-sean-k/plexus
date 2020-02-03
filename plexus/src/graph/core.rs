@@ -29,10 +29,10 @@ where
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
 ///
-/// A core may or may not own its storage and may or may not provide storage
-/// for all topologies (vertices, arcs, edges, and faces). When a core does not
-/// own its storage, it is _ephemeral_. A core that owns storage for all
-/// topologies is known as an _owned core_. See the `OwnedCore` type alias.
+/// A core may or may not own its storage and may or may not provide storage for
+/// all topologies (vertices, arcs, edges, and faces). When a core does not own
+/// its storage, it is _ephemeral_. A core that owns storage for all topologies
+/// is known as an _owned core_. See the `OwnedCore` type alias.
 ///
 /// Unlike `MeshGraph`, `Core` does not implement the `Consistent` trait.
 /// `MeshGraph` contains an owned core, but does not mutate it outside of the
@@ -42,8 +42,8 @@ where
 /// field is unbound, its type is `()`. An unbound field has no value and is
 /// zero-sized. A bound field has any type other than `()`. These fields should
 /// provide storage for their corresponding topology, though this is not
-/// enforced directly in `Core`. The `Fuse` trait can be used to transition
-/// from `()` to some other type by _fusing_ storage into a `Core`. `Fuse`
+/// enforced directly in `Core`. The `Fuse` trait can be used to transition from
+/// `()` to some other type by _fusing_ storage into a `Core`. `Fuse`
 /// implementations enforce storage constraints.
 ///
 /// A `Core` with no unbound fields is _complete_.

@@ -1,7 +1,7 @@
 //! Polytope generation.
 //!
-//! This module provides a generic iterator and traits for generating streams
-//! of geometric and topological data for polytopes like cubes and spheres.
+//! This module provides a generic iterator and traits for generating streams of
+//! geometric and topological data for polytopes like cubes and spheres.
 //!
 //! The primary API of this module is exposed by the `Generator` trait.
 
@@ -220,8 +220,8 @@ pub trait Generator: Sized {
         Generate::new(self, state, self.vertex_count(), Self::vertex_from)
     }
 
-    /// Provides an iterator over the set of polygons with the given
-    /// attribute data.
+    /// Provides an iterator over the set of polygons with the given attribute
+    /// data.
     ///
     /// # Examples
     ///
@@ -263,18 +263,17 @@ pub trait Generator: Sized {
         Generate::new(self, state, self.polygon_count(), Self::polygon_from)
     }
 
-    /// Provides an iterator over a set of polygons that index the unique set
-    /// of vertices with the given attribute.
+    /// Provides an iterator over a set of polygons that index the unique set of
+    /// vertices with the given attribute.
     ///
     /// Indexing differs per geometric attribute, because each attribute has an
     /// independent set of unique values. For example, `Cube` generates six
     /// unique surface normals and eight unique positions.
     ///
-    /// When used with meta-attribute types like `Position`, input types are
-    /// not needed and default type parameters can be used instead. For
-    /// example, if `Position<Point3<f64>>` is used to generate positional
-    /// data, then `Position<()>` or `Position` can be used to generate
-    /// indexing polygons.
+    /// When used with meta-attribute types like `Position`, input types are not
+    /// needed and default type parameters can be used instead. For example, if
+    /// `Position<Point3<f64>>` is used to generate positional data, then
+    /// `Position<()>` or `Position` can be used to generate indexing polygons.
     ///
     /// # Examples
     ///

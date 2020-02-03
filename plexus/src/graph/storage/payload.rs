@@ -1,12 +1,12 @@
 //! Graph payloads.
 //!
 //! A _payload_ is data contained in graph storage (via `StorageProxy` and
-//! related types). For graphs, payloads are the most basic types that
-//! represent a graph, including its connectivity and user geometry.
+//! related types). For graphs, payloads are the most basic types that represent
+//! a graph, including its connectivity and user geometry.
 //!
 //! Views are built atop these types to provide the graph API. A limited subset
-//! of fields from these types are exposed via `Deref` implementations in
-//! views. Most notably, user geometry is exposed via `geometry` fields.
+//! of fields from these types are exposed via `Deref` implementations in views.
+//! Most notably, user geometry is exposed via `geometry` fields.
 //!
 //! Connectivity fields are sometimes `Option` types, but may be required in a
 //! consistent graph. These fields are only `Option` types because payloads may
@@ -68,13 +68,12 @@ where
     type Storage = SlotStorage<Self>;
 }
 
-// Unlike other graph structures, the vertex connectivity of an arc is
-// immutable and encoded within its key. This provides fast and reliable
-// lookups even when a graph is in an inconsistent state.  However, it also
-// complicates certain topological mutations and sometimes requires that arcs
-// be rekeyed.  For this reason, `Arc` has no fields representing its source
-// and destination vertices nor its opposite arc; such fields would be
-// redundant.
+// Unlike other graph structures, the vertex connectivity of an arc is immutable
+// and encoded within its key. This provides fast and reliable lookups even when
+// a graph is in an inconsistent state. However, it also complicates certain
+// topological mutations and sometimes requires that arcs be rekeyed. For this
+// reason, `Arc` has no fields representing its source and destination vertices
+// nor its opposite arc; such fields would be redundant.
 /// Graph arc.
 ///
 /// An arc is represented by keys into its next and previous arcs, a key into

@@ -3,8 +3,8 @@
 //! This module provides traits that specify the geometry of `MeshGraph`s and
 //! express the spatial operations supported by that geometry. The most basic
 //! and only required trait is `GraphGeometry`, which uses associated types to
-//! specify the type of the `geometry` field in the payloads for vertices,
-//! arcs, edges, and faces in a graph.
+//! specify the type of the `geometry` field in the payloads for vertices, arcs,
+//! edges, and faces in a graph.
 //!
 //! To support useful spatial operations, types that implement `GraphGeometry`
 //! may also implement `AsPosition`. The `AsPosition` trait exposes positional
@@ -60,10 +60,10 @@
 
 // Geometric traits like `FaceNormal` and `EdgeMidpoint` are defined in such a
 // way to reduce the contraints necessary for writing generic user code. With
-// few exceptions, these traits only depend on `AsPosition` being implemented
-// by the `Vertex` type in their definition. If a more complex implementation
-// is necessary, constraints are specified there so that they do not pollute
-// user code.
+// few exceptions, these traits only depend on `AsPosition` being implemented by
+// the `Vertex` type in their definition. If a more complex implementation is
+// necessary, constraints are specified there so that they do not pollute user
+// code.
 
 use theon::ops::{Cross, Interpolate, Project};
 use theon::query::Plane;

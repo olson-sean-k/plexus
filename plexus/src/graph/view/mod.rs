@@ -21,8 +21,8 @@ use crate::graph::GraphError;
 
 /// A key bound to storage in a graph.
 ///
-/// This trait is implemented by views over specific structures in a graph,
-/// such as a vertex or face. Note that rings and paths are views over various
+/// This trait is implemented by views over specific structures in a graph, such
+/// as a vertex or face. Note that rings and paths are views over various
 /// structures, and as such do not implement this trait.
 pub trait Binding: Deref<Target = <Self as Binding>::Payload> {
     // This associated type is redundant, but avoids re-exporting the

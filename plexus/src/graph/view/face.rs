@@ -34,11 +34,11 @@ use Selector::ByIndex;
 
 // TODO: The API for faces and rings presents fuzzy distinctions; many
 //       operations supported by `FaceView` could be supported by `RingView` as
-//       well (specifically, all topological operations where a `Face`
-//       is unnecessary). In essence, a face is simply a ring with an
-//       associated payload that describes its path and geometry. The geometry
-//       is the most notable difference, keeping in mind that in a consistent
-//       graph all arcs are part of a ring.
+//       well (specifically, all topological operations where a `Face` is
+//       unnecessary). In essence, a face is simply a ring with an associated
+//       payload that describes its path and geometry. The geometry is the most
+//       notable difference, keeping in mind that in a consistent graph all arcs
+//       are part of a ring.
 
 /// Ring-like structure. Abstracts faces and rings.
 ///
@@ -270,8 +270,7 @@ where
     M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Gets the distance (number of arcs) between two vertices within the
-    /// face.
+    /// Gets the distance (number of arcs) between two vertices within the face.
     pub fn distance(
         &self,
         source: Selector<VertexKey>,
@@ -400,10 +399,10 @@ where
     ///
     /// Returns the inserted arc that spans from the source vertex to the
     /// destination vertex if successful. If a face $\overrightarrow{\\{A,B,
-    /// C,D\\}}$ is split from $A$ to $C$, then it will be decomposed into
-    /// faces in the rings $\overrightarrow{\\{A,B,C\\}}$ and
-    /// $\overrightarrow{\\{C,D,A\\}}$ and the arc $\overrightarrow{AC}$ will
-    /// be returned.
+    /// C,D\\}}$ is split from $A$ to $C$, then it will be decomposed into faces
+    /// in the rings $\overrightarrow{\\{A,B,C\\}}$ and
+    /// $\overrightarrow{\\{C,D,A\\}}$ and the arc $\overrightarrow{AC}$ will be
+    /// returned.
     ///
     /// # Errors
     ///
@@ -547,8 +546,8 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the destination face cannot be found or the arity
-    /// of the face and its destination are not the same.
+    /// Returns an error if the destination face cannot be found or the arity of
+    /// the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (storage, source) = self.into_inner().unbind();
         // Errors can easily be caused by inputs to this function. Allow errors
@@ -1023,8 +1022,7 @@ where
     M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
     G: GraphGeometry,
 {
-    /// Gets the distance (number of arcs) between two vertices within the
-    /// ring.
+    /// Gets the distance (number of arcs) between two vertices within the ring.
     pub fn distance(
         &self,
         source: Selector<VertexKey>,
@@ -1601,13 +1599,12 @@ mod tests {
         }
 
         assert_eq!(8, graph.vertex_count());
-        // The mesh begins with 18 arcs. The extrusion adds three
-        // quadrilaterals with four interior arcs each, so there are `18 + (3 *
-        // 4)` arcs.
+        // The mesh begins with 18 arcs. The extrusion adds three quadrilaterals
+        // with four interior arcs each, so there are `18 + (3 * 4)` arcs.
         assert_eq!(30, graph.arc_count());
         // All faces are triangles and the mesh begins with six such faces. The
-        // extruded face remains, in addition to three connective faces, each
-        // of which is constructed from quadrilaterals.
+        // extruded face remains, in addition to three connective faces, each of
+        // which is constructed from quadrilaterals.
         assert_eq!(9, graph.face_count());
     }
 
