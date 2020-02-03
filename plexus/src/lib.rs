@@ -30,19 +30,26 @@ pub mod prelude {
     //!
     //! # Traits
     //!
-    //! This module re-exports numerous traits. Traits from the `primitive`
+    //! This module re-exports numerous traits. Traits from the [`primitive`]
     //! module for generating and decomposing iterators over topological data
-    //! (e.g., `Trigon`, `Tetragon`, etc.) are re-exported so that functions in
-    //! iterator expressions can be used without lengthy imports.
+    //! (e.g., [`Trigon`], [`Tetragon`], etc.) are re-exported so that functions
+    //! in iterator expressions can be used without lengthy imports.
     //!
-    //! Basic traits for (de)constructing `MeshBuffer`s and `MeshGraph`s are
+    //! Basic traits for (de)constructing [`MeshBuffer`]s and [`MeshGraph`]s are
     //! also re-exported. These traits allow mesh types to be constructed from
     //! raw buffers and buffers to be re-indexed.
     //!
     //! # Types
     //!
-    //! The `Selector` enum and its variants are re-exported for convenience.
-    //! `Selector` is often used when mutating `MeshGraph`s.
+    //! The [`Selector`] `enum` and its variants are re-exported for
+    //! convenience. [`Selector`] is often used when mutating [`MeshGraph`]s.
+    //!
+    //! [`MeshBuffer`]: ../buffer/struct.MeshBuffer.html
+    //! [`MeshGraph`]: ../graph/struct.MeshGraph.html
+    //! [`primitive`]: ../primitive/index.html
+    //! [`Selector`]: ../graph/enum.Selector.html
+    //! [`Tetragon`]: ../primitive/type.Tetragon.html
+    //! [`Trigon`]: ../primitive/type.Trigon.html
 
     pub use crate::buffer::{
         FromRawBuffers as _, FromRawBuffersWithArity as _, IntoFlatIndex as _,
@@ -102,7 +109,9 @@ impl Arity for (usize, Option<usize>) {
 ///
 /// This trait specifies the arity that a type supports. Values of a
 /// `StaticArity` type have an arity that reflects this constant, which may be
-/// any type or form implementing the `Arity` trait.
+/// any type or form implementing the [`Arity`] trait.
+///
+/// [`Arity`]: trait.Arity.html
 pub trait StaticArity {
     type Static: Arity;
 
@@ -112,8 +121,10 @@ pub trait StaticArity {
 /// Value-level arity.
 ///
 /// This trait specifies the arity of a value at runtime. This is often
-/// distinct from the type-level arity of the `StaticArity` trait, which
+/// distinct from the type-level arity of the [`StaticArity`] trait, which
 /// expresses the capabilities of a type.
+///
+/// [`StaticArity`]: trait.StaticArity.html
 pub trait DynamicArity: StaticArity {
     type Dynamic: Arity;
 
@@ -122,21 +133,27 @@ pub trait DynamicArity: StaticArity {
 
 /// Topological types with fixed and singular arity.
 ///
-/// Types are _monomorphic_ if they have a fixed and singular arity as types
-/// and values. For example, `Trigon` always and only represents a trigon
-/// (triangle) with an arity of three. `Trigon` values always have an arity of
-/// three and types composed of only `Trigon`s have a compound arity of three.
+/// Types are _monomorphic_ if they have a fixed and singular arity as types and
+/// values. For example, [`Trigon`] always and only represents a trigon
+/// (triangle) with an arity of three. [`Trigon`] values always have an arity of
+/// three and types composed of only [`Trigon`]s have a compound arity of three.
 ///
-/// This contrasts _polymorphic_ types like `Polygon`, which have an interval
-/// arity at the type-level and a singular but varying arity for values
-/// (because a `Polygon` value may be either a trigon or tertragon).
+/// This contrasts _polymorphic_ types like [`Polygon`], which have an interval
+/// arity at the type-level and a singular but varying arity for values (because
+/// a [`Polygon`] value may be either a trigon or tertragon).
+///
+/// [`Polygon`]: primitive/enum.Polygon.html
+/// [`Trigon`]: primitive/type.Trigon.html
 pub trait Monomorphic: StaticArity<Static = usize> {}
 
 /// Arity of a compound structure.
 ///
 /// `MeshArity` represents the arity of a compound structure, which may be
 /// _uniform_ or _non-uniform_. This is typically the value-level arity for
-/// mesh data structures like `MeshGraph` and `MeshBuffer`.
+/// mesh data structures like [`MeshGraph`] and [`MeshBuffer`].
+///
+/// [`MeshBuffer`]: buffer/struct.MeshBuffer.html
+/// [`MeshGraph`]: graph/struct.MeshGraph.html
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MeshArity {
     /// A compound structure has _uniform_ arity if all of its components have
@@ -211,8 +228,8 @@ where
 /// Geometry elision.
 ///
 /// Geometric types that implement this trait may be elided. In particular,
-/// these types may be converted into and from `()` via the `FromGeometry` and
-/// `IntoGeometry` traits.
+/// these types may be converted into and from `()` via the [`FromGeometry`] and
+/// [`IntoGeometry`] traits.
 ///
 /// For a geometric type `T`, the following table illustrates the elisions in
 /// which `T` may participate:
@@ -223,11 +240,16 @@ where
 /// | `Default + UnitGeometry` | `()` | `T`  |
 ///
 /// These conversions are useful when converting between mesh data structures
-/// with incompatible geometry, such as from a `MeshGraph` with face geometry
-/// to a `MeshBuffer` that cannot support such geometry.
+/// with incompatible geometry, such as from a [`MeshGraph`] with face geometry
+/// to a [`MeshBuffer`] that cannot support such geometry.
 ///
 /// When geometry features are enabled, `UnitGeometry` is implemented for
 /// integrated foreign types.
+///
+/// [`FromGeometry`]: trait.FromGeometry.html
+/// [`IntoGeometry`]: trait.IntoGeometry.html
+/// [`MeshBuffer`]: buffer/struct.MeshBuffer.html
+/// [`MeshGraph`]: graph/struct.MeshGraph.html
 pub trait UnitGeometry {}
 
 pub trait IntoGeometry<T> {
@@ -260,7 +282,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// Maps an iterator over topological views to the keys of those views.
     ///
     /// It is often useful to examine or collect the keys of views over a
-    /// `MeshGraph`. This iterator avoids redundant use of `map` to extract
+    /// [`MeshGraph`]. This iterator avoids redundant use of `map` to extract
     /// keys.
     ///
     /// # Examples
@@ -294,6 +316,8 @@ pub trait IteratorExt: Iterator + Sized {
     ///     graph.face_mut(key).unwrap().poke_with_offset(0.5);
     /// }
     /// ```
+    ///
+    /// [`MeshGraph`]: graph/struct.MeshGraph.html
     fn keys(self) -> Keys<Self>
     where
         Self::Item: Binding,
