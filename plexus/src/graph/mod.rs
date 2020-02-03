@@ -1,8 +1,7 @@
 //! Half-edge graph representation of meshes.
 //!
 //! This module provides a flexible representation of meshes as a [half-edge
-//! graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list).
-//! _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
+//! graph][1]. _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
 //! respectively. Meshes can store arbitrary geometric data associated with any
 //! topological structure (vertices, arcs, edges, and faces).
 //!
@@ -11,8 +10,7 @@
 //! and `AsPosition` trait. If geometry does not have this property, then
 //! spatial operations will not be available.
 //!
-//! See the [user guide](https://plexus.rs/user-guide/graphs) for more details
-//! and examples.
+//! See the [user guide][2] for more details and examples.
 //!
 //! # Representation
 //!
@@ -164,6 +162,9 @@
 //!     // `face.geometry` is mutable here.
 //! }
 //! ```
+//!
+//! [1]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
+//! [2]: https://plexus.rs/user-guide/graphs
 
 mod borrow;
 mod builder;

@@ -9,9 +9,8 @@
 //! To support useful spatial operations, types that implement `GraphGeometry`
 //! may also implement `AsPosition`. The `AsPosition` trait exposes positional
 //! data in vertices. If that positional data also implements spatial traits
-//! from the [`theon`](https://crates.io/crates/theon) crate, then spatial
-//! operations will be enabled, such as `smooth`, `split_at_midpoint`, and
-//! `poke_with_offset`.
+//! from the [`theon`][1] crate, then spatial operations will be enabled, such
+//! as `smooth`, `split_at_midpoint`, and `poke_with_offset`.
 //!
 //! This module also defines traits that define the capabilities of geometry in
 //! a `MeshGraph`. These traits enable generic code without the need to express
@@ -55,6 +54,8 @@
 //!     face
 //! }
 //! ```
+//!
+//! [1]: https://crates.io/crates/theon
 
 // TODO: Integrate this module documentation into the `graph` module.
 

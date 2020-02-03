@@ -1,11 +1,10 @@
-//! [PLY](https://en.wikipedia.org/wiki/PLY_(file_format)) encoding.
+//! [PLY][1] encoding.
 //!
 //! This module provides support for the PLY format via the `FromPly` and
 //! `ToPly` traits. These traits can be used with a decoder and encoder to read
 //! and write mesh data structures to and from the PLY format.
 //!
-//! PLY support is implemented using the
-//! [`ply-rs`](https://crates.io/crates/ply-rs) crate.
+//! PLY support is implemented using the [`ply-rs`][2] crate.
 //!
 //! # Examples
 //!
@@ -32,6 +31,9 @@
 //! let encoding = PositionEncoding::<E3>::default();
 //! let (graph, _) = MeshGraph::<E3>::from_ply(encoding, read()).unwrap();
 //! ```
+//!
+//! [1]: https://en.wikipedia.org/wiki/PLY_(file_format)
+//! [2]: https://crates.io/crates/ply-rs
 
 #![cfg(feature = "encoding-ply")]
 

@@ -149,8 +149,7 @@ pub trait Grouping: StaticArity {
 /// Flat index buffer meta-grouping.
 ///
 /// Describes a flat index buffer with a constant arity. Arity is specified
-/// using a type constant from the [typenum](https://crates.io/crates/typenum)
-/// crate.
+/// using a type constant from the [`typenum`][1] crate.
 ///
 /// Unlike structured groupings, this meta-grouping is needed to associate an
 /// index type with an arity. For example, `Vec<usize>` implements both
@@ -169,6 +168,8 @@ pub trait Grouping: StaticArity {
 ///
 /// let mut buffer = MeshBuffer::<Flat<U3, usize>, (f64, f64, f64)>::default();
 /// ```
+///
+/// [1]: https://crates.io/crates/typenum
 #[derive(Debug)]
 pub struct Flat<A = U3, N = usize>
 where
@@ -265,10 +266,9 @@ where
 ///
 /// The vertex key data must be hashable (implement `Hash`). Most vertex data
 /// includes floating-point values (i.e., `f32` or `f64`), which do not
-/// implement `Hash`. To avoid problems with hashing, the
-/// [decorum](https://crates.io/crates/decorum) crate can be used. The `Finite`
-/// and `NotNan` types are particularly useful for this and will panic if
-/// illegal values result from a computation.
+/// implement `Hash`. To avoid problems with hashing, the [`decorum`][1] crate
+/// can be used. The `Finite` and `NotNan` types are particularly useful for
+/// this and will panic if illegal values result from a computation.
 ///
 /// # Examples
 ///
@@ -289,6 +289,8 @@ where
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
+///
+/// [1]: https://crates.io/crates/decorum
 pub struct HashIndexer<T, K>
 where
     T: Topological,

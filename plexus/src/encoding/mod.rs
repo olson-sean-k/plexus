@@ -1,10 +1,9 @@
 //! Serialization and encodings.
 //!
 //! This module provides encoding support enabled via Cargo features. Each
-//! enabled encoding has a corresponding sub-module. For example, when
-//! [PLY](https://en.wikipedia.org/wiki/ply_(file_format)) support is enabled,
-//! the `ply` module is exposed. The following table summarizes the encodings
-//! supported by Plexus:
+//! enabled encoding has a corresponding sub-module. For example, when [PLY][1]
+//! support is enabled, the `ply` module is exposed. The following table
+//! summarizes the encodings supported by Plexus:
 //!
 //! | Feature        | Default | Encoding | Read | Write |
 //! |----------------|---------|----------|------|-------|
@@ -14,6 +13,8 @@
 //! outputs and inputs of decoders and encoders, respectively. Generally, these
 //! traits should **not** be used directly. Instead, prefer the conversion
 //! traits exposed for specific encodings.
+//!
+//! [1]: https://en.wikipedia.org/wiki/ply_(file_format)
 
 pub mod ply;
 
