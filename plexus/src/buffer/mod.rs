@@ -239,9 +239,9 @@ where
     ///     .collect::<MeshBuffer3<usize, Point3<f64>>>();
     /// // Translate the positions.
     /// let translation = Vector3::<f64>::x() * 2.0;
-    /// let buffer = buffer.map_vertices_into(|position| position + translation);
+    /// let buffer = buffer.map_vertices(|position| position + translation);
     /// ```
-    pub fn map_vertices_into<H, F>(self, f: F) -> MeshBuffer<R, H>
+    pub fn map_vertices<H, F>(self, f: F) -> MeshBuffer<R, H>
     where
         F: FnMut(G) -> H,
     {
