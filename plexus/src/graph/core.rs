@@ -1,5 +1,5 @@
 use crate::graph::geometry::{Geometric, GraphGeometry};
-use crate::graph::storage::payload::{Arc, Edge, Face, Payload, Vertex};
+use crate::graph::storage::payload::{Arc, Edge, Entity, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
 /// A complete core that owns all of its storage.
@@ -19,7 +19,7 @@ pub type RefCore<'a, G> = Core<
 
 pub trait Fuse<T, M>
 where
-    T: Payload,
+    T: Entity,
     M: AsStorage<T>,
 {
     type Output;

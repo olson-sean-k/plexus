@@ -21,23 +21,23 @@ use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
 use crate::graph::storage::key::{InnerKey, OpaqueKey};
-use crate::graph::storage::payload::Payload;
+use crate::graph::storage::payload::Entity;
 
-pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Payload>::Key>, T>;
-pub type HashStorage<T> = HashMap<InnerKey<<T as Payload>::Key>, T, FnvBuildHasher>;
+pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Entity>::Key>, T>;
+pub type HashStorage<T> = HashMap<InnerKey<<T as Entity>::Key>, T, FnvBuildHasher>;
 
-pub type Rekeying<T> = HashMap<<T as Payload>::Key, <T as Payload>::Key, FnvBuildHasher>;
+pub type Rekeying<T> = HashMap<<T as Entity>::Key, <T as Entity>::Key, FnvBuildHasher>;
 
 pub trait AsStorage<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn as_storage(&self) -> &StorageProxy<T>;
 }
 
 impl<'a, T, U> AsStorage<T> for &'a U
 where
-    T: Payload,
+    T: Entity,
     U: AsStorage<T>,
 {
     fn as_storage(&self) -> &StorageProxy<T> {
@@ -47,7 +47,7 @@ where
 
 impl<'a, T, U> AsStorage<T> for &'a mut U
 where
-    T: Payload,
+    T: Entity,
     U: AsStorage<T>,
 {
     fn as_storage(&self) -> &StorageProxy<T> {
@@ -57,14 +57,14 @@ where
 
 pub trait AsStorageMut<T>: AsStorage<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn as_storage_mut(&mut self) -> &mut StorageProxy<T>;
 }
 
 impl<'a, T, U> AsStorageMut<T> for &'a mut U
 where
-    T: Payload,
+    T: Entity,
     U: AsStorageMut<T>,
 {
     fn as_storage_mut(&mut self) -> &mut StorageProxy<T> {
@@ -76,7 +76,7 @@ where
 //       https://github.com/rust-lang/rust/issues/44265
 pub trait Sequence<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn len(&self) -> usize;
 
@@ -89,7 +89,7 @@ where
 
 pub trait Get<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn get(&self, key: &T::Key) -> Option<&T>;
 
@@ -98,28 +98,28 @@ where
 
 pub trait Remove<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn remove(&mut self, key: &T::Key) -> Option<T>;
 }
 
 pub trait Insert<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn insert(&mut self, payload: T) -> T::Key;
 }
 
 pub trait InsertWithKey<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn insert_with_key(&mut self, key: T::Key, payload: T) -> Option<T>;
 }
 
 impl<T, H> Get<T> for HashMap<InnerKey<T::Key>, T, H>
 where
-    T: Payload,
+    T: Entity,
     H: BuildHasher + Default,
     InnerKey<T::Key>: Eq + Hash,
 {
@@ -134,7 +134,7 @@ where
 
 impl<T, H> Sequence<T> for HashMap<InnerKey<T::Key>, T, H>
 where
-    T: Payload,
+    T: Entity,
     H: BuildHasher + Default,
     InnerKey<T::Key>: Eq + Hash,
 {
@@ -163,7 +163,7 @@ where
 
 impl<T, H> Remove<T> for HashMap<InnerKey<T::Key>, T, H>
 where
-    T: Payload,
+    T: Entity,
     H: BuildHasher + Default,
     InnerKey<T::Key>: Eq + Hash,
 {
@@ -174,7 +174,7 @@ where
 
 impl<T, H> InsertWithKey<T> for HashMap<InnerKey<T::Key>, T, H>
 where
-    T: Payload,
+    T: Entity,
     H: BuildHasher + Default,
     InnerKey<T::Key>: Eq + Hash,
 {
@@ -185,7 +185,7 @@ where
 
 impl<T> Get<T> for HopSlotMap<InnerKey<T::Key>, T>
 where
-    T: Payload,
+    T: Entity,
     InnerKey<T::Key>: SlotKey,
 {
     fn get(&self, key: &T::Key) -> Option<&T> {
@@ -199,7 +199,7 @@ where
 
 impl<T> Sequence<T> for HopSlotMap<InnerKey<T::Key>, T>
 where
-    T: Payload,
+    T: Entity,
     InnerKey<T::Key>: SlotKey,
 {
     fn len(&self) -> usize {
@@ -227,7 +227,7 @@ where
 
 impl<T> Remove<T> for HopSlotMap<InnerKey<T::Key>, T>
 where
-    T: Payload,
+    T: Entity,
     InnerKey<T::Key>: SlotKey,
 {
     fn remove(&mut self, key: &T::Key) -> Option<T> {
@@ -237,7 +237,7 @@ where
 
 impl<T> Insert<T> for HopSlotMap<InnerKey<T::Key>, T>
 where
-    T: Payload,
+    T: Entity,
     InnerKey<T::Key>: SlotKey,
 {
     fn insert(&mut self, payload: T) -> T::Key {
@@ -251,14 +251,14 @@ where
 #[derive(Clone, Default)]
 pub struct StorageProxy<T>
 where
-    T: Payload,
+    T: Entity,
 {
     inner: T::Storage,
 }
 
 impl<T> StorageProxy<T>
 where
-    T: Payload,
+    T: Entity,
 {
     pub fn new() -> Self {
         StorageProxy {
@@ -354,7 +354,7 @@ where
 
 impl<T> AsStorage<T> for StorageProxy<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn as_storage(&self) -> &StorageProxy<T> {
         self
@@ -363,7 +363,7 @@ where
 
 impl<T> AsStorageMut<T> for StorageProxy<T>
 where
-    T: Payload,
+    T: Entity,
 {
     fn as_storage_mut(&mut self) -> &mut StorageProxy<T> {
         self

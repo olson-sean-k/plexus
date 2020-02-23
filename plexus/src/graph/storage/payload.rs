@@ -19,13 +19,9 @@ use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey}
 use crate::graph::storage::{Get, HashStorage, Remove, Sequence, SlotStorage};
 
 /// A payload contained in graph storage.
-pub trait Payload: Copy + Sized {
+pub trait Entity: Copy + Sized {
     type Key: OpaqueKey;
     type Attribute: Clone;
-
-    // This associated type allows `Payload`s to specify what underlying
-    // type is used to support their `StorageProxy` implementation. This
-    // greatly reduces trait complexity for `StorageProxy` and `AsStorage`.
     type Storage: Default + Get<Self> + Remove<Self> + Sequence<Self>;
 }
 
@@ -59,7 +55,7 @@ where
     }
 }
 
-impl<G> Payload for Vertex<G>
+impl<G> Entity for Vertex<G>
 where
     G: GraphGeometry,
 {
@@ -115,7 +111,7 @@ where
     }
 }
 
-impl<G> Payload for Arc<G>
+impl<G> Entity for Arc<G>
 where
     G: GraphGeometry,
 {
@@ -151,7 +147,7 @@ where
     }
 }
 
-impl<G> Payload for Edge<G>
+impl<G> Entity for Edge<G>
 where
     G: GraphGeometry,
 {
@@ -187,7 +183,7 @@ where
     }
 }
 
-impl<G> Payload for Face<G>
+impl<G> Entity for Face<G>
 where
     G: GraphGeometry,
 {
