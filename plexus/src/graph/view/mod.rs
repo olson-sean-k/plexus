@@ -63,12 +63,12 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     ///     }
     /// };
     /// ```
-    fn rebind<T, M>(self, key: T::Key) -> Result<T, GraphError>
+    fn rebind<T, B>(self, key: T::Key) -> Result<T, GraphError>
     where
-        Self: Into<View<M, <Self as ClosedView>::Entity>>,
-        T: From<View<M, <T as ClosedView>::Entity>> + ClosedView,
-        M: Reborrow,
-        M::Target: AsStorage<Self::Entity> + AsStorage<T::Entity>,
+        Self: Into<View<B, <Self as ClosedView>::Entity>>,
+        T: From<View<B, <T as ClosedView>::Entity>> + ClosedView,
+        B: Reborrow,
+        B::Target: AsStorage<Self::Entity> + AsStorage<T::Entity>,
     {
         self.into()
             .rebind_into::<_, T::Entity>(key)
@@ -76,23 +76,23 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     }
 }
 
-pub struct View<M, T>
+pub struct View<B, E>
 where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
-    storage: M,
-    key: T::Key,
+    storage: B,
+    key: E::Key,
 }
 
-impl<M, T> View<M, T>
+impl<B, E> View<B, E>
 where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
-    pub fn bind(storage: M, key: T::Key) -> Option<Self> {
+    pub fn bind(storage: B, key: E::Key) -> Option<Self> {
         storage
             .reborrow()
             .as_storage()
@@ -100,22 +100,22 @@ where
             .some(View::bind_unchecked(storage, key))
     }
 
-    pub fn bind_into<U>(storage: M, key: T::Key) -> Option<U>
+    pub fn bind_into<U>(storage: B, key: E::Key) -> Option<U>
     where
         U: From<Self>,
     {
         View::bind(storage, key).map(U::from)
     }
 
-    pub fn unbind(self) -> (M, T::Key) {
+    pub fn unbind(self) -> (B, E::Key) {
         let View { storage, key, .. } = self;
         (storage, key)
     }
 
-    pub fn rebind<U>(self, key: U::Key) -> Option<View<M, U>>
+    pub fn rebind<U>(self, key: U::Key) -> Option<View<B, U>>
     where
         U: Entity,
-        M::Target: AsStorage<U>,
+        B::Target: AsStorage<U>,
     {
         let (storage, _) = self.unbind();
         View::bind(storage, key)
@@ -123,53 +123,53 @@ where
 
     pub fn rebind_into<V, U>(self, key: U::Key) -> Option<V>
     where
-        V: From<View<M, U>>,
+        V: From<View<B, U>>,
         U: Entity,
-        M::Target: AsStorage<U>,
+        B::Target: AsStorage<U>,
     {
         self.rebind(key).map(V::from)
     }
 
-    pub fn key(&self) -> T::Key {
+    pub fn key(&self) -> E::Key {
         self.key
     }
 
-    pub fn interior_reborrow(&self) -> View<&M::Target, T> {
+    pub fn interior_reborrow(&self) -> View<&B::Target, E> {
         View::bind_unchecked(self.storage.reborrow(), self.key)
     }
 
-    pub(in crate::graph) fn bind_unchecked(storage: M, key: T::Key) -> Self {
+    pub(in crate::graph) fn bind_unchecked(storage: B, key: E::Key) -> Self {
         View { storage, key }
     }
 }
 
-impl<M, T> View<M, T>
+impl<B, E> View<B, E>
 where
-    M: ReborrowMut,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: ReborrowMut,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
-    pub fn interior_reborrow_mut(&mut self) -> View<&mut M::Target, T> {
+    pub fn interior_reborrow_mut(&mut self) -> View<&mut B::Target, E> {
         View::bind_unchecked(self.storage.reborrow_mut(), self.key)
     }
 }
 
-impl<'a, M, T> View<&'a mut M, T>
+impl<'a, M, E> View<&'a mut M, E>
 where
-    M: 'a + AsStorageMut<T>,
-    T: 'a + Entity,
+    M: 'a + AsStorageMut<E>,
+    E: 'a + Entity,
 {
-    pub fn into_ref(self) -> View<&'a M, T> {
+    pub fn into_ref(self) -> View<&'a M, E> {
         let (storage, key) = self.unbind();
         View::bind(&*storage, key).unwrap()
     }
 }
 
-impl<M, T> Clone for View<M, T>
+impl<B, E> Clone for View<B, E>
 where
-    M: Clone + Reborrow,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: Clone + Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
     fn clone(&self) -> Self {
         View {
@@ -179,21 +179,21 @@ where
     }
 }
 
-impl<M, T> Copy for View<M, T>
+impl<B, E> Copy for View<B, E>
 where
-    M: Copy + Reborrow,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: Copy + Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
 }
 
-impl<M, T> Deref for View<M, T>
+impl<B, E> Deref for View<B, E>
 where
-    M: Reborrow,
-    M::Target: AsStorage<T>,
-    T: Entity,
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
-    type Target = T;
+    type Target = E;
 
     fn deref(&self) -> &Self::Target {
         self.storage
@@ -204,11 +204,11 @@ where
     }
 }
 
-impl<M, T> DerefMut for View<M, T>
+impl<B, E> DerefMut for View<B, E>
 where
-    M: ReborrowMut,
-    M::Target: AsStorageMut<T>,
-    T: Entity,
+    B: ReborrowMut,
+    B::Target: AsStorageMut<E>,
+    E: Entity,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.storage
@@ -220,79 +220,79 @@ where
 }
 
 // TODO: Consider implementing `Eq` for views.
-impl<M, T> PartialEq for View<M, T>
+impl<B, E> PartialEq for View<B, E>
 where
-    M: Reborrow,
-    M::Target: AsStorage<T> + Consistent,
-    T: Entity,
+    B: Reborrow,
+    B::Target: AsStorage<E> + Consistent,
+    E: Entity,
 {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
     }
 }
 
-pub struct Orphan<'a, T>
+pub struct Orphan<'a, E>
 where
-    T: Entity,
+    E: Entity,
 {
-    payload: &'a mut T,
-    key: T::Key,
+    payload: &'a mut E,
+    key: E::Key,
 }
 
-impl<'a, T> Orphan<'a, T>
+impl<'a, E> Orphan<'a, E>
 where
-    T: 'a + Entity,
+    E: 'a + Entity,
 {
-    pub fn bind<M>(storage: &'a mut M, key: T::Key) -> Option<Self>
+    pub fn bind<M>(storage: &'a mut M, key: E::Key) -> Option<Self>
     where
-        M: AsStorageMut<T>,
+        M: AsStorageMut<E>,
     {
         View::bind(storage, key).map(Orphan::from)
     }
 
-    pub fn bind_into<U, M>(storage: &'a mut M, key: T::Key) -> Option<U>
+    pub fn bind_into<U, M>(storage: &'a mut M, key: E::Key) -> Option<U>
     where
         U: From<Self>,
-        M: AsStorageMut<T>,
+        M: AsStorageMut<E>,
     {
         Orphan::bind(storage, key).map(U::from)
     }
 
-    pub fn key(&self) -> T::Key {
+    pub fn key(&self) -> E::Key {
         self.key
     }
 
-    pub(in crate::graph) fn bind_unchecked(payload: &'a mut T, key: T::Key) -> Self {
+    pub(in crate::graph) fn bind_unchecked(payload: &'a mut E, key: E::Key) -> Self {
         Orphan { payload, key }
     }
 }
 
-impl<'a, T> Deref for Orphan<'a, T>
+impl<'a, E> Deref for Orphan<'a, E>
 where
-    T: 'a + Entity,
+    E: 'a + Entity,
 {
-    type Target = T;
+    type Target = E;
 
     fn deref(&self) -> &Self::Target {
         &*self.payload
     }
 }
 
-impl<'a, T> DerefMut for Orphan<'a, T>
+impl<'a, E> DerefMut for Orphan<'a, E>
 where
-    T: 'a + Entity,
+    E: 'a + Entity,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.payload
     }
 }
 
-impl<'a, T, M> From<View<&'a mut M, T>> for Orphan<'a, T>
+impl<'a, E, M> From<View<&'a mut M, E>> for Orphan<'a, E>
 where
-    T: 'a + Entity,
-    M: AsStorageMut<T>,
+    E: 'a + Entity,
+    M: AsStorageMut<E>,
 {
-    fn from(view: View<&'a mut M, T>) -> Self {
+    fn from(view: View<&'a mut M, E>) -> Self {
         let (storage, key) = view.unbind();
         let payload = storage
             .as_storage_mut()
