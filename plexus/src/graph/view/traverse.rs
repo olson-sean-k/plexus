@@ -62,7 +62,7 @@ where
     B: TraversalBuffer<T::Key>,
     T: Binding,
     M: Reborrow,
-    M::Target: AsStorage<T::Payload>,
+    M::Target: AsStorage<T::Entity>,
 {
     storage: M,
     breadcrumbs: HashSet<T::Key>,
@@ -75,7 +75,7 @@ where
     B: Clone + TraversalBuffer<T::Key>,
     T: Binding,
     M: Clone + Reborrow,
-    M::Target: AsStorage<T::Payload>,
+    M::Target: AsStorage<T::Entity>,
 {
     fn clone(&self) -> Self {
         Traversal {
@@ -90,9 +90,9 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Into<View<M, <T as Binding>::Payload>> + Binding,
+    T: Into<View<M, <T as Binding>::Entity>> + Binding,
     M: Reborrow,
-    M::Target: AsStorage<T::Payload>,
+    M::Target: AsStorage<T::Entity>,
 {
     fn from(view: T) -> Self {
         let (storage, key) = view.into().unbind();
@@ -111,8 +111,8 @@ where
 impl<'a, B, T, M> Iterator for Traversal<B, T, &'a M>
 where
     B: TraversalBuffer<<T as Binding>::Key>,
-    T: Adjacency + Copy + From<View<&'a M, <T as Binding>::Payload>>,
-    M: 'a + AsStorage<T::Payload>,
+    T: Adjacency + Copy + From<View<&'a M, <T as Binding>::Entity>>,
+    M: 'a + AsStorage<T::Entity>,
 {
     type Item = T;
 
@@ -136,7 +136,7 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         (
             1,
-            Some(AsStorage::<T::Payload>::as_storage(&self.storage).len()),
+            Some(AsStorage::<T::Entity>::as_storage(&self.storage).len()),
         )
     }
 }

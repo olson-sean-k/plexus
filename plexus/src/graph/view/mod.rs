@@ -24,11 +24,9 @@ use crate::graph::GraphError;
 /// This trait is implemented by views over specific structures in a graph, such
 /// as a vertex or face. Note that rings and paths are views over various
 /// structures, and as such do not implement this trait.
-pub trait Binding: Deref<Target = <Self as Binding>::Payload> {
-    // This associated type is redundant, but avoids re-exporting the
-    // `Payload` trait and simplifies the use of this trait.
+pub trait Binding: Deref<Target = <Self as Binding>::Entity> {
     type Key: OpaqueKey;
-    type Payload: Entity<Key = Self::Key>;
+    type Entity: Entity<Key = Self::Key>;
 
     /// Gets the key for the view.
     fn key(&self) -> Self::Key;
@@ -72,13 +70,13 @@ pub trait Binding: Deref<Target = <Self as Binding>::Payload> {
     /// ```
     fn rebind<T, M>(self, key: T::Key) -> Result<T, GraphError>
     where
-        Self: Into<View<M, <Self as Binding>::Payload>>,
-        T: From<View<M, <T as Binding>::Payload>> + Binding,
+        Self: Into<View<M, <Self as Binding>::Entity>>,
+        T: From<View<M, <T as Binding>::Entity>> + Binding,
         M: Reborrow,
-        M::Target: AsStorage<Self::Payload> + AsStorage<T::Payload>,
+        M::Target: AsStorage<Self::Entity> + AsStorage<T::Entity>,
     {
         self.into()
-            .rebind_into::<_, T::Payload>(key)
+            .rebind_into::<_, T::Entity>(key)
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
 }

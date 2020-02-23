@@ -370,7 +370,7 @@ where
     G: GraphGeometry,
 {
     type Key = VertexKey;
-    type Payload = Vertex<G>;
+    type Entity = Vertex<G>;
 
     /// Gets the key for the vertex.
     fn key(&self) -> Self::Key {
@@ -507,7 +507,7 @@ where
     G: 'a + GraphGeometry,
 {
     type Key = VertexKey;
-    type Payload = Vertex<G>;
+    type Entity = Vertex<G>;
 
     fn key(&self) -> Self::Key {
         self.inner.key()

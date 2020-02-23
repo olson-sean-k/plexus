@@ -799,7 +799,7 @@ where
     G: GraphGeometry,
 {
     type Key = ArcKey;
-    type Payload = Arc<G>;
+    type Entity = Arc<G>;
 
     /// Gets the key for the arc.
     fn key(&self) -> Self::Key {
@@ -919,7 +919,7 @@ where
     G: 'a + GraphGeometry,
 {
     type Key = ArcKey;
-    type Payload = Arc<G>;
+    type Entity = Arc<G>;
 
     fn key(&self) -> Self::Key {
         self.inner.key()
@@ -1134,7 +1134,7 @@ where
     G: GraphGeometry,
 {
     type Key = EdgeKey;
-    type Payload = Edge<G>;
+    type Entity = Edge<G>;
 
     /// Gets the key for the edge.
     fn key(&self) -> Self::Key {
@@ -1192,7 +1192,7 @@ where
     G: 'a + GraphGeometry,
 {
     type Key = EdgeKey;
-    type Payload = Edge<G>;
+    type Entity = Edge<G>;
 
     fn key(&self) -> Self::Key {
         self.inner.key()

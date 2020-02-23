@@ -749,7 +749,7 @@ where
     G: GraphGeometry,
 {
     type Key = FaceKey;
-    type Payload = Face<G>;
+    type Entity = Face<G>;
 
     /// Gets the key for the face.
     fn key(&self) -> Self::Key {
@@ -895,7 +895,7 @@ where
     G: 'a + GraphGeometry,
 {
     type Key = FaceKey;
-    type Payload = Face<G>;
+    type Entity = Face<G>;
 
     fn key(&self) -> Self::Key {
         self.inner.key()
