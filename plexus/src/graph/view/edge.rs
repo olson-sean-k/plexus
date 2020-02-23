@@ -18,7 +18,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
 use crate::graph::view::path::PathView;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
-use crate::graph::view::{Binding, Orphan, View};
+use crate::graph::view::{ClosedView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
@@ -792,7 +792,7 @@ where
     }
 }
 
-impl<M, G> Binding for ArcView<M, G>
+impl<M, G> ClosedView for ArcView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Arc<G>>,
@@ -914,7 +914,7 @@ where
     inner: Orphan<'a, Arc<G>>,
 }
 
-impl<'a, G> Binding for ArcOrphan<'a, G>
+impl<'a, G> ClosedView for ArcOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {
@@ -1127,7 +1127,7 @@ where
     }
 }
 
-impl<M, G> Binding for EdgeView<M, G>
+impl<M, G> ClosedView for EdgeView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Edge<G>>,
@@ -1187,7 +1187,7 @@ where
     inner: Orphan<'a, Edge<G>>,
 }
 
-impl<'a, G> Binding for EdgeOrphan<'a, G>
+impl<'a, G> ClosedView for EdgeOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {

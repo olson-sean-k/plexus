@@ -16,7 +16,7 @@ use itertools::{Itertools, MinMaxResult};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::graph::Binding;
+use crate::graph::ClosedView;
 
 pub use theon::{AsPosition, Position};
 pub use typenum::{U2, U3, U4};
@@ -56,7 +56,7 @@ pub mod prelude {
         IntoStructuredIndex as _,
     };
     pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
-    pub use crate::graph::{Binding as _, Selector};
+    pub use crate::graph::{ClosedView as _, Selector};
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,
@@ -320,7 +320,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// [`MeshGraph`]: graph/struct.MeshGraph.html
     fn keys(self) -> Keys<Self>
     where
-        Self::Item: Binding,
+        Self::Item: ClosedView,
     {
         Keys::new(self)
     }
@@ -388,7 +388,7 @@ where
 pub struct Keys<I>
 where
     I: Iterator,
-    I::Item: Binding,
+    I::Item: ClosedView,
 {
     input: I,
 }
@@ -396,7 +396,7 @@ where
 impl<I> Keys<I>
 where
     I: Iterator,
-    I::Item: Binding,
+    I::Item: ClosedView,
 {
     fn new(input: I) -> Self {
         Keys { input }
@@ -406,9 +406,9 @@ where
 impl<I> Iterator for Keys<I>
 where
     I: Iterator,
-    I::Item: Binding,
+    I::Item: ClosedView,
 {
-    type Item = <I::Item as Binding>::Key;
+    type Item = <I::Item as ClosedView>::Key;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.input.next().map(|view| view.key())

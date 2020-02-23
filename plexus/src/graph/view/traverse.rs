@@ -4,17 +4,17 @@ use std::marker::PhantomData;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::storage::AsStorage;
-use crate::graph::view::{Binding, View};
+use crate::graph::view::{ClosedView, View};
 
-pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as Binding>::Key>, T, M>;
-pub type DepthTraversal<T, M> = Traversal<Vec<<T as Binding>::Key>, T, M>;
+pub type BreadthTraversal<T, M> = Traversal<VecDeque<<T as ClosedView>::Key>, T, M>;
+pub type DepthTraversal<T, M> = Traversal<Vec<<T as ClosedView>::Key>, T, M>;
 
 /// Expresses adjacency of like topology.
 ///
 /// View types that implement this trait provide some notion of _adjacency_,
 /// where some topology has neighboring topology of the same type. For example,
 /// vertices are connected to neighbors via arcs.
-pub trait Adjacency: Binding {
+pub trait Adjacency: ClosedView {
     type Output: IntoIterator<Item = Self::Key>;
 
     /// Gets the keys of neighboring topology.
@@ -60,7 +60,7 @@ impl<T> TraversalBuffer<T> for VecDeque<T> {
 pub struct Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Binding,
+    T: ClosedView,
     M: Reborrow,
     M::Target: AsStorage<T::Entity>,
 {
@@ -73,7 +73,7 @@ where
 impl<B, T, M> Clone for Traversal<B, T, M>
 where
     B: Clone + TraversalBuffer<T::Key>,
-    T: Binding,
+    T: ClosedView,
     M: Clone + Reborrow,
     M::Target: AsStorage<T::Entity>,
 {
@@ -90,7 +90,7 @@ where
 impl<B, T, M> From<T> for Traversal<B, T, M>
 where
     B: TraversalBuffer<T::Key>,
-    T: Into<View<M, <T as Binding>::Entity>> + Binding,
+    T: Into<View<M, <T as ClosedView>::Entity>> + ClosedView,
     M: Reborrow,
     M::Target: AsStorage<T::Entity>,
 {
@@ -110,8 +110,8 @@ where
 
 impl<'a, B, T, M> Iterator for Traversal<B, T, &'a M>
 where
-    B: TraversalBuffer<<T as Binding>::Key>,
-    T: Adjacency + Copy + From<View<&'a M, <T as Binding>::Entity>>,
+    B: TraversalBuffer<<T as ClosedView>::Key>,
+    T: Adjacency + Copy + From<View<&'a M, <T as ClosedView>::Entity>>,
     M: 'a + AsStorage<T::Entity>,
 {
     type Item = T;

@@ -14,7 +14,7 @@ use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
-use crate::graph::view::{Binding, View};
+use crate::graph::view::{ClosedView, View};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 use crate::IteratorExt as _;

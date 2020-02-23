@@ -19,7 +19,7 @@ use crate::graph::view::face::{FaceOrphan, FaceView};
 use crate::graph::view::traverse::{
     Adjacency, BreadthTraversal, DepthTraversal, Trace, TraceAny, TraceFirst,
 };
-use crate::graph::view::{Binding, Orphan, View};
+use crate::graph::view::{ClosedView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::transact::{Mutate, Transact};
 
@@ -363,7 +363,7 @@ where
     }
 }
 
-impl<M, G> Binding for VertexView<M, G>
+impl<M, G> ClosedView for VertexView<M, G>
 where
     M: Reborrow,
     M::Target: AsStorage<Vertex<G>>,
@@ -502,7 +502,7 @@ where
     }
 }
 
-impl<'a, G> Binding for VertexOrphan<'a, G>
+impl<'a, G> ClosedView for VertexOrphan<'a, G>
 where
     G: 'a + GraphGeometry,
 {

@@ -12,7 +12,7 @@ use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::RingView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{Binding, View};
+use crate::graph::view::{ClosedView, View};
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::IteratorExt as _;
 
@@ -51,7 +51,7 @@ where
     G: GraphGeometry,
 {
     // Paths bind multiple keys to storage and so do not support `View`,
-    // `Orphan`, nor `Binding`. This bespoke `bind` function ensures that the
+    // `Orphan`, nor `ClosedView`. This bespoke `bind` function ensures that the
     // path is not empty and that the topology forms a non-intersecting path.
     pub(in crate::graph) fn bind<I>(storage: M, keys: I) -> Result<Self, GraphError>
     where
@@ -369,7 +369,7 @@ mod tests {
     use nalgebra::Point2;
 
     use crate::buffer::FromRawBuffers;
-    use crate::graph::{Binding, MeshGraph, Selector};
+    use crate::graph::{ClosedView, MeshGraph, Selector};
     use crate::primitive::Trigon;
     use crate::IteratorExt;
 

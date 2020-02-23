@@ -218,7 +218,7 @@ pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edg
 pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
-pub use crate::graph::view::Binding;
+pub use crate::graph::view::ClosedView;
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

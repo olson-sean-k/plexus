@@ -16,15 +16,10 @@ use crate::graph::GraphError;
 
 // TODO: Use `bind_unchecked` whenever possible (that is, when it is logically
 //       consistent to assume that the key is present in storage).
-// TODO: Consider `Bind` and `Unbind` traits and decomposing the `Binding`
+// TODO: Consider `Bind` and `Unbind` traits and decomposing the `ClosedView`
 //       trait.
 
-/// A key bound to storage in a graph.
-///
-/// This trait is implemented by views over specific structures in a graph, such
-/// as a vertex or face. Note that rings and paths are views over various
-/// structures, and as such do not implement this trait.
-pub trait Binding: Deref<Target = <Self as Binding>::Entity> {
+pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     type Key: OpaqueKey;
     type Entity: Entity<Key = Self::Key>;
 
@@ -42,7 +37,7 @@ pub trait Binding: Deref<Target = <Self as Binding>::Entity> {
     /// view:
     ///
     /// ```rust,no_run
-    /// # use plexus::graph::{Binding, MeshGraph};
+    /// # use plexus::graph::{ClosedView, MeshGraph};
     /// # use plexus::prelude::*;
     /// #
     /// # let mut graph = MeshGraph::<()>::default();
@@ -70,8 +65,8 @@ pub trait Binding: Deref<Target = <Self as Binding>::Entity> {
     /// ```
     fn rebind<T, M>(self, key: T::Key) -> Result<T, GraphError>
     where
-        Self: Into<View<M, <Self as Binding>::Entity>>,
-        T: From<View<M, <T as Binding>::Entity>> + Binding,
+        Self: Into<View<M, <Self as ClosedView>::Entity>>,
+        T: From<View<M, <T as ClosedView>::Entity>> + ClosedView,
         M: Reborrow,
         M::Target: AsStorage<Self::Entity> + AsStorage<T::Entity>,
     {
