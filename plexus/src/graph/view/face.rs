@@ -2,7 +2,6 @@ use fool::BoolExt;
 use smallvec::SmallVec;
 use std::cmp;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::query::{Intersection, Line, Plane};
@@ -11,7 +10,9 @@ use theon::AsPosition;
 use typenum::U3;
 
 use crate::graph::borrow::{Reborrow, ReborrowMut};
-use crate::graph::geometry::{FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{
+    FaceCentroid, FaceNormal, FacePlane, Geometric, Geometry, GraphGeometry, VertexPosition,
+};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
@@ -45,22 +46,21 @@ use Selector::ByIndex;
 /// Types that implement this trait participate in a ring and can be converted
 /// into an arc that is part of that ring. This trait allows ring structures to
 /// be abstracted.
-pub trait Ringoid<M, G>: DynamicArity<Dynamic = usize>
+pub trait Ringoid<B>: DynamicArity<Dynamic = usize>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    fn into_arc(self) -> ArcView<M, G>;
+    fn into_arc(self) -> ArcView<B>;
 
-    fn vertices(&self) -> VertexCirculator<&M::Target, G>
+    fn vertices(&self) -> VertexCirculator<&B::Target>
     where
-        M::Target: AsStorage<Vertex<G>>,
+        B::Target: AsStorage<Vertex<Geometry<B>>>,
     {
         self.interior_arcs().into()
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G>;
+    fn interior_arcs(&self) -> ArcCirculator<&B::Target>;
 
     fn distance(
         &self,
@@ -68,7 +68,7 @@ where
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError>
     where
-        M::Target: AsStorage<Vertex<G>>,
+        B::Target: AsStorage<Vertex<Geometry<B>>>,
     {
         let arity = self.arity();
         let index_of_selector = |selector: Selector<_>| match selector {
@@ -105,45 +105,41 @@ where
 /// $\overrightarrow{\\{A,B,C\\}}$. While the precise ordering of vertices is
 /// determined by a face's leading arc, the same face may be notated using
 /// rotations of this set, such as $\overrightarrow{\\{B,C,A\\}}$.
-pub struct FaceView<M, G>
+pub struct FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    inner: View<M, Face<G>>,
+    inner: View<B, Face<Geometry<B>>>,
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    fn into_inner(self) -> View<M, Face<G>> {
+    fn into_inner(self) -> View<B, Face<Geometry<B>>> {
         self.into()
     }
 
-    fn interior_reborrow(&self) -> FaceView<&M::Target, G> {
+    fn interior_reborrow(&self) -> FaceView<&M> {
         self.inner.interior_reborrow().into()
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: ReborrowMut,
-    M::Target: AsStorage<Face<G>>,
-    G: GraphGeometry,
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    fn interior_reborrow_mut(&mut self) -> FaceView<&mut M::Target, G> {
+    fn interior_reborrow_mut(&mut self) -> FaceView<&mut M> {
         self.inner.interior_reborrow_mut().into()
     }
 }
 
-impl<'a, M, G> FaceView<&'a mut M, G>
+impl<'a, M> FaceView<&'a mut M>
 where
-    M: 'a + AsStorageMut<Face<G>>,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Face<Geometry<M>>> + Geometric,
 {
     /// Converts a mutable view into an immutable view.
     ///
@@ -179,48 +175,46 @@ where
     /// let _ = face.into_arc();
     /// let _ = face.into_arc().into_next_arc();
     /// ```
-    pub fn into_ref(self) -> FaceView<&'a M, G> {
+    pub fn into_ref(self) -> FaceView<&'a M> {
         self.into_inner().into_ref().into()
     }
 }
 
 /// Reachable API.
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>>,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<M, G>> {
+    pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<B>> {
         let key = self.arc;
         self.into_inner().rebind_into(key)
     }
 
-    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M::Target, G>> {
+    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
         let key = self.arc;
         self.inner.interior_reborrow().rebind_into(key)
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Converts the face into its ring.
-    pub fn into_ring(self) -> RingView<M, G> {
+    pub fn into_ring(self) -> RingView<B> {
         let key = self.arc().key();
         self.into_inner().rebind_into(key).expect_consistent()
     }
 
     /// Converts the face into its leading arc.
-    pub fn into_arc(self) -> ArcView<M, G> {
+    pub fn into_arc(self) -> ArcView<B> {
         self.into_reachable_arc().expect_consistent()
     }
 
     /// Gets the ring of the face.
-    pub fn ring(&self) -> RingView<&M::Target, G> {
+    pub fn ring(&self) -> RingView<&M> {
         let key = self.arc().key();
         self.inner
             .interior_reborrow()
@@ -229,7 +223,7 @@ where
     }
 
     /// Gets the leading arc of the face.
-    pub fn arc(&self) -> ArcView<&M::Target, G> {
+    pub fn arc(&self) -> ArcView<&M> {
         self.reachable_arc().expect_consistent()
     }
 
@@ -239,7 +233,10 @@ where
     /// The traversal moves from the face to its neighboring faces and so on.
     /// If there are disjoint faces in the graph, then a traversal will not
     /// reach all faces in the graph.
-    pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn traverse_by_breadth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
+    where
+        M: 'a,
+    {
         BreadthTraversal::from(self.interior_reborrow())
     }
 
@@ -249,25 +246,38 @@ where
     /// The traversal moves from the face to its neighboring faces and so on.
     /// If there are disjoint faces in the graph, then a traversal will not
     /// reach all faces in the graph.
-    pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
+    pub fn traverse_by_depth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
+    where
+        M: 'a,
+    {
         DepthTraversal::from(self.interior_reborrow())
     }
 
     /// Gets an iterator of views over the arcs in the face's ring.
-    pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as Ringoid<_, _>>::interior_arcs(self)
+    pub fn interior_arcs<'a>(&'a self) -> impl Clone + Iterator<Item = ArcView<&'a M>>
+    where
+        M: 'a,
+    {
+        <Self as Ringoid<_>>::interior_arcs(self)
     }
 
     /// Gets an iterator of views over neighboring faces.
-    pub fn neighboring_faces(&self) -> impl Clone + Iterator<Item = FaceView<&M::Target, G>> {
-        FaceCirculator::from(<Self as Ringoid<_, _>>::interior_arcs(self))
+    pub fn neighboring_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
+    where
+        M: 'a,
+    {
+        FaceCirculator::from(<Self as Ringoid<_>>::interior_arcs(self))
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M, G> FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     /// Gets the distance (number of arcs) between two vertices within the face.
@@ -276,12 +286,16 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        <Self as Ringoid<_, _>>::distance(self, source, destination)
+        <Self as Ringoid<_>>::distance(self, source, destination)
     }
 
     /// Gets an iterator of views over the vertices that form the face.
-    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as Ringoid<_, _>>::vertices(self)
+    pub fn vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
+    where
+        M: 'a,
+        G: 'a,
+    {
+        <Self as Ringoid<_>>::vertices(self)
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -310,41 +324,64 @@ where
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: ReborrowMut,
-    M::Target: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent,
-    G: GraphGeometry,
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
-    pub fn interior_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
+    pub fn interior_arc_orphans<'a>(&'a mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>>
+    where
+        M: 'a,
+    {
         ArcCirculator::from(self.interior_reborrow_mut())
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
-    G: GraphGeometry,
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorageMut<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over neighboring faces.
-    pub fn neighboring_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
+    pub fn neighboring_face_orphans<'a>(
+        &'a mut self,
+    ) -> impl Iterator<Item = FaceOrphan<Geometry<B>>>
+    where
+        M: 'a,
+    {
         FaceCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
 }
 
-impl<M, G> FaceView<M, G>
+impl<B, M> FaceView<B>
 where
-    M: ReborrowMut,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorageMut<Vertex<G>> + Consistent,
-    G: GraphGeometry,
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>>
+        + AsStorage<Face<Geometry<B>>>
+        + AsStorageMut<Vertex<Geometry<B>>>
+        + Consistent
+        + Geometric,
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
-    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
+    pub fn vertex_orphans<'a>(&'a mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>>
+    where
+        M: 'a,
+    {
         VertexCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
     }
+}
 
+impl<B, M, G> FaceView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + AsStorageMut<Vertex<G>>
+        + Consistent
+        + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
     /// Flattens the face by translating the positions of all vertices into a
     /// best-fit plane.
     ///
@@ -379,15 +416,15 @@ where
     }
 }
 
-impl<'a, M, G> FaceView<&'a mut M, G>
+impl<'a, M, G> FaceView<&'a mut M>
 where
     M: AsStorage<Arc<G>>
         + AsStorage<Edge<G>>
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Default
-        + Mutable<G>,
-    G: 'a + GraphGeometry,
+        + Mutable<Geometry = G>,
+    G: GraphGeometry,
 {
     /// Splits the face by bisecting it with a composite edge inserted between
     /// two non-neighboring vertices within the face's perimeter.
@@ -440,7 +477,7 @@ where
         self,
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
-    ) -> Result<ArcView<&'a mut M, G>, GraphError> {
+    ) -> Result<ArcView<&'a mut M>, GraphError> {
         let key_at_index = |index| {
             self.vertices()
                 .nth(index)
@@ -613,7 +650,7 @@ where
     ///     geometry
     /// });
     /// ```
-    pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M, G>
+    pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M>
     where
         F: FnOnce() -> G::Vertex,
     {
@@ -629,7 +666,7 @@ where
     /// each arc in the face's perimeter and a vertex inserted at the centroid.
     ///
     /// Returns the inserted vertex.
-    pub fn poke_at_centroid(self) -> VertexView<&'a mut M, G>
+    pub fn poke_at_centroid(self) -> VertexView<&'a mut M>
     where
         G: FaceCentroid,
         G::Vertex: AsPosition,
@@ -677,7 +714,7 @@ where
     ///     graph.face_mut(key).unwrap().poke_with_offset(0.5).unwrap();
     /// }
     /// ```
-    pub fn poke_with_offset<T>(self, offset: T) -> Result<VertexView<&'a mut M, G>, GraphError>
+    pub fn poke_with_offset<T>(self, offset: T) -> Result<VertexView<&'a mut M>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceCentroid + FaceNormal,
@@ -699,7 +736,7 @@ where
     /// # Errors
     ///
     /// Returns an error if the geometry could not be computed.
-    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M, G>, GraphError>
+    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceNormal,
@@ -718,7 +755,7 @@ where
     /// Removes the face.
     ///
     /// Returns the remaining ring of the face if it is not entirely disjoint.
-    pub fn remove(self) -> Option<RingView<&'a mut M, G>> {
+    pub fn remove(self) -> Option<RingView<&'a mut M>> {
         // TODO: BIND. Refactor composite views.
         let (storage, abc) = self.into_inner().unbind();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
@@ -729,10 +766,10 @@ where
     }
 }
 
-impl<M, G> Adjacency for FaceView<M, G>
+impl<B, M, G> Adjacency for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Output = SmallVec<[Self::Key; 8]>;
@@ -742,10 +779,10 @@ where
     }
 }
 
-impl<M, G> ClosedView for FaceView<M, G>
+impl<B, M, G> ClosedView for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Key = FaceKey;
@@ -757,12 +794,12 @@ where
     }
 }
 
-impl<M, G> Clone for FaceView<M, G>
+impl<B, M, G> Clone for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
-    View<M, Face<G>>: Clone,
+    View<B, Face<G>>: Clone,
 {
     fn clone(&self) -> Self {
         FaceView {
@@ -771,19 +808,19 @@ where
     }
 }
 
-impl<M, G> Copy for FaceView<M, G>
+impl<B, M, G> Copy for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
-    View<M, Face<G>>: Copy,
+    View<B, Face<G>>: Copy,
 {
 }
 
-impl<M, G> Deref for FaceView<M, G>
+impl<B, M, G> Deref for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Target = Face<G>;
@@ -793,10 +830,10 @@ where
     }
 }
 
-impl<M, G> DerefMut for FaceView<M, G>
+impl<B, M, G> DerefMut for FaceView<B>
 where
-    M: ReborrowMut,
-    M::Target: AsStorageMut<Face<G>>,
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -804,10 +841,10 @@ where
     }
 }
 
-impl<M, G> DynamicArity for FaceView<M, G>
+impl<B, M, G> DynamicArity for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Dynamic = usize;
@@ -819,33 +856,33 @@ where
     }
 }
 
-impl<M, G> From<View<M, Face<G>>> for FaceView<M, G>
+impl<B, M, G> From<View<B, Face<G>>> for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(view: View<M, Face<G>>) -> Self {
+    fn from(view: View<B, Face<G>>) -> Self {
         FaceView { inner: view }
     }
 }
 
-impl<M, G> Into<View<M, Face<G>>> for FaceView<M, G>
+impl<B, M, G> Into<View<B, Face<G>>> for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into(self) -> View<M, Face<G>> {
+    fn into(self) -> View<B, Face<G>> {
         let FaceView { inner, .. } = self;
         inner
     }
 }
 
-impl<M, G> PartialEq for FaceView<M, G>
+impl<B, M, G> PartialEq for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -853,25 +890,25 @@ where
     }
 }
 
-impl<M, G> Ringoid<M, G> for FaceView<M, G>
+impl<B, M, G> Ringoid<B> for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into_arc(self) -> ArcView<M, G> {
+    fn into_arc(self) -> ArcView<B> {
         FaceView::into_arc(self)
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
+    fn interior_arcs(&self) -> ArcCirculator<&M> {
         ArcCirculator::from(self.interior_reborrow())
     }
 }
 
-impl<M, G> StaticArity for FaceView<M, G>
+impl<B, M, G> StaticArity for FaceView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Face<G>>,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Static = <MeshGraph<G> as StaticArity>::Static;
@@ -885,14 +922,14 @@ where
 /// for more information about topological views.
 pub struct FaceOrphan<'a, G>
 where
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     inner: Orphan<'a, Face<G>>,
 }
 
 impl<'a, G> ClosedView for FaceOrphan<'a, G>
 where
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     type Key = FaceKey;
     type Entity = Face<G>;
@@ -904,7 +941,7 @@ where
 
 impl<'a, G> Deref for FaceOrphan<'a, G>
 where
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     type Target = Face<G>;
 
@@ -915,26 +952,26 @@ where
 
 impl<'a, G> DerefMut for FaceOrphan<'a, G>
 where
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
     }
 }
 
-impl<'a, M, G> From<FaceView<&'a mut M, G>> for FaceOrphan<'a, G>
+impl<'a, M, G> From<FaceView<&'a mut M>> for FaceOrphan<'a, G>
 where
-    M: AsStorageMut<Face<G>>,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
-    fn from(face: FaceView<&'a mut M, G>) -> Self {
+    fn from(face: FaceView<&'a mut M>) -> Self {
         Orphan::from(face.into_inner()).into()
     }
 }
 
 impl<'a, G> From<Orphan<'a, Face<G>>> for FaceOrphan<'a, G>
 where
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     fn from(inner: Orphan<'a, Face<G>>) -> Self {
         FaceOrphan { inner }
@@ -956,71 +993,69 @@ where
 /// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
 /// rotations of the set of vertices are equivalent, such as
 /// $\overrightarrow{\\{B,C,A\\}}$.
-pub struct RingView<M, G>
+pub struct RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    inner: View<M, Arc<G>>,
+    inner: View<B, Arc<Geometry<B>>>,
 }
 
-impl<M, G> RingView<M, G>
+impl<B, M> RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    fn into_inner(self) -> View<M, Arc<G>> {
+    fn into_inner(self) -> View<B, Arc<Geometry<B>>> {
         self.into()
     }
 
     /// Gets an iterator of views over the arcs within the ring.
-    pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&M::Target, G>> {
-        <Self as Ringoid<_, _>>::interior_arcs(self)
+    pub fn interior_arcs<'a>(&'a self) -> impl Clone + Iterator<Item = ArcView<&'a M>>
+    where
+        M: 'a,
+    {
+        <Self as Ringoid<_>>::interior_arcs(self)
     }
 
-    fn interior_reborrow(&self) -> RingView<&M::Target, G> {
+    fn interior_reborrow(&self) -> RingView<&M> {
         self.inner.interior_reborrow().into()
     }
 }
 
-impl<'a, M, G> RingView<&'a mut M, G>
+impl<'a, M> RingView<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + Consistent,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Arc<Geometry<M>>> + Consistent + Geometric,
 {
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> RingView<&'a M, G> {
+    pub fn into_ref(self) -> RingView<&'a M> {
         self.into_inner().into_ref().into()
     }
 }
 
-impl<M, G> RingView<M, G>
+impl<B, M> RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
     /// Converts the ring into its originating arc.
-    pub fn into_arc(self) -> ArcView<M, G> {
+    pub fn into_arc(self) -> ArcView<B> {
         self.into_inner().into()
     }
 
     /// Gets the originating arc of the ring.
-    pub fn arc(&self) -> ArcView<&M::Target, G> {
+    pub fn arc(&self) -> ArcView<&M> {
         self.inner.interior_reborrow().into()
     }
 }
 
-impl<M, G> RingView<M, G>
+impl<B, M> RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets the distance (number of arcs) between two vertices within the ring.
     pub fn distance(
@@ -1028,25 +1063,27 @@ where
         source: Selector<VertexKey>,
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        <Self as Ringoid<_, _>>::distance(self, source, destination)
+        <Self as Ringoid<_>>::distance(self, source, destination)
     }
 
     /// Gets an iterator of views over the vertices within the ring.
-    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&M::Target, G>> {
-        <Self as Ringoid<_, _>>::vertices(self)
+    pub fn vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
+    where
+        M: 'a,
+    {
+        <Self as Ringoid<_>>::vertices(self)
     }
 }
 
-impl<M, G> RingView<M, G>
+impl<B, M> RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Converts the ring into its face.
     ///
     /// If the path has no associated face, then `None` is returned.
-    pub fn into_face(self) -> Option<FaceView<M, G>> {
+    pub fn into_face(self) -> Option<FaceView<B>> {
         let inner = self.into_inner();
         let key = inner.face;
         key.map(move |key| inner.rebind_into(key).expect_consistent())
@@ -1055,7 +1092,7 @@ where
     /// Gets the face of the ring.
     ///
     /// If the path has no associated face, then `None` is returned.
-    pub fn face(&self) -> Option<FaceView<&M::Target, G>> {
+    pub fn face(&self) -> Option<FaceView<&M>> {
         let key = self.inner.face;
         key.map(|key| {
             self.inner
@@ -1066,16 +1103,20 @@ where
     }
 }
 
-impl<'a, M, G> RingView<&'a mut M, G>
+impl<'a, M, G> RingView<&'a mut M>
 where
-    M: AsStorage<Vertex<G>> + AsStorage<Arc<G>> + AsStorage<Face<G>> + Default + Mutable<G>,
-    G: 'a + GraphGeometry,
+    M: AsStorage<Vertex<G>>
+        + AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + Default
+        + Mutable<Geometry = G>,
+    G: GraphGeometry,
 {
     /// Gets the face of the ring or inserts a face if one does not already
     /// exist.
     ///
     /// Returns the inserted face.
-    pub fn get_or_insert_face(self) -> FaceView<&'a mut M, G> {
+    pub fn get_or_insert_face(self) -> FaceView<&'a mut M> {
         self.get_or_insert_face_with(Default::default)
     }
 
@@ -1086,7 +1127,7 @@ where
     /// geometry for the face.
     ///
     /// Returns the inserted face.
-    pub fn get_or_insert_face_with<F>(self, f: F) -> FaceView<&'a mut M, G>
+    pub fn get_or_insert_face_with<F>(self, f: F) -> FaceView<&'a mut M>
     where
         F: FnOnce() -> G::Face,
     {
@@ -1110,10 +1151,10 @@ where
     }
 }
 
-impl<M, G> DynamicArity for RingView<M, G>
+impl<B, M, G> DynamicArity for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Dynamic = usize;
@@ -1125,33 +1166,33 @@ where
     }
 }
 
-impl<M, G> From<View<M, Arc<G>>> for RingView<M, G>
+impl<B, M, G> From<View<B, Arc<G>>> for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(view: View<M, Arc<G>>) -> Self {
+    fn from(view: View<B, Arc<G>>) -> Self {
         RingView { inner: view }
     }
 }
 
-impl<M, G> Into<View<M, Arc<G>>> for RingView<M, G>
+impl<B, M, G> Into<View<B, Arc<G>>> for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into(self) -> View<M, Arc<G>> {
+    fn into(self) -> View<B, Arc<G>> {
         let RingView { inner, .. } = self;
         inner
     }
 }
 
-impl<M, G> PartialEq for RingView<M, G>
+impl<B, M, G> PartialEq for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -1160,25 +1201,25 @@ where
     }
 }
 
-impl<M, G> Ringoid<M, G> for RingView<M, G>
+impl<B, M, G> Ringoid<B> for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into_arc(self) -> ArcView<M, G> {
+    fn into_arc(self) -> ArcView<B> {
         RingView::into_arc(self)
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M::Target, G> {
+    fn interior_arcs(&self) -> ArcCirculator<&M> {
         ArcCirculator::from(self.interior_reborrow())
     }
 }
 
-impl<M, G> StaticArity for RingView<M, G>
+impl<B, M, G> StaticArity for RingView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Static = <MeshGraph<G> as StaticArity>::Static;
@@ -1186,19 +1227,18 @@ where
     const ARITY: Self::Static = MeshGraph::<G>::ARITY;
 }
 
-pub struct VertexCirculator<M, G>
+pub struct VertexCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    inner: ArcCirculator<M, G>,
+    inner: ArcCirculator<B>,
 }
 
-impl<M, G> VertexCirculator<M, G>
+impl<B, M, G> VertexCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<VertexKey> {
@@ -1210,10 +1250,10 @@ where
     }
 }
 
-impl<M, G> Clone for VertexCirculator<M, G>
+impl<B, M, G> Clone for VertexCirculator<B>
 where
-    M: Clone + Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Clone + Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn clone(&self) -> Self {
@@ -1223,23 +1263,23 @@ where
     }
 }
 
-impl<M, G> From<ArcCirculator<M, G>> for VertexCirculator<M, G>
+impl<B, M, G> From<ArcCirculator<B>> for VertexCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(inner: ArcCirculator<M, G>) -> Self {
+    fn from(inner: ArcCirculator<B>) -> Self {
         VertexCirculator { inner }
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<&'a M, G>
+impl<'a, M, G> Iterator for VertexCirculator<&'a M>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    type Item = VertexView<&'a M, G>;
+    type Item = VertexView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
@@ -1252,9 +1292,9 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<&'a mut M, G>
+impl<'a, M, G> Iterator for VertexCirculator<&'a mut M>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
     type Item = VertexOrphan<'a, G>;
@@ -1277,22 +1317,20 @@ where
     }
 }
 
-pub struct ArcCirculator<M, G>
+pub struct ArcCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    storage: M,
+    storage: B,
     arc: Option<ArcKey>,
     trace: TraceFirst<ArcKey>,
-    phantom: PhantomData<G>,
 }
 
-impl<M, G> ArcCirculator<M, G>
+impl<B, M, G> ArcCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<ArcKey> {
@@ -1310,10 +1348,10 @@ where
     }
 }
 
-impl<M, G> Clone for ArcCirculator<M, G>
+impl<B, M, G> Clone for ArcCirculator<B>
 where
-    M: Clone + Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Clone + Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn clone(&self) -> Self {
@@ -1321,52 +1359,49 @@ where
             storage: self.storage.clone(),
             arc: self.arc,
             trace: self.trace,
-            phantom: PhantomData,
         }
     }
 }
 
-impl<M, G> From<FaceView<M, G>> for ArcCirculator<M, G>
+impl<B, M, G> From<FaceView<B>> for ArcCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(face: FaceView<M, G>) -> Self {
+    fn from(face: FaceView<B>) -> Self {
         let key = face.arc;
         let (storage, _) = face.into_inner().unbind();
         ArcCirculator {
             storage,
             arc: Some(key),
             trace: Default::default(),
-            phantom: PhantomData,
         }
     }
 }
 
-impl<M, G> From<RingView<M, G>> for ArcCirculator<M, G>
+impl<B, M, G> From<RingView<B>> for ArcCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(path: RingView<M, G>) -> Self {
+    fn from(path: RingView<B>) -> Self {
         let (storage, key) = path.into_inner().unbind();
         ArcCirculator {
             storage,
             arc: Some(key),
             trace: Default::default(),
-            phantom: PhantomData,
         }
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<&'a M, G>
+impl<'a, M, G> Iterator for ArcCirculator<&'a M>
 where
-    M: 'a + AsStorage<Arc<G>> + Consistent,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    type Item = ArcView<&'a M, G>;
+    type Item = ArcView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| View::bind_into(self.storage, key))
@@ -1379,9 +1414,9 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<&'a mut M, G>
+impl<'a, M, G> Iterator for ArcCirculator<&'a mut M>
 where
-    M: 'a + AsStorageMut<Arc<G>> + Consistent,
+    M: AsStorageMut<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
     type Item = ArcOrphan<'a, G>;
@@ -1404,19 +1439,18 @@ where
     }
 }
 
-pub struct FaceCirculator<M, G>
+pub struct FaceCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    inner: ArcCirculator<M, G>,
+    inner: ArcCirculator<B>,
 }
 
-impl<M, G> FaceCirculator<M, G>
+impl<B, M, G> FaceCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn next(&mut self) -> Option<FaceKey> {
@@ -1441,10 +1475,10 @@ where
     }
 }
 
-impl<M, G> Clone for FaceCirculator<M, G>
+impl<B, M, G> Clone for FaceCirculator<B>
 where
-    M: Clone + Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Clone + Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn clone(&self) -> Self {
@@ -1454,32 +1488,32 @@ where
     }
 }
 
-impl<M, G> From<ArcCirculator<M, G>> for FaceCirculator<M, G>
+impl<B, M, G> From<ArcCirculator<B>> for FaceCirculator<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(inner: ArcCirculator<M, G>) -> Self {
+    fn from(inner: ArcCirculator<B>) -> Self {
         FaceCirculator { inner }
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<&'a M, G>
+impl<'a, M, G> Iterator for FaceCirculator<&'a M>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    type Item = FaceView<&'a M, G>;
+    type Item = FaceView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<&'a mut M, G>
+impl<'a, M, G> Iterator for FaceCirculator<&'a mut M>
 where
-    M: 'a + AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent,
+    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
     type Item = FaceOrphan<'a, G>;

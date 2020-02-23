@@ -25,7 +25,11 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
 
     /// Gets the key for the view.
     fn key(&self) -> Self::Key;
+}
 
+pub trait Rebind: ClosedView {
+    // TODO: Simplify the bounds on this function. It may be necessary to
+    //       implement it per type.
     /// Rebinds a view's storage with the given key.
     ///
     /// Rebinding a view allows its underlying storage to be reinterpretted.
@@ -75,6 +79,9 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
 }
+
+// TODO: Remove this blanket implementation.
+impl<T> Rebind for T where T: ClosedView {}
 
 pub struct View<B, E>
 where

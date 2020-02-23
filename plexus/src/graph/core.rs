@@ -1,9 +1,12 @@
+use std::marker::PhantomData;
+
 use crate::graph::geometry::{Geometric, GraphGeometry};
 use crate::graph::storage::payload::{Arc, Edge, Entity, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
 /// A complete core that owns all of its storage.
 pub type OwnedCore<G> = Core<
+    G,
     StorageProxy<Vertex<G>>,
     StorageProxy<Arc<G>>,
     StorageProxy<Edge<G>>,
@@ -11,6 +14,7 @@ pub type OwnedCore<G> = Core<
 >;
 /// A complete core with immutable references to all of its storage.
 pub type RefCore<'a, G> = Core<
+    G,
     &'a StorageProxy<Vertex<G>>,
     &'a StorageProxy<Arc<G>>,
     &'a StorageProxy<Edge<G>>,
@@ -47,25 +51,36 @@ where
 /// implementations enforce storage constraints.
 ///
 /// A `Core` with no unbound fields is _complete_.
-pub struct Core<V = (), A = (), E = (), F = ()> {
+pub struct Core<G, V = (), A = (), E = (), F = ()>
+where
+    G: GraphGeometry,
+{
     vertices: V,
     arcs: A,
     edges: E,
     faces: F,
+    phantom: PhantomData<G>,
 }
 
-impl Core {
+impl<G> Core<G>
+where
+    G: GraphGeometry,
+{
     pub fn empty() -> Self {
         Core {
             vertices: (),
             arcs: (),
             edges: (),
             faces: (),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<V, A, E, F> Core<V, A, E, F> {
+impl<G, V, A, E, F> Core<G, V, A, E, F>
+where
+    G: GraphGeometry,
+{
     pub fn unfuse(self) -> (V, A, E, F) {
         let Core {
             vertices,
@@ -78,7 +93,7 @@ impl<V, A, E, F> Core<V, A, E, F> {
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Vertex<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorage<Vertex<G>> for Core<G, V, A, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: GraphGeometry,
@@ -88,7 +103,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Arc<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorage<Arc<G>> for Core<G, V, A, E, F>
 where
     A: AsStorage<Arc<G>>,
     G: GraphGeometry,
@@ -98,7 +113,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Edge<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorage<Edge<G>> for Core<G, V, A, E, F>
 where
     E: AsStorage<Edge<G>>,
     G: GraphGeometry,
@@ -108,7 +123,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorage<Face<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorage<Face<G>> for Core<G, V, A, E, F>
 where
     F: AsStorage<Face<G>>,
     G: GraphGeometry,
@@ -118,7 +133,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Vertex<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorageMut<Vertex<G>> for Core<G, V, A, E, F>
 where
     V: AsStorageMut<Vertex<G>>,
     G: GraphGeometry,
@@ -128,7 +143,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Arc<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorageMut<Arc<G>> for Core<G, V, A, E, F>
 where
     A: AsStorageMut<Arc<G>>,
     G: GraphGeometry,
@@ -138,7 +153,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Edge<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorageMut<Edge<G>> for Core<G, V, A, E, F>
 where
     E: AsStorageMut<Edge<G>>,
     G: GraphGeometry,
@@ -148,7 +163,7 @@ where
     }
 }
 
-impl<V, A, E, F, G> AsStorageMut<Face<G>> for Core<V, A, E, F>
+impl<G, V, A, E, F> AsStorageMut<Face<G>> for Core<G, V, A, E, F>
 where
     F: AsStorageMut<Face<G>>,
     G: GraphGeometry,
@@ -158,12 +173,12 @@ where
     }
 }
 
-impl<V, A, E, F, G> Fuse<Vertex<G>, V> for Core<(), A, E, F>
+impl<G, V, A, E, F> Fuse<Vertex<G>, V> for Core<G, (), A, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: GraphGeometry,
 {
-    type Output = Core<V, A, E, F>;
+    type Output = Core<G, V, A, E, F>;
 
     fn fuse(self, vertices: V) -> Self::Output {
         let Core {
@@ -174,16 +189,17 @@ where
             arcs,
             edges,
             faces,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<V, A, E, F, G> Fuse<Arc<G>, A> for Core<V, (), E, F>
+impl<G, V, A, E, F> Fuse<Arc<G>, A> for Core<G, V, (), E, F>
 where
     A: AsStorage<Arc<G>>,
     G: GraphGeometry,
 {
-    type Output = Core<V, A, E, F>;
+    type Output = Core<G, V, A, E, F>;
 
     fn fuse(self, arcs: A) -> Self::Output {
         let Core {
@@ -197,16 +213,17 @@ where
             arcs,
             edges,
             faces,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<V, A, E, F, G> Fuse<Edge<G>, E> for Core<V, A, (), F>
+impl<G, V, A, E, F> Fuse<Edge<G>, E> for Core<G, V, A, (), F>
 where
     E: AsStorage<Edge<G>>,
     G: GraphGeometry,
 {
-    type Output = Core<V, A, E, F>;
+    type Output = Core<G, V, A, E, F>;
 
     fn fuse(self, edges: E) -> Self::Output {
         let Core {
@@ -220,16 +237,17 @@ where
             arcs,
             edges,
             faces,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<V, A, E, F, G> Fuse<Face<G>, F> for Core<V, A, E, ()>
+impl<G, V, A, E, F> Fuse<Face<G>, F> for Core<G, V, A, E, ()>
 where
     F: AsStorage<Face<G>>,
     G: GraphGeometry,
 {
-    type Output = Core<V, A, E, F>;
+    type Output = Core<G, V, A, E, F>;
 
     fn fuse(self, faces: F) -> Self::Output {
         let Core {
@@ -243,29 +261,24 @@ where
             arcs,
             edges,
             faces,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<V, A, E, F> Geometric for Core<V, A, E, F>
+impl<G, V, A, E, F> Geometric for Core<G, V, A, E, F>
 where
-    V: Copy,
-    A: Copy + Default,
-    E: Copy + Default,
-    F: Copy + Default,
+    G: GraphGeometry,
 {
-    type Geometry = Self;
+    type Geometry = G;
 }
 
-impl<V, A, E, F> GraphGeometry for Core<V, A, E, F>
+impl<G, V, A, E, F> GraphGeometry for Core<G, V, A, E, F>
 where
-    V: Copy,
-    A: Copy + Default,
-    E: Copy + Default,
-    F: Copy + Default,
+    G: GraphGeometry,
 {
-    type Vertex = V;
-    type Arc = A;
-    type Edge = E;
-    type Face = F;
+    type Vertex = G::Vertex;
+    type Arc = G::Arc;
+    type Edge = G::Edge;
+    type Face = G::Face;
 }

@@ -166,6 +166,10 @@
 //! [1]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
 //! [2]: https://plexus.rs/user-guide/graphs
 
+// TODO: Refactor code that can be used by multiple mesh data structures into a
+//       `network` module. This includes storage and basic view APIs, which
+//       could be used to implement a non-manifold structure.
+
 mod borrow;
 mod builder;
 mod core;
@@ -218,7 +222,7 @@ pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edg
 pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
-pub use crate::graph::view::ClosedView;
+pub use crate::graph::view::{ClosedView, Rebind};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
@@ -412,18 +416,18 @@ where
     }
 
     /// Gets an immutable view of the vertex with the given key.
-    pub fn vertex(&self, key: VertexKey) -> Option<VertexView<&Self, G>> {
+    pub fn vertex(&self, key: VertexKey) -> Option<VertexView<&Self>> {
         View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the vertex with the given key.
-    pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexView<&mut Self, G>> {
+    pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexView<&mut Self>> {
         View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
-    pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self, G>> {
+    pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
         self.as_vertex_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -448,18 +452,18 @@ where
     }
 
     /// Gets an immutable view of the arc with the given key.
-    pub fn arc(&self, key: ArcKey) -> Option<ArcView<&Self, G>> {
+    pub fn arc(&self, key: ArcKey) -> Option<ArcView<&Self>> {
         View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the arc with the given key.
-    pub fn arc_mut(&mut self, key: ArcKey) -> Option<ArcView<&mut Self, G>> {
+    pub fn arc_mut(&mut self, key: ArcKey) -> Option<ArcView<&mut Self>> {
         View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
-    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self, G>> {
+    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self>> {
         self.as_arc_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -484,18 +488,18 @@ where
     }
 
     /// Gets an immutable view of the edge with the given key.
-    pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self, G>> {
+    pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self>> {
         View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the edge with the given key.
-    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self, G>> {
+    pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self>> {
         View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self, G>> {
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self>> {
         self.as_edge_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -520,18 +524,18 @@ where
     }
 
     /// Gets an immutable view of the face with the given key.
-    pub fn face(&self, key: FaceKey) -> Option<FaceView<&Self, G>> {
+    pub fn face(&self, key: FaceKey) -> Option<FaceView<&Self>> {
         View::bind_into(self, key)
     }
 
     /// Gets a mutable view of the face with the given key.
-    pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceView<&mut Self, G>> {
+    pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceView<&mut Self>> {
         View::bind_into(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
-    pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self, G>> {
+    pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self>> {
         self.as_face_storage()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
@@ -550,7 +554,7 @@ where
             .map(From::from)
     }
 
-    pub fn path<I>(&self, keys: I) -> Result<PathView<&Self, G>, GraphError>
+    pub fn path<I>(&self, keys: I) -> Result<PathView<&Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
@@ -558,7 +562,7 @@ where
         PathView::bind(self, keys)
     }
 
-    pub fn path_mut<I>(&mut self, keys: I) -> Result<PathView<&mut Self, G>, GraphError>
+    pub fn path_mut<I>(&mut self, keys: I) -> Result<PathView<&mut Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
@@ -677,8 +681,8 @@ where
     /// ```
     #[allow(clippy::type_complexity)]
     pub fn split_at_path(
-        path: PathView<&mut Self, G>,
-    ) -> Result<(VertexView<&Self, G>, VertexView<&Self, G>), GraphError> {
+        path: PathView<&mut Self>,
+    ) -> Result<(VertexView<&Self>, VertexView<&Self>), GraphError> {
         if path.is_closed() {
         }
         else {
@@ -727,12 +731,10 @@ where
     ///     // ...
     /// }
     /// ```
-    pub fn disjoint_subgraph_vertices(
-        &self,
-    ) -> impl ExactSizeIterator<Item = VertexView<&Self, G>> {
+    pub fn disjoint_subgraph_vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
         let keys = self.as_vertex_storage().keys().collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
-        let mut vertices = SmallVec::<[VertexView<_, _>; 4]>::new();
+        let mut vertices = SmallVec::<[VertexView<_>; 4]>::new();
         while let Some(key) = keys.difference(&subkeys).nth(0) {
             let vertex = VertexView::from(View::bind_unchecked(self, *key));
             vertices.push(vertex);
@@ -806,7 +808,7 @@ where
     pub fn to_mesh_by_vertex_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
     where
         B: Buildable<Vertex = T, Facet = ()>,
-        F: FnMut(VertexView<&Self, G>) -> T,
+        F: FnMut(VertexView<&Self>) -> T,
     {
         let mut builder = B::builder();
         builder.surface_with(|builder| {
@@ -908,7 +910,7 @@ where
     where
         B: Buildable<Vertex = T>,
         B::Facet: FromGeometry<G::Face>,
-        F: FnMut(FaceView<&Self, G>, VertexView<&Self, G>) -> T,
+        F: FnMut(FaceView<&Self>, VertexView<&Self>) -> T,
     {
         let mut builder = B::builder();
         builder.surface_with(|builder| {

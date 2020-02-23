@@ -8,7 +8,7 @@ use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Core, Fuse, OwnedCore, RefCore};
-use crate::graph::geometry::{GraphGeometry, VertexPosition};
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::alias::*;
@@ -25,16 +25,17 @@ use crate::{DynamicArity, IteratorExt as _};
 
 type Mutant<G> = OwnedCore<G>;
 
-pub struct FaceMutation<G>
+pub struct FaceMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
-    inner: EdgeMutation<G>,
-    storage: StorageProxy<Face<G>>,
+    inner: EdgeMutation<M>,
+    storage: StorageProxy<Face<Geometry<M>>>,
 }
 
-impl<G> FaceMutation<G>
+impl<M, G> FaceMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn core(&self) -> RefCore<G> {
@@ -168,8 +169,9 @@ where
     }
 }
 
-impl<G> AsStorage<Face<G>> for FaceMutation<G>
+impl<M, G> AsStorage<Face<G>> for FaceMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<Face<G>> {
@@ -178,28 +180,29 @@ where
 }
 
 // TODO: This is a hack. Replace this with delegation.
-impl<G> Deref for FaceMutation<G>
+impl<M> Deref for FaceMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
-    type Target = EdgeMutation<G>;
+    type Target = EdgeMutation<M>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<G> DerefMut for FaceMutation<G>
+impl<M> DerefMut for FaceMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<G> From<Mutant<G>> for FaceMutation<G>
+impl<M, G> From<Mutant<G>> for FaceMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
@@ -211,8 +214,9 @@ where
     }
 }
 
-impl<G> Transact<Mutant<G>> for FaceMutation<G>
+impl<M, G> Transact<Mutant<G>> for FaceMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Output = Mutant<G>;
@@ -251,7 +255,8 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
     {
         let arity = keys.len();
         let set = keys.iter().cloned().collect::<HashSet<_>>();
@@ -265,7 +270,7 @@ where
             .iter()
             .cloned()
             .flat_map(|key| View::bind_into(storage, key))
-            .collect::<SmallVec<[VertexView<_, _>; 4]>>();
+            .collect::<SmallVec<[VertexView<_>; 4]>>();
         if vertices.len() != arity {
             // Vertex keys refer to nonexistent vertices.
             return Err(GraphError::TopologyNotFound);
@@ -332,7 +337,11 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let face = View::bind(storage, abc)
             .map(FaceView::from)
@@ -368,7 +377,11 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let face = View::bind(storage, abc)
@@ -428,7 +441,11 @@ where
     pub fn snapshot<M>(storage: M, abc: FaceKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let vertices = View::bind(storage, abc)
@@ -465,7 +482,11 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let cache = (
@@ -510,7 +531,11 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
@@ -546,8 +571,8 @@ pub fn remove_with_cache<M, N, G>(
     cache: FaceRemoveCache<G>,
 ) -> Result<Face<G>, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let FaceRemoveCache { abc, arcs, .. } = cache;
@@ -565,8 +590,8 @@ pub fn split_with_cache<M, N, G>(
     cache: FaceSplitCache<G>,
 ) -> Result<ArcKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let FaceSplitCache {
@@ -591,8 +616,8 @@ pub fn poke_with_cache<M, N, G>(
     cache: FacePokeCache<G>,
 ) -> Result<VertexKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let FacePokeCache {
@@ -615,8 +640,8 @@ pub fn bridge_with_cache<M, N, G>(
     cache: FaceBridgeCache<G>,
 ) -> Result<(), GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let FaceBridgeCache {
@@ -632,8 +657,18 @@ where
     //       arcs?
     // Re-insert the arcs of the faces and bridge the mutual arcs.
     for (ab, cd) in source.into_iter().zip(destination.into_iter().rev()) {
-        let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
-        edge::bridge_with_cache(mutation.as_mut(), cache)?;
+        // TODO: It should NOT be necessary to construct a `Core` to pass to
+        //       `snapshot` here, but using `mutation.as_mut()` causes the
+        //       compiler to complain that `Mutation<M>` does not implement
+        //       `Reborrow`. It doesn't, but `mutation.as_mut()` returns
+        //       `&mut Mutation<M>`, which implements that trait!
+        let mutation = mutation.as_mut();
+        let core = Core::empty()
+            .fuse(mutation.as_vertex_storage())
+            .fuse(mutation.as_arc_storage())
+            .fuse(mutation.as_face_storage());
+        let cache = ArcBridgeCache::snapshot(&core, ab, cd)?;
+        edge::bridge_with_cache(mutation, cache)?;
     }
     // TODO: Is there any reasonable topology this can return?
     Ok(())
@@ -644,8 +679,8 @@ pub fn extrude_with_cache<M, N, G>(
     cache: FaceExtrudeCache<G>,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let FaceExtrudeCache {

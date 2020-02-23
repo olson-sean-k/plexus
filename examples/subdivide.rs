@@ -6,7 +6,7 @@ use plexus::primitive::NGon;
 use plexus::AsPosition;
 use smallvec::SmallVec;
 
-pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
+pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
 where
     G: EdgeMidpoint + GraphGeometry,
     G::Vertex: AsPosition,

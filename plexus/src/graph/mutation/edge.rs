@@ -5,7 +5,7 @@ use theon::AsPosition;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Core, Fuse};
-use crate::graph::geometry::{GraphGeometry, VertexPosition};
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -23,18 +23,22 @@ pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
 #[allow(clippy::type_complexity)]
-type Mutant<G> = Core<StorageProxy<Vertex<G>>, StorageProxy<Arc<G>>, StorageProxy<Edge<G>>, ()>;
+type Mutant<G> = Core<G, StorageProxy<Vertex<G>>, StorageProxy<Arc<G>>, StorageProxy<Edge<G>>, ()>;
 
-pub struct EdgeMutation<G>
+pub struct EdgeMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
-    inner: VertexMutation<G>,
-    storage: (StorageProxy<Arc<G>>, StorageProxy<Edge<G>>),
+    inner: VertexMutation<M>,
+    storage: (
+        StorageProxy<Arc<Geometry<M>>>,
+        StorageProxy<Edge<Geometry<M>>>,
+    ),
 }
 
-impl<G> EdgeMutation<G>
+impl<M, G> EdgeMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     pub fn get_or_insert_edge_with<F>(
@@ -45,14 +49,14 @@ where
     where
         F: Clone + FnOnce() -> G::Arc,
     {
-        fn get_or_insert_arc_with<G, F>(
-            mutation: &mut EdgeMutation<G>,
+        fn get_or_insert_arc_with<M, F>(
+            mutation: &mut EdgeMutation<M>,
             span: (VertexKey, VertexKey),
             f: F,
         ) -> (Option<EdgeKey>, ArcKey)
         where
-            G: GraphGeometry,
-            F: FnOnce() -> G::Arc,
+            M: Geometric,
+            F: FnOnce() -> <M::Geometry as GraphGeometry>::Arc,
         {
             let (a, _) = span;
             let ab = span.into();
@@ -133,8 +137,9 @@ where
     }
 }
 
-impl<G> AsStorage<Arc<G>> for EdgeMutation<G>
+impl<M, G> AsStorage<Arc<G>> for EdgeMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<Arc<G>> {
@@ -142,8 +147,9 @@ where
     }
 }
 
-impl<G> AsStorage<Edge<G>> for EdgeMutation<G>
+impl<M, G> AsStorage<Edge<G>> for EdgeMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<Edge<G>> {
@@ -152,28 +158,29 @@ where
 }
 
 // TODO: This is a hack. Replace this with delegation.
-impl<G> Deref for EdgeMutation<G>
+impl<M> Deref for EdgeMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
-    type Target = VertexMutation<G>;
+    type Target = VertexMutation<M>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<G> DerefMut for EdgeMutation<G>
+impl<M> DerefMut for EdgeMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<G> From<Mutant<G>> for EdgeMutation<G>
+impl<M, G> From<Mutant<G>> for EdgeMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
@@ -185,8 +192,9 @@ where
     }
 }
 
-impl<G> Transact<Mutant<G>> for EdgeMutation<G>
+impl<M, G> Transact<Mutant<G>> for EdgeMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Output = Mutant<G>;
@@ -226,7 +234,11 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -276,7 +288,8 @@ where
             + AsStorage<Edge<G>>
             + AsStorage<Face<G>>
             + AsStorage<Vertex<G>>
-            + Consistent,
+            + Consistent
+            + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -315,7 +328,8 @@ where
     pub fn snapshot<M>(storage: M, ab: ArcKey, geometry: G::Vertex) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -363,7 +377,8 @@ where
     pub fn snapshot<M>(storage: M, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>>,
+        M::Target:
+            AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
     {
         let storage = storage.reborrow();
         let source = View::bind(storage, source)
@@ -436,7 +451,11 @@ where
     ) -> Result<Self, GraphError>
     where
         M: Reborrow,
-        M::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Consistent,
+        M::Target: AsStorage<Arc<G>>
+            + AsStorage<Face<G>>
+            + AsStorage<Vertex<G>>
+            + Consistent
+            + Geometric<Geometry = G>,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
@@ -473,8 +492,8 @@ pub fn remove_with_cache<M, N, G>(
     cache: EdgeRemoveCache<G>,
 ) -> Result<CompositeEdge<G>, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     fn remove_arc_with_cache<M, N, G>(
@@ -482,8 +501,8 @@ where
         cache: ArcRemoveCache<G>,
     ) -> Result<Arc<G>, GraphError>
     where
-        N: AsMut<Mutation<M, G>>,
-        M: Mutable<G>,
+        N: AsMut<Mutation<M>>,
+        M: Mutable<Geometry = G>,
         G: GraphGeometry,
     {
         let ArcRemoveCache { ab, cache, .. } = cache;
@@ -540,14 +559,14 @@ pub fn split_with_cache<M, N, G>(
     cache: EdgeSplitCache<G>,
 ) -> Result<VertexKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<Arc<G>, GraphError>
     where
-        N: AsMut<Mutation<M, G>>,
-        M: Mutable<G>,
+        N: AsMut<Mutation<M>>,
+        M: Mutable<Geometry = G>,
         G: GraphGeometry,
     {
         // TODO: Is is probably more correct to disconnect the source vertex
@@ -575,8 +594,8 @@ where
         ab: ArcKey,
     ) -> Result<(ArcKey, ArcKey), GraphError>
     where
-        N: AsMut<Mutation<M, G>>,
-        M: Mutable<G>,
+        N: AsMut<Mutation<M>>,
+        M: Mutable<Geometry = G>,
         G: GraphGeometry,
     {
         // Remove the arc and insert two truncated arcs in its place.
@@ -641,8 +660,8 @@ pub fn bridge_with_cache<M, N, G>(
     cache: ArcBridgeCache<G>,
 ) -> Result<FaceKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let ArcBridgeCache {
@@ -662,8 +681,8 @@ pub fn extrude_with_cache<M, N, G>(
     cache: ArcExtrudeCache<G>,
 ) -> Result<ArcKey, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let ArcExtrudeCache {

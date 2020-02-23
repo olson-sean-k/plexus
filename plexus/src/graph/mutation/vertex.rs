@@ -1,6 +1,6 @@
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Core, Fuse};
-use crate::graph::geometry::GraphGeometry;
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::key::{ArcKey, VertexKey};
@@ -10,17 +10,18 @@ use crate::graph::view::View;
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
-type Mutant<G> = Core<StorageProxy<Vertex<G>>, (), (), ()>;
+type Mutant<G> = Core<G, StorageProxy<Vertex<G>>, (), (), ()>;
 
-pub struct VertexMutation<G>
+pub struct VertexMutation<M>
 where
-    G: GraphGeometry,
+    M: Geometric,
 {
-    storage: StorageProxy<Vertex<G>>,
+    storage: StorageProxy<Vertex<Geometry<M>>>,
 }
 
-impl<G> VertexMutation<G>
+impl<M, G> VertexMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
@@ -44,8 +45,9 @@ where
     }
 }
 
-impl<G> AsStorage<Vertex<G>> for VertexMutation<G>
+impl<M, G> AsStorage<Vertex<G>> for VertexMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
@@ -53,8 +55,9 @@ where
     }
 }
 
-impl<G> From<Mutant<G>> for VertexMutation<G>
+impl<M, G> From<Mutant<G>> for VertexMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn from(core: Mutant<G>) -> Self {
@@ -63,8 +66,9 @@ where
     }
 }
 
-impl<G> Transact<Mutant<G>> for VertexMutation<G>
+impl<M, G> Transact<Mutant<G>> for VertexMutation<M>
 where
+    M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     type Output = Mutant<G>;
@@ -110,8 +114,8 @@ pub fn remove_with_cache<M, N, G>(
     cache: VertexRemoveCache<G>,
 ) -> Result<Vertex<G>, GraphError>
 where
-    N: AsMut<Mutation<M, G>>,
-    M: Mutable<G>,
+    N: AsMut<Mutation<M>>,
+    M: Mutable<Geometry = G>,
     G: GraphGeometry,
 {
     let VertexRemoveCache { cache } = cache;

@@ -1,10 +1,9 @@
 use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
-use std::marker::PhantomData;
 
 use crate::graph::borrow::Reborrow;
-use crate::graph::geometry::GraphGeometry;
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::Consistent;
 use crate::graph::storage::key::{ArcKey, VertexKey};
 use crate::graph::storage::payload::{Arc, Vertex};
@@ -33,27 +32,26 @@ use crate::IteratorExt as _;
 /// (`PathView` does not implement `Deref` or expose a `geometry` field). See
 /// the module documentation for more information about topological views.
 #[derive(Clone)]
-pub struct PathView<M, G>
+pub struct PathView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
-    G: GraphGeometry,
+    B: Reborrow,
+    B::Target:
+        AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
     keys: VecDeque<ArcKey>,
-    storage: M,
-    phantom: PhantomData<G>,
+    storage: B,
 }
 
-impl<M, G> PathView<M, G>
+impl<B, M, G> PathView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     // Paths bind multiple keys to storage and so do not support `View`,
     // `Orphan`, nor `ClosedView`. This bespoke `bind` function ensures that the
     // path is not empty and that the topology forms a non-intersecting path.
-    pub(in crate::graph) fn bind<I>(storage: M, keys: I) -> Result<Self, GraphError>
+    pub(in crate::graph) fn bind<I>(storage: B, keys: I) -> Result<Self, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
@@ -67,7 +65,6 @@ where
         let mut path = PathView {
             keys: (&[ab]).iter().cloned().collect(),
             storage,
-            phantom: PhantomData,
         };
         for key in keys {
             path.push_front(Selector::ByKey(key))?;
@@ -204,13 +201,13 @@ where
     }
 
     /// Gets the vertex at the back of the path.
-    pub fn back(&self) -> VertexView<&M::Target, G> {
+    pub fn back(&self) -> VertexView<&M> {
         let (key, _) = self.endpoints();
         View::bind_into(self.storage.reborrow(), key).expect_consistent()
     }
 
     /// Gets the vertex at the front of the path.
-    pub fn front(&self) -> VertexView<&M::Target, G> {
+    pub fn front(&self) -> VertexView<&M> {
         let (_, key) = self.endpoints();
         View::bind_into(self.storage.reborrow(), key).expect_consistent()
     }
@@ -222,7 +219,7 @@ where
     ///
     /// Returns the ring bisected by the path if such a ring exists, otherwise
     /// `None`.
-    pub fn into_bisected_ring(self) -> Option<RingView<M, G>> {
+    pub fn into_bisected_ring(self) -> Option<RingView<B>> {
         // The path may bisect a ring if it is open and is not a boundary path.
         // Note that open boundary paths cannot bisect a ring, so such paths are
         // ignored.
@@ -252,12 +249,15 @@ where
     }
 
     /// Gets the ring bisected by the path, if any.
-    pub fn bisected_ring(&self) -> Option<RingView<&M::Target, G>> {
+    pub fn bisected_ring(&self) -> Option<RingView<&M>> {
         self.interior_reborrow().into_bisected_ring()
     }
 
     /// Gets an iterator over the vertices in the path.
-    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&M::Target, G>> {
+    pub fn vertices<'a>(&'a self) -> impl Iterator<Item = VertexView<&'a M>>
+    where
+        M: 'a,
+    {
         let back = self.back();
         Some(back)
             .into_iter()
@@ -265,7 +265,10 @@ where
     }
 
     /// Gets an iterator over the arcs in the path.
-    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&M::Target, G>> {
+    pub fn arcs<'a>(&'a self) -> impl ExactSizeIterator<Item = ArcView<&'a M>>
+    where
+        M: 'a,
+    {
         let storage = self.storage.reborrow();
         self.keys
             .iter()
@@ -307,17 +310,13 @@ where
         self.is_closed() || self.bisected_ring().is_some()
     }
 
-    fn bind_unchecked<I>(storage: M, keys: I) -> Self
+    fn bind_unchecked<I>(storage: B, keys: I) -> Self
     where
         I: IntoIterator,
         I::Item: Borrow<ArcKey>,
     {
         let keys = keys.into_iter().map(|key| *key.borrow()).collect();
-        PathView {
-            storage,
-            keys,
-            phantom: PhantomData,
-        }
+        PathView { storage, keys }
     }
 
     fn endpoints(&self) -> (VertexKey, VertexKey) {
@@ -326,36 +325,35 @@ where
         (a, b)
     }
 
-    fn interior_reborrow(&self) -> PathView<&M::Target, G> {
+    fn interior_reborrow(&self) -> PathView<&M> {
         let storage = self.storage.reborrow();
         let keys = self.keys.iter();
         PathView::bind_unchecked(storage, keys)
     }
 }
 
-impl<'a, M, G> PathView<&'a mut M, G>
+impl<'a, M, G> PathView<&'a mut M>
 where
-    M: 'a + AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> PathView<&'a M, G> {
+    pub fn into_ref(self) -> PathView<&'a M> {
         let PathView { keys, storage, .. } = self;
         PathView {
             keys,
             storage: &*storage,
-            phantom: PhantomData,
         }
     }
 }
 
-impl<M, G> PartialEq for PathView<M, G>
+impl<B, M, G> PartialEq for PathView<B>
 where
-    M: Reborrow,
-    M::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn eq(&self, other: &Self) -> bool {

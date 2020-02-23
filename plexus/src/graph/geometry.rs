@@ -34,7 +34,7 @@
 //! use smallvec::SmallVec;
 //!
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
-//! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>, G>) -> FaceView<&mut MeshGraph<G>, G>
+//! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
 //! where
 //!     G: EdgeMidpoint + GraphGeometry,
 //!     G::Vertex: AsPosition,
@@ -81,10 +81,19 @@ use crate::graph::view::face::Ringoid;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::{GraphError, OptionExt as _};
 
+pub type Geometry<M> = <M as Geometric>::Geometry;
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 
 pub trait Geometric {
     type Geometry: GraphGeometry;
+}
+
+impl<B> Geometric for B
+where
+    B: Reborrow,
+    B::Target: Geometric,
+{
+    type Geometry = <B::Target as Geometric>::Geometry;
 }
 
 // TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
@@ -208,10 +217,13 @@ pub trait VertexCentroid: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<B>(vertex: VertexView<B>) -> Result<VertexPosition<Self>, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> VertexCentroid for G
@@ -219,10 +231,13 @@ where
     G: GraphGeometry,
     G::Vertex: AsPosition,
 {
-    fn centroid<M>(vertex: VertexView<M, Self>) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<B>(vertex: VertexView<B>) -> Result<VertexPosition<Self>, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         Ok(VertexPosition::<Self>::centroid(
             vertex
@@ -237,11 +252,14 @@ pub trait VertexNormal: FaceNormal
 where
     Self::Vertex: AsPosition,
 {
-    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B>(vertex: VertexView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Face<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> VertexNormal for G
@@ -249,11 +267,14 @@ where
     G: FaceNormal,
     G::Vertex: AsPosition,
 {
-    fn normal<M>(vertex: VertexView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B>(vertex: VertexView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<Self>> + AsStorage<Face<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Face<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         Vector::<VertexPosition<Self>>::mean(
             vertex
@@ -271,10 +292,13 @@ pub trait ArcNormal: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B>(arc: ArcView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> ArcNormal for G
@@ -284,10 +308,13 @@ where
     VertexPosition<G>: EuclideanSpace,
     Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
 {
-    fn normal<M>(arc: ArcView<M, Self>) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B>(arc: ArcView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         let (a, b) = FromItems::from_items(arc.vertices().map(|vertex| *vertex.position()))
             .expect_consistent();
@@ -303,12 +330,15 @@ pub trait EdgeMidpoint: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
+    fn midpoint<T, B>(edge: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        E: Edgoid<M, Self>,
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        T: Edgoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Edge<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -317,12 +347,15 @@ where
     G::Vertex: AsPosition,
     VertexPosition<G>: Interpolate<Output = VertexPosition<G>>,
 {
-    fn midpoint<E, M>(edge: E) -> Result<VertexPosition<Self>, GraphError>
+    fn midpoint<T, B>(edge: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        E: Edgoid<M, Self>,
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<Self>> + AsStorage<Edge<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        T: Edgoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Edge<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         let arc = edge.into_arc();
         let (a, b) =
@@ -335,11 +368,14 @@ pub trait FaceCentroid: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<T, B>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        R: Ringoid<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        T: Ringoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> FaceCentroid for G
@@ -347,11 +383,14 @@ where
     G: GraphGeometry,
     G::Vertex: AsPosition,
 {
-    fn centroid<R, M>(ring: R) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<T, B>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        R: Ringoid<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        T: Ringoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         Ok(
             VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
@@ -364,11 +403,14 @@ pub trait FaceNormal: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<T, B>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        R: Ringoid<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        T: Ringoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 impl<G> FaceNormal for G
@@ -378,11 +420,14 @@ where
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
-    fn normal<R, M>(ring: R) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<T, B>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        R: Ringoid<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+        T: Ringoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>,
     {
         let (a, b) =
             FromItems::from_items(ring.vertices().take(2).map(|vertex| *vertex.position()))
@@ -399,11 +444,14 @@ where
     Self::Vertex: AsPosition,
     VertexPosition<Self>: FiniteDimensional<N = U3>,
 {
-    fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<Self>>, GraphError>
+    fn plane<T, B>(ring: T) -> Result<Plane<VertexPosition<Self>>, GraphError>
     where
-        R: Ringoid<M, Self>,
-        M: Reborrow,
-        M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent;
+        T: Ringoid<B>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Self>>
+            + AsStorage<Vertex<Self>>
+            + Consistent
+            + Geometric<Geometry = Self>;
 }
 
 // TODO: The `array` feature only supports Linux. See
@@ -425,11 +473,14 @@ mod array {
         Scalar<VertexPosition<G>>: ArrayScalar,
         Vector<VertexPosition<G>>: FromItems + IntoItems,
     {
-        fn plane<R, M>(ring: R) -> Result<Plane<VertexPosition<G>>, GraphError>
+        fn plane<T, B>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>
         where
-            R: Ringoid<M, Self>,
-            M: Reborrow,
-            M::Target: AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent,
+            T: Ringoid<B>,
+            B: Reborrow,
+            B::Target: AsStorage<Arc<Self>>
+                + AsStorage<Vertex<Self>>
+                + Consistent
+                + Geometric<Geometry = Self>,
         {
             let points = ring
                 .vertices()

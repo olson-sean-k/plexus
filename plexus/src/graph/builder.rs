@@ -10,7 +10,7 @@ pub struct GraphBuilder<G>
 where
     G: GraphGeometry,
 {
-    mutation: Mutation<MeshGraph<G>, G>,
+    mutation: Mutation<MeshGraph<G>>,
 }
 
 impl<G> Default for GraphBuilder<G>
