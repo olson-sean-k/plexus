@@ -196,6 +196,7 @@ use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, Fuse, OwnedCore};
+use crate::graph::geometry::Geometric;
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::graph::storage::alias::*;
 use crate::graph::storage::key::OpaqueKey;
@@ -1267,6 +1268,13 @@ where
         }
         mutation.commit()
     }
+}
+
+impl<G> Geometric for MeshGraph<G>
+where
+    G: GraphGeometry,
+{
+    type Geometry = G;
 }
 
 impl<G> Into<OwnedCore<G>> for MeshGraph<G>

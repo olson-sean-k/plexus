@@ -1,4 +1,4 @@
-use crate::graph::geometry::GraphGeometry;
+use crate::graph::geometry::{Geometric, GraphGeometry};
 use crate::graph::storage::payload::{Arc, Edge, Face, Payload, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
@@ -245,4 +245,27 @@ where
             faces,
         }
     }
+}
+
+impl<V, A, E, F> Geometric for Core<V, A, E, F>
+where
+    V: Copy,
+    A: Copy + Default,
+    E: Copy + Default,
+    F: Copy + Default,
+{
+    type Geometry = Self;
+}
+
+impl<V, A, E, F> GraphGeometry for Core<V, A, E, F>
+where
+    V: Copy,
+    A: Copy + Default,
+    E: Copy + Default,
+    F: Copy + Default,
+{
+    type Vertex = V;
+    type Arc = A;
+    type Edge = E;
+    type Face = F;
 }

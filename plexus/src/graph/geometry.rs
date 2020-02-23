@@ -83,6 +83,10 @@ use crate::graph::{GraphError, OptionExt as _};
 
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
 
+pub trait Geometric {
+    type Geometry: GraphGeometry;
+}
+
 // TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
 //       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
 /// Graph geometry.
