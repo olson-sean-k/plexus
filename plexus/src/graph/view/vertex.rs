@@ -381,7 +381,7 @@ where
         let (storage, a) = self.into_inner().unbind();
         let cache = VertexRemoveCache::snapshot(&storage, a).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| vertex::remove_with_cache(mutation, cache))
+            .commit_with(move |mutation| vertex::remove(mutation, cache))
             .map(|_| ())
             .expect_consistent()
     }

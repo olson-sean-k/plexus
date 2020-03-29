@@ -3,6 +3,11 @@
 //! Please note that versions in the `0.0.*` series are experimental and
 //! unstable.
 
+// This lint is a bit subjective. Using `next` is equivalent, but the Plexus
+// authors find `nth(0)` more clear, especially as part of a non-trivial
+// iterator expression. This may be revisited though.
+#![allow(clippy::iter_nth_zero)]
+
 pub mod buffer;
 pub mod builder;
 pub mod encoding;

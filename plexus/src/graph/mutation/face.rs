@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use smallvec::SmallVec;
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
@@ -46,32 +46,28 @@ where
             .fuse(self.as_face_storage())
     }
 
-    pub fn insert_face(
+    // TODO: Refactor this into a non-associated function.
+    // TODO: Should this accept arc geometry at all?
+    pub fn insert_face_with<F>(
         &mut self,
-        vertices: &[VertexKey],
-        geometry: (G::Arc, G::Face),
-    ) -> Result<FaceKey, GraphError> {
-        let cache = FaceInsertCache::snapshot(&self.core(), vertices, geometry)?;
-        self.insert_face_with_cache(cache)
-    }
-
-    pub fn insert_face_with_cache(
-        &mut self,
-        cache: FaceInsertCache<G>,
-    ) -> Result<FaceKey, GraphError> {
+        cache: FaceInsertCache,
+        f: F,
+    ) -> Result<FaceKey, GraphError>
+    where
+        F: FnOnce() -> (G::Arc, G::Face),
+    {
         let FaceInsertCache {
-            vertices,
+            perimeter,
             connectivity,
-            geometry,
-            ..
         } = cache;
+        let geometry = f();
         // Insert edges and collect the interior arcs.
-        let arcs = vertices
+        let arcs = perimeter
             .iter()
             .cloned()
             .perimeter()
             .map(|(a, b)| {
-                self.get_or_insert_edge_with((a, b), || geometry.0)
+                self.get_or_insert_edge_with((a, b), || (Default::default(), geometry.0))
                     .map(|(_, (ab, _))| ab)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -232,41 +228,38 @@ where
     }
 }
 
-pub struct FaceInsertCache<'a, G>
-where
-    G: GraphGeometry,
-{
-    vertices: &'a [VertexKey],
+pub struct FaceInsertCache {
+    perimeter: SmallVec<[VertexKey; 4]>,
     connectivity: (
         HashMap<VertexKey, Vec<ArcKey>>,
         HashMap<VertexKey, Vec<ArcKey>>,
     ),
-    geometry: (G::Arc, G::Face),
 }
 
-impl<'a, G> FaceInsertCache<'a, G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(
-        storage: M,
-        keys: &'a [VertexKey],
-        geometry: (G::Arc, G::Face),
-    ) -> Result<Self, GraphError>
+impl FaceInsertCache {
+    pub fn snapshot<B, K>(storage: B, perimeter: K) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
+            + Geometric,
+        K: IntoIterator,
+        K::Item: Borrow<VertexKey>,
     {
-        let arity = keys.len();
-        let set = keys.iter().cloned().collect::<HashSet<_>>();
+        let perimeter = perimeter
+            .into_iter()
+            .map(|key| *key.borrow())
+            .collect::<SmallVec<_>>();
+        let arity = perimeter.len();
+        let set = perimeter.iter().cloned().collect::<HashSet<_>>();
         if set.len() != arity {
             // Vertex keys are not unique.
             return Err(GraphError::TopologyMalformed);
         }
 
         let storage = storage.reborrow();
-        let vertices = keys
+        let vertices = perimeter
             .iter()
             .cloned()
             .flat_map(|key| View::bind_into(storage, key))
@@ -275,7 +268,7 @@ where
             // Vertex keys refer to nonexistent vertices.
             return Err(GraphError::TopologyNotFound);
         }
-        for (previous, next) in keys
+        for (previous, next) in perimeter
             .iter()
             .cloned()
             .perimeter()
@@ -284,7 +277,7 @@ where
         {
             if let Some(previous) = previous {
                 if previous.face.is_some() {
-                    // An interior arc is already occuppied by a face.
+                    // A face already occupies an interior arc.
                     return Err(GraphError::TopologyConflict);
                 }
                 // Let the previous arc be AB and the next arc be BC. The
@@ -313,75 +306,56 @@ where
             outgoing.insert(key, vertex.reachable_outgoing_arcs().keys().collect());
         }
         Ok(FaceInsertCache {
-            vertices: keys,
+            perimeter,
             connectivity: (incoming, outgoing),
-            geometry,
         })
     }
 }
 
-pub struct FaceRemoveCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct FaceRemoveCache {
     abc: FaceKey,
     arcs: Vec<ArcKey>,
-    phantom: PhantomData<G>,
 }
 
-impl<G> FaceRemoveCache<G>
-where
-    G: GraphGeometry,
-{
+impl FaceRemoveCache {
     // TODO: Should this require consistency?
-    pub fn snapshot<M>(storage: M, abc: FaceKey) -> Result<Self, GraphError>
+    pub fn snapshot<B>(storage: B, abc: FaceKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let face = View::bind(storage, abc)
             .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let arcs = face.interior_arcs().map(|arc| arc.key()).collect();
-        Ok(FaceRemoveCache {
-            abc,
-            arcs,
-            phantom: PhantomData,
-        })
+        Ok(FaceRemoveCache { abc, arcs })
     }
 }
 
-pub struct FaceSplitCache<G>
-where
-    G: GraphGeometry,
-{
-    cache: FaceRemoveCache<G>,
+pub struct FaceSplitCache {
+    cache: FaceRemoveCache,
     left: Vec<VertexKey>,
     right: Vec<VertexKey>,
-    geometry: G::Face,
 }
 
-impl<G> FaceSplitCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(
-        storage: M,
+impl FaceSplitCache {
+    pub fn snapshot<B>(
+        storage: B,
         abc: FaceKey,
         source: VertexKey,
         destination: VertexKey,
     ) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let face = View::bind(storage, abc)
@@ -420,32 +394,24 @@ where
             cache: FaceRemoveCache::snapshot(storage, abc)?,
             left,
             right,
-            geometry: face.geometry,
         })
     }
 }
 
-pub struct FacePokeCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct FacePokeCache {
     vertices: Vec<VertexKey>,
-    geometry: G::Vertex,
-    cache: FaceRemoveCache<G>,
+    cache: FaceRemoveCache,
 }
 
-impl<G> FacePokeCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, abc: FaceKey, geometry: G::Vertex) -> Result<Self, GraphError>
+impl FacePokeCache {
+    pub fn snapshot<B>(storage: B, abc: FaceKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let vertices = View::bind(storage, abc)
@@ -456,37 +422,30 @@ where
             .collect();
         Ok(FacePokeCache {
             vertices,
-            geometry,
             cache: FaceRemoveCache::snapshot(storage, abc)?,
         })
     }
 }
 
-pub struct FaceBridgeCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct FaceBridgeCache {
     source: SmallVec<[ArcKey; 4]>,
     destination: SmallVec<[ArcKey; 4]>,
-    cache: (FaceRemoveCache<G>, FaceRemoveCache<G>),
+    cache: (FaceRemoveCache, FaceRemoveCache),
 }
 
-impl<G> FaceBridgeCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(
-        storage: M,
+impl FaceBridgeCache {
+    pub fn snapshot<B>(
+        storage: B,
         source: FaceKey,
         destination: FaceKey,
     ) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let cache = (
@@ -511,71 +470,45 @@ where
     }
 }
 
-pub struct FaceExtrudeCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct FaceExtrudeCache {
     sources: Vec<VertexKey>,
-    destinations: Vec<G::Vertex>,
-    geometry: G::Face,
-    cache: FaceRemoveCache<G>,
+    //destinations: Vec<G::Vertex>,
+    //geometry: G::Face,
+    cache: FaceRemoveCache,
 }
-impl<G> FaceExtrudeCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(
-        storage: M,
-        abc: FaceKey,
-        translation: Vector<VertexPosition<G>>,
-    ) -> Result<Self, GraphError>
+
+impl FaceExtrudeCache {
+    pub fn snapshot<B>(storage: B, abc: FaceKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
-        G::Vertex: AsPosition,
-        VertexPosition<G>: EuclideanSpace,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
         let face = View::bind(storage, abc)
             .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-
-        let sources = face.vertices().map(|vertex| vertex.key()).collect();
-        let destinations = face
-            .vertices()
-            .map(|vertex| {
-                let mut geometry = vertex.geometry;
-                geometry.transform(|position| *position + translation);
-                geometry
-            })
-            .collect();
-        Ok(FaceExtrudeCache {
-            sources,
-            destinations,
-            geometry: face.geometry,
-            cache,
-        })
+        let sources = face.vertices().keys().collect();
+        Ok(FaceExtrudeCache { sources, cache })
     }
 }
 
 // TODO: Does this require a cache (or consistency)?
 // TODO: This may need to be more destructive to maintain consistency. Edges,
 //       arcs, and vertices may also need to be removed.
-pub fn remove_with_cache<M, N, G>(
+pub fn remove<M, N>(
     mut mutation: N,
-    cache: FaceRemoveCache<G>,
-) -> Result<Face<G>, GraphError>
+    cache: FaceRemoveCache,
+) -> Result<Face<Geometry<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
-    let FaceRemoveCache { abc, arcs, .. } = cache;
+    let FaceRemoveCache { abc, arcs } = cache;
     mutation.as_mut().disconnect_face_interior(&arcs)?;
     let face = mutation
         .as_mut()
@@ -585,64 +518,49 @@ where
     Ok(face)
 }
 
-pub fn split_with_cache<M, N, G>(
-    mut mutation: N,
-    cache: FaceSplitCache<G>,
-) -> Result<ArcKey, GraphError>
+pub fn split<M, N>(mut mutation: N, cache: FaceSplitCache) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
-    let FaceSplitCache {
-        cache,
-        left,
-        right,
-        geometry,
-        ..
-    } = cache;
-    remove_with_cache(mutation.as_mut(), cache)?;
+    let FaceSplitCache { cache, left, right } = cache;
+    remove(mutation.as_mut(), cache)?;
+    let ab = (left[0], right[0]).into();
+    let left = FaceInsertCache::snapshot(mutation.as_mut(), left)?;
+    let right = FaceInsertCache::snapshot(mutation.as_mut(), right)?;
+    mutation.as_mut().insert_face_with(left, Default::default)?;
     mutation
         .as_mut()
-        .insert_face(&left, (Default::default(), geometry))?;
-    mutation
-        .as_mut()
-        .insert_face(&right, (Default::default(), geometry))?;
-    Ok((left[0], right[0]).into())
+        .insert_face_with(right, Default::default)?;
+    Ok(ab)
 }
 
-pub fn poke_with_cache<M, N, G>(
+pub fn poke_with<M, N, F>(
     mut mutation: N,
-    cache: FacePokeCache<G>,
+    cache: FacePokeCache,
+    f: F,
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
+    F: FnOnce() -> <Geometry<M> as GraphGeometry>::Vertex,
 {
-    let FacePokeCache {
-        vertices,
-        geometry,
-        cache,
-    } = cache;
-    let face = remove_with_cache(mutation.as_mut(), cache)?;
-    let c = mutation.as_mut().insert_vertex(geometry);
+    let FacePokeCache { vertices, cache } = cache;
+    let face = remove(mutation.as_mut(), cache)?;
+    let c = mutation.as_mut().insert_vertex(f());
     for (a, b) in vertices.into_iter().perimeter() {
+        let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, c])?;
         mutation
             .as_mut()
-            .insert_face(&[a, b, c], (Default::default(), face.geometry))?;
+            .insert_face_with(cache, || (Default::default(), face.geometry))?;
     }
     Ok(c)
 }
 
-pub fn bridge_with_cache<M, N, G>(
-    mut mutation: N,
-    cache: FaceBridgeCache<G>,
-) -> Result<(), GraphError>
+pub fn bridge<M, N>(mut mutation: N, cache: FaceBridgeCache) -> Result<(), GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
     let FaceBridgeCache {
         source,
@@ -651,63 +569,70 @@ where
     } = cache;
     // Remove the source and destination faces. Pair the topology with edge
     // geometry for the source face.
-    remove_with_cache(mutation.as_mut(), cache.0)?;
-    remove_with_cache(mutation.as_mut(), cache.1)?;
+    remove(mutation.as_mut(), cache.0)?;
+    remove(mutation.as_mut(), cache.1)?;
     // TODO: Is it always correct to reverse the order of the opposite face's
     //       arcs?
     // Re-insert the arcs of the faces and bridge the mutual arcs.
     for (ab, cd) in source.into_iter().zip(destination.into_iter().rev()) {
-        // TODO: It should NOT be necessary to construct a `Core` to pass to
-        //       `snapshot` here, but using `mutation.as_mut()` causes the
-        //       compiler to complain that `Mutation<M>` does not implement
-        //       `Reborrow`. It doesn't, but `mutation.as_mut()` returns
-        //       `&mut Mutation<M>`, which implements that trait!
-        let mutation = mutation.as_mut();
-        let core = Core::empty()
-            .fuse(mutation.as_vertex_storage())
-            .fuse(mutation.as_arc_storage())
-            .fuse(mutation.as_face_storage());
-        let cache = ArcBridgeCache::snapshot(&core, ab, cd)?;
-        edge::bridge_with_cache(mutation, cache)?;
+        let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
+        edge::bridge(mutation.as_mut(), cache)?;
     }
     // TODO: Is there any reasonable topology this can return?
     Ok(())
 }
 
-pub fn extrude_with_cache<M, N, G>(
+pub fn extrude_with<M, N, F>(
     mut mutation: N,
-    cache: FaceExtrudeCache<G>,
+    cache: FaceExtrudeCache,
+    f: F,
 ) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
+    F: FnOnce() -> Vector<VertexPosition<Geometry<M>>>,
+    <Geometry<M> as GraphGeometry>::Vertex: AsPosition,
+    VertexPosition<Geometry<M>>: EuclideanSpace,
 {
-    let FaceExtrudeCache {
-        sources,
-        destinations,
-        geometry,
-        cache,
-    } = cache;
-    remove_with_cache(mutation.as_mut(), cache)?;
+    let FaceExtrudeCache { sources, cache } = cache;
+    remove(mutation.as_mut(), cache)?;
+    let destinations = {
+        let translation = f();
+        let mutation = &*mutation.as_mut();
+        sources
+            .iter()
+            .cloned()
+            .flat_map(|a| View::bind(mutation, a).map(VertexView::from))
+            .map(|source| {
+                let mut geometry = source.geometry;
+                geometry.transform(|position| *position + translation);
+                geometry
+            })
+            .collect::<Vec<_>>()
+    };
+    if sources.len() != destinations.len() {
+        return Err(GraphError::TopologyNotFound);
+    }
     let destinations = destinations
         .into_iter()
-        .map(|a| mutation.as_mut().insert_vertex(a))
+        .map(|geometry| mutation.as_mut().insert_vertex(geometry))
         .collect::<Vec<_>>();
     // Use the keys for the existing vertices and the translated geometries to
     // construct the extruded face and its connective faces.
+    let cache = FaceInsertCache::snapshot(mutation.as_mut(), &destinations)?;
     let extrusion = mutation
         .as_mut()
-        .insert_face(&destinations, (Default::default(), geometry))?;
+        .insert_face_with(cache, Default::default)?;
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
         .perimeter()
     {
+        let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, d, c])?;
         // TODO: Split these faces to form triangles.
         mutation
             .as_mut()
-            .insert_face(&[a, b, d, c], (Default::default(), geometry))?;
+            .insert_face_with(cache, Default::default)?;
     }
     Ok(extrusion)
 }

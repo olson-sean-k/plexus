@@ -1,5 +1,6 @@
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::graph::geometry::GraphGeometry;
+use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::Mutation;
 use crate::graph::storage::key::{FaceKey, VertexKey};
 use crate::graph::{GraphError, MeshGraph};
@@ -100,9 +101,9 @@ where
         T: AsRef<[VertexKey]>,
         U: IntoGeometry<Self::Facet>,
     {
-        self.mutation.insert_face(
-            keys.as_ref(),
-            (Default::default(), geometry.into_geometry()),
-        )
+        let cache = FaceInsertCache::snapshot(&self.mutation, keys.as_ref())?;
+        let geometry = geometry.into_geometry();
+        self.mutation
+            .insert_face_with(cache, || (Default::default(), geometry))
     }
 }

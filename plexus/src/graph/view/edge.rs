@@ -555,9 +555,9 @@ where
         F: FnOnce() -> G::Vertex,
     {
         let (storage, ab) = self.into_inner().unbind();
-        let cache = EdgeSplitCache::snapshot(&storage, ab, f()).expect_consistent();
+        let cache = EdgeSplitCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::split_with_cache(mutation, cache))
+            .commit_with(move |mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| View::bind_into(storage, m).expect_consistent())
             .expect_consistent()
     }
@@ -703,7 +703,7 @@ where
         // from the snapshot to propagate.
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::bridge_with_cache(mutation, cache))
+            .commit_with(move |mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
             .expect_consistent())
     }
@@ -760,11 +760,13 @@ where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let translation = self.normal() * offset.into();
+        let normal = self.normal();
         let (storage, ab) = self.into_inner().unbind();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab, translation).expect_consistent();
+        let cache = ArcExtrudeCache::snapshot(&storage, ab).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::extrude_with_cache(mutation, cache))
+            .commit_with(move |mutation| {
+                edge::extrude_with(mutation, cache, || normal * offset.into())
+            })
             .map(|(storage, arc)| View::bind_into(storage, arc).expect_consistent())
             .expect_consistent())
     }
@@ -782,7 +784,7 @@ where
         let (storage, ab) = self.into_inner().unbind();
         let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::remove_with_cache(mutation, cache))
+            .commit_with(move |mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| View::bind_into(storage, a))
             .expect_consistent()
     }

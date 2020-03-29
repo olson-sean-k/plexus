@@ -224,6 +224,7 @@ pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
 pub use crate::graph::view::{ClosedView, Rebind};
 
+use crate::graph::mutation::face::FaceInsertCache;
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
 
@@ -1099,10 +1100,9 @@ where
                 .into_iter()
                 .map(|index| keys[index])
                 .collect::<SmallVec<[_; 4]>>();
-            mutation.insert_face(
-                perimeter.as_slice(),
-                (Default::default(), geometry.into_geometry()),
-            )?;
+            let cache = FaceInsertCache::snapshot(&mutation, perimeter.as_slice())?;
+            let geometry = geometry.into_geometry();
+            mutation.insert_face_with(cache, || (Default::default(), geometry))?;
         }
         mutation.commit()
     }
@@ -1135,7 +1135,8 @@ where
                 .into_iter()
                 .map(|index| vertices[index])
                 .collect::<SmallVec<[_; 4]>>();
-            mutation.insert_face(&perimeter, Default::default())?;
+            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            mutation.insert_face_with(cache, Default::default)?;
         }
         mutation.commit()
     }
@@ -1185,7 +1186,8 @@ where
                         .ok_or_else(|| GraphError::TopologyNotFound)?,
                 );
             }
-            mutation.insert_face(&perimeter, Default::default())?;
+            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            mutation.insert_face_with(cache, Default::default)?;
         }
         mutation.commit()
     }
@@ -1266,7 +1268,8 @@ where
                         .ok_or_else(|| GraphError::TopologyNotFound)?,
                 );
             }
-            mutation.insert_face(&perimeter, Default::default())?;
+            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            mutation.insert_face_with(cache, Default::default)?;
         }
         mutation.commit()
     }

@@ -1,3 +1,5 @@
+#![allow(clippy::iter_nth_zero)]
+
 use decorum::N64;
 use nalgebra::Point2;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph};

@@ -8,15 +8,10 @@ use crate::graph::core::OwnedCore;
 use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::storage::alias::*;
-use crate::graph::storage::payload::{Arc, Face, Vertex};
+use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::GraphError;
 use crate::transact::Transact;
-
-// TODO: Remove geometric information from mutations. For entities and storage,
-//       forward the `Geometry` associated type from the core. Accept geometry
-//       in mutation functions (and not when in cache types nor when
-//       snapshotting).
 
 /// Marker trait for graph representations that promise to be in a consistent
 /// state.
@@ -70,6 +65,15 @@ where
     }
 }
 
+impl<M> AsStorage<Edge<Geometry<M>>> for Mutation<M>
+where
+    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+{
+    fn as_storage(&self) -> &StorageProxy<Edge<Geometry<M>>> {
+        self.inner.as_edge_storage()
+    }
+}
+
 impl<M> AsStorage<Face<Geometry<M>>> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
@@ -118,6 +122,13 @@ where
             inner: graph.into().into(),
         }
     }
+}
+
+impl<M> Geometric for Mutation<M>
+where
+    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+{
+    type Geometry = Geometry<M>;
 }
 
 impl<M> Transact<M> for Mutation<M>

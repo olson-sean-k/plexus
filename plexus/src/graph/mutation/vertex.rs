@@ -24,6 +24,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    // TODO: Refactor this into a non-associated function.
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.storage.insert(Vertex::new(geometry))
     }
@@ -88,39 +89,32 @@ where
     }
 }
 
-pub struct VertexRemoveCache<G>
-where
-    G: GraphGeometry,
-{
-    cache: Vec<EdgeRemoveCache<G>>,
+pub struct VertexRemoveCache {
+    cache: Vec<EdgeRemoveCache>,
 }
 
-impl<G> VertexRemoveCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, a: VertexKey) -> Result<Self, GraphError>
+impl VertexRemoveCache {
+    pub fn snapshot<B>(storage: B, a: VertexKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Vertex<G>> + Consistent,
+        B: Reborrow,
+        B::Target: AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
     {
         let _ = (storage, a);
         unimplemented!()
     }
 }
 
-pub fn remove_with_cache<M, N, G>(
+pub fn remove<M, N>(
     mut mutation: N,
-    cache: VertexRemoveCache<G>,
-) -> Result<Vertex<G>, GraphError>
+    cache: VertexRemoveCache,
+) -> Result<Vertex<Geometry<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
     let VertexRemoveCache { cache } = cache;
     for cache in cache {
-        edge::remove_with_cache(mutation.as_mut(), cache)?;
+        edge::remove(mutation.as_mut(), cache)?;
     }
     unimplemented!()
 }

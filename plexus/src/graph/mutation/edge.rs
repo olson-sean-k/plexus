@@ -6,10 +6,9 @@ use theon::AsPosition;
 use crate::graph::borrow::Reborrow;
 use crate::graph::core::{Core, Fuse};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
-use crate::graph::mutation::face::{self, FaceRemoveCache};
+use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::alias::*;
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
@@ -30,6 +29,8 @@ where
     M: Geometric,
 {
     inner: VertexMutation<M>,
+    // TODO: Split this into two fields.
+    #[allow(clippy::type_complexity)]
     storage: (
         StorageProxy<Arc<Geometry<M>>>,
         StorageProxy<Edge<Geometry<M>>>,
@@ -41,22 +42,22 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    // TODO: Refactor this into a non-associated function.
     pub fn get_or_insert_edge_with<F>(
         &mut self,
         span: (VertexKey, VertexKey),
         f: F,
     ) -> Result<CompositeEdgeKey, GraphError>
     where
-        F: Clone + FnOnce() -> G::Arc,
+        F: FnOnce() -> (G::Edge, G::Arc),
     {
-        fn get_or_insert_arc_with<M, F>(
+        fn get_or_insert_arc<M>(
             mutation: &mut EdgeMutation<M>,
             span: (VertexKey, VertexKey),
-            f: F,
+            geometry: <M::Geometry as GraphGeometry>::Arc,
         ) -> (Option<EdgeKey>, ArcKey)
         where
             M: Geometric,
-            F: FnOnce() -> <M::Geometry as GraphGeometry>::Arc,
         {
             let (a, _) = span;
             let ab = span.into();
@@ -64,19 +65,20 @@ where
                 (arc.edge, ab)
             }
             else {
-                mutation.storage.0.insert_with_key(ab, Arc::new(f()));
+                mutation.storage.0.insert_with_key(ab, Arc::new(geometry));
                 let _ = mutation.connect_outgoing_arc(a, ab);
                 (None, ab)
             }
         }
 
+        let geometry = f();
         let (a, b) = span;
-        let (e1, ab) = get_or_insert_arc_with(self, (a, b), f.clone());
-        let (e2, ba) = get_or_insert_arc_with(self, (b, a), f);
+        let (e1, ab) = get_or_insert_arc(self, (a, b), geometry.1);
+        let (e2, ba) = get_or_insert_arc(self, (b, a), geometry.1);
         match (e1, e2) {
             (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
             (None, None) => {
-                let ab_ba = self.storage.1.insert(Edge::new(ab, Default::default()));
+                let ab_ba = self.storage.1.insert(Edge::new(ab, geometry.0));
                 self.connect_arc_to_edge(ab, ab_ba)?;
                 self.connect_arc_to_edge(ba, ab_ba)?;
                 Ok((ab_ba, (ab, ba)))
@@ -217,28 +219,22 @@ where
     }
 }
 
-struct ArcRemoveCache<G>
-where
-    G: GraphGeometry,
-{
+struct ArcRemoveCache {
     ab: ArcKey,
     xa: Option<ArcKey>,
     bx: Option<ArcKey>,
-    cache: Option<FaceRemoveCache<G>>,
+    cache: Option<FaceRemoveCache>,
 }
 
-impl<G> ArcRemoveCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
+impl ArcRemoveCache {
+    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -266,30 +262,24 @@ where
     }
 }
 
-pub struct EdgeRemoveCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct EdgeRemoveCache {
     a: VertexKey,
     b: VertexKey,
     ab_ba: EdgeKey,
-    arc: ArcRemoveCache<G>,
-    opposite: ArcRemoveCache<G>,
+    arc: ArcRemoveCache,
+    opposite: ArcRemoveCache,
 }
 
-impl<G> EdgeRemoveCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, ab: ArcKey) -> Result<Self, GraphError>
+impl EdgeRemoveCache {
+    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Edge<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Edge<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
+            + Geometric,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -309,27 +299,22 @@ where
     }
 }
 
-pub struct EdgeSplitCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct EdgeSplitCache {
     a: VertexKey,
     b: VertexKey,
     ab: ArcKey,
     ba: ArcKey,
     ab_ba: EdgeKey,
-    geometry: G::Vertex,
 }
 
-impl<G> EdgeSplitCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, ab: ArcKey, geometry: G::Vertex) -> Result<Self, GraphError>
+impl EdgeSplitCache {
+    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<G>> + AsStorage<Edge<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Edge<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
+            + Geometric,
     {
         let storage = storage.reborrow();
         let arc = View::bind(storage, ab)
@@ -353,32 +338,25 @@ where
             ab: arc.key(),
             ba: opposite.key(),
             ab_ba: edge.key(),
-            geometry,
         })
     }
 }
 
-pub struct ArcBridgeCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct ArcBridgeCache {
     a: VertexKey,
     b: VertexKey,
     c: VertexKey,
     d: VertexKey,
-    arc: G::Arc,
-    face: G::Face,
 }
 
-impl<G> ArcBridgeCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(storage: M, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
+impl ArcBridgeCache {
+    pub fn snapshot<B>(storage: B, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target:
-            AsStorage<Arc<G>> + AsStorage<Face<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
+            + Geometric,
     {
         let storage = storage.reborrow();
         let source = View::bind(storage, source)
@@ -403,7 +381,7 @@ where
             .reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
-        // At this point, we can assume the vertices a, b, c, and d exist in the
+        // At this point, we can assume the vertices A, B, C, and D exist in the
         // mesh. Before mutating the mesh, ensure that existing interior arcs
         // are boundaries.
         for arc in [a, b, c, d]
@@ -421,65 +399,39 @@ where
             b,
             c,
             d,
-            arc: source.geometry,
-            face: source
-                .reachable_opposite_arc()
-                .and_then(|opposite| opposite.into_reachable_face())
-                .map(|face| face.geometry)
-                .unwrap_or_else(Default::default),
+            /*arc: source.geometry,
+             *face: source
+             *    .reachable_opposite_arc()
+             *    .and_then(|opposite| opposite.into_reachable_face())
+             *    .map(|face| face.geometry)
+             *    .unwrap_or_else(Default::default), */
         })
     }
 }
 
-pub struct ArcExtrudeCache<G>
-where
-    G: GraphGeometry,
-{
+pub struct ArcExtrudeCache {
     ab: ArcKey,
-    vertices: (G::Vertex, G::Vertex),
-    arc: G::Arc,
 }
 
-impl<G> ArcExtrudeCache<G>
-where
-    G: GraphGeometry,
-{
-    pub fn snapshot<M>(
-        storage: M,
-        ab: ArcKey,
-        translation: Vector<VertexPosition<G>>,
-    ) -> Result<Self, GraphError>
+impl ArcExtrudeCache {
+    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
     where
-        M: Reborrow,
-        M::Target: AsStorage<Arc<G>>
-            + AsStorage<Face<G>>
-            + AsStorage<Vertex<G>>
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>>
+            + AsStorage<Face<Geometry<B>>>
+            + AsStorage<Vertex<Geometry<B>>>
             + Consistent
-            + Geometric<Geometry = G>,
-        G::Vertex: AsPosition,
-        VertexPosition<G>: EuclideanSpace,
+            + Geometric,
     {
-        // Get the extruded geometry.
-        let (vertices, arc) = {
-            let arc = View::bind(storage, ab)
-                .map(ArcView::from)
-                .ok_or_else(|| GraphError::TopologyNotFound)?;
-            if !arc.is_boundary_arc() {
-                return Err(GraphError::TopologyConflict);
-            }
-            let mut vertices = (
-                arc.reachable_destination_vertex()
-                    .ok_or_else(|| GraphError::TopologyConflict)?
-                    .geometry,
-                arc.reachable_source_vertex()
-                    .ok_or_else(|| GraphError::TopologyConflict)?
-                    .geometry,
-            );
-            *vertices.0.as_position_mut() = *vertices.0.as_position() + translation;
-            *vertices.1.as_position_mut() = *vertices.1.as_position() + translation;
-            (vertices, arc.geometry)
-        };
-        Ok(ArcExtrudeCache { ab, vertices, arc })
+        let arc = View::bind(storage, ab)
+            .map(ArcView::from)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        if !arc.is_boundary_arc() {
+            Err(GraphError::TopologyConflict)
+        }
+        else {
+            Ok(ArcExtrudeCache { ab })
+        }
     }
 }
 
@@ -487,27 +439,25 @@ where
 //       leading arc of vertices may be invalidated by this operation and must
 //       be healed. This code does not handle these cases, and so can become
 //       inconsistent.
-pub fn remove_with_cache<M, N, G>(
+pub fn remove<M, N>(
     mut mutation: N,
-    cache: EdgeRemoveCache<G>,
-) -> Result<CompositeEdge<G>, GraphError>
+    cache: EdgeRemoveCache,
+) -> Result<CompositeEdge<Geometry<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
-    fn remove_arc_with_cache<M, N, G>(
+    fn remove_arc_with_cache<M, N>(
         mut mutation: N,
-        cache: ArcRemoveCache<G>,
-    ) -> Result<Arc<G>, GraphError>
+        cache: ArcRemoveCache,
+    ) -> Result<Arc<Geometry<M>>, GraphError>
     where
         N: AsMut<Mutation<M>>,
-        M: Mutable<Geometry = G>,
-        G: GraphGeometry,
+        M: Mutable,
     {
         let ArcRemoveCache { ab, cache, .. } = cache;
         if let Some(cache) = cache {
-            face::remove_with_cache(mutation.as_mut(), cache)?;
+            face::remove(mutation.as_mut(), cache)?;
         }
         mutation
             .as_mut()
@@ -523,7 +473,6 @@ where
         ab_ba,
         arc,
         opposite,
-        ..
     } = cache;
     // Connect each vertex to a remaining outgoing edge.
     if let Some(ax) = opposite.bx {
@@ -554,20 +503,20 @@ where
     ))
 }
 
-pub fn split_with_cache<M, N, G>(
+pub fn split_with<M, N, F>(
     mut mutation: N,
-    cache: EdgeSplitCache<G>,
+    cache: EdgeSplitCache,
+    f: F,
 ) -> Result<VertexKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
+    F: FnOnce() -> <Geometry<M> as GraphGeometry>::Vertex,
 {
-    fn remove<M, N, G>(mut mutation: N, ab: ArcKey) -> Result<Arc<G>, GraphError>
+    fn remove<M, N>(mut mutation: N, ab: ArcKey) -> Result<Arc<Geometry<M>>, GraphError>
     where
         N: AsMut<Mutation<M>>,
-        M: Mutable<Geometry = G>,
-        G: GraphGeometry,
+        M: Mutable,
     {
         // TODO: Is is probably more correct to disconnect the source vertex
         //       from its leading arc. However, this interacts poorly with
@@ -586,7 +535,7 @@ where
         Ok(arc)
     }
 
-    fn split_at_vertex<M, N, G>(
+    fn split_at_vertex<M, N>(
         mut mutation: N,
         a: VertexKey,
         b: VertexKey,
@@ -595,8 +544,7 @@ where
     ) -> Result<(ArcKey, ArcKey), GraphError>
     where
         N: AsMut<Mutation<M>>,
-        M: Mutable<Geometry = G>,
-        G: GraphGeometry,
+        M: Mutable,
     {
         // Remove the arc and insert two truncated arcs in its place.
         let Arc {
@@ -608,11 +556,11 @@ where
         } = remove(mutation.as_mut(), ab)?;
         let am = mutation
             .as_mut()
-            .get_or_insert_edge_with((a, m), || geometry)
+            .get_or_insert_edge_with((a, m), || (Default::default(), geometry))
             .map(|(_, (am, _))| am)?;
         let mb = mutation
             .as_mut()
-            .get_or_insert_edge_with((m, b), || geometry)
+            .get_or_insert_edge_with((m, b), || (Default::default(), geometry))
             .map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
         mutation.as_mut().connect_neighboring_arcs(am, mb)?;
@@ -638,10 +586,8 @@ where
         ab,
         ba,
         ab_ba,
-        geometry,
-        ..
     } = cache;
-    let m = mutation.as_mut().insert_vertex(geometry);
+    let m = mutation.as_mut().insert_vertex(f());
     // Remove the edge.
     let _ = mutation
         .as_mut()
@@ -655,54 +601,54 @@ where
     Ok(m)
 }
 
-pub fn bridge_with_cache<M, N, G>(
-    mut mutation: N,
-    cache: ArcBridgeCache<G>,
-) -> Result<FaceKey, GraphError>
+pub fn bridge<M, N>(mut mutation: N, cache: ArcBridgeCache) -> Result<FaceKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
 {
-    let ArcBridgeCache {
-        a,
-        b,
-        c,
-        d,
-        arc,
-        face,
-        ..
-    } = cache;
-    mutation.as_mut().insert_face(&[a, b, c, d], (arc, face))
+    let ArcBridgeCache { a, b, c, d } = cache;
+    let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, c, d])?;
+    mutation.as_mut().insert_face_with(cache, Default::default)
 }
 
-pub fn extrude_with_cache<M, N, G>(
+pub fn extrude_with<M, N, F>(
     mut mutation: N,
-    cache: ArcExtrudeCache<G>,
+    cache: ArcExtrudeCache,
+    f: F,
 ) -> Result<ArcKey, GraphError>
 where
     N: AsMut<Mutation<M>>,
-    M: Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: Mutable,
+    F: FnOnce() -> Vector<VertexPosition<Geometry<M>>>,
+    <Geometry<M> as GraphGeometry>::Vertex: AsPosition,
+    VertexPosition<Geometry<M>>: EuclideanSpace,
 {
-    let ArcExtrudeCache {
-        ab, vertices, arc, ..
-    } = cache;
-    let mutation = mutation.as_mut();
-    let c = mutation.insert_vertex(vertices.0);
-    let d = mutation.insert_vertex(vertices.1);
+    let ArcExtrudeCache { ab } = cache;
+    let (c, d) = {
+        let translation = f();
+        let arc = View::bind(mutation.as_mut(), ab)
+            .map(ArcView::from)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let mut c = arc
+            .reachable_destination_vertex()
+            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .geometry;
+        let mut d = arc
+            .reachable_source_vertex()
+            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .geometry;
+        c.transform(|position| *position + translation);
+        d.transform(|position| *position + translation);
+        (c, d)
+    };
+    let c = mutation.as_mut().insert_vertex(c);
+    let d = mutation.as_mut().insert_vertex(d);
     // TODO: If this arc already exists, then this should probably return an
     //       error.
     let cd = mutation
-        .get_or_insert_edge_with((c, d), move || arc)
+        .as_mut()
+        .get_or_insert_edge_with((c, d), Default::default)
         .map(|(_, (cd, _))| cd)?;
-    let cache = ArcBridgeCache::snapshot(
-        &Core::empty()
-            .fuse(mutation.as_vertex_storage())
-            .fuse(mutation.as_arc_storage())
-            .fuse(mutation.as_face_storage()),
-        ab,
-        cd,
-    )?;
-    bridge_with_cache(mutation, cache).map(|_| cd)
+    let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
+    bridge(mutation, cache).map(|_| cd)
 }

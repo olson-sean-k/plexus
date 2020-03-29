@@ -491,7 +491,7 @@ where
         // from the snapshot to propagate.
         let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::split_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::split(mutation, cache))
             .map(|(storage, arc)| View::bind_into(storage, arc).expect_consistent())
             .expect_consistent())
     }
@@ -591,7 +591,7 @@ where
         // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::bridge_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::bridge(mutation, cache))
             .expect_consistent();
         Ok(())
     }
@@ -655,9 +655,9 @@ where
         F: FnOnce() -> G::Vertex,
     {
         let (storage, abc) = self.into_inner().unbind();
-        let cache = FacePokeCache::snapshot(&storage, abc, f()).expect_consistent();
+        let cache = FacePokeCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::poke_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::poke_with(mutation, cache, f))
             .map(|(storage, vertex)| View::bind_into(storage, vertex).expect_consistent())
             .expect_consistent()
     }
@@ -743,11 +743,13 @@ where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let translation = self.normal()? * offset.into();
+        let normal = self.normal()?;
         let (storage, abc) = self.into_inner().unbind();
-        let cache = FaceExtrudeCache::snapshot(&storage, abc, translation).expect_consistent();
+        let cache = FaceExtrudeCache::snapshot(&storage, abc).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::extrude_with_cache(mutation, cache))
+            .commit_with(move |mutation| {
+                face::extrude_with(mutation, cache, || normal * offset.into())
+            })
             .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
             .expect_consistent())
     }
@@ -756,11 +758,10 @@ where
     ///
     /// Returns the remaining ring of the face if it is not entirely disjoint.
     pub fn remove(self) -> Option<RingView<&'a mut M>> {
-        // TODO: BIND. Refactor composite views.
         let (storage, abc) = self.into_inner().unbind();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::remove_with_cache(mutation, cache))
+            .commit_with(move |mutation| face::remove(mutation, cache))
             .map(|(storage, face)| View::bind_into(storage, face.arc))
             .expect_consistent()
     }
@@ -1136,15 +1137,15 @@ where
             self.into_inner().rebind_into(key).expect_consistent()
         }
         else {
-            let vertices = self
-                .vertices()
-                .map(|vertex| vertex.key())
-                .collect::<Vec<_>>();
+            let perimeter = self.vertices().keys().collect::<Vec<_>>();
             let (storage, _) = self.into_inner().unbind();
-            let cache = FaceInsertCache::snapshot(&storage, &vertices, (Default::default(), f()))
-                .expect_consistent();
+            let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
             Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| mutation.as_mut().insert_face_with_cache(cache))
+                .commit_with(move |mutation| {
+                    mutation
+                        .as_mut()
+                        .insert_face_with(cache, || (Default::default(), f()))
+                })
                 .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
                 .expect_consistent()
         }
