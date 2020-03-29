@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::graph::geometry::{Geometric, GraphGeometry};
-use crate::graph::storage::payload::{Arc, Edge, Entity, Face, Vertex};
+use crate::graph::storage::entity::{Arc, Edge, Entity, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
 /// A complete core that owns all of its storage.
@@ -45,10 +45,10 @@ where
 /// A core's fields may be in one of two states: _unbound_ and _bound_. When a
 /// field is unbound, its type is `()`. An unbound field has no value and is
 /// zero-sized. A bound field has any type other than `()`. These fields should
-/// provide storage for their corresponding topology, though this is not
-/// enforced directly in `Core`. The `Fuse` trait can be used to transition from
-/// `()` to some other type by _fusing_ storage into a `Core`. `Fuse`
-/// implementations enforce storage constraints.
+/// provide storage for their corresponding entity, though this is not enforced
+/// directly in `Core`. The `Fuse` trait can be used to transition from `()` to
+/// some other type by _fusing_ storage into a `Core`. `Fuse` implementations
+/// enforce storage constraints.
 ///
 /// A `Core` with no unbound fields is _complete_.
 pub struct Core<G, V = (), A = (), E = (), F = ()>

@@ -216,8 +216,8 @@ pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexNormal, VertexPosition,
 };
+pub use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-pub use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edgoid};
 pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
 pub use crate::graph::view::path::PathView;

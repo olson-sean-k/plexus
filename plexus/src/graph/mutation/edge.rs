@@ -9,8 +9,8 @@ use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition}
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::{ClosedView, View};

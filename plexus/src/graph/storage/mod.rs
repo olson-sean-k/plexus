@@ -11,8 +11,8 @@
 //! for arcs, which is a core design assumption of `MeshGraph`.
 
 pub mod alias;
+pub mod entity;
 pub mod key;
-pub mod payload;
 
 use fnv::FnvBuildHasher;
 use slotmap::hop::HopSlotMap;
@@ -20,8 +20,8 @@ use slotmap::Key as SlotKey;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
+use crate::graph::storage::entity::Entity;
 use crate::graph::storage::key::{InnerKey, OpaqueKey};
-use crate::graph::storage::payload::Entity;
 
 pub type SlotStorage<T> = HopSlotMap<InnerKey<<T as Entity>::Key>, T>;
 pub type HashStorage<T> = HashMap<InnerKey<<T as Entity>::Key>, T, FnvBuildHasher>;

@@ -18,8 +18,8 @@ use crate::graph::mutation::face::{
     FaceSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::traverse::{

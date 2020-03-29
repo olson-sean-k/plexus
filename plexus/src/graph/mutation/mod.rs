@@ -8,7 +8,7 @@ use crate::graph::core::OwnedCore;
 use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::storage::alias::*;
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::GraphError;
 use crate::transact::Transact;

@@ -13,8 +13,8 @@ use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
 use crate::graph::view::path::PathView;

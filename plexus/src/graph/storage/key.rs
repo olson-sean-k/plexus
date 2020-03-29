@@ -2,13 +2,13 @@
 //!
 //! This module defines opaque keys for looking up graph data in storage. Keys
 //! do not expose their underling data and enforce that lookups for a particular
-//! topology use an appropriate key type.
+//! entity use an appropriate key type.
 //!
-//! Unlike other topologies, arc keys expose some behaviors that reflect their
+//! Unlike other entities, arc keys expose some behaviors that reflect their
 //! semantics. In particular, it is possible to convert an arc key into an
 //! ordered pair of vertex keys representing the arc's _span_ and vice versa.
 //! This allows for trivial and arbitrary queries of a graph's arcs, which
-//! represent the fundemental topology of a graph.
+//! represent the fundamental topology of a graph.
 
 use slotmap::DefaultKey;
 use std::hash::Hash;

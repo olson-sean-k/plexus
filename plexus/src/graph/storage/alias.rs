@@ -1,5 +1,5 @@
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 
 pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>

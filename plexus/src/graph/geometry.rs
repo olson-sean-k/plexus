@@ -74,7 +74,7 @@ use typenum::U3;
 
 use crate::graph::borrow::Reborrow;
 use crate::graph::mutation::Consistent;
-use crate::graph::storage::payload::{Arc, Edge, Face, Vertex};
+use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, Edgoid};
 use crate::graph::view::face::Ringoid;

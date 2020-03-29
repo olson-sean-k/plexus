@@ -12,8 +12,8 @@ use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition}
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::alias::*;
+use crate::graph::storage::entity::{Arc, Face, Vertex};
 use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
-use crate::graph::storage::payload::{Arc, Face, Vertex};
 use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::FaceView;
@@ -578,7 +578,7 @@ where
         let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
         edge::bridge(mutation.as_mut(), cache)?;
     }
-    // TODO: Is there any reasonable topology this can return?
+    // TODO: Is there any reasonable entity this can return?
     Ok(())
 }
 
