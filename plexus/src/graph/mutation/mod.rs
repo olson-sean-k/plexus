@@ -5,12 +5,12 @@ pub mod vertex;
 use std::ops::{Deref, DerefMut};
 
 use crate::graph::core::OwnedCore;
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
-use crate::graph::storage::alias::*;
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::{AsStorage, StorageProxy};
+use crate::graph::storage::*;
 use crate::graph::GraphError;
+use crate::network::storage::{AsStorage, Storage};
 use crate::transact::Transact;
 
 /// Marker trait for graph representations that promise to be in a consistent
@@ -60,7 +60,7 @@ impl<M> AsStorage<Arc<Geometry<M>>> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
-    fn as_storage(&self) -> &StorageProxy<Arc<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Arc<Geometry<M>>> {
         self.inner.as_arc_storage()
     }
 }
@@ -69,7 +69,7 @@ impl<M> AsStorage<Edge<Geometry<M>>> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
-    fn as_storage(&self) -> &StorageProxy<Edge<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Edge<Geometry<M>>> {
         self.inner.as_edge_storage()
     }
 }
@@ -78,7 +78,7 @@ impl<M> AsStorage<Face<Geometry<M>>> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
-    fn as_storage(&self) -> &StorageProxy<Face<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Face<Geometry<M>>> {
         self.inner.as_face_storage()
     }
 }
@@ -87,7 +87,7 @@ impl<M> AsStorage<Vertex<Geometry<M>>> for Mutation<M>
 where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
-    fn as_storage(&self) -> &StorageProxy<Vertex<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Vertex<Geometry<M>>> {
         self.inner.as_vertex_storage()
     }
 }

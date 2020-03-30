@@ -170,12 +170,14 @@
 //       `network` module. This includes storage and basic view APIs, which
 //       could be used to implement a non-manifold structure.
 
-mod borrow;
 mod builder;
 mod core;
+mod entity;
 mod geometry;
+mod key;
 mod mutation;
 mod storage;
+mod trace;
 mod view;
 
 use decorum::N64;
@@ -199,32 +201,32 @@ use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBu
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::graph::builder::GraphBuilder;
-use crate::graph::core::{Core, Fuse, OwnedCore};
+use crate::graph::core::{Core, OwnedCore};
 use crate::graph::geometry::Geometric;
+use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
-use crate::graph::storage::alias::*;
-use crate::graph::storage::key::OpaqueKey;
-use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
-use crate::graph::view::{Orphan, View};
+use crate::graph::storage::*;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
+use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, Storage};
+use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::Fuse;
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
+pub use crate::graph::entity::{Arc, Edge, Face, Vertex};
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexNormal, VertexPosition,
 };
-pub use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-pub use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
+pub use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edgoid};
 pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
 pub use crate::graph::view::path::PathView;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
-pub use crate::graph::view::{ClosedView, Rebind};
+pub use crate::network::view::Rebind;
 
-use crate::graph::mutation::face::FaceInsertCache;
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
 
@@ -404,10 +406,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .fuse(StorageProxy::<Vertex<G>>::new())
-                .fuse(StorageProxy::<Arc<G>>::new())
-                .fuse(StorageProxy::<Edge<G>>::new())
-                .fuse(StorageProxy::<Face<G>>::new()),
+                .fuse(Storage::<Vertex<G>>::new())
+                .fuse(Storage::<Arc<G>>::new())
+                .fuse(Storage::<Edge<G>>::new())
+                .fuse(Storage::<Face<G>>::new()),
         )
     }
 
@@ -934,7 +936,7 @@ impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<Vertex<G>> {
         self.core.as_vertex_storage()
     }
 }
@@ -943,7 +945,7 @@ impl<G> AsStorage<Arc<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Arc<G>> {
+    fn as_storage(&self) -> &Storage<Arc<G>> {
         self.core.as_arc_storage()
     }
 }
@@ -952,7 +954,7 @@ impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Edge<G>> {
+    fn as_storage(&self) -> &Storage<Edge<G>> {
         self.core.as_edge_storage()
     }
 }
@@ -961,7 +963,7 @@ impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Face<G>> {
+    fn as_storage(&self) -> &Storage<Face<G>> {
         self.core.as_face_storage()
     }
 }
@@ -970,7 +972,7 @@ impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
         self.core.as_vertex_storage_mut()
     }
 }
@@ -979,7 +981,7 @@ impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.core.as_arc_storage_mut()
     }
 }
@@ -988,7 +990,7 @@ impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.core.as_edge_storage_mut()
     }
 }
@@ -997,7 +999,7 @@ impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
         self.core.as_face_storage_mut()
     }
 }

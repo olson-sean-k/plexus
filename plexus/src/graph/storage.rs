@@ -1,13 +1,13 @@
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
+use crate::network::storage::{AsStorage, AsStorageMut, Storage};
 
 pub trait AsVertexStorage<G>: AsStorage<Vertex<G>>
 where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_vertex_storage(&self) -> &StorageProxy<Vertex<G>> {
+    fn as_vertex_storage(&self) -> &Storage<Vertex<G>> {
         self.as_storage()
     }
 }
@@ -24,7 +24,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_vertex_storage_mut(&mut self) -> &mut StorageProxy<Vertex<G>> {
+    fn as_vertex_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
         self.as_storage_mut()
     }
 }
@@ -41,7 +41,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_arc_storage(&self) -> &StorageProxy<Arc<G>> {
+    fn as_arc_storage(&self) -> &Storage<Arc<G>> {
         self.as_storage()
     }
 }
@@ -58,7 +58,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_arc_storage_mut(&mut self) -> &mut StorageProxy<Arc<G>> {
+    fn as_arc_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.as_storage_mut()
     }
 }
@@ -75,7 +75,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_edge_storage(&self) -> &StorageProxy<Edge<G>> {
+    fn as_edge_storage(&self) -> &Storage<Edge<G>> {
         self.as_storage()
     }
 }
@@ -92,7 +92,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_edge_storage_mut(&mut self) -> &mut StorageProxy<Edge<G>> {
+    fn as_edge_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.as_storage_mut()
     }
 }
@@ -109,7 +109,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_face_storage(&self) -> &StorageProxy<Face<G>> {
+    fn as_face_storage(&self) -> &Storage<Face<G>> {
         self.as_storage()
     }
 }
@@ -126,7 +126,7 @@ where
     G: GraphGeometry,
 {
     #[inline(always)]
-    fn as_face_storage_mut(&mut self) -> &mut StorageProxy<Face<G>> {
+    fn as_face_storage_mut(&mut self) -> &mut Storage<Face<G>> {
         self.as_storage_mut()
     }
 }

@@ -1,22 +1,23 @@
-use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Core, Fuse};
+use crate::graph::core::Core;
+use crate::graph::entity::Vertex;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
+use crate::graph::key::{ArcKey, VertexKey};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::entity::Vertex;
-use crate::graph::storage::key::{ArcKey, VertexKey};
-use crate::graph::storage::{AsStorage, StorageProxy};
-use crate::graph::view::View;
 use crate::graph::GraphError;
+use crate::network::borrow::Reborrow;
+use crate::network::storage::{AsStorage, Storage};
+use crate::network::view::View;
+use crate::network::Fuse;
 use crate::transact::Transact;
 
-type Mutant<G> = Core<G, StorageProxy<Vertex<G>>, (), (), ()>;
+type Mutant<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
     M: Geometric,
 {
-    storage: StorageProxy<Vertex<Geometry<M>>>,
+    storage: Storage<Vertex<Geometry<M>>>,
 }
 
 impl<M, G> VertexMutation<M>
@@ -51,7 +52,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<Vertex<G>> {
         &self.storage
     }
 }

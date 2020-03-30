@@ -6,20 +6,21 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
-use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Core, Fuse, OwnedCore, RefCore};
+use crate::graph::core::{Core, OwnedCore, RefCore};
+use crate::graph::entity::{Arc, Face, Vertex};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
+use crate::graph::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::alias::*;
-use crate::graph::storage::entity::{Arc, Face, Vertex};
-use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
-use crate::graph::storage::{AsStorage, StorageProxy};
+use crate::graph::storage::*;
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::FaceView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{ClosedView, View};
 use crate::graph::GraphError;
+use crate::network::borrow::Reborrow;
+use crate::network::storage::{AsStorage, Storage};
+use crate::network::view::{ClosedView, View};
+use crate::network::Fuse;
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 
@@ -30,7 +31,7 @@ where
     M: Geometric,
 {
     inner: EdgeMutation<M>,
-    storage: StorageProxy<Face<Geometry<M>>>,
+    storage: Storage<Face<Geometry<M>>>,
 }
 
 impl<M, G> FaceMutation<M>
@@ -170,7 +171,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Face<G>> {
+    fn as_storage(&self) -> &Storage<Face<G>> {
         &self.storage
     }
 }

@@ -3,18 +3,19 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
-use crate::graph::borrow::Reborrow;
-use crate::graph::core::{Core, Fuse};
+use crate::graph::core::Core;
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
+use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-use crate::graph::storage::{AsStorage, StorageProxy};
 use crate::graph::view::edge::ArcView;
-use crate::graph::view::{ClosedView, View};
 use crate::graph::GraphError;
+use crate::network::borrow::Reborrow;
+use crate::network::storage::{AsStorage, Storage};
+use crate::network::view::{ClosedView, View};
+use crate::network::Fuse;
 use crate::transact::Transact;
 use crate::IteratorExt as _;
 
@@ -22,7 +23,7 @@ pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
 #[allow(clippy::type_complexity)]
-type Mutant<G> = Core<G, StorageProxy<Vertex<G>>, StorageProxy<Arc<G>>, StorageProxy<Edge<G>>, ()>;
+type Mutant<G> = Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
 
 pub struct EdgeMutation<M>
 where
@@ -31,10 +32,7 @@ where
     inner: VertexMutation<M>,
     // TODO: Split this into two fields.
     #[allow(clippy::type_complexity)]
-    storage: (
-        StorageProxy<Arc<Geometry<M>>>,
-        StorageProxy<Edge<Geometry<M>>>,
-    ),
+    storage: (Storage<Arc<Geometry<M>>>, Storage<Edge<Geometry<M>>>),
 }
 
 impl<M, G> EdgeMutation<M>
@@ -144,7 +142,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Arc<G>> {
+    fn as_storage(&self) -> &Storage<Arc<G>> {
         &self.storage.0
     }
 }
@@ -154,7 +152,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Edge<G>> {
+    fn as_storage(&self) -> &Storage<Edge<G>> {
         &self.storage.1
     }
 }

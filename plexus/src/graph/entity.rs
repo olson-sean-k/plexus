@@ -15,19 +15,11 @@
 use derivative::Derivative;
 
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, OpaqueKey, VertexKey};
-use crate::graph::storage::{Get, HashStorage, Remove, Sequence, SlotStorage};
-
-/// A payload contained in graph storage.
-pub trait Entity: Copy + Sized {
-    type Key: OpaqueKey;
-    type Attribute: Clone;
-    type Storage: Default + Get<Self> + Remove<Self> + Sequence<Self>;
-}
+use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
+use crate::network::storage::{HashStorage, SlotStorage};
+use crate::network::Entity;
 
 /// Graph vertex.
-///
-/// A vertex is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Vertex<G>
@@ -60,7 +52,6 @@ where
     G: GraphGeometry,
 {
     type Key = VertexKey;
-    type Attribute = G::Vertex;
     type Storage = SlotStorage<Self>;
 }
 
@@ -71,10 +62,6 @@ where
 // reason, `Arc` has no fields representing its source and destination vertices
 // nor its opposite arc; such fields would be redundant.
 /// Graph arc.
-///
-/// An arc is represented by keys into its next and previous arcs, a key into
-/// its edge, and an optional key into its face (for which is may be a leading
-/// arc). Additional information is encoded in arc keys.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Arc<G>
@@ -116,13 +103,10 @@ where
     G: GraphGeometry,
 {
     type Key = ArcKey;
-    type Attribute = G::Arc;
     type Storage = HashStorage<Self>;
 }
 
 /// Graph edge.
-///
-/// An edge is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Edge<G>
@@ -152,13 +136,10 @@ where
     G: GraphGeometry,
 {
     type Key = EdgeKey;
-    type Attribute = G::Edge;
     type Storage = SlotStorage<Self>;
 }
 
 /// Graph face.
-///
-/// A face is represented by a key into its leading arc.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Face<G>
@@ -188,6 +169,5 @@ where
     G: GraphGeometry,
 {
     type Key = FaceKey;
-    type Attribute = G::Face;
     type Storage = SlotStorage<Self>;
 }

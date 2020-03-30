@@ -13,32 +13,7 @@
 use slotmap::DefaultKey;
 use std::hash::Hash;
 
-pub type InnerKey<K> = <K as OpaqueKey>::Inner;
-
-pub trait FromInnerKey<K> {
-    fn from_inner_key(key: K) -> Self;
-}
-
-pub trait IntoOpaqueKey<K> {
-    fn into_opaque_key(self) -> K;
-}
-
-impl<K, I> IntoOpaqueKey<I> for K
-where
-    I: FromInnerKey<K>,
-{
-    fn into_opaque_key(self) -> I {
-        I::from_inner_key(self)
-    }
-}
-
-pub trait OpaqueKey: Copy + Eq + Hash + Sized {
-    type Inner: Copy + Sized;
-
-    fn from_inner(key: Self::Inner) -> Self;
-
-    fn into_inner(self) -> Self::Inner;
-}
+use crate::network::storage::OpaqueKey;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VertexKey(DefaultKey);

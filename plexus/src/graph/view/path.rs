@@ -2,17 +2,17 @@ use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
-use crate::graph::borrow::Reborrow;
+use crate::graph::entity::{Arc, Vertex};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
+use crate::graph::key::{ArcKey, VertexKey};
 use crate::graph::mutation::Consistent;
-use crate::graph::storage::entity::{Arc, Vertex};
-use crate::graph::storage::key::{ArcKey, VertexKey};
-use crate::graph::storage::{AsStorage, AsStorageMut};
 use crate::graph::view::edge::ArcView;
 use crate::graph::view::face::RingView;
 use crate::graph::view::vertex::VertexView;
-use crate::graph::view::{ClosedView, View};
 use crate::graph::{GraphError, OptionExt as _, Selector};
+use crate::network::borrow::Reborrow;
+use crate::network::storage::{AsStorage, AsStorageMut};
+use crate::network::view::{ClosedView, View};
 use crate::IteratorExt as _;
 
 /// View of a path in a graph.

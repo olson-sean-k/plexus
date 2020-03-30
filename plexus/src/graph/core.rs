@@ -1,35 +1,21 @@
 use std::marker::PhantomData;
 
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::{Geometric, GraphGeometry};
-use crate::graph::storage::entity::{Arc, Edge, Entity, Face, Vertex};
-use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
+use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::Fuse;
 
 /// A complete core that owns all of its storage.
-pub type OwnedCore<G> = Core<
-    G,
-    StorageProxy<Vertex<G>>,
-    StorageProxy<Arc<G>>,
-    StorageProxy<Edge<G>>,
-    StorageProxy<Face<G>>,
->;
+pub type OwnedCore<G> =
+    Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
 /// A complete core with immutable references to all of its storage.
 pub type RefCore<'a, G> = Core<
     G,
-    &'a StorageProxy<Vertex<G>>,
-    &'a StorageProxy<Arc<G>>,
-    &'a StorageProxy<Edge<G>>,
-    &'a StorageProxy<Face<G>>,
+    &'a Storage<Vertex<G>>,
+    &'a Storage<Arc<G>>,
+    &'a Storage<Edge<G>>,
+    &'a Storage<Face<G>>,
 >;
-
-pub trait Fuse<T, M>
-where
-    T: Entity,
-    M: AsStorage<T>,
-{
-    type Output;
-
-    fn fuse(self, source: M) -> Self::Output;
-}
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
 ///
@@ -98,7 +84,7 @@ where
     V: AsStorage<Vertex<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Vertex<G>> {
+    fn as_storage(&self) -> &Storage<Vertex<G>> {
         self.vertices.as_storage()
     }
 }
@@ -108,7 +94,7 @@ where
     A: AsStorage<Arc<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Arc<G>> {
+    fn as_storage(&self) -> &Storage<Arc<G>> {
         self.arcs.as_storage()
     }
 }
@@ -118,7 +104,7 @@ where
     E: AsStorage<Edge<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Edge<G>> {
+    fn as_storage(&self) -> &Storage<Edge<G>> {
         self.edges.as_storage()
     }
 }
@@ -128,7 +114,7 @@ where
     F: AsStorage<Face<G>>,
     G: GraphGeometry,
 {
-    fn as_storage(&self) -> &StorageProxy<Face<G>> {
+    fn as_storage(&self) -> &Storage<Face<G>> {
         self.faces.as_storage()
     }
 }
@@ -138,7 +124,7 @@ where
     V: AsStorageMut<Vertex<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
         self.vertices.as_storage_mut()
     }
 }
@@ -148,7 +134,7 @@ where
     A: AsStorageMut<Arc<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.arcs.as_storage_mut()
     }
 }
@@ -158,7 +144,7 @@ where
     E: AsStorageMut<Edge<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.edges.as_storage_mut()
     }
 }
@@ -168,12 +154,12 @@ where
     F: AsStorageMut<Face<G>>,
     G: GraphGeometry,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageProxy<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
         self.faces.as_storage_mut()
     }
 }
 
-impl<G, V, A, E, F> Fuse<Vertex<G>, V> for Core<G, (), A, E, F>
+impl<G, V, A, E, F> Fuse<V, Vertex<G>> for Core<G, (), A, E, F>
 where
     V: AsStorage<Vertex<G>>,
     G: GraphGeometry,
@@ -194,7 +180,7 @@ where
     }
 }
 
-impl<G, V, A, E, F> Fuse<Arc<G>, A> for Core<G, V, (), E, F>
+impl<G, V, A, E, F> Fuse<A, Arc<G>> for Core<G, V, (), E, F>
 where
     A: AsStorage<Arc<G>>,
     G: GraphGeometry,
@@ -218,7 +204,7 @@ where
     }
 }
 
-impl<G, V, A, E, F> Fuse<Edge<G>, E> for Core<G, V, A, (), F>
+impl<G, V, A, E, F> Fuse<E, Edge<G>> for Core<G, V, A, (), F>
 where
     E: AsStorage<Edge<G>>,
     G: GraphGeometry,
@@ -242,7 +228,7 @@ where
     }
 }
 
-impl<G, V, A, E, F> Fuse<Face<G>, F> for Core<G, V, A, E, ()>
+impl<G, V, A, E, F> Fuse<F, Face<G>> for Core<G, V, A, E, ()>
 where
     F: AsStorage<Face<G>>,
     G: GraphGeometry,

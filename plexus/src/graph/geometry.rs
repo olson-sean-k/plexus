@@ -72,14 +72,14 @@ use theon::space::{EuclideanSpace, FiniteDimensional, InnerSpace, Vector, Vector
 use theon::{AsPosition, FromItems, Position};
 use typenum::U3;
 
-use crate::graph::borrow::Reborrow;
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::mutation::Consistent;
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::AsStorage;
 use crate::graph::view::edge::{ArcView, Edgoid};
 use crate::graph::view::face::Ringoid;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::{GraphError, OptionExt as _};
+use crate::network::borrow::Reborrow;
+use crate::network::storage::AsStorage;
 
 pub type Geometry<M> = <M as Geometric>::Geometry;
 pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;

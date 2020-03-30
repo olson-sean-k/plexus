@@ -5,22 +5,22 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::AsPosition;
 
-use crate::graph::borrow::{Reborrow, ReborrowMut};
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, Geometric, Geometry, GraphGeometry, VertexPosition,
 };
+use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
 use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
 use crate::graph::view::path::PathView;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
-use crate::graph::view::{ClosedView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::network::borrow::{Reborrow, ReborrowMut};
+use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::view::{ClosedView, Orphan, View};
 use crate::transact::{Mutate, Transact};
 
 /// Edge-like structure. Abstracts arcs and edges.
@@ -1320,7 +1320,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
             let storage = unsafe {
-                mem::transmute::<&'_ mut StorageProxy<Vertex<G>>, &'a mut StorageProxy<Vertex<G>>>(
+                mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.storage.as_storage_mut(),
                 )
             };
@@ -1424,7 +1424,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             let storage = unsafe {
-                mem::transmute::<&'_ mut StorageProxy<Face<G>>, &'a mut StorageProxy<Face<G>>>(
+                mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.storage.as_storage_mut(),
                 )
             };

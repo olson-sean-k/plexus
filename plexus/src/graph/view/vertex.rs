@@ -5,23 +5,22 @@ use std::ops::{Deref, DerefMut};
 use theon::space::Vector;
 use theon::AsPosition;
 
-use crate::graph::borrow::{Reborrow, ReborrowMut};
+use crate::graph::entity::{Arc, Edge, Face, Vertex};
 use crate::graph::geometry::{
     Geometric, Geometry, GraphGeometry, VertexCentroid, VertexNormal, VertexPosition,
 };
+use crate::graph::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::alias::*;
-use crate::graph::storage::entity::{Arc, Edge, Face, Vertex};
-use crate::graph::storage::key::{ArcKey, FaceKey, VertexKey};
-use crate::graph::storage::{AsStorage, AsStorageMut, StorageProxy};
+use crate::graph::storage::*;
+use crate::graph::trace::{Trace, TraceAny, TraceFirst};
 use crate::graph::view::edge::{ArcOrphan, ArcView};
 use crate::graph::view::face::{FaceOrphan, FaceView};
-use crate::graph::view::traverse::{
-    Adjacency, BreadthTraversal, DepthTraversal, Trace, TraceAny, TraceFirst,
-};
-use crate::graph::view::{ClosedView, Orphan, View};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
+use crate::network::borrow::{Reborrow, ReborrowMut};
+use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::network::view::{ClosedView, Orphan, View};
 use crate::transact::{Mutate, Transact};
 
 /// View of a vertex in a graph.
@@ -646,7 +645,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).and_then(|key| {
             let storage = unsafe {
-                mem::transmute::<&'_ mut StorageProxy<Vertex<G>>, &'a mut StorageProxy<Vertex<G>>>(
+                mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
                     self.inner.storage.as_storage_mut(),
                 )
             };
@@ -751,7 +750,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).and_then(|key| {
             let storage = unsafe {
-                mem::transmute::<&'_ mut StorageProxy<Arc<G>>, &'a mut StorageProxy<Arc<G>>>(
+                mem::transmute::<&'_ mut Storage<Arc<G>>, &'a mut Storage<Arc<G>>>(
                     self.storage.as_storage_mut(),
                 )
             };
@@ -848,7 +847,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).and_then(|key| {
             let storage = unsafe {
-                mem::transmute::<&'_ mut StorageProxy<Face<G>>, &'a mut StorageProxy<Face<G>>>(
+                mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
                     self.inner.storage.as_storage_mut(),
                 )
             };
