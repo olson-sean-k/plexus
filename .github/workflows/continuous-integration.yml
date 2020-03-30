@@ -5,26 +5,33 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: hecrj/setup-rust-action@master
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: nightly
-      - run: rustup component add rustfmt
-      - uses: actions/checkout@master
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt
+      - uses: actions-rs/cargo@v1
         with:
-          fetch-depth: 1
-      - run: ./rustfmt.sh -- --check
+          command: fmt
+          args: --all -- --check
   clippy:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: hecrj/setup-rust-action@master
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
       - run: rustup component add clippy
-      - uses: actions/checkout@master
+      - uses: actions-rs/cargo@v1
         with:
-          fetch-depth: 1
-      - run: ./clippy.sh -- -D clippy::all
+          command: clippy
+          args: --all-features --all-targets -- -D clippy::all
   test:
     name: Test
     needs: [clippy, rustfmt]
@@ -33,13 +40,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [macOS-latest, ubuntu-latest, windows-latest]
-        rust: [stable, beta]
+        toolchain: [stable, beta]
     steps:
-      - uses: hecrj/setup-rust-action@master
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: ${{ matrix.rust }}
-      - uses: actions/checkout@master
+          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - uses: actions-rs/cargo@v1
         with:
-          fetch-depth: 1
-      - run: cargo test --manifest-path=plexus/Cargo.toml --no-default-features --verbose
-      - run: cargo test --manifest-path=plexus/Cargo.toml --all-features --verbose
+          command: test
+          args: --manifest-path=plexus/Cargo.toml --no-default-features --verbose
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path=plexus/Cargo.toml --all-features --verbose
