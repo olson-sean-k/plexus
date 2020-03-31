@@ -166,19 +166,16 @@
 //! [1]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
 //! [2]: https://plexus.rs/user-guide/graphs
 
-// TODO: Refactor code that can be used by multiple mesh data structures into a
-//       `network` module. This includes storage and basic view APIs, which
-//       could be used to implement a non-manifold structure.
-
 mod builder;
 mod core;
-mod entity;
+mod edge;
+mod face;
 mod geometry;
-mod key;
 mod mutation;
+mod path;
 mod storage;
 mod trace;
-mod view;
+mod vertex;
 
 use decorum::N64;
 use itertools::Itertools;
@@ -215,16 +212,16 @@ use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
-pub use crate::graph::entity::{Arc, Edge, Face, Vertex};
+pub use crate::graph::edge::{
+    Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, Edgoid,
+};
+pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, Ringoid};
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexNormal, VertexPosition,
 };
-pub use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
-pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edgoid};
-pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, Ringoid};
-pub use crate::graph::view::path::Path;
-pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
+pub use crate::graph::path::Path;
+pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 pub use crate::network::view::Rebind;
 
 pub use Selector::ByIndex;

@@ -1,4 +1,6 @@
+use derivative::Derivative;
 use fool::BoolExt;
+use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::cmp;
 use std::collections::HashSet;
@@ -9,24 +11,23 @@ use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use theon::AsPosition;
 use typenum::U3;
 
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
 use crate::graph::geometry::{
     FaceCentroid, FaceNormal, FacePlane, Geometric, Geometry, GraphGeometry, VertexPosition,
 };
-use crate::graph::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::trace::{Trace, TraceFirst};
-use crate::graph::view::edge::{ArcOrphan, ArcView};
-use crate::graph::view::vertex::{VertexOrphan, VertexView};
+use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, Storage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
@@ -91,6 +92,54 @@ where
         let destination = index_of_selector(destination)? as isize;
         let difference = (source - destination).abs() as usize;
         Ok(cmp::min(difference, arity - difference))
+    }
+}
+
+/// Graph face.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
+pub struct Face<G>
+where
+    G: GraphGeometry,
+{
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Face,
+    /// Required key into the leading arc.
+    pub(in crate::graph) arc: ArcKey,
+}
+
+impl<G> Face<G>
+where
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
+        Face { geometry, arc }
+    }
+}
+
+impl<G> Entity for Face<G>
+where
+    G: GraphGeometry,
+{
+    type Key = FaceKey;
+    type Storage = SlotStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct FaceKey(DefaultKey);
+
+impl OpaqueKey for FaceKey {
+    type Inner = DefaultKey;
+
+    fn from_inner(key: Self::Inner) -> Self {
+        FaceKey(key)
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self.0
     }
 }
 

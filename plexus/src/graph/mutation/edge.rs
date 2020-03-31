@@ -4,13 +4,13 @@ use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
 use crate::graph::core::Core;
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
+use crate::graph::face::{Face, FaceKey};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
-use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::VertexMutation;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::view::edge::ArcView;
+use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Storage};

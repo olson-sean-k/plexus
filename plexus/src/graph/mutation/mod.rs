@@ -5,10 +5,12 @@ pub mod vertex;
 use std::ops::{Deref, DerefMut};
 
 use crate::graph::core::OwnedCore;
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::edge::{Arc, Edge};
+use crate::graph::face::Face;
 use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::storage::*;
+use crate::graph::vertex::Vertex;
 use crate::graph::GraphError;
 use crate::network::storage::{AsStorage, Storage};
 use crate::transact::Transact;

@@ -1,27 +1,79 @@
+use derivative::Derivative;
 use fool::BoolExt;
+use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::Vector;
 use theon::AsPosition;
 
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
+use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView};
 use crate::graph::geometry::{
     Geometric, Geometry, GraphGeometry, VertexCentroid, VertexNormal, VertexPosition,
 };
-use crate::graph::key::{ArcKey, FaceKey, VertexKey};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::*;
 use crate::graph::trace::{Trace, TraceAny, TraceFirst};
-use crate::graph::view::edge::{ArcOrphan, ArcView};
-use crate::graph::view::face::{FaceOrphan, FaceView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, Storage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
+
+/// Graph vertex.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
+pub struct Vertex<G>
+where
+    G: GraphGeometry,
+{
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Vertex,
+    /// Required key into the leading arc.
+    pub(in crate::graph) arc: Option<ArcKey>,
+}
+
+impl<G> Vertex<G>
+where
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn new(geometry: G::Vertex) -> Self {
+        Vertex {
+            geometry,
+            arc: None,
+        }
+    }
+}
+
+impl<G> Entity for Vertex<G>
+where
+    G: GraphGeometry,
+{
+    type Key = VertexKey;
+    type Storage = SlotStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct VertexKey(DefaultKey);
+
+impl OpaqueKey for VertexKey {
+    type Inner = DefaultKey;
+
+    fn from_inner(key: Self::Inner) -> Self {
+        VertexKey(key)
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self.0
+    }
+}
 
 /// View of a vertex in a graph.
 ///

@@ -1,8 +1,9 @@
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::graph::face::FaceKey;
 use crate::graph::geometry::GraphGeometry;
-use crate::graph::key::{FaceKey, VertexKey};
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::Mutation;
+use crate::graph::vertex::VertexKey;
 use crate::graph::{GraphError, MeshGraph};
 use crate::transact::{ClosedInput, Transact};
 use crate::IntoGeometry;

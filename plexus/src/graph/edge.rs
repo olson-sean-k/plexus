@@ -1,26 +1,29 @@
 use arrayvec::ArrayVec;
+use derivative::Derivative;
 use fool::BoolExt;
+use slotmap::DefaultKey;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::AsPosition;
 
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring};
 use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, Geometric, Geometry, GraphGeometry, VertexPosition,
 };
-use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::view::face::{FaceOrphan, FaceView, Ring};
-use crate::graph::view::path::Path;
-use crate::graph::view::vertex::{VertexOrphan, VertexView};
+use crate::graph::path::Path;
+use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, Storage};
+use crate::network::storage::{
+    AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage, Storage,
+};
 use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 
 /// Edge-like structure. Abstracts arcs and edges.
@@ -36,6 +39,91 @@ where
     fn into_arc(self) -> ArcView<B>;
 
     fn into_edge(self) -> EdgeView<B>;
+}
+
+// Unlike other graph structures, the vertex connectivity of an arc is immutable
+// and encoded within its key. This provides fast and reliable lookups even when
+// a graph is in an inconsistent state. However, it also complicates certain
+// topological mutations and sometimes requires that arcs be rekeyed. For this
+// reason, `Arc` has no fields representing its source and destination vertices
+// nor its opposite arc; such fields would be redundant.
+/// Graph arc.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
+pub struct Arc<G>
+where
+    G: GraphGeometry,
+{
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Arc,
+    /// Required key into the next arc.
+    pub(in crate::graph) next: Option<ArcKey>,
+    /// Required key into the previous arc.
+    pub(in crate::graph) previous: Option<ArcKey>,
+    /// Required key into the edge.
+    pub(in crate::graph) edge: Option<EdgeKey>,
+    /// Optional key into the face.
+    pub(in crate::graph) face: Option<FaceKey>,
+}
+
+impl<G> Arc<G>
+where
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
+        Arc {
+            geometry,
+            next: None,
+            previous: None,
+            edge: None,
+            face: None,
+        }
+    }
+}
+
+impl<G> Entity for Arc<G>
+where
+    G: GraphGeometry,
+{
+    type Key = ArcKey;
+    type Storage = HashStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct ArcKey(VertexKey, VertexKey);
+
+impl ArcKey {
+    pub(in crate::graph) fn into_opposite(self) -> ArcKey {
+        let (a, b) = self.into();
+        (b, a).into()
+    }
+}
+
+impl From<(VertexKey, VertexKey)> for ArcKey {
+    fn from(key: (VertexKey, VertexKey)) -> Self {
+        ArcKey(key.0, key.1)
+    }
+}
+
+impl Into<(VertexKey, VertexKey)> for ArcKey {
+    fn into(self) -> (VertexKey, VertexKey) {
+        (self.0, self.1)
+    }
+}
+
+impl OpaqueKey for ArcKey {
+    type Inner = (VertexKey, VertexKey);
+
+    fn from_inner(key: Self::Inner) -> Self {
+        ArcKey(key.0, key.1)
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        (self.0, self.1)
+    }
 }
 
 /// View of an arc in a graph.
@@ -960,6 +1048,54 @@ where
 {
     fn from(inner: Orphan<'a, Arc<G>>) -> Self {
         ArcOrphan { inner }
+    }
+}
+
+/// Graph edge.
+#[derivative(Clone, Copy, Debug, Hash)]
+#[derive(Derivative)]
+pub struct Edge<G>
+where
+    G: GraphGeometry,
+{
+    /// User geometry.
+    ///
+    /// The type of this field is derived from `GraphGeometry`.
+    #[derivative(Debug = "ignore", Hash = "ignore")]
+    pub geometry: G::Edge,
+    /// Required key into the leading arc.
+    pub(in crate::graph) arc: ArcKey,
+}
+
+impl<G> Edge<G>
+where
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
+        Edge { geometry, arc }
+    }
+}
+
+impl<G> Entity for Edge<G>
+where
+    G: GraphGeometry,
+{
+    type Key = EdgeKey;
+    type Storage = SlotStorage<Self>;
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct EdgeKey(DefaultKey);
+
+impl OpaqueKey for EdgeKey {
+    type Inner = DefaultKey;
+
+    fn from_inner(key: Self::Inner) -> Self {
+        EdgeKey(key)
+    }
+
+    fn into_inner(self) -> Self::Inner {
+        self.0
     }
 }
 

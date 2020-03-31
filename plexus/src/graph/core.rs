@@ -1,7 +1,9 @@
 use std::marker::PhantomData;
 
-use crate::graph::entity::{Arc, Edge, Face, Vertex};
+use crate::graph::edge::{Arc, Edge};
+use crate::graph::face::Face;
 use crate::graph::geometry::{Geometric, GraphGeometry};
+use crate::graph::vertex::Vertex;
 use crate::network::storage::{AsStorage, AsStorageMut, Storage};
 use crate::network::Fuse;
 

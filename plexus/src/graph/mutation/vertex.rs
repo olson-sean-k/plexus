@@ -1,9 +1,9 @@
 use crate::graph::core::Core;
-use crate::graph::entity::Vertex;
+use crate::graph::edge::ArcKey;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
-use crate::graph::key::{ArcKey, VertexKey};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Storage};

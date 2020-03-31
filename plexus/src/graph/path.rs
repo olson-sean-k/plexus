@@ -2,13 +2,11 @@ use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
-use crate::graph::entity::{Arc, Vertex};
+use crate::graph::edge::{Arc, ArcKey, ArcView};
+use crate::graph::face::Ring;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
-use crate::graph::key::{ArcKey, VertexKey};
 use crate::graph::mutation::Consistent;
-use crate::graph::view::edge::ArcView;
-use crate::graph::view::face::Ring;
-use crate::graph::view::vertex::VertexView;
+use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, AsStorageMut};
