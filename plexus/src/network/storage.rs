@@ -20,6 +20,16 @@ pub trait OpaqueKey: Copy + Eq + Hash + Sized {
     fn into_inner(self) -> Self::Inner;
 }
 
+pub trait Fuse<M, T>
+where
+    M: AsStorage<T>,
+    T: Entity,
+{
+    type Output: AsStorage<T>;
+
+    fn fuse(self, source: M) -> Self::Output;
+}
+
 pub trait AsStorage<E>
 where
     E: Entity,

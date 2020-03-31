@@ -4,8 +4,7 @@ use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::geometry::{Geometric, GraphGeometry};
 use crate::graph::vertex::Vertex;
-use crate::network::storage::{AsStorage, AsStorageMut, Storage};
-use crate::network::Fuse;
+use crate::network::storage::{AsStorage, AsStorageMut, Fuse, Storage};
 
 /// A complete core that owns all of its storage.
 pub type OwnedCore<G> =

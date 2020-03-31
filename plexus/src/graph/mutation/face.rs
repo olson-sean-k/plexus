@@ -16,9 +16,8 @@ use crate::graph::storage::*;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, Storage};
+use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::network::view::{ClosedView, View};
-use crate::network::Fuse;
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 

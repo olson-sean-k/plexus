@@ -13,9 +13,8 @@ use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, Storage};
+use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::network::view::{ClosedView, View};
-use crate::network::Fuse;
 use crate::transact::Transact;
 use crate::IteratorExt as _;
 
