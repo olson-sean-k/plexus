@@ -14,8 +14,8 @@ use crate::graph::mutation::edge::{
     self, ArcBridgeCache, ArcExtrudeCache, EdgeRemoveCache, EdgeSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::view::face::{FaceOrphan, FaceView, RingView};
-use crate::graph::view::path::PathView;
+use crate::graph::view::face::{FaceOrphan, FaceView, Ring};
+use crate::graph::view::path::Path;
 use crate::graph::view::vertex::{VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::network::borrow::{Reborrow, ReborrowMut};
@@ -228,7 +228,7 @@ where
     M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
     /// Converts the arc into its ring.
-    pub fn into_ring(self) -> RingView<B> {
+    pub fn into_ring(self) -> Ring<B> {
         let (storage, key) = self.into_inner().unbind();
         View::bind(storage, key).expect_consistent().into()
     }
@@ -254,7 +254,7 @@ where
     }
 
     /// Gets the ring of the arc.
-    pub fn ring(&self) -> RingView<&M> {
+    pub fn ring(&self) -> Ring<&M> {
         let (storage, key) = self.inner.interior_reborrow().unbind();
         View::bind_into(storage, key).expect_consistent()
     }
@@ -312,13 +312,13 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
-    pub fn into_path(self) -> PathView<B> {
+    pub fn into_path(self) -> Path<B> {
         let (storage, ab) = self.into_inner().unbind();
         let (a, b) = ab.into();
-        PathView::bind(storage, &[a, b]).unwrap()
+        Path::bind(storage, &[a, b]).unwrap()
     }
 
-    pub fn path(&self) -> PathView<&M> {
+    pub fn path(&self) -> Path<&M> {
         self.interior_reborrow().into_path()
     }
 

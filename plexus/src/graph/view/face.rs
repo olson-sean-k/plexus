@@ -33,7 +33,7 @@ use crate::{DynamicArity, IteratorExt as _, StaticArity};
 use Selector::ByIndex;
 
 // TODO: The API for faces and rings presents fuzzy distinctions; many
-//       operations supported by `FaceView` could be supported by `RingView` as
+//       operations supported by `FaceView` could be supported by `Ring` as
 //       well (specifically, all topological operations where a `Face` is
 //       unnecessary). In essence, a face is simply a ring with an associated
 //       payload that describes its path and geometry. The geometry is the most
@@ -202,7 +202,7 @@ where
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Converts the face into its ring.
-    pub fn into_ring(self) -> RingView<B> {
+    pub fn into_ring(self) -> Ring<B> {
         let key = self.arc().key();
         self.into_inner().rebind_into(key).expect_consistent()
     }
@@ -213,7 +213,7 @@ where
     }
 
     /// Gets the ring of the face.
-    pub fn ring(&self) -> RingView<&M> {
+    pub fn ring(&self) -> Ring<&M> {
         let key = self.arc().key();
         self.inner
             .interior_reborrow()
@@ -756,7 +756,7 @@ where
     /// Removes the face.
     ///
     /// Returns the remaining ring of the face if it is not entirely disjoint.
-    pub fn remove(self) -> Option<RingView<&'a mut M>> {
+    pub fn remove(self) -> Option<Ring<&'a mut M>> {
         let (storage, abc) = self.into_inner().unbind();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
@@ -985,15 +985,11 @@ where
 /// not be occupied by faces. When no face is present, the ring forms a
 /// boundary.
 ///
-/// Rings have no associated payload and do not directly expose geometry
-/// (`RingView` does not implement `Deref` or expose a `geometry` field). See
-/// the module documentation for more information about topological views.
-///
 /// Rings are notated by their path. A ring with a perimeter formed by vertices
 /// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
 /// rotations of the set of vertices are equivalent, such as
 /// $\overrightarrow{\\{B,C,A\\}}$.
-pub struct RingView<B>
+pub struct Ring<B>
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
@@ -1001,7 +997,7 @@ where
     inner: View<B, Arc<Geometry<B>>>,
 }
 
-impl<B, M> RingView<B>
+impl<B, M> Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
@@ -1018,12 +1014,12 @@ where
         <Self as Ringoid<_>>::interior_arcs(self)
     }
 
-    fn interior_reborrow(&self) -> RingView<&M> {
+    fn interior_reborrow(&self) -> Ring<&M> {
         self.inner.interior_reborrow().into()
     }
 }
 
-impl<'a, M> RingView<&'a mut M>
+impl<'a, M> Ring<&'a mut M>
 where
     M: AsStorageMut<Arc<Geometry<M>>> + Consistent + Geometric,
 {
@@ -1031,12 +1027,12 @@ where
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> RingView<&'a M> {
+    pub fn into_ref(self) -> Ring<&'a M> {
         self.into_inner().into_ref().into()
     }
 }
 
-impl<B, M> RingView<B>
+impl<B, M> Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
@@ -1052,7 +1048,7 @@ where
     }
 }
 
-impl<B, M> RingView<B>
+impl<B, M> Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
@@ -1075,7 +1071,7 @@ where
     }
 }
 
-impl<B, M> RingView<B>
+impl<B, M> Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
@@ -1103,7 +1099,7 @@ where
     }
 }
 
-impl<'a, M, G> RingView<&'a mut M>
+impl<'a, M, G> Ring<&'a mut M>
 where
     M: AsStorage<Vertex<G>>
         + AsStorage<Arc<G>>
@@ -1151,7 +1147,7 @@ where
     }
 }
 
-impl<B, M, G> DynamicArity for RingView<B>
+impl<B, M, G> DynamicArity for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
@@ -1166,30 +1162,30 @@ where
     }
 }
 
-impl<B, M, G> From<View<B, Arc<G>>> for RingView<B>
+impl<B, M, G> From<View<B, Arc<G>>> for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn from(view: View<B, Arc<G>>) -> Self {
-        RingView { inner: view }
+        Ring { inner: view }
     }
 }
 
-impl<B, M, G> Into<View<B, Arc<G>>> for RingView<B>
+impl<B, M, G> Into<View<B, Arc<G>>> for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn into(self) -> View<B, Arc<G>> {
-        let RingView { inner, .. } = self;
+        let Ring { inner, .. } = self;
         inner
     }
 }
 
-impl<B, M, G> PartialEq for RingView<B>
+impl<B, M, G> PartialEq for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
@@ -1201,14 +1197,14 @@ where
     }
 }
 
-impl<B, M, G> Ringoid<B> for RingView<B>
+impl<B, M, G> Ringoid<B> for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     fn into_arc(self) -> ArcView<B> {
-        RingView::into_arc(self)
+        Ring::into_arc(self)
     }
 
     fn interior_arcs(&self) -> ArcCirculator<&M> {
@@ -1216,7 +1212,7 @@ where
     }
 }
 
-impl<B, M, G> StaticArity for RingView<B>
+impl<B, M, G> StaticArity for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
@@ -1380,13 +1376,13 @@ where
     }
 }
 
-impl<B, M, G> From<RingView<B>> for ArcCirculator<B>
+impl<B, M, G> From<Ring<B>> for ArcCirculator<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(path: RingView<B>) -> Self {
+    fn from(path: Ring<B>) -> Self {
         let (storage, key) = path.into_inner().unbind();
         ArcCirculator {
             storage,

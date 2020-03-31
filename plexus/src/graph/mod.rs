@@ -222,8 +222,8 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::key::{ArcKey, EdgeKey, FaceKey, VertexKey};
 pub use crate::graph::view::edge::{ArcOrphan, ArcView, EdgeOrphan, EdgeView, Edgoid};
-pub use crate::graph::view::face::{FaceOrphan, FaceView, RingView, Ringoid};
-pub use crate::graph::view::path::PathView;
+pub use crate::graph::view::face::{FaceOrphan, FaceView, Ring, Ringoid};
+pub use crate::graph::view::path::Path;
 pub use crate::graph::view::vertex::{VertexOrphan, VertexView};
 pub use crate::network::view::Rebind;
 
@@ -557,20 +557,20 @@ where
             .map(From::from)
     }
 
-    pub fn path<I>(&self, keys: I) -> Result<PathView<&Self>, GraphError>
+    pub fn path<I>(&self, keys: I) -> Result<Path<&Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
     {
-        PathView::bind(self, keys)
+        Path::bind(self, keys)
     }
 
-    pub fn path_mut<I>(&mut self, keys: I) -> Result<PathView<&mut Self>, GraphError>
+    pub fn path_mut<I>(&mut self, keys: I) -> Result<Path<&mut Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
     {
-        PathView::bind(self, keys)
+        Path::bind(self, keys)
     }
 
     /// Gets an axis-aligned bounding box that encloses the graph.
@@ -684,7 +684,7 @@ where
     /// ```
     #[allow(clippy::type_complexity)]
     pub fn split_at_path(
-        path: PathView<&mut Self>,
+        path: Path<&mut Self>,
     ) -> Result<(VertexView<&Self>, VertexView<&Self>), GraphError> {
         if path.is_closed() {
         }

@@ -7,7 +7,7 @@ use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::key::{ArcKey, VertexKey};
 use crate::graph::mutation::Consistent;
 use crate::graph::view::edge::ArcView;
-use crate::graph::view::face::RingView;
+use crate::graph::view::face::Ring;
 use crate::graph::view::vertex::VertexView;
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::network::borrow::Reborrow;
@@ -23,16 +23,12 @@ use crate::IteratorExt as _;
 /// and $C$ is notated $\overrightarrow{(A,B,C)}$ and a closed path over the
 /// same vertices is notated $\overrightarrow{\\{A,B,C\\}}$.
 ///
-/// `PathView` represents paths of the form $\overrightarrow{(A,\cdots,B)}$,
-/// where $A$ is the back of the path and $B$ is the front of the path. Note
-/// that closed paths are always of the form $\overrightarrow{(A,\cdots,A)}$,
-/// where the back and front vertices are both $A$ (the same).
-///
-/// Paths have no associated payload and do not directly expose geometry
-/// (`PathView` does not implement `Deref` or expose a `geometry` field). See
-/// the module documentation for more information about topological views.
+/// `Path` represents paths of the form $\overrightarrow{(A,\cdots,B)}$, where
+/// $A$ is the back of the path and $B$ is the front of the path. Note that
+/// closed paths are always of the form $\overrightarrow{(A,\cdots,A)}$, where
+/// the back and front vertices are both $A$ (the same).
 #[derive(Clone)]
-pub struct PathView<B>
+pub struct Path<B>
 where
     B: Reborrow,
     B::Target:
@@ -42,7 +38,7 @@ where
     storage: B,
 }
 
-impl<B, M, G> PathView<B>
+impl<B, M, G> Path<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
@@ -62,7 +58,7 @@ where
         let ab = (a, b).into();
         View::<_, Arc<G>>::bind(storage.reborrow(), ab)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let mut path = PathView {
+        let mut path = Path {
             keys: (&[ab]).iter().cloned().collect(),
             storage,
         };
@@ -219,7 +215,7 @@ where
     ///
     /// Returns the ring bisected by the path if such a ring exists, otherwise
     /// `None`.
-    pub fn into_bisected_ring(self) -> Option<RingView<B>> {
+    pub fn into_bisected_ring(self) -> Option<Ring<B>> {
         // The path may bisect a ring if it is open and is not a boundary path.
         // Note that open boundary paths cannot bisect a ring, so such paths are
         // ignored.
@@ -235,11 +231,11 @@ where
                 .nth(0);
             // If there is such a ring and it also includes the vertex at the
             // front of the path, then it is bisected. Rebind the path's storage
-            // into a `RingView`.
+            // into a `Ring`.
             ring.filter(|ring| ring.vertices().keys().any(|key| key == front.key()))
                 .map(|ring| ring.into_arc().key())
                 .map(move |key| {
-                    let PathView { storage, .. } = self;
+                    let Path { storage, .. } = self;
                     ArcView::from(View::bind_unchecked(storage, key)).into_ring()
                 })
         }
@@ -249,7 +245,7 @@ where
     }
 
     /// Gets the ring bisected by the path, if any.
-    pub fn bisected_ring(&self) -> Option<RingView<&M>> {
+    pub fn bisected_ring(&self) -> Option<Ring<&M>> {
         self.interior_reborrow().into_bisected_ring()
     }
 
@@ -316,7 +312,7 @@ where
         I::Item: Borrow<ArcKey>,
     {
         let keys = keys.into_iter().map(|key| *key.borrow()).collect();
-        PathView { storage, keys }
+        Path { storage, keys }
     }
 
     fn endpoints(&self) -> (VertexKey, VertexKey) {
@@ -325,14 +321,14 @@ where
         (a, b)
     }
 
-    fn interior_reborrow(&self) -> PathView<&M> {
+    fn interior_reborrow(&self) -> Path<&M> {
         let storage = self.storage.reborrow();
         let keys = self.keys.iter();
-        PathView::bind_unchecked(storage, keys)
+        Path::bind_unchecked(storage, keys)
     }
 }
 
-impl<'a, M, G> PathView<&'a mut M>
+impl<'a, M, G> Path<&'a mut M>
 where
     M: AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
@@ -341,16 +337,16 @@ where
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> PathView<&'a M> {
-        let PathView { keys, storage, .. } = self;
-        PathView {
+    pub fn into_ref(self) -> Path<&'a M> {
+        let Path { keys, storage, .. } = self;
+        Path {
             keys,
             storage: &*storage,
         }
     }
 }
 
-impl<B, M, G> PartialEq for PathView<B>
+impl<B, M, G> PartialEq for Path<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
