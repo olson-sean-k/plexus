@@ -103,12 +103,12 @@ where
     E: 'a + Entity,
 {
     pub fn to_ref(&self) -> View<&M, E> {
-        View::bind(&*self.storage, self.key).unwrap()
+        self.interior_reborrow()
     }
 
     pub fn into_ref(self) -> View<&'a M, E> {
         let (storage, key) = self.unbind();
-        View::bind(&*storage, key).unwrap()
+        View::bind_unchecked(&*storage, key)
     }
 }
 
