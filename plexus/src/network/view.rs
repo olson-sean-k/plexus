@@ -12,11 +12,62 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     fn key(&self) -> Self::Key;
 }
 
-pub trait Rebind<T>: ClosedView
+pub trait Bind<B>: ClosedView + Sized
 where
+    B: Reborrow,
+{
+    fn bind(storage: B, key: Self::Key) -> Option<Self>;
+}
+
+// TODO: This does not implement `Bind` for orphan views without an obtuse
+//       `From<View<_>>` implementation.
+impl<B, T> Bind<B> for T
+where
+    B: Reborrow,
+    B::Target: AsStorage<T::Entity>,
+    T: ClosedView + From<View<B, <T as ClosedView>::Entity>> + Sized,
+{
+    fn bind(storage: B, key: Self::Key) -> Option<Self> {
+        View::bind(storage, key).map(Self::from)
+    }
+}
+
+pub trait Rebind<B, T>: ClosedView
+where
+    B: Reborrow,
     T: ClosedView,
 {
     fn rebind(self, key: T::Key) -> Option<T>;
+}
+
+impl<B, T, U> Rebind<B, T> for U
+where
+    B: Reborrow,
+    B::Target: AsStorage<T::Entity> + AsStorage<U::Entity>,
+    T: ClosedView + From<View<B, <T as ClosedView>::Entity>>,
+    U: ClosedView + Into<View<B, <U as ClosedView>::Entity>>,
+{
+    fn rebind(self, key: T::Key) -> Option<T> {
+        self.into().rebind(key).map(T::from)
+    }
+}
+
+pub trait Unbind<B>: ClosedView
+where
+    B: Reborrow,
+{
+    fn unbind(self) -> (B, Self::Key);
+}
+
+impl<B, T> Unbind<B> for T
+where
+    B: Reborrow,
+    B::Target: AsStorage<T::Entity>,
+    T: ClosedView + Into<View<B, <T as ClosedView>::Entity>>,
+{
+    fn unbind(self) -> (B, Self::Key) {
+        self.into().unbind()
+    }
 }
 
 pub struct View<B, E>
@@ -189,18 +240,6 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
-    }
-}
-
-impl<B, E, T> Rebind<T> for View<B, E>
-where
-    B: Reborrow,
-    B::Target: AsStorage<E> + AsStorage<T::Entity>,
-    E: Entity,
-    T: ClosedView + From<View<B, <T as ClosedView>::Entity>>,
-{
-    fn rebind(self, key: T::Key) -> Option<T> {
-        self.rebind(key).map(T::from)
     }
 }
 

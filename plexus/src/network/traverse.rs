@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use crate::network::borrow::Reborrow;
 use crate::network::storage::AsStorage;
-use crate::network::view::{ClosedView, View};
+use crate::network::view::{Bind, ClosedView, Unbind};
 
 pub type BreadthTraversal<B, T> = Traversal<B, T, VecDeque<<T as ClosedView>::Key>>;
 pub type DepthTraversal<B, T> = Traversal<B, T, Vec<<T as ClosedView>::Key>>;
@@ -74,11 +74,11 @@ impl<B, T, R> From<T> for Traversal<B, T, R>
 where
     B: Reborrow,
     B::Target: AsStorage<T::Entity>,
-    T: Into<View<B, <T as ClosedView>::Entity>> + ClosedView,
+    T: Unbind<B>,
     R: Buffer<T::Key>,
 {
     fn from(view: T) -> Self {
-        let (storage, key) = view.into().unbind();
+        let (storage, key) = view.unbind();
         let capacity = storage.reborrow().as_storage().len();
         let mut buffer = R::default();
         buffer.push(key);
@@ -94,7 +94,7 @@ where
 impl<'a, M, T, R> Iterator for Traversal<&'a M, T, R>
 where
     M: 'a + AsStorage<T::Entity>,
-    T: Adjacency + Copy + From<View<&'a M, <T as ClosedView>::Entity>>,
+    T: Adjacency + Bind<&'a M>,
     R: Buffer<<T as ClosedView>::Key>,
 {
     type Item = T;
@@ -103,7 +103,7 @@ where
         while let Some(view) = self
             .buffer
             .pop()
-            .and_then(|key| -> Option<T> { View::bind_into(self.storage, key) })
+            .and_then(|key| -> Option<T> { T::bind(self.storage, key) })
         {
             if self.breadcrumbs.insert(view.key()) {
                 self.buffer.extend(view.adjacency());
