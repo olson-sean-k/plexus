@@ -96,8 +96,8 @@ where
         self.into()
     }
 
-    fn interior_reborrow(&self) -> VertexView<&M> {
-        self.inner.interior_reborrow().into()
+    pub fn to_ref(&self) -> VertexView<&M> {
+        self.inner.to_ref().into()
     }
 
     pub fn position<'a>(&'a self) -> &'a VertexPosition<Geometry<B>>
@@ -114,8 +114,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Vertex<Geometry<B>>> + Geometric,
 {
-    fn interior_reborrow_mut(&mut self) -> VertexView<&mut M> {
-        self.inner.interior_reborrow_mut().into()
+    pub fn to_mut(&mut self) -> VertexView<&mut M> {
+        self.inner.to_mut().into()
     }
 }
 
@@ -175,7 +175,7 @@ where
 
     pub(in crate::graph) fn reachable_outgoing_arc(&self) -> Option<ArcView<&M>> {
         self.arc
-            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
+            .and_then(|key| self.inner.to_ref().rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_incoming_arcs<'a>(
@@ -185,7 +185,7 @@ where
         M: 'a,
     {
         // This reachable circulator is needed for face insertions.
-        ArcCirculator::<TraceAny<_>, _>::from(self.interior_reborrow())
+        ArcCirculator::<TraceAny<_>, _>::from(self.to_ref())
     }
 
     pub(in crate::graph) fn reachable_outgoing_arcs<'a>(
@@ -226,7 +226,7 @@ where
     where
         M: 'a,
     {
-        BreadthTraversal::from(self.interior_reborrow())
+        BreadthTraversal::from(self.to_ref())
     }
 
     /// Gets an iterator that traverses the vertices of the graph in depth-first
@@ -239,16 +239,14 @@ where
     where
         M: 'a,
     {
-        DepthTraversal::from(self.interior_reborrow())
+        DepthTraversal::from(self.to_ref())
     }
 
     pub fn neighboring_vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
     {
-        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(
-            self.interior_reborrow(),
-        ))
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()))
     }
 
     /// Gets an iterator of views over the incoming arcs of the vertex.
@@ -259,7 +257,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.interior_reborrow())
+        ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref())
     }
 
     /// Gets an iterator of views over the outgoing arcs of the vertex.
@@ -270,8 +268,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.interior_reborrow())
-            .map(|arc| arc.into_opposite_arc())
+        ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()).map(|arc| arc.into_opposite_arc())
     }
 
     /// Gets the valence of the vertex.
@@ -288,7 +285,7 @@ where
         Geometry<B>: VertexCentroid,
         <Geometry<B> as GraphGeometry>::Vertex: AsPosition,
     {
-        <Geometry<B> as VertexCentroid>::centroid(self.interior_reborrow()).expect_consistent()
+        <Geometry<B> as VertexCentroid>::centroid(self.to_ref()).expect_consistent()
     }
 }
 
@@ -303,9 +300,7 @@ where
     where
         M: 'a,
     {
-        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(
-            self.interior_reborrow_mut(),
-        ))
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut()))
     }
 }
 
@@ -324,7 +319,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.interior_reborrow_mut())
+        ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut())
     }
 }
 
@@ -345,9 +340,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(
-            self.interior_reborrow(),
-        ))
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()))
     }
 
     pub fn normal(&self) -> Result<Vector<VertexPosition<Geometry<B>>>, GraphError>
@@ -355,7 +348,7 @@ where
         Geometry<B>: VertexNormal,
         <Geometry<B> as GraphGeometry>::Vertex: AsPosition,
     {
-        <Geometry<B> as VertexNormal>::normal(self.interior_reborrow())
+        <Geometry<B> as VertexNormal>::normal(self.to_ref())
     }
 }
 
@@ -379,9 +372,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(
-            self.interior_reborrow_mut(),
-        ))
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut()))
     }
 }
 

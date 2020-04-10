@@ -8,7 +8,7 @@ use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, Selector};
-use crate::network::borrow::Reborrow;
+use crate::network::borrow::{Reborrow, ReborrowMut};
 use crate::network::storage::{AsStorage, AsStorageMut};
 use crate::network::view::{ClosedView, View};
 use crate::IteratorExt as _;
@@ -64,6 +64,12 @@ where
             path.push_front(Selector::ByKey(key))?;
         }
         Ok(path)
+    }
+
+    pub fn to_ref(&self) -> Path<&M> {
+        let storage = self.storage.reborrow();
+        let keys = self.keys.iter();
+        Path::bind_unchecked(storage, keys)
     }
 
     /// Pushes a vertex onto the back of the path.
@@ -244,7 +250,7 @@ where
 
     /// Gets the ring bisected by the path, if any.
     pub fn bisected_ring(&self) -> Option<Ring<&M>> {
-        self.interior_reborrow().into_bisected_ring()
+        self.to_ref().into_bisected_ring()
     }
 
     /// Gets an iterator over the vertices in the path.
@@ -318,9 +324,16 @@ where
         let (_, b) = self.keys.front().cloned().expect("empty pathy").into();
         (a, b)
     }
+}
 
-    fn interior_reborrow(&self) -> Path<&M> {
-        let storage = self.storage.reborrow();
+impl<B, M, G> Path<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn to_mut(&mut self) -> Path<&mut M> {
+        let storage = self.storage.reborrow_mut();
         let keys = self.keys.iter();
         Path::bind_unchecked(storage, keys)
     }

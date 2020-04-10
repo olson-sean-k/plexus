@@ -188,8 +188,8 @@ where
         self.into()
     }
 
-    fn interior_reborrow(&self) -> ArcView<&M> {
-        self.inner.interior_reborrow().into()
+    pub fn to_ref(&self) -> ArcView<&M> {
+        self.inner.to_ref().into()
     }
 
     /// Returns `true` if this is a boundary arc.
@@ -205,8 +205,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Geometric,
 {
-    fn interior_reborrow_mut(&mut self) -> ArcView<&mut M> {
-        self.inner.interior_reborrow_mut().into()
+    pub fn to_mut(&mut self) -> ArcView<&mut M> {
+        self.inner.to_mut().into()
     }
 }
 
@@ -286,7 +286,7 @@ where
 
     pub(in crate::graph) fn reachable_boundary_arc(&self) -> Option<ArcView<&M>> {
         if self.is_boundary_arc() {
-            Some(self.interior_reborrow())
+            Some(self.to_ref())
         }
         else {
             self.reachable_opposite_arc()
@@ -296,17 +296,17 @@ where
 
     pub(in crate::graph) fn reachable_opposite_arc(&self) -> Option<ArcView<&M>> {
         let key = self.key().into_opposite();
-        self.inner.interior_reborrow().rebind_into(key)
+        self.inner.to_ref().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_next_arc(&self) -> Option<ArcView<&M>> {
         self.next
-            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
+            .and_then(|key| self.inner.to_ref().rebind_into(key))
     }
 
     pub(in crate::graph) fn reachable_previous_arc(&self) -> Option<ArcView<&M>> {
         self.previous
-            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
+            .and_then(|key| self.inner.to_ref().rebind_into(key))
     }
 }
 
@@ -343,7 +343,7 @@ where
 
     /// Gets the ring of the arc.
     pub fn ring(&self) -> Ring<&M> {
-        let (storage, key) = self.inner.interior_reborrow().unbind();
+        let (storage, key) = self.inner.to_ref().unbind();
         View::bind_into(storage, key).expect_consistent()
     }
 
@@ -386,12 +386,12 @@ where
 
     pub(in crate::graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M>> {
         let (key, _) = self.key().into();
-        self.inner.interior_reborrow().rebind_into(key)
+        self.inner.to_ref().rebind_into(key)
     }
 
     pub(in crate::graph) fn reachable_destination_vertex(&self) -> Option<VertexView<&M>> {
         let (_, key) = self.key().into();
-        self.inner.interior_reborrow().rebind_into(key)
+        self.inner.to_ref().rebind_into(key)
     }
 }
 
@@ -407,7 +407,7 @@ where
     }
 
     pub fn path(&self) -> Path<&M> {
-        self.interior_reborrow().into_path()
+        self.to_ref().into_path()
     }
 
     /// Converts the arc into its source vertex.
@@ -445,7 +445,7 @@ where
 
     pub(in crate::graph) fn reachable_edge(&self) -> Option<EdgeView<&M>> {
         self.edge
-            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
+            .and_then(|key| self.inner.to_ref().rebind_into(key))
     }
 }
 
@@ -479,7 +479,7 @@ where
 
     pub(in crate::graph) fn reachable_face(&self) -> Option<FaceView<&M>> {
         self.face
-            .and_then(|key| self.inner.interior_reborrow().rebind_into(key))
+            .and_then(|key| self.inner.to_ref().rebind_into(key))
     }
 }
 
@@ -513,7 +513,7 @@ where
     where
         M: 'a,
     {
-        VertexCirculator::from(self.interior_reborrow())
+        VertexCirculator::from(self.to_ref())
     }
 }
 
@@ -529,7 +529,7 @@ where
     where
         M: 'a,
     {
-        VertexCirculator::from(self.interior_reborrow_mut())
+        VertexCirculator::from(self.to_mut())
     }
 }
 
@@ -543,7 +543,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(self.interior_reborrow())
+        FaceCirculator::from(self.to_ref())
     }
 }
 
@@ -557,7 +557,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(self.interior_reborrow_mut())
+        FaceCirculator::from(self.to_mut())
     }
 }
 
@@ -571,7 +571,7 @@ where
         Geometry<B>: ArcNormal,
         <Geometry<B> as GraphGeometry>::Vertex: AsPosition,
     {
-        <Geometry<B> as ArcNormal>::normal(self.interior_reborrow()).expect_consistent()
+        <Geometry<B> as ArcNormal>::normal(self.to_ref()).expect_consistent()
     }
 }
 
@@ -590,7 +590,7 @@ where
         G: EdgeMidpoint,
         G::Vertex: AsPosition,
     {
-        G::midpoint(self.interior_reborrow()).expect_consistent()
+        G::midpoint(self.to_ref()).expect_consistent()
     }
 }
 
@@ -1125,8 +1125,18 @@ where
         self.into()
     }
 
-    fn interior_reborrow(&self) -> EdgeView<&M> {
-        self.inner.interior_reborrow().into()
+    pub fn to_ref(&self) -> EdgeView<&M> {
+        self.inner.to_ref().into()
+    }
+}
+
+impl<B, M> EdgeView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Edge<Geometry<B>>> + Geometric,
+{
+    pub fn to_mut(&mut self) -> EdgeView<&mut M> {
+        self.inner.to_mut().into()
     }
 }
 
@@ -1156,7 +1166,7 @@ where
 
     pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
         let key = self.arc;
-        self.inner.interior_reborrow().rebind_into(key)
+        self.inner.to_ref().rebind_into(key)
     }
 }
 
@@ -1194,7 +1204,7 @@ where
         G: EdgeMidpoint,
         G::Vertex: AsPosition,
     {
-        G::midpoint(self.interior_reborrow()).expect_consistent()
+        G::midpoint(self.to_ref()).expect_consistent()
     }
 }
 

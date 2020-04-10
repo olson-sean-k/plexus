@@ -170,8 +170,8 @@ where
         self.into()
     }
 
-    fn interior_reborrow(&self) -> FaceView<&M> {
-        self.inner.interior_reborrow().into()
+    pub fn to_ref(&self) -> FaceView<&M> {
+        self.inner.to_ref().into()
     }
 }
 
@@ -180,8 +180,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    fn interior_reborrow_mut(&mut self) -> FaceView<&mut M> {
-        self.inner.interior_reborrow_mut().into()
+    pub fn to_mut(&mut self) -> FaceView<&mut M> {
+        self.inner.to_mut().into()
     }
 }
 
@@ -241,7 +241,7 @@ where
 
     pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
         let key = self.arc;
-        self.inner.interior_reborrow().rebind_into(key)
+        self.inner.to_ref().rebind_into(key)
     }
 }
 
@@ -264,10 +264,7 @@ where
     /// Gets the ring of the face.
     pub fn ring(&self) -> Ring<&M> {
         let key = self.arc().key();
-        self.inner
-            .interior_reborrow()
-            .rebind_into(key)
-            .expect_consistent()
+        self.inner.to_ref().rebind_into(key).expect_consistent()
     }
 
     /// Gets the leading arc of the face.
@@ -285,7 +282,7 @@ where
     where
         M: 'a,
     {
-        BreadthTraversal::from(self.interior_reborrow())
+        BreadthTraversal::from(self.to_ref())
     }
 
     /// Gets an iterator that traverses the faces of the graph in depth-first
@@ -298,7 +295,7 @@ where
     where
         M: 'a,
     {
-        DepthTraversal::from(self.interior_reborrow())
+        DepthTraversal::from(self.to_ref())
     }
 
     /// Gets an iterator of views over the arcs in the face's ring.
@@ -351,7 +348,7 @@ where
         G: FaceCentroid,
         G::Vertex: AsPosition,
     {
-        G::centroid(self.interior_reborrow()).expect_consistent()
+        G::centroid(self.to_ref()).expect_consistent()
     }
 
     pub fn normal(&self) -> Result<Vector<VertexPosition<G>>, GraphError>
@@ -359,7 +356,7 @@ where
         G: FaceNormal,
         G::Vertex: AsPosition,
     {
-        G::normal(self.interior_reborrow())
+        G::normal(self.to_ref())
     }
 
     pub fn plane(&self) -> Result<Plane<VertexPosition<G>>, GraphError>
@@ -368,7 +365,7 @@ where
         G::Vertex: AsPosition,
         VertexPosition<G>: FiniteDimensional<N = U3>,
     {
-        G::plane(self.interior_reborrow())
+        G::plane(self.to_ref())
     }
 }
 
@@ -382,7 +379,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::from(self.interior_reborrow_mut())
+        ArcCirculator::from(self.to_mut())
     }
 }
 
@@ -398,7 +395,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
+        FaceCirculator::from(ArcCirculator::from(self.to_mut()))
     }
 }
 
@@ -416,7 +413,7 @@ where
     where
         M: 'a,
     {
-        VertexCirculator::from(ArcCirculator::from(self.interior_reborrow_mut()))
+        VertexCirculator::from(ArcCirculator::from(self.to_mut()))
     }
 }
 
@@ -950,7 +947,7 @@ where
     }
 
     fn interior_arcs(&self) -> ArcCirculator<&M> {
-        ArcCirculator::from(self.interior_reborrow())
+        ArcCirculator::from(self.to_ref())
     }
 }
 
@@ -1063,8 +1060,18 @@ where
         <Self as Ringoid<_>>::interior_arcs(self)
     }
 
-    fn interior_reborrow(&self) -> Ring<&M> {
-        self.inner.interior_reborrow().into()
+    pub fn to_ref(&self) -> Ring<&M> {
+        self.inner.to_ref().into()
+    }
+}
+
+impl<B, M> Ring<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Arc<Geometry<B>>> + Consistent + Geometric,
+{
+    pub fn to_mut(&mut self) -> Ring<&mut M> {
+        self.inner.to_mut().into()
     }
 }
 
@@ -1093,7 +1100,7 @@ where
 
     /// Gets the originating arc of the ring.
     pub fn arc(&self) -> ArcView<&M> {
-        self.inner.interior_reborrow().into()
+        self.inner.to_ref().into()
     }
 }
 
@@ -1139,12 +1146,7 @@ where
     /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M>> {
         let key = self.inner.face;
-        key.map(|key| {
-            self.inner
-                .interior_reborrow()
-                .rebind_into(key)
-                .expect_consistent()
-        })
+        key.map(|key| self.inner.to_ref().rebind_into(key).expect_consistent())
     }
 }
 
@@ -1257,7 +1259,7 @@ where
     }
 
     fn interior_arcs(&self) -> ArcCirculator<&M> {
-        ArcCirculator::from(self.interior_reborrow())
+        ArcCirculator::from(self.to_ref())
     }
 }
 

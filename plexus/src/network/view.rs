@@ -132,7 +132,7 @@ where
         self.key
     }
 
-    pub fn interior_reborrow(&self) -> View<&B::Target, E> {
+    pub fn to_ref(&self) -> View<&B::Target, E> {
         View::bind_unchecked(self.storage.reborrow(), self.key)
     }
 }
@@ -143,7 +143,7 @@ where
     B::Target: AsStorage<E>,
     E: Entity,
 {
-    pub fn interior_reborrow_mut(&mut self) -> View<&mut B::Target, E> {
+    pub fn to_mut(&mut self) -> View<&mut B::Target, E> {
         View::bind_unchecked(self.storage.reborrow_mut(), self.key)
     }
 }
@@ -153,10 +153,6 @@ where
     M: 'a + AsStorageMut<E>,
     E: 'a + Entity,
 {
-    pub fn to_ref(&self) -> View<&M, E> {
-        self.interior_reborrow()
-    }
-
     pub fn into_ref(self) -> View<&'a M, E> {
         let (storage, key) = self.unbind();
         View::bind_unchecked(&*storage, key)
