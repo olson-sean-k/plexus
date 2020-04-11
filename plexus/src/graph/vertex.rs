@@ -20,7 +20,7 @@ use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::network::borrow::{Reborrow, ReborrowMut};
 use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
-use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 
@@ -92,10 +92,6 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Vertex<Geometry<B>>> + Geometric,
 {
-    fn into_inner(self) -> View<B, Vertex<Geometry<B>>> {
-        self.into()
-    }
-
     pub fn to_ref(&self) -> VertexView<&M> {
         self.inner.to_ref().into()
     }
@@ -157,7 +153,7 @@ where
     ///     .unwrap();
     /// ```
     pub fn into_ref(self) -> VertexView<&'a M> {
-        self.into_inner().into_ref().into()
+        self.inner.into_ref().into()
     }
 }
 
@@ -168,14 +164,12 @@ where
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
 {
     pub(in crate::graph) fn into_reachable_outgoing_arc(self) -> Option<ArcView<B>> {
-        let inner = self.into_inner();
-        let key = inner.arc;
-        key.and_then(move |key| inner.rebind_into(key))
+        let key = self.arc;
+        key.and_then(|key| self.rebind(key))
     }
 
     pub(in crate::graph) fn reachable_outgoing_arc(&self) -> Option<ArcView<&M>> {
-        self.arc
-            .and_then(|key| self.inner.to_ref().rebind_into(key))
+        self.arc.and_then(|key| self.to_ref().rebind(key))
     }
 
     pub(in crate::graph) fn reachable_incoming_arcs<'a>(
@@ -420,7 +414,7 @@ where
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
     pub fn remove(self) {
-        let (storage, a) = self.into_inner().unbind();
+        let (storage, a) = self.unbind();
         let cache = VertexRemoveCache::snapshot(&storage, a).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| vertex::remove(mutation, cache))
@@ -620,7 +614,7 @@ where
     G: GraphGeometry,
 {
     fn from(vertex: VertexView<&'a mut M>) -> Self {
-        Orphan::from(vertex.into_inner()).into()
+        Orphan::from(vertex.inner).into()
     }
 }
 
@@ -683,7 +677,7 @@ where
     type Item = VertexView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
+        VertexCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
     }
 }
 
@@ -765,9 +759,8 @@ where
     G: GraphGeometry,
 {
     fn from(vertex: VertexView<B>) -> Self {
-        let inner = vertex.into_inner();
-        let key = inner.arc;
-        let (storage, _) = inner.unbind();
+        let key = vertex.arc;
+        let (storage, _) = vertex.unbind();
         ArcCirculator {
             storage,
             outgoing: key,
@@ -785,7 +778,7 @@ where
     type Item = ArcView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        ArcCirculator::next(self).and_then(|key| View::bind_into(self.storage, key))
+        ArcCirculator::next(self).and_then(|key| Bind::bind(self.storage, key))
     }
 }
 
@@ -879,7 +872,7 @@ where
     type Item = FaceView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
+        FaceCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
     }
 }
 

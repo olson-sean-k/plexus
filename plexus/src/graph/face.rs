@@ -26,7 +26,7 @@ use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Select
 use crate::network::borrow::{Reborrow, ReborrowMut};
 use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
-use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
@@ -236,12 +236,12 @@ where
 {
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<B>> {
         let key = self.arc;
-        self.into_inner().rebind_into(key)
+        self.rebind(key)
     }
 
     pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
         let key = self.arc;
-        self.inner.to_ref().rebind_into(key)
+        self.to_ref().rebind(key)
     }
 }
 
@@ -253,7 +253,7 @@ where
     /// Converts the face into its ring.
     pub fn into_ring(self) -> Ring<B> {
         let key = self.arc().key();
-        self.into_inner().rebind_into(key).expect_consistent()
+        self.inner.rebind_into(key).expect_consistent()
     }
 
     /// Converts the face into its leading arc.
@@ -531,13 +531,13 @@ where
         };
         let source = source.key_or_else(key_at_index)?;
         let destination = destination.key_or_else(key_at_index)?;
-        let (storage, abc) = self.into_inner().unbind();
+        let (storage, abc) = self.unbind();
         // Errors can easily be caused by inputs to this function. Allow errors
         // from the snapshot to propagate.
         let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::split(mutation, cache))
-            .map(|(storage, arc)| View::bind_into(storage, arc).expect_consistent())
+            .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .expect_consistent())
     }
 
@@ -607,10 +607,7 @@ where
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry;
         // TODO: Batch this operation by using the mutation API instead.
-        Ok(self
-            .into_inner()
-            .rebind(ab)
-            .map(ArcView::from)
+        Ok(Rebind::<_, ArcView<_>>::rebind(self, ab)
             .expect_consistent()
             .remove()
             // Removing an edge between faces must yield a vertex.
@@ -631,7 +628,7 @@ where
     /// Returns an error if the destination face cannot be found or the arity of
     /// the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
-        let (storage, source) = self.into_inner().unbind();
+        let (storage, source) = self.unbind();
         // Errors can easily be caused by inputs to this function. Allow errors
         // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
@@ -699,11 +696,11 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (storage, abc) = self.into_inner().unbind();
+        let (storage, abc) = self.unbind();
         let cache = FacePokeCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::poke_with(mutation, cache, f))
-            .map(|(storage, vertex)| View::bind_into(storage, vertex).expect_consistent())
+            .map(|(storage, vertex)| Bind::bind(storage, vertex).expect_consistent())
             .expect_consistent()
     }
 
@@ -789,13 +786,13 @@ where
         VertexPosition<G>: EuclideanSpace,
     {
         let normal = self.normal()?;
-        let (storage, abc) = self.into_inner().unbind();
+        let (storage, abc) = self.unbind();
         let cache = FaceExtrudeCache::snapshot(&storage, abc).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| {
                 face::extrude_with(mutation, cache, || normal * offset.into())
             })
-            .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
+            .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .expect_consistent())
     }
 
@@ -803,7 +800,7 @@ where
     ///
     /// Returns the remaining ring of the face if it is not entirely disjoint.
     pub fn remove(self) -> Option<Ring<&'a mut M>> {
-        let (storage, abc) = self.into_inner().unbind();
+        let (storage, abc) = self.unbind();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::remove(mutation, cache))
@@ -1202,7 +1199,7 @@ where
                         .as_mut()
                         .insert_face_with(cache, || (Default::default(), f()))
                 })
-                .map(|(storage, face)| View::bind_into(storage, face).expect_consistent())
+                .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
                 .expect_consistent()
         }
     }
@@ -1339,7 +1336,7 @@ where
     type Item = VertexView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
+        VertexCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1425,7 +1422,7 @@ where
 {
     fn from(face: FaceView<B>) -> Self {
         let key = face.arc;
-        let (storage, _) = face.into_inner().unbind();
+        let (storage, _) = face.unbind();
         ArcCirculator {
             storage,
             arc: Some(key),
@@ -1458,7 +1455,7 @@ where
     type Item = ArcView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        ArcCirculator::next(self).and_then(|key| View::bind_into(self.storage, key))
+        ArcCirculator::next(self).and_then(|key| Bind::bind(self.storage, key))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1558,7 +1555,7 @@ where
     type Item = FaceView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| View::bind_into(self.inner.storage, key))
+        FaceCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
     }
 }
 

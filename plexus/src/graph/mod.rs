@@ -205,7 +205,7 @@ use crate::graph::mutation::{Consistent, Mutation};
 use crate::graph::storage::*;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::network::storage::{AsStorage, AsStorageMut, Fuse, OpaqueKey, Storage};
-use crate::network::view::{ClosedView, Orphan, View};
+use crate::network::view::{Bind, ClosedView, Orphan, View};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
@@ -416,12 +416,12 @@ where
 
     /// Gets an immutable view of the vertex with the given key.
     pub fn vertex(&self, key: VertexKey) -> Option<VertexView<&Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     /// Gets a mutable view of the vertex with the given key.
     pub fn vertex_mut(&mut self, key: VertexKey) -> Option<VertexView<&mut Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -441,7 +441,7 @@ where
     pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         self.as_vertex_storage_mut()
             .iter_mut()
-            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
     }
 
@@ -452,12 +452,12 @@ where
 
     /// Gets an immutable view of the arc with the given key.
     pub fn arc(&self, key: ArcKey) -> Option<ArcView<&Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     /// Gets a mutable view of the arc with the given key.
     pub fn arc_mut(&mut self, key: ArcKey) -> Option<ArcView<&mut Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -477,7 +477,7 @@ where
     pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
         self.as_arc_storage_mut()
             .iter_mut()
-            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
     }
 
@@ -488,12 +488,12 @@ where
 
     /// Gets an immutable view of the edge with the given key.
     pub fn edge(&self, key: EdgeKey) -> Option<EdgeView<&Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     /// Gets a mutable view of the edge with the given key.
     pub fn edge_mut(&mut self, key: EdgeKey) -> Option<EdgeView<&mut Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -513,7 +513,7 @@ where
     pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
         self.as_edge_storage_mut()
             .iter_mut()
-            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
     }
 
@@ -524,12 +524,12 @@ where
 
     /// Gets an immutable view of the face with the given key.
     pub fn face(&self, key: FaceKey) -> Option<FaceView<&Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     /// Gets a mutable view of the face with the given key.
     pub fn face_mut(&mut self, key: FaceKey) -> Option<FaceView<&mut Self>> {
-        View::bind_into(self, key)
+        Bind::bind(self, key)
     }
 
     // TODO: Return `Clone + Iterator`.
@@ -549,7 +549,7 @@ where
     pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         self.as_face_storage_mut()
             .iter_mut()
-            .map(|(key, payload)| Orphan::bind_unchecked(payload, key))
+            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
     }
 
