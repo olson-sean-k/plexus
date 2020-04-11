@@ -604,6 +604,16 @@ where
     }
 }
 
+impl<'a, M, G> From<View<&'a mut M, Vertex<G>>> for VertexOrphan<'a, G>
+where
+    M: AsStorageMut<Vertex<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(view: View<&'a mut M, Vertex<G>>) -> Self {
+        VertexOrphan { inner: view.into() }
+    }
+}
+
 impl<'a, M, G> From<VertexView<&'a mut M>> for VertexOrphan<'a, G>
 where
     M: AsStorageMut<Vertex<G>> + Geometric<Geometry = G>,

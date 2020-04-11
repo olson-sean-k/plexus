@@ -1051,6 +1051,16 @@ where
     }
 }
 
+impl<'a, M, G> From<View<&'a mut M, Arc<G>>> for ArcOrphan<'a, G>
+where
+    M: AsStorageMut<Arc<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(view: View<&'a mut M, Arc<G>>) -> Self {
+        ArcOrphan { inner: view.into() }
+    }
+}
+
 /// Graph edge.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
@@ -1381,6 +1391,16 @@ where
     }
 }
 
+impl<'a, M, G> From<View<&'a mut M, Edge<G>>> for EdgeOrphan<'a, G>
+where
+    M: AsStorageMut<Edge<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(view: View<&'a mut M, Edge<G>>) -> Self {
+        EdgeOrphan { inner: view.into() }
+    }
+}
+
 pub struct VertexCirculator<B>
 where
     B: Reborrow,
@@ -1412,7 +1432,7 @@ where
         let (storage, _) = arc.into_inner().unbind();
         VertexCirculator {
             storage,
-            inner: ArrayVec::<_>::from([a, b]).into_iter(),
+            inner: ArrayVec::from([a, b]).into_iter(),
         }
     }
 }

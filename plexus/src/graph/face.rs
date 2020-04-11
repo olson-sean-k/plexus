@@ -1024,6 +1024,16 @@ where
     }
 }
 
+impl<'a, M, G> From<View<&'a mut M, Face<G>>> for FaceOrphan<'a, G>
+where
+    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(view: View<&'a mut M, Face<G>>) -> Self {
+        FaceOrphan { inner: view.into() }
+    }
+}
+
 /// View of a ring in a graph.
 ///
 /// Rings are closed paths formed by arcs and their immediate neighboring arcs.
