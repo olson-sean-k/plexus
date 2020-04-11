@@ -19,9 +19,7 @@ use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{
-    AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage, Storage,
-};
+use crate::network::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
 use crate::network::view::{ClosedView, Orphan, View};
 use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
@@ -1484,13 +1482,10 @@ where
     type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| {
-            let storage = unsafe {
-                mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
-                    self.storage.as_storage_mut(),
-                )
-            };
-            Orphan::bind_into(storage, key)
+        VertexCirculator::next(self).map(|key| {
+            let vertex = self.storage.as_storage_mut().get_mut(&key).unwrap();
+            let vertex = unsafe { mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(vertex) };
+            Orphan::bind_unchecked(vertex, key).into()
         })
     }
 
@@ -1588,13 +1583,10 @@ where
     type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| {
-            let storage = unsafe {
-                mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
-                    self.storage.as_storage_mut(),
-                )
-            };
-            Orphan::bind_into(storage, key)
+        FaceCirculator::next(self).map(|key| {
+            let face = self.storage.as_storage_mut().get_mut(&key).unwrap();
+            let face = unsafe { mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(face) };
+            Orphan::bind_unchecked(face, key).into()
         })
     }
 

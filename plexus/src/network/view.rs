@@ -19,8 +19,8 @@ where
     fn bind(storage: B, key: Self::Key) -> Option<Self>;
 }
 
-// TODO: This does not implement `Bind` for orphan views without an obtuse
-//       `From<View<_>>` implementation.
+// Note that orphan views do not gain this implementation without a
+// `From<View<_, _>>` implementation.
 impl<B, T> Bind<B> for T
 where
     B: Reborrow,

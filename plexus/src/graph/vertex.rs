@@ -18,7 +18,7 @@ use crate::graph::storage::*;
 use crate::graph::trace::{Trace, TraceAny, TraceFirst};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, Storage};
+use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::network::view::{ClosedView, Orphan, View};
 use crate::network::Entity;
@@ -696,13 +696,10 @@ where
     type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| {
-            let storage = unsafe {
-                mem::transmute::<&'_ mut Storage<Vertex<G>>, &'a mut Storage<Vertex<G>>>(
-                    self.inner.storage.as_storage_mut(),
-                )
-            };
-            Orphan::bind_into(storage, key)
+        VertexCirculator::next(self).map(|key| {
+            let vertex = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
+            let vertex = unsafe { mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(vertex) };
+            Orphan::bind_unchecked(vertex, key).into()
         })
     }
 }
@@ -801,13 +798,10 @@ where
     type Item = ArcOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        ArcCirculator::next(self).and_then(|key| {
-            let storage = unsafe {
-                mem::transmute::<&'_ mut Storage<Arc<G>>, &'a mut Storage<Arc<G>>>(
-                    self.storage.as_storage_mut(),
-                )
-            };
-            Orphan::bind_into(storage, key)
+        ArcCirculator::next(self).map(|key| {
+            let arc = self.storage.as_storage_mut().get_mut(&key).unwrap();
+            let arc = unsafe { mem::transmute::<&'_ mut Arc<G>, &'a mut Arc<G>>(arc) };
+            Orphan::bind_unchecked(arc, key).into()
         })
     }
 }
@@ -898,13 +892,10 @@ where
     type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| {
-            let storage = unsafe {
-                mem::transmute::<&'_ mut Storage<Face<G>>, &'a mut Storage<Face<G>>>(
-                    self.inner.storage.as_storage_mut(),
-                )
-            };
-            Orphan::bind_into(storage, key)
+        FaceCirculator::next(self).map(|key| {
+            let face = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
+            let face = unsafe { mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(face) };
+            Orphan::bind_unchecked(face, key).into()
         })
     }
 }
