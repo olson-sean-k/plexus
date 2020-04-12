@@ -311,8 +311,7 @@ where
 {
     /// Converts the arc into its ring.
     pub fn into_ring(self) -> Ring<B> {
-        let (storage, key) = self.unbind();
-        View::bind(storage, key).expect_consistent().into()
+        self.into()
     }
 
     /// Returns the arc if it is a boundary arc, otherwise `None`.
@@ -337,8 +336,7 @@ where
 
     /// Gets the ring of the arc.
     pub fn ring(&self) -> Ring<&M> {
-        let (storage, key) = self.to_ref().unbind();
-        View::bind_into(storage, key).expect_consistent()
+        self.to_ref().into()
     }
 
     /// Returns the same arc if it is a boundary arc, otherwise `None`.
@@ -942,6 +940,17 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
+    }
+}
+
+impl<B, M, G> From<Ring<B>> for ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(ring: Ring<B>) -> Self {
+        ring.into_arc()
     }
 }
 

@@ -252,8 +252,7 @@ where
 {
     /// Converts the face into its ring.
     pub fn into_ring(self) -> Ring<B> {
-        let key = self.arc().key();
-        self.inner.rebind_into(key).expect_consistent()
+        self.into_arc().into_ring()
     }
 
     /// Converts the face into its leading arc.
@@ -263,8 +262,7 @@ where
 
     /// Gets the ring of the face.
     pub fn ring(&self) -> Ring<&M> {
-        let key = self.arc().key();
-        self.inner.to_ref().rebind_into(key).expect_consistent()
+        self.arc().into_ring()
     }
 
     /// Gets the leading arc of the face.
@@ -804,8 +802,9 @@ where
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(move |mutation| face::remove(mutation, cache))
-            .map(|(storage, face)| View::bind_into(storage, face.arc))
+            .map(|(storage, face)| ArcView::bind(storage, face.arc))
             .expect_consistent()
+            .map(|arc| arc.into_ring())
     }
 }
 
@@ -1047,7 +1046,7 @@ where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    inner: View<B, Arc<Geometry<B>>>,
+    arc: ArcView<B>,
 }
 
 impl<B, M> Ring<B>
@@ -1055,10 +1054,6 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    fn into_inner(self) -> View<B, Arc<Geometry<B>>> {
-        self.into()
-    }
-
     /// Gets an iterator of views over the arcs within the ring.
     pub fn interior_arcs<'a>(&'a self) -> impl Clone + Iterator<Item = ArcView<&'a M>>
     where
@@ -1068,7 +1063,7 @@ where
     }
 
     pub fn to_ref(&self) -> Ring<&M> {
-        self.inner.to_ref().into()
+        self.arc.to_ref().into_ring()
     }
 }
 
@@ -1078,7 +1073,7 @@ where
     M: AsStorageMut<Arc<Geometry<B>>> + Consistent + Geometric,
 {
     pub fn to_mut(&mut self) -> Ring<&mut M> {
-        self.inner.to_mut().into()
+        self.arc.to_mut().into_ring()
     }
 }
 
@@ -1091,7 +1086,7 @@ where
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
     pub fn into_ref(self) -> Ring<&'a M> {
-        self.into_inner().into_ref().into()
+        self.arc.into_ref().into_ring()
     }
 }
 
@@ -1102,12 +1097,12 @@ where
 {
     /// Converts the ring into its originating arc.
     pub fn into_arc(self) -> ArcView<B> {
-        self.into_inner().into()
+        self.arc
     }
 
     /// Gets the originating arc of the ring.
     pub fn arc(&self) -> ArcView<&M> {
-        self.inner.to_ref().into()
+        self.arc.to_ref()
     }
 }
 
@@ -1143,17 +1138,17 @@ where
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn into_face(self) -> Option<FaceView<B>> {
-        let inner = self.into_inner();
-        let key = inner.face;
-        key.map(move |key| inner.rebind_into(key).expect_consistent())
+        let arc = self.into_arc();
+        let key = arc.face;
+        key.map(|key| arc.rebind(key).expect_consistent())
     }
 
     /// Gets the face of the ring.
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M>> {
-        let key = self.inner.face;
-        key.map(|key| self.inner.to_ref().rebind_into(key).expect_consistent())
+        let key = self.arc.face;
+        key.map(|key| self.arc.to_ref().rebind(key).expect_consistent())
     }
 }
 
@@ -1185,13 +1180,13 @@ where
     where
         F: FnOnce() -> G::Face,
     {
-        let key = self.inner.face;
+        let key = self.arc.face;
         if let Some(key) = key {
-            self.into_inner().rebind_into(key).expect_consistent()
+            self.arc.rebind(key).expect_consistent()
         }
         else {
             let perimeter = self.vertices().keys().collect::<Vec<_>>();
-            let (storage, _) = self.into_inner().unbind();
+            let (storage, _) = self.arc.unbind();
             let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| {
@@ -1220,26 +1215,14 @@ where
     }
 }
 
-impl<B, M, G> From<View<B, Arc<G>>> for Ring<B>
+impl<B, M, G> From<ArcView<B>> for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(view: View<B, Arc<G>>) -> Self {
-        Ring { inner: view }
-    }
-}
-
-impl<B, M, G> Into<View<B, Arc<G>>> for Ring<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    fn into(self) -> View<B, Arc<G>> {
-        let Ring { inner, .. } = self;
-        inner
+    fn from(arc: ArcView<B>) -> Self {
+        Ring { arc }
     }
 }
 
@@ -1437,8 +1420,8 @@ where
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(path: Ring<B>) -> Self {
-        let (storage, key) = path.into_inner().unbind();
+    fn from(ring: Ring<B>) -> Self {
+        let (storage, key) = ring.into_arc().unbind();
         ArcCirculator {
             storage,
             arc: Some(key),
