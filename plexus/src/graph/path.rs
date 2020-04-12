@@ -3,7 +3,6 @@ use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
 use crate::graph::edge::{Arc, ArcKey, ArcView};
-use crate::graph::face::Ring;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
@@ -212,47 +211,6 @@ where
         View::bind_into(self.storage.reborrow(), key).expect_consistent()
     }
 
-    /// Converts the path into the ring it bisects, if any.
-    ///
-    /// A path bisects a ring if it is open, is not a boundary path, and its
-    /// endpoint vertices participate in the ring.
-    ///
-    /// Returns the ring bisected by the path if such a ring exists, otherwise
-    /// `None`.
-    pub fn into_bisected_ring(self) -> Option<Ring<B>> {
-        // The path may bisect a ring if it is open and is not a boundary path.
-        // Note that open boundary paths cannot bisect a ring, so such paths are
-        // ignored.
-        if self.is_open() && !self.is_boundary_path() {
-            let back = self.back();
-            let front = self.front();
-            // Get the ring of the first boundary arc of the vertex at the back
-            // of the path.
-            let ring = back
-                .outgoing_arcs()
-                .flat_map(|arc| arc.into_boundary_arc())
-                .map(|arc| arc.into_ring())
-                .nth(0);
-            // If there is such a ring and it also includes the vertex at the
-            // front of the path, then it is bisected. Rebind the path's storage
-            // into a `Ring`.
-            ring.filter(|ring| ring.vertices().keys().any(|key| key == front.key()))
-                .map(|ring| ring.into_arc().key())
-                .map(move |key| {
-                    let Path { storage, .. } = self;
-                    ArcView::from(View::bind_unchecked(storage, key)).into_ring()
-                })
-        }
-        else {
-            None
-        }
-    }
-
-    /// Gets the ring bisected by the path, if any.
-    pub fn bisected_ring(&self) -> Option<Ring<&M>> {
-        self.to_ref().into_bisected_ring()
-    }
-
     /// Gets an iterator over the vertices in the path.
     pub fn vertices<'a>(&'a self) -> impl Iterator<Item = VertexView<&'a M>>
     where
@@ -291,23 +249,6 @@ where
     pub fn is_closed(&self) -> bool {
         let (a, b) = self.endpoints();
         a == b
-    }
-
-    /// Returns `true` if the path is a boundary path.
-    ///
-    /// A _boundary path_ is a path where all arcs forming the path are boundary
-    /// arcs.
-    pub fn is_boundary_path(&self) -> bool {
-        !self.arcs().any(|arc| !arc.is_boundary_arc())
-    }
-
-    /// Returns `true` if the path is a bisecting path.
-    ///
-    /// A _bisecting path_ is a path that bisects a surface in a graph. A closed
-    /// path is always a bisecting path, but open paths are not necessarily
-    /// bisecting. See `into_bisected_ring`.
-    pub fn is_bisecting_path(&self) -> bool {
-        self.is_closed() || self.bisected_ring().is_some()
     }
 
     fn bind_unchecked<I>(storage: B, keys: I) -> Self

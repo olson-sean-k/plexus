@@ -614,14 +614,6 @@ where
         }
     }
 
-    // TODO: Because `MeshGraph` supports some non-manifold structures like
-    //       singularities and unbounded edges, this operation is complicated.
-    //       However, support for these will likely be removed. Once these
-    //       structures can be ignored, implement this operation.
-    // TODO: It is possible to split along non-bisecting paths by copying vertex
-    //       and edge data to form a ring. Geometrically, this ring would be
-    //       collapsed, but would be topologically consistent.
-    //
     // This API is a bit unusual, but allows a view-like path to borrow a graph
     // and remain consistent. It also (hopefully) makes it more clear that the
     // _graph_ is split, not the path.
@@ -630,18 +622,13 @@ where
     //   path.push(...).unwrap();
     //   ...
     //   let (a, b) = MeshGraph::split_at_path(path).unwrap();
-    /// Splits the graph into two disjoint sub-graphs along a path.
+    /// Splits the graph along a path.
     ///
-    /// The given path must be a _bisecting path_. Such a path is either closed
-    /// or, if open, must bisect a ring in the graph. To bisect a ring, a path
-    /// must begin and end within the ring and not be a boundary path (it must
-    /// enter the interior of the ring).
+    /// Splitting a graph creates boundaries along the given path and copies any
+    /// necessary vertex, arc, and edge geometry.
     ///
-    /// The sub-graphs are disconnected from each other, copying any vertices,
-    /// arcs, and edges at their boundaries.
-    ///
-    /// Returns vertices within the disjoint sub-graphs resulting from the
-    /// split.
+    /// If the path bisects the graph, then splitting will result in disjointed
+    /// sub-graphs.
     ///
     /// # Examples
     ///
@@ -676,19 +663,10 @@ where
     ///     .map(|edge| edge.into_arc().key())
     ///     .unwrap();
     /// let mut path = graph.arc_mut(key).unwrap().into_path();
-    /// let (a, b) = MeshGraph::split_at_path(path).unwrap();
+    /// MeshGraph::split_at_path(path).unwrap();
     /// ```
-    #[allow(clippy::type_complexity)]
-    pub fn split_at_path(
-        path: Path<&mut Self>,
-    ) -> Result<(VertexView<&Self>, VertexView<&Self>), GraphError> {
-        if path.is_closed() {
-        }
-        else {
-            let _ = path
-                .bisected_ring()
-                .ok_or_else(|| GraphError::TopologyMalformed)?;
-        }
+    pub fn split_at_path(path: Path<&mut Self>) -> Result<(), GraphError> {
+        let _ = path;
         unimplemented!()
     }
 
