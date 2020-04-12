@@ -798,7 +798,7 @@ where
     type Output = SmallVec<[Self::Key; 8]>;
 
     fn adjacency(&self) -> Self::Output {
-        self.neighboring_faces().map(|face| face.key()).collect()
+        self.neighboring_faces().keys().collect()
     }
 }
 

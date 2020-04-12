@@ -23,6 +23,7 @@ use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
+use crate::IteratorExt as _;
 
 /// Graph vertex.
 #[derivative(Clone, Copy, Debug, Hash)]
@@ -432,9 +433,7 @@ where
     type Output = SmallVec<[Self::Key; 8]>;
 
     fn adjacency(&self) -> Self::Output {
-        self.neighboring_vertices()
-            .map(|vertex| vertex.key())
-            .collect()
+        self.neighboring_vertices().keys().collect()
     }
 }
 
