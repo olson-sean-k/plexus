@@ -166,10 +166,6 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    fn into_inner(self) -> View<B, Face<Geometry<B>>> {
-        self.into()
-    }
-
     pub fn to_ref(&self) -> FaceView<&M> {
         self.inner.to_ref().into()
     }
@@ -224,7 +220,7 @@ where
     /// let _ = face.into_arc().into_next_arc();
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M> {
-        self.into_inner().into_ref().into()
+        self.inner.into_ref().into()
     }
 }
 
@@ -1007,7 +1003,7 @@ where
     G: GraphGeometry,
 {
     fn from(face: FaceView<&'a mut M>) -> Self {
-        Orphan::from(face.into_inner()).into()
+        Orphan::from(face.inner).into()
     }
 }
 

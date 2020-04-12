@@ -182,10 +182,6 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Geometric,
 {
-    fn into_inner(self) -> View<B, Arc<Geometry<B>>> {
-        self.into()
-    }
-
     pub fn to_ref(&self) -> ArcView<&M> {
         self.inner.to_ref().into()
     }
@@ -245,7 +241,7 @@ where
     /// let _ = arc.into_opposite_arc().into_face();
     /// ```
     pub fn into_ref(self) -> ArcView<&'a M> {
-        self.into_inner().into_ref().into()
+        self.inner.into_ref().into()
     }
 }
 
@@ -1037,7 +1033,7 @@ where
     G: GraphGeometry,
 {
     fn from(arc: ArcView<&'a mut M>) -> Self {
-        Orphan::from(arc.into_inner()).into()
+        Orphan::from(arc.inner).into()
     }
 }
 
@@ -1130,10 +1126,6 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Edge<Geometry<B>>> + Geometric,
 {
-    fn into_inner(self) -> View<B, Edge<Geometry<B>>> {
-        self.into()
-    }
-
     pub fn to_ref(&self) -> EdgeView<&M> {
         self.inner.to_ref().into()
     }
@@ -1158,7 +1150,7 @@ where
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
     pub fn into_ref(self) -> EdgeView<&'a M> {
-        self.into_inner().into_ref().into()
+        self.inner.into_ref().into()
     }
 }
 
@@ -1377,7 +1369,7 @@ where
     G: GraphGeometry,
 {
     fn from(edge: EdgeView<&'a mut M>) -> Self {
-        Orphan::from(edge.into_inner()).into()
+        Orphan::from(edge.inner).into()
     }
 }
 
