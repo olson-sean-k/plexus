@@ -9,7 +9,7 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, Selector};
 use crate::network::borrow::{Reborrow, ReborrowMut};
 use crate::network::storage::{AsStorage, AsStorageMut};
-use crate::network::view::{ClosedView, View};
+use crate::network::view::{Bind, ClosedView};
 use crate::IteratorExt as _;
 
 /// View of a path in a graph.
@@ -41,9 +41,9 @@ where
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    // Paths bind multiple keys to storage and so do not support `View`,
-    // `Orphan`, nor `ClosedView`. This bespoke `bind` function ensures that the
-    // path is not empty and that the topology forms a non-intersecting path.
+    // Paths bind multiple keys to storage and so do not support view APIs.
+    // This bespoke `bind` function ensures that the path is not empty and that
+    // the topology forms a non-intersecting path.
     pub(in crate::graph) fn bind<I>(storage: B, keys: I) -> Result<Self, GraphError>
     where
         I: IntoIterator,
@@ -53,8 +53,7 @@ where
         let a = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
         let b = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
         let ab = (a, b).into();
-        View::<_, Arc<G>>::bind(storage.reborrow(), ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        ArcView::bind(storage.reborrow(), ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let mut path = Path {
             keys: (&[ab]).iter().cloned().collect(),
             storage,
@@ -202,13 +201,13 @@ where
     /// Gets the vertex at the back of the path.
     pub fn back(&self) -> VertexView<&M> {
         let (key, _) = self.endpoints();
-        View::bind_into(self.storage.reborrow(), key).expect_consistent()
+        Bind::bind(self.storage.reborrow(), key).expect_consistent()
     }
 
     /// Gets the vertex at the front of the path.
     pub fn front(&self) -> VertexView<&M> {
         let (_, key) = self.endpoints();
-        View::bind_into(self.storage.reborrow(), key).expect_consistent()
+        Bind::bind(self.storage.reborrow(), key).expect_consistent()
     }
 
     /// Gets an iterator over the vertices in the path.
@@ -232,7 +231,7 @@ where
             .iter()
             .rev()
             .cloned()
-            .map(move |key| View::bind_into(storage, key).expect_consistent())
+            .map(move |key| Bind::bind(storage, key).expect_consistent())
     }
 
     /// Returns `true` if the path is open.
