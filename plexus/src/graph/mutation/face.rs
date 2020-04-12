@@ -7,7 +7,7 @@ use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
 use crate::graph::core::{Core, OwnedCore, RefCore};
-use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
+use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::face::{Face, FaceKey, FaceView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
@@ -15,7 +15,7 @@ use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, Ringoid};
 use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, AsStorageOf, Fuse, Storage};
+use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::network::view::{ClosedView, View};
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
@@ -35,12 +35,8 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn core(&self) -> RefCore<G> {
-        Core::empty()
-            .fuse((***self).as_storage_of::<Vertex<_>>())
-            .fuse((**self).as_storage_of::<Arc<_>>())
-            .fuse((**self).as_storage_of::<Edge<_>>())
-            .fuse(self.as_storage_of::<Face<_>>())
+    pub fn to_ref_core(&self) -> RefCore<G> {
+        self.inner.to_ref_core().fuse(&self.storage)
     }
 
     // TODO: Refactor this into a non-associated function.
@@ -113,7 +109,7 @@ where
             let (a, b) = ab.into();
             let ba = ab.into_opposite();
             let neighbors = {
-                let core = &self.core();
+                let core = &self.to_ref_core();
                 if View::bind(core, ba)
                     .map(ArcView::from)
                     .ok_or_else(|| GraphError::TopologyMalformed)?

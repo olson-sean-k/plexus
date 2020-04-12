@@ -24,6 +24,10 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    pub fn to_ref_core(&self) -> Core<G, &Storage<Vertex<G>>, (), (), ()> {
+        Core::empty().fuse(&self.storage)
+    }
+
     // TODO: Refactor this into a non-associated function.
     pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
         self.storage.insert(Vertex::new(geometry))

@@ -39,6 +39,15 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    pub fn to_ref_core(
+        &self,
+    ) -> Core<G, &Storage<Vertex<G>>, &Storage<Arc<G>>, &Storage<Edge<G>>, ()> {
+        self.inner
+            .to_ref_core()
+            .fuse(&self.storage.0)
+            .fuse(&self.storage.1)
+    }
+
     // TODO: Refactor this into a non-associated function.
     pub fn get_or_insert_edge_with<F>(
         &mut self,
