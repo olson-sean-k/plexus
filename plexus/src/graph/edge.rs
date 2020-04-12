@@ -29,14 +29,18 @@ use crate::transact::{Mutate, Transact};
 /// Types implementing this trait participate in a composite edge and can be
 /// converted into an arc or edge that is a part of that composite edge. This
 /// trait allows edge structures to be abstracted.
-pub trait Edgoid<B>
+pub trait Edgoid<B>: Sized
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Edge<Geometry<B>>> + Consistent + Geometric,
 {
     fn into_arc(self) -> ArcView<B>;
 
+    fn arc(&self) -> ArcView<&B::Target>;
+
     fn into_edge(self) -> EdgeView<B>;
+
+    fn edge(&self) -> EdgeView<&B::Target>;
 }
 
 // Unlike other graph structures, the vertex connectivity of an arc is immutable
@@ -442,12 +446,12 @@ where
 {
     /// Converts the arc into its edge.
     pub fn into_edge(self) -> EdgeView<B> {
-        self.into_reachable_edge().expect_consistent()
+        Edgoid::into_edge(self)
     }
 
     /// Gets the edge of the arc.
     pub fn edge(&self) -> EdgeView<&M> {
-        self.reachable_edge().expect_consistent()
+        Edgoid::edge(self)
     }
 }
 
@@ -901,8 +905,16 @@ where
         self
     }
 
+    fn arc(&self) -> ArcView<&M> {
+        self.to_ref()
+    }
+
     fn into_edge(self) -> EdgeView<B> {
-        self.into_edge()
+        self.into_reachable_edge().expect_consistent()
+    }
+
+    fn edge(&self) -> EdgeView<&M> {
+        self.reachable_edge().expect_consistent()
     }
 }
 
@@ -1177,11 +1189,11 @@ where
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Edge<Geometry<B>>> + Consistent + Geometric,
 {
     pub fn into_arc(self) -> ArcView<B> {
-        self.into_reachable_arc().expect_consistent()
+        Edgoid::into_arc(self)
     }
 
     pub fn arc(&self) -> ArcView<&M> {
-        self.reachable_arc().expect_consistent()
+        Edgoid::arc(self)
     }
 
     pub fn is_boundary_edge(&self) -> bool {
@@ -1230,11 +1242,19 @@ where
     G: GraphGeometry,
 {
     fn into_arc(self) -> ArcView<B> {
-        self.into_arc()
+        self.into_reachable_arc().expect_consistent()
+    }
+
+    fn arc(&self) -> ArcView<&M> {
+        self.reachable_arc().expect_consistent()
     }
 
     fn into_edge(self) -> EdgeView<B> {
         self
+    }
+
+    fn edge(&self) -> EdgeView<&M> {
+        self.to_ref()
     }
 }
 

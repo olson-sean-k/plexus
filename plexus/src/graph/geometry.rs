@@ -391,6 +391,7 @@ where
             + Consistent
             + Geometric<Geometry = Self>,
     {
+        let ring = ring.into_ring();
         Ok(
             VertexPosition::<Self>::centroid(ring.vertices().map(|vertex| *vertex.position()))
                 .expect_consistent(),
@@ -428,6 +429,7 @@ where
             + Consistent
             + Geometric<Geometry = Self>,
     {
+        let ring = ring.into_ring();
         let (a, b) =
             FromItems::from_items(ring.vertices().take(2).map(|vertex| *vertex.position()))
                 .expect_consistent();
@@ -481,6 +483,7 @@ mod array {
                 + Consistent
                 + Geometric<Geometry = Self>,
         {
+            let ring = ring.into_ring();
             let points = ring
                 .vertices()
                 .map(|vertex| *vertex.geometry.as_position())

@@ -14,7 +14,7 @@ use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::storage::*;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
-use crate::graph::GraphError;
+use crate::graph::{GraphError, Ringoid};
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::network::view::{ClosedView, View};
@@ -359,8 +359,7 @@ impl FaceSplitCache {
         let face = View::bind(storage, abc)
             .map(FaceView::from)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        face.ring()
-            .distance(source.into(), destination.into())
+        face.distance(source.into(), destination.into())
             .and_then(|distance| {
                 if distance <= 1 {
                     Err(GraphError::TopologyMalformed)

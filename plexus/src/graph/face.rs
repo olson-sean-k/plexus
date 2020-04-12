@@ -44,24 +44,17 @@ use Selector::ByIndex;
 /// Ring-like structure. Abstracts faces and rings.
 ///
 /// Types that implement this trait participate in a ring and can be converted
-/// into an arc that is part of that ring. This trait allows ring structures to
-/// be abstracted.
-pub trait Ringoid<B>: DynamicArity<Dynamic = usize>
+/// into that ring. This trait allows ring structures to be abstracted.
+pub trait Ringoid<B>: DynamicArity<Dynamic = usize> + Sized
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    fn into_arc(self) -> ArcView<B>;
+    fn into_ring(self) -> Ring<B>;
 
-    fn vertices(&self) -> VertexCirculator<&B::Target>
-    where
-        B::Target: AsStorage<Vertex<Geometry<B>>>,
-    {
-        self.interior_arcs().into()
-    }
+    fn ring(&self) -> Ring<&B::Target>;
 
-    fn interior_arcs(&self) -> ArcCirculator<&B::Target>;
-
+    /// Gets the distance (number of arcs) between two vertices within the ring.
     fn distance(
         &self,
         source: Selector<VertexKey>,
@@ -73,6 +66,7 @@ where
         let arity = self.arity();
         let index_of_selector = |selector: Selector<_>| match selector {
             Selector::ByKey(key) => self
+                .ring()
                 .vertices()
                 .keys()
                 .enumerate()
@@ -248,7 +242,7 @@ where
 {
     /// Converts the face into its ring.
     pub fn into_ring(self) -> Ring<B> {
-        self.into_arc().into_ring()
+        Ringoid::into_ring(self)
     }
 
     /// Converts the face into its leading arc.
@@ -258,7 +252,7 @@ where
 
     /// Gets the ring of the face.
     pub fn ring(&self) -> Ring<&M> {
-        self.arc().into_ring()
+        Ringoid::ring(self)
     }
 
     /// Gets the leading arc of the face.
@@ -297,7 +291,7 @@ where
     where
         M: 'a,
     {
-        <Self as Ringoid<_>>::interior_arcs(self)
+        ArcCirculator::from(self.to_ref())
     }
 
     /// Gets an iterator of views over neighboring faces.
@@ -305,7 +299,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(<Self as Ringoid<_>>::interior_arcs(self))
+        FaceCirculator::from(ArcCirculator::from(self.to_ref()))
     }
 }
 
@@ -319,22 +313,13 @@ where
         + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    /// Gets the distance (number of arcs) between two vertices within the face.
-    pub fn distance(
-        &self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
-    ) -> Result<usize, GraphError> {
-        <Self as Ringoid<_>>::distance(self, source, destination)
-    }
-
     /// Gets an iterator of views over the vertices that form the face.
     pub fn vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
         G: 'a,
     {
-        <Self as Ringoid<_>>::vertices(self)
+        ArcCirculator::from(self.to_ref()).map(|arc| arc.into_source_vertex())
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -934,12 +919,12 @@ where
     M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into_arc(self) -> ArcView<B> {
-        FaceView::into_arc(self)
+    fn into_ring(self) -> Ring<B> {
+        self.into_arc().into_ring()
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M> {
-        ArcCirculator::from(self.to_ref())
+    fn ring(&self) -> Ring<&M> {
+        self.to_ref().into_ring()
     }
 }
 
@@ -1055,7 +1040,7 @@ where
     where
         M: 'a,
     {
-        <Self as Ringoid<_>>::interior_arcs(self)
+        ArcCirculator::from(self.to_ref())
     }
 
     pub fn to_ref(&self) -> Ring<&M> {
@@ -1107,21 +1092,12 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
-    /// Gets the distance (number of arcs) between two vertices within the ring.
-    pub fn distance(
-        &self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
-    ) -> Result<usize, GraphError> {
-        <Self as Ringoid<_>>::distance(self, source, destination)
-    }
-
     /// Gets an iterator of views over the vertices within the ring.
     pub fn vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
     {
-        <Self as Ringoid<_>>::vertices(self)
+        ArcCirculator::from(self.to_ref()).map(|arc| arc.into_source_vertex())
     }
 }
 
@@ -1240,12 +1216,12 @@ where
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn into_arc(self) -> ArcView<B> {
-        Ring::into_arc(self)
+    fn into_ring(self) -> Ring<B> {
+        self
     }
 
-    fn interior_arcs(&self) -> ArcCirculator<&M> {
-        ArcCirculator::from(self.to_ref())
+    fn ring(&self) -> Ring<&M> {
+        self.to_ref()
     }
 }
 

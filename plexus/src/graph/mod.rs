@@ -205,7 +205,7 @@ use crate::graph::mutation::{Consistent, Mutation};
 use crate::graph::storage::*;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::network::storage::{AsStorage, AsStorageMut, Fuse, OpaqueKey, Storage};
-use crate::network::view::{Bind, ClosedView, Orphan, View};
+use crate::network::view::{Bind, Orphan, View};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
@@ -221,7 +221,7 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::path::Path;
 pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
-pub use crate::network::view::Rebind;
+pub use crate::network::view::{ClosedView, Rebind};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

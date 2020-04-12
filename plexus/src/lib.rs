@@ -62,9 +62,8 @@ pub mod prelude {
         IntoStructuredIndex as _,
     };
     pub use crate::builder::{FacetBuilder as _, MeshBuilder as _, SurfaceBuilder as _};
-    pub use crate::graph::Selector;
+    pub use crate::graph::{ClosedView as _, Edgoid as _, Rebind as _, Ringoid as _, Selector};
     pub use crate::index::{CollectWithIndexer as _, IndexVertices as _};
-    pub use crate::network::view::{ClosedView as _, Rebind as _};
     pub use crate::primitive::decompose::{
         Edges as _, IntoEdges as _, IntoSubdivisions as _, IntoTetrahedrons as _, IntoTrigons as _,
         IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _, Vertices as _,
