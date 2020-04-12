@@ -173,7 +173,6 @@ mod face;
 mod geometry;
 mod mutation;
 mod path;
-mod storage;
 mod trace;
 mod vertex;
 
@@ -202,9 +201,10 @@ use crate::graph::core::{Core, OwnedCore};
 use crate::graph::geometry::Geometric;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
-use crate::graph::storage::*;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
-use crate::network::storage::{AsStorage, AsStorageMut, Fuse, OpaqueKey, Storage};
+use crate::network::storage::{
+    AsStorage, AsStorageMut, AsStorageMutOf, AsStorageOf, Fuse, OpaqueKey, Storage,
+};
 use crate::network::view::{Bind, Orphan, View};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
@@ -411,7 +411,7 @@ where
 
     /// Gets the number of vertices in the graph.
     pub fn vertex_count(&self) -> usize {
-        self.as_vertex_storage().len()
+        self.as_storage_of::<Vertex<_>>().len()
     }
 
     /// Gets an immutable view of the vertex with the given key.
@@ -427,7 +427,7 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
     pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
-        self.as_vertex_storage()
+        self.as_storage_of::<Vertex<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
@@ -439,7 +439,7 @@ where
     /// For topological mutations, collect the necessary keys and use
     /// `vertex_mut` instead.
     pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
-        self.as_vertex_storage_mut()
+        self.as_storage_mut_of::<Vertex<_>>()
             .iter_mut()
             .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
@@ -447,7 +447,7 @@ where
 
     /// Gets the number of arcs in the graph.
     pub fn arc_count(&self) -> usize {
-        self.as_arc_storage().len()
+        self.as_storage_of::<Arc<_>>().len()
     }
 
     /// Gets an immutable view of the arc with the given key.
@@ -463,7 +463,7 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
     pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self>> {
-        self.as_arc_storage()
+        self.as_storage_of::<Arc<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
@@ -475,7 +475,7 @@ where
     /// For topological mutations, collect the necessary keys and use `arc_mut`
     /// instead.
     pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
-        self.as_arc_storage_mut()
+        self.as_storage_mut_of::<Arc<_>>()
             .iter_mut()
             .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
@@ -483,7 +483,7 @@ where
 
     /// Gets the number of edges in the graph.
     pub fn edge_count(&self) -> usize {
-        self.as_edge_storage().len()
+        self.as_storage_of::<Edge<_>>().len()
     }
 
     /// Gets an immutable view of the edge with the given key.
@@ -499,7 +499,7 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
     pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self>> {
-        self.as_edge_storage()
+        self.as_storage_of::<Edge<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
@@ -511,7 +511,7 @@ where
     /// For topological mutations, collect the necessary keys and use `edge_mut`
     /// instead.
     pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
-        self.as_edge_storage_mut()
+        self.as_storage_mut_of::<Edge<_>>()
             .iter_mut()
             .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
@@ -519,7 +519,7 @@ where
 
     /// Gets the number of faces in the graph.
     pub fn face_count(&self) -> usize {
-        self.as_face_storage().len()
+        self.as_storage_of::<Face<_>>().len()
     }
 
     /// Gets an immutable view of the face with the given key.
@@ -535,7 +535,7 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
     pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self>> {
-        self.as_face_storage()
+        self.as_storage_of::<Face<_>>()
             .keys()
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
@@ -547,7 +547,7 @@ where
     /// For topological mutations, collect the necessary keys and use `face_mut`
     /// instead.
     pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
-        self.as_face_storage_mut()
+        self.as_storage_mut_of::<Face<_>>()
             .iter_mut()
             .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
             .map(From::from)
@@ -580,7 +580,7 @@ where
 
     /// Triangulates the graph, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
-        let faces = self.as_face_storage().keys().collect::<Vec<_>>();
+        let faces = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
         for face in faces {
             self.face_mut(face).unwrap().triangulate();
         }
@@ -709,7 +709,10 @@ where
     /// }
     /// ```
     pub fn disjoint_subgraph_vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
-        let keys = self.as_vertex_storage().keys().collect::<HashSet<_>>();
+        let keys = self
+            .as_storage_of::<Vertex<_>>()
+            .keys()
+            .collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_>; 4]>::new();
         while let Some(key) = keys.difference(&subkeys).nth(0) {
@@ -911,7 +914,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
-        self.core.as_vertex_storage()
+        self.core.as_storage_of::<Vertex<_>>()
     }
 }
 
@@ -920,7 +923,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<Arc<G>> {
-        self.core.as_arc_storage()
+        self.core.as_storage_of::<Arc<_>>()
     }
 }
 
@@ -929,7 +932,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
-        self.core.as_edge_storage()
+        self.core.as_storage_of::<Edge<_>>()
     }
 }
 
@@ -938,7 +941,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
-        self.core.as_face_storage()
+        self.core.as_storage_of::<Face<_>>()
     }
 }
 
@@ -947,7 +950,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
-        self.core.as_vertex_storage_mut()
+        self.core.as_storage_mut_of::<Vertex<_>>()
     }
 }
 
@@ -956,7 +959,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
-        self.core.as_arc_storage_mut()
+        self.core.as_storage_mut_of::<Arc<_>>()
     }
 }
 
@@ -965,7 +968,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
-        self.core.as_edge_storage_mut()
+        self.core.as_storage_mut_of::<Edge<_>>()
     }
 }
 
@@ -974,7 +977,7 @@ where
     G: GraphGeometry,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
-        self.core.as_face_storage_mut()
+        self.core.as_storage_mut_of::<Face<_>>()
     }
 }
 

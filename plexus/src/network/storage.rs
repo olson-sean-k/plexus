@@ -74,6 +74,30 @@ where
     }
 }
 
+pub trait AsStorageOf {
+    fn as_storage_of<E>(&self) -> &Storage<E>
+    where
+        E: Entity,
+        Self: AsStorage<E>,
+    {
+        self.as_storage()
+    }
+}
+
+impl<T> AsStorageOf for T {}
+
+pub trait AsStorageMutOf {
+    fn as_storage_mut_of<E>(&mut self) -> &mut Storage<E>
+    where
+        E: Entity,
+        Self: AsStorageMut<E>,
+    {
+        self.as_storage_mut()
+    }
+}
+
+impl<T> AsStorageMutOf for T {}
+
 // TODO: Avoid boxing when GATs are stabilized. See
 //       https://github.com/rust-lang/rust/issues/44265
 pub trait Sequence<E>

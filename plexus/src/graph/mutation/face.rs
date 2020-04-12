@@ -7,16 +7,15 @@ use theon::space::{EuclideanSpace, Vector};
 use theon::AsPosition;
 
 use crate::graph::core::{Core, OwnedCore, RefCore};
-use crate::graph::edge::{Arc, ArcKey, ArcView};
+use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceKey, FaceView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::*;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, Ringoid};
 use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, Fuse, Storage};
+use crate::network::storage::{AsStorage, AsStorageOf, Fuse, Storage};
 use crate::network::view::{ClosedView, View};
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
@@ -38,10 +37,10 @@ where
 {
     fn core(&self) -> RefCore<G> {
         Core::empty()
-            .fuse(self.as_vertex_storage())
-            .fuse(self.as_arc_storage())
-            .fuse(self.as_edge_storage())
-            .fuse(self.as_face_storage())
+            .fuse((***self).as_storage_of::<Vertex<_>>())
+            .fuse((**self).as_storage_of::<Arc<_>>())
+            .fuse((**self).as_storage_of::<Edge<_>>())
+            .fuse(self.as_storage_of::<Face<_>>())
     }
 
     // TODO: Refactor this into a non-associated function.

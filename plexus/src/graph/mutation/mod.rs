@@ -9,11 +9,15 @@ use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
-use crate::graph::storage::*;
 use crate::graph::vertex::Vertex;
 use crate::graph::GraphError;
-use crate::network::storage::{AsStorage, Storage};
+use crate::network::storage::{AsStorage, AsStorageOf, Storage};
 use crate::transact::Transact;
+
+// TODO: Implement `AsStorage` by exposing `to_ref_core` functions. Each
+//       entity's associated mutation would fuse its storage into the core from
+//       its inner mutation. This would avoid the use of obtuse dereferencing
+//       (see other TODOs regarding implementing `Deref`; it's a hack).
 
 /// Marker trait for graph representations that promise to be in a consistent
 /// state.
@@ -63,7 +67,7 @@ where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
     fn as_storage(&self) -> &Storage<Arc<Geometry<M>>> {
-        self.inner.as_arc_storage()
+        (*self.inner).as_storage_of::<Arc<_>>()
     }
 }
 
@@ -72,7 +76,7 @@ where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
     fn as_storage(&self) -> &Storage<Edge<Geometry<M>>> {
-        self.inner.as_edge_storage()
+        (*self.inner).as_storage_of::<Edge<_>>()
     }
 }
 
@@ -81,7 +85,7 @@ where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
     fn as_storage(&self) -> &Storage<Face<Geometry<M>>> {
-        self.inner.as_face_storage()
+        self.inner.as_storage_of::<Face<_>>()
     }
 }
 
@@ -90,7 +94,7 @@ where
     M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
 {
     fn as_storage(&self) -> &Storage<Vertex<Geometry<M>>> {
-        self.inner.as_vertex_storage()
+        (**self.inner).as_storage_of::<Vertex<_>>()
     }
 }
 

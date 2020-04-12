@@ -14,11 +14,10 @@ use crate::graph::geometry::{
 };
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::storage::*;
 use crate::graph::trace::{Trace, TraceAny, TraceFirst};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
+use crate::network::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
 use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
 use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::network::Entity;
@@ -820,7 +819,7 @@ where
                 .inner
                 .storage
                 .reborrow()
-                .as_arc_storage()
+                .as_storage_of::<Arc<_>>()
                 .get(&arc)
                 .and_then(|arc| arc.face)
             {
