@@ -11,6 +11,7 @@ use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::face::{Face, FaceKey, FaceView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
+use crate::graph::mutation::vertex;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, Ringoid};
@@ -35,38 +36,6 @@ where
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner.to_ref_core().fuse(&self.storage)
-    }
-
-    // TODO: Refactor this into a non-associated function.
-    // TODO: Should this accept arc geometry at all?
-    pub fn insert_face_with<F>(
-        &mut self,
-        cache: FaceInsertCache,
-        f: F,
-    ) -> Result<FaceKey, GraphError>
-    where
-        F: FnOnce() -> (G::Arc, G::Face),
-    {
-        let FaceInsertCache {
-            perimeter,
-            connectivity,
-        } = cache;
-        let geometry = f();
-        // Insert edges and collect the interior arcs.
-        let arcs = perimeter
-            .iter()
-            .cloned()
-            .perimeter()
-            .map(|(a, b)| {
-                self.get_or_insert_edge_with((a, b), || (Default::default(), geometry.0))
-                    .map(|(_, (ab, _))| ab)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        // Insert the face.
-        let face = self.storage.insert(Face::new(arcs[0], geometry.1));
-        self.connect_face_interior(&arcs, face)?;
-        self.connect_face_exterior(&arcs, connectivity)?;
-        Ok(face)
     }
 
     // TODO: Should there be a distinction between `connect_face_to_edge` and
@@ -487,6 +456,49 @@ impl FaceExtrudeCache {
     }
 }
 
+// TODO: Should this accept arc geometry at all?
+pub fn insert_with<M, N, F>(
+    mut mutation: N,
+    cache: FaceInsertCache,
+    f: F,
+) -> Result<FaceKey, GraphError>
+where
+    N: AsMut<Mutation<M>>,
+    M: Mutable,
+    F: FnOnce() -> (
+        <Geometry<M> as GraphGeometry>::Arc,
+        <Geometry<M> as GraphGeometry>::Face,
+    ),
+{
+    let FaceInsertCache {
+        perimeter,
+        connectivity,
+    } = cache;
+    let geometry = f();
+    // Insert edges and collect the interior arcs.
+    let arcs = perimeter
+        .iter()
+        .cloned()
+        .perimeter()
+        .map(|(a, b)| {
+            edge::get_or_insert_with(mutation.as_mut(), (a, b), || {
+                (Default::default(), geometry.0)
+            })
+            .map(|(_, (ab, _))| ab)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    // Insert the face.
+    let face = mutation
+        .as_mut()
+        .storage
+        .insert(Face::new(arcs[0], geometry.1));
+    mutation.as_mut().connect_face_interior(&arcs, face)?;
+    mutation
+        .as_mut()
+        .connect_face_exterior(&arcs, connectivity)?;
+    Ok(face)
+}
+
 // TODO: Does this require a cache (or consistency)?
 // TODO: This may need to be more destructive to maintain consistency. Edges,
 //       arcs, and vertices may also need to be removed.
@@ -518,10 +530,8 @@ where
     let ab = (left[0], right[0]).into();
     let left = FaceInsertCache::snapshot(mutation.as_mut(), left)?;
     let right = FaceInsertCache::snapshot(mutation.as_mut(), right)?;
-    mutation.as_mut().insert_face_with(left, Default::default)?;
-    mutation
-        .as_mut()
-        .insert_face_with(right, Default::default)?;
+    insert_with(mutation.as_mut(), left, Default::default)?;
+    insert_with(mutation.as_mut(), right, Default::default)?;
     Ok(ab)
 }
 
@@ -537,12 +547,12 @@ where
 {
     let FacePokeCache { vertices, cache } = cache;
     let face = remove(mutation.as_mut(), cache)?;
-    let c = mutation.as_mut().insert_vertex(f());
+    let c = vertex::insert(mutation.as_mut(), f());
     for (a, b) in vertices.into_iter().perimeter() {
         let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, c])?;
-        mutation
-            .as_mut()
-            .insert_face_with(cache, || (Default::default(), face.geometry))?;
+        insert_with(mutation.as_mut(), cache, || {
+            (Default::default(), face.geometry)
+        })?;
     }
     Ok(c)
 }
@@ -605,14 +615,12 @@ where
     }
     let destinations = destinations
         .into_iter()
-        .map(|geometry| mutation.as_mut().insert_vertex(geometry))
+        .map(|geometry| vertex::insert(mutation.as_mut(), geometry))
         .collect::<Vec<_>>();
     // Use the keys for the existing vertices and the translated geometries to
     // construct the extruded face and its connective faces.
     let cache = FaceInsertCache::snapshot(mutation.as_mut(), &destinations)?;
-    let extrusion = mutation
-        .as_mut()
-        .insert_face_with(cache, Default::default)?;
+    let extrusion = insert_with(mutation.as_mut(), cache, Default::default)?;
     for ((a, c), (b, d)) in sources
         .into_iter()
         .zip(destinations.into_iter())
@@ -620,9 +628,7 @@ where
     {
         let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, d, c])?;
         // TODO: Split these faces to form triangles.
-        mutation
-            .as_mut()
-            .insert_face_with(cache, Default::default)?;
+        insert_with(mutation.as_mut(), cache, Default::default)?;
     }
     Ok(extrusion)
 }

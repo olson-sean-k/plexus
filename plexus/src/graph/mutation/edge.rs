@@ -8,7 +8,7 @@ use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
-use crate::graph::mutation::vertex::VertexMutation;
+use crate::graph::mutation::vertex::{self, VertexMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
@@ -45,54 +45,6 @@ where
             .to_ref_core()
             .fuse(&self.storage.0)
             .fuse(&self.storage.1)
-    }
-
-    // TODO: Refactor this into a non-associated function.
-    pub fn get_or_insert_edge_with<F>(
-        &mut self,
-        span: (VertexKey, VertexKey),
-        f: F,
-    ) -> Result<CompositeEdgeKey, GraphError>
-    where
-        F: FnOnce() -> (G::Edge, G::Arc),
-    {
-        fn get_or_insert_arc<M>(
-            mutation: &mut EdgeMutation<M>,
-            span: (VertexKey, VertexKey),
-            geometry: <M::Geometry as GraphGeometry>::Arc,
-        ) -> (Option<EdgeKey>, ArcKey)
-        where
-            M: Geometric,
-        {
-            let (a, _) = span;
-            let ab = span.into();
-            if let Some(arc) = mutation.storage.0.get(&ab) {
-                (arc.edge, ab)
-            }
-            else {
-                mutation.storage.0.insert_with_key(ab, Arc::new(geometry));
-                let _ = mutation.connect_outgoing_arc(a, ab);
-                (None, ab)
-            }
-        }
-
-        let geometry = f();
-        let (a, b) = span;
-        let (e1, ab) = get_or_insert_arc(self, (a, b), geometry.1);
-        let (e2, ba) = get_or_insert_arc(self, (b, a), geometry.1);
-        match (e1, e2) {
-            (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
-            (None, None) => {
-                let ab_ba = self.storage.1.insert(Edge::new(ab, geometry.0));
-                self.connect_arc_to_edge(ab, ab_ba)?;
-                self.connect_arc_to_edge(ba, ab_ba)?;
-                Ok((ab_ba, (ab, ba)))
-            }
-            // It should not be possible to insert or remove individual arcs and
-            // mutations should not allow arcs to be assigned to edges
-            // independently of their opposite arcs.
-            _ => Err(GraphError::TopologyMalformed),
-        }
     }
 
     pub fn connect_neighboring_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
@@ -440,6 +392,67 @@ impl ArcExtrudeCache {
     }
 }
 
+pub fn get_or_insert_with<M, N, F>(
+    mut mutation: N,
+    span: (VertexKey, VertexKey),
+    f: F,
+) -> Result<CompositeEdgeKey, GraphError>
+where
+    N: AsMut<Mutation<M>>,
+    M: Mutable,
+    F: FnOnce() -> (
+        <Geometry<M> as GraphGeometry>::Edge,
+        <Geometry<M> as GraphGeometry>::Arc,
+    ),
+{
+    fn get_or_insert_arc<M, N>(
+        mut mutation: N,
+        span: (VertexKey, VertexKey),
+        geometry: <Geometry<M> as GraphGeometry>::Arc,
+    ) -> (Option<EdgeKey>, ArcKey)
+    where
+        N: AsMut<Mutation<M>>,
+        M: Mutable,
+    {
+        let (a, _) = span;
+        let ab = span.into();
+        if let Some(arc) = mutation.as_mut().storage.0.get(&ab) {
+            (arc.edge, ab)
+        }
+        else {
+            mutation
+                .as_mut()
+                .storage
+                .0
+                .insert_with_key(ab, Arc::new(geometry));
+            let _ = mutation.as_mut().connect_outgoing_arc(a, ab);
+            (None, ab)
+        }
+    }
+
+    let geometry = f();
+    let (a, b) = span;
+    let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), geometry.1);
+    let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), geometry.1);
+    match (e1, e2) {
+        (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
+        (None, None) => {
+            let ab_ba = mutation
+                .as_mut()
+                .storage
+                .1
+                .insert(Edge::new(ab, geometry.0));
+            mutation.as_mut().connect_arc_to_edge(ab, ab_ba)?;
+            mutation.as_mut().connect_arc_to_edge(ba, ab_ba)?;
+            Ok((ab_ba, (ab, ba)))
+        }
+        // It should not be possible to insert or remove individual arcs and
+        // mutations should not allow arcs to be assigned to edges
+        // independently of their opposite arcs.
+        _ => Err(GraphError::TopologyMalformed),
+    }
+}
+
 // TODO: Removing arcs must also remove disjoint vertices. More importantly, the
 //       leading arc of vertices may be invalidated by this operation and must
 //       be healed. This code does not handle these cases, and so can become
@@ -559,13 +572,9 @@ where
             geometry,
             ..
         } = remove(mutation.as_mut(), ab)?;
-        let am = mutation
-            .as_mut()
-            .get_or_insert_edge_with((a, m), || (Default::default(), geometry))
+        let am = get_or_insert_with(mutation.as_mut(), (a, m), || (Default::default(), geometry))
             .map(|(_, (am, _))| am)?;
-        let mb = mutation
-            .as_mut()
-            .get_or_insert_edge_with((m, b), || (Default::default(), geometry))
+        let mb = get_or_insert_with(mutation.as_mut(), (m, b), || (Default::default(), geometry))
             .map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
         mutation.as_mut().connect_neighboring_arcs(am, mb)?;
@@ -592,7 +601,7 @@ where
         ba,
         ab_ba,
     } = cache;
-    let m = mutation.as_mut().insert_vertex(f());
+    let m = vertex::insert(mutation.as_mut(), f());
     // Remove the edge.
     let _ = mutation
         .as_mut()
@@ -613,7 +622,7 @@ where
 {
     let ArcBridgeCache { a, b, c, d } = cache;
     let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, c, d])?;
-    mutation.as_mut().insert_face_with(cache, Default::default)
+    face::insert_with(mutation.as_mut(), cache, Default::default)
 }
 
 pub fn extrude_with<M, N, F>(
@@ -646,14 +655,12 @@ where
         d.transform(|position| *position + translation);
         (c, d)
     };
-    let c = mutation.as_mut().insert_vertex(c);
-    let d = mutation.as_mut().insert_vertex(d);
+    let c = vertex::insert(mutation.as_mut(), c);
+    let d = vertex::insert(mutation.as_mut(), d);
     // TODO: If this arc already exists, then this should probably return an
     //       error.
-    let cd = mutation
-        .as_mut()
-        .get_or_insert_edge_with((c, d), Default::default)
-        .map(|(_, (cd, _))| cd)?;
+    let cd =
+        get_or_insert_with(mutation.as_mut(), (c, d), Default::default).map(|(_, (cd, _))| cd)?;
     let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
     bridge(mutation, cache).map(|_| cd)
 }

@@ -29,11 +29,6 @@ where
         Core::empty().fuse(&self.storage)
     }
 
-    // TODO: Refactor this into a non-associated function.
-    pub fn insert_vertex(&mut self, geometry: G::Vertex) -> VertexKey {
-        self.storage.insert(Vertex::new(geometry))
-    }
-
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
         View::bind(&mut self.storage, a)
             .ok_or_else(|| GraphError::TopologyNotFound)
@@ -107,6 +102,14 @@ impl VertexRemoveCache {
         let _ = (storage, a);
         unimplemented!()
     }
+}
+
+pub fn insert<M, N>(mut mutation: N, geometry: <Geometry<M> as GraphGeometry>::Vertex) -> VertexKey
+where
+    N: AsMut<Mutation<M>>,
+    M: Mutable,
+{
+    mutation.as_mut().storage.insert(Vertex::new(geometry))
 }
 
 pub fn remove<M, N>(

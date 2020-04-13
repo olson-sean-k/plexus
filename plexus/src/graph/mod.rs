@@ -1072,7 +1072,7 @@ where
         let mut mutation = Mutation::from(MeshGraph::new());
         let keys = vertices
             .into_iter()
-            .map(|geometry| mutation.insert_vertex(geometry.into_geometry()))
+            .map(|geometry| mutation::vertex::insert(&mut mutation, geometry.into_geometry()))
             .collect::<Vec<_>>();
         for (perimeter, geometry) in faces {
             let perimeter = perimeter
@@ -1081,7 +1081,7 @@ where
                 .collect::<SmallVec<[_; 4]>>();
             let cache = FaceInsertCache::snapshot(&mutation, perimeter.as_slice())?;
             let geometry = geometry.into_geometry();
-            mutation.insert_face_with(cache, || (Default::default(), geometry))?;
+            mutation::face::insert_with(&mut mutation, cache, || (Default::default(), geometry))?;
         }
         mutation.commit()
     }
@@ -1106,7 +1106,7 @@ where
         let (indices, vertices) = input.into_iter().index_vertices(indexer);
         let vertices = vertices
             .into_iter()
-            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
+            .map(|vertex| mutation::vertex::insert(&mut mutation, vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
             let perimeter = face
@@ -1115,7 +1115,7 @@ where
                 .map(|index| vertices[index])
                 .collect::<SmallVec<[_; 4]>>();
             let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
-            mutation.insert_face_with(cache, Default::default)?;
+            mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
     }
@@ -1153,7 +1153,7 @@ where
         let mut mutation = Mutation::from(MeshGraph::new());
         let vertices = vertices
             .into_iter()
-            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
+            .map(|vertex| mutation::vertex::insert(&mut mutation, vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in indices {
             let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity());
@@ -1166,7 +1166,7 @@ where
                 );
             }
             let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
-            mutation.insert_face_with(cache, Default::default)?;
+            mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
     }
@@ -1224,7 +1224,7 @@ where
         let mut mutation = Mutation::from(MeshGraph::new());
         let vertices = vertices
             .into_iter()
-            .map(|vertex| mutation.insert_vertex(vertex.into_geometry()))
+            .map(|vertex| mutation::vertex::insert(&mut mutation, vertex.into_geometry()))
             .collect::<Vec<_>>();
         for face in &indices
             .into_iter()
@@ -1248,7 +1248,7 @@ where
                 );
             }
             let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
-            mutation.insert_face_with(cache, Default::default)?;
+            mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
     }

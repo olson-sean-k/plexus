@@ -1162,9 +1162,7 @@ where
             let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
             Mutation::replace(storage, Default::default())
                 .commit_with(move |mutation| {
-                    mutation
-                        .as_mut()
-                        .insert_face_with(cache, || (Default::default(), f()))
+                    face::insert_with(mutation.as_mut(), cache, || (Default::default(), f()))
                 })
                 .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
                 .expect_consistent()
