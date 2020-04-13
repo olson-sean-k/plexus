@@ -291,7 +291,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::from(self.to_ref())
+        ArcCirculator::from(self.ring())
     }
 
     /// Gets an iterator of views over neighboring faces.
@@ -299,7 +299,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(ArcCirculator::from(self.to_ref()))
+        FaceCirculator::from(ArcCirculator::from(self.ring()))
     }
 }
 
@@ -319,7 +319,7 @@ where
         M: 'a,
         G: 'a,
     {
-        ArcCirculator::from(self.to_ref()).map(|arc| arc.into_source_vertex())
+        ArcCirculator::from(self.ring()).map(|arc| arc.into_source_vertex())
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -358,7 +358,7 @@ where
     where
         M: 'a,
     {
-        ArcCirculator::from(self.to_mut())
+        ArcCirculator::from(self.to_mut().into_ring())
     }
 }
 
@@ -374,7 +374,7 @@ where
     where
         M: 'a,
     {
-        FaceCirculator::from(ArcCirculator::from(self.to_mut()))
+        FaceCirculator::from(ArcCirculator::from(self.to_mut().into_ring()))
     }
 }
 
@@ -392,7 +392,7 @@ where
     where
         M: 'a,
     {
-        VertexCirculator::from(ArcCirculator::from(self.to_mut()))
+        VertexCirculator::from(ArcCirculator::from(self.to_mut().into_ring()))
     }
 }
 
@@ -1363,23 +1363,6 @@ where
             storage: self.storage.clone(),
             arc: self.arc,
             trace: self.trace,
-        }
-    }
-}
-
-impl<B, M, G> From<FaceView<B>> for ArcCirculator<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    fn from(face: FaceView<B>) -> Self {
-        let key = face.arc;
-        let (storage, _) = face.unbind();
-        ArcCirculator {
-            storage,
-            arc: Some(key),
-            trace: Default::default(),
         }
     }
 }
