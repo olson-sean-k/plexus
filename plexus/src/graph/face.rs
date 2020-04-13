@@ -41,10 +41,10 @@ use Selector::ByIndex;
 //       notable difference, keeping in mind that in a consistent graph all arcs
 //       are part of a ring.
 
-/// Ring-like structure. Abstracts faces and rings.
+/// Structure that participates in a ring.
 ///
-/// Types that implement this trait participate in a ring and can be converted
-/// into that ring. This trait allows ring structures to be abstracted.
+/// Types that implement this trait expose the ring in which they participate
+/// and support ring-like operations.
 pub trait Ringoid<B>: DynamicArity<Dynamic = usize> + Sized
 where
     B: Reborrow,
@@ -89,14 +89,14 @@ where
     }
 }
 
-/// Graph face.
+/// Face entity.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Face<G>
 where
     G: GraphGeometry,
 {
-    /// User geometry.
+    /// Geometry.
     ///
     /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
@@ -122,6 +122,7 @@ where
     type Storage = SlotStorage<Self>;
 }
 
+/// Face key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(DefaultKey);
 
@@ -137,16 +138,16 @@ impl OpaqueKey for FaceKey {
     }
 }
 
-/// View of a face in a graph.
+/// View of a face entity.
 ///
-/// Provides traversals, queries, and mutations related to faces in a graph.
-/// See the module documentation for more information about topological views.
-///
-/// Faces are notated by the path of their associated ring. A triangular face
-/// with a perimeter formed by vertices $A$, $B$, and $C$ is notated
+/// Exposes references to a face entity and provides the primary face API. Faces
+/// are notated by the path of their associated ring. A triangular face with a
+/// perimeter formed by vertices $A$, $B$, and $C$ is notated
 /// $\overrightarrow{\\{A,B,C\\}}$. While the precise ordering of vertices is
 /// determined by a face's leading arc, the same face may be notated using
 /// rotations of this set, such as $\overrightarrow{\\{B,C,A\\}}$.
+///
+/// See the module documentation for more information about views.
 pub struct FaceView<B>
 where
     B: Reborrow,
@@ -179,11 +180,7 @@ impl<'a, M> FaceView<&'a mut M>
 where
     M: AsStorageMut<Face<Geometry<M>>> + Geometric,
 {
-    /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
-    ///
+    // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
     ///
     /// ```rust
@@ -1008,12 +1005,11 @@ where
     }
 }
 
-/// View of a ring in a graph.
+/// Ring.
 ///
 /// Rings are closed paths formed by arcs and their immediate neighboring arcs.
 /// In a consistent graph, every arc forms such a path. Such paths may or may
-/// not be occupied by faces. When no face is present, the ring forms a
-/// boundary.
+/// not be occupied by faces.
 ///
 /// Rings are notated by their path. A ring with a perimeter formed by vertices
 /// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
@@ -1059,10 +1055,6 @@ impl<'a, M> Ring<&'a mut M>
 where
     M: AsStorageMut<Arc<Geometry<M>>> + Consistent + Geometric,
 {
-    /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
     pub fn into_ref(self) -> Ring<&'a M> {
         self.arc.into_ref().into_ring()
     }

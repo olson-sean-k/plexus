@@ -12,18 +12,18 @@ use crate::network::storage::{AsStorage, AsStorageMut};
 use crate::network::view::{Bind, ClosedView};
 use crate::IteratorExt as _;
 
-/// View of a path in a graph.
+/// Non-intersecting path.
 ///
-/// Provides a representation of non-intersecting paths in a graph. A path is
-/// conceptually an ordered set of vertices that are joined by arcs. Paths are
+/// A path is an ordered set of vertices that are joined by arcs. Paths are
 /// notated as either sequences or sets. An open path over vertices $A$, $B$,
 /// and $C$ is notated $\overrightarrow{(A,B,C)}$ and a closed path over the
 /// same vertices is notated $\overrightarrow{\\{A,B,C\\}}$.
 ///
-/// `Path` represents paths of the form $\overrightarrow{(A,\cdots,B)}$, where
-/// $A$ is the back of the path and $B$ is the front of the path. Note that
-/// closed paths are always of the form $\overrightarrow{(A,\cdots,A)}$, where
-/// the back and front vertices are both $A$ (the same).
+/// `Path` represents non-intersecting paths of the form
+/// $\overrightarrow{(A,\cdots,B)}$, where $A$ is the _back_ of the path and $B$
+/// is the _front_ of the path. Note that closed paths are always of the form
+/// $\overrightarrow{(A,\cdots,A)}$, where the back and front vertices are both
+/// $A$ (the same).
 #[derive(Clone)]
 pub struct Path<B>
 where

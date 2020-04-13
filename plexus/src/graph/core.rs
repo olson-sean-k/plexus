@@ -9,7 +9,8 @@ use crate::network::storage::{AsStorage, AsStorageMut, Fuse, Storage};
 /// A complete core that owns all of its storage.
 pub type OwnedCore<G> =
     Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, Storage<Face<G>>>;
-/// A complete core with immutable references to all of its storage.
+/// A complete and ephemeral core with immutable references to all of its
+/// storage.
 pub type RefCore<'a, G> = Core<
     G,
     &'a Storage<Vertex<G>>,
@@ -20,24 +21,25 @@ pub type RefCore<'a, G> = Core<
 
 /// Adaptable graph representation that can incorporate arbitrary storage.
 ///
-/// A core may or may not own its storage and may or may not provide storage for
-/// all topologies (vertices, arcs, edges, and faces). When a core does not own
-/// its storage, it is _ephemeral_. A core that owns storage for all topologies
-/// is known as an _owned core_. See the `OwnedCore` type alias.
+/// Cores act as a container for storage that comprises a graph and allow
+/// storage to be moved (_fused_ and _unfused_) as values or references. A core
+/// may or may not own its storage and may or may not provide storage for all
+/// entities. When a core does not own its storage, it is _ephemeral_.
 ///
-/// Unlike `MeshGraph`, `Core` does not implement the `Consistent` trait.
-/// `MeshGraph` contains an owned core, but does not mutate it outside of the
-/// mutation API, which maintains consistency.
+/// Cores are used by the mutation API to unfuse storage and guard it behind
+/// per-entity APIs. Unlike `MeshGraph`, `Core` does not implement the
+/// `Consistent` trait.  `MeshGraph` contains a core, but does not mutate it
+/// outside of the mutation API, which maintains consistency.
 ///
-/// A core's fields may be in one of two states: _unbound_ and _bound_. When a
-/// field is unbound, its type is `()`. An unbound field has no value and is
-/// zero-sized. A bound field has any type other than `()`. These fields should
-/// provide storage for their corresponding entity, though this is not enforced
-/// directly in `Core`. The `Fuse` trait can be used to transition from `()` to
+/// A core's fields may be _unfused_ and _fused_. When a field is unfused, its
+/// type is `()`. An unfused field has no value and is zero-sized. A fused field
+/// has any type other than `()`. These fields should provide storage for their
+/// corresponding entity. The `Fuse` trait is used to transition from `()` to
 /// some other type by _fusing_ storage into a `Core`. `Fuse` implementations
-/// enforce storage constraints.
+/// enforce storage constraints; it is not possible to fuse values that do not
+/// expose storage to yet unfused entities.
 ///
-/// A `Core` with no unbound fields is _complete_.
+/// A `Core` with no unfused fields is _complete_.
 pub struct Core<G, V = (), A = (), E = (), F = ()>
 where
     G: GraphGeometry,

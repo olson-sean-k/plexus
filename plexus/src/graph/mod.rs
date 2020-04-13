@@ -5,17 +5,16 @@
 //! respectively. Meshes can store arbitrary geometric data associated with any
 //! topological structure (vertices, arcs, edges, and faces).
 //!
-//! Geometry is vertex-based, meaning that geometric operations depend on
-//! vertices exposing some notion of positional data. See the `geometry` module
-//! and `AsPosition` trait. If geometry does not have this property, then
-//! spatial operations will not be available.
+//! Graph APIs expose geometric operations if vertex geometry exposes positional
+//! data via the `AsPosition` trait.
 //!
 //! See the [user guide][2] for more details and examples.
 //!
 //! # Representation
 //!
-//! A `MeshGraph` is conceptually composed of _vertices_, _arcs_, _edges_, and
-//! _faces_. The figure below summarizes the connectivity in a `MeshGraph`.
+//! A `MeshGraph` is composed of four primary entities: _vertices_, _arcs_,
+//! _edges_, and _faces_. The figure below summarizes the connectivity in a
+//! `MeshGraph`.
 //!
 //! ![Half-Edge Graph Figure](https://plexus.rs/img/heg.svg)
 //!
@@ -60,17 +59,22 @@
 //! neighboring topologies, such as the faces that share a given vertex or the
 //! neighboring faces of a given face.
 //!
-//! `MeshGraph`s store topological data using associative collections and mesh
-//! data is accessed using keys into this storage. Keys are exposed as strongly
-//! typed and opaque values, which can be used to refer to a topological
-//! structure.
+//! `MeshGraph`s store entities using associative storage and keys that are
+//! exposed as strongly typed and opaque values. These keys are used to refer to
+//! any and all entities in a graph.
+//!
+//! Note that paths and rings are **not** entities and are not explicitly stored
+//! in graphs.
 //!
 //! # Topological Views
 //!
-//! `MeshGraph`s expose _views_ over their topological structures (vertices,
-//! arcs, edges, and faces). Views are accessed via keys or iteration and behave
-//! similarly to references. They provide the primary API for interacting with a
-//! `MeshGraph`'s topology and geometry. There are three types summarized below:
+//! `MeshGraph`s expose _views_ over their entities (vertices, arcs, edges, and
+//! faces). Views bind a reference to storage with a key into that storage for
+//! an entity. They behave similarly to references and expose their underlying
+//! entities via `Deref`.
+//!
+//! Views provide the primary API for interacting with a `MeshGraph`'s topology
+//! and geometry. There are three types of views summarized below:
 //!
 //! | Type      | Traversal | Exclusive | Geometry  | Topology  |
 //! |-----------|-----------|-----------|-----------|-----------|
@@ -82,13 +86,25 @@
 //! views cannot mutate a graph and are not exclusive while mutable views may
 //! mutate both the geometry and topology of a graph but are exclusive.
 //!
-//! _Orphan views_ are similar to mutable views in that they may mutate the
-//! geometry of a graph, but they do not have access to the topology of a graph.
-//! Because they do not know about other vertices, arcs, etc., an orphan view
-//! cannot traverse a graph in any way. These views are most useful for
-//! modifying the geometry of a graph and, unlike mutable views, they are not
-//! exclusive. Iterators over topological structures in a graph sometimes emit
-//! orphan views.
+//! _Orphan views_ (simply referred to as _orphans_ in APIs) are similar to
+//! mutable views in that they may mutate the geometry of a graph, but they
+//! cannot access storage for other entities (the topology of a graph). Because
+//! they cannot access other vertices, arcs, etc., orphan views cannot traverse
+//! a graph in any way. These views are most useful for modifying the geometry
+//! of a graph and, unlike mutable views, they are not exclusive.
+//!
+//! Views perform _interior reborrows_, which reborrow the reference to storage
+//! to construct other views. These reborrows can be performed explicitly using
+//! conversion API described below:
+//!
+//! | Function   | Receiver    | Reference |
+//! |------------|-------------|-----------|
+//! | `to_ref`   | `&self`     | `&_`      |
+//! | `to_mut`   | `&mut self` | `&mut _`  |
+//! | `into_ref` | `self`      | `&*_`     |
+//!
+//! APIs that interact with views generally take views by value and client code
+//! should use these functions to copy or move views into these APIs.
 //!
 //! # Examples
 //!
@@ -283,16 +299,16 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
     }
 }
 
-/// Topology selector.
+/// Entity selector.
 ///
-/// Identifies topology by key or index. Keys behave as an absolute selector and
-/// uniquely identify a single topological structure. Indices behave as a
-/// relative selector and identify topological structures relative to some other
-/// structure. `Selector` is used by operations that support both of these
-/// selection mechanisms.
+/// Identifies an entity by key or index. Keys behave as an absolute selector
+/// and uniquely identify a single entity within a graph. Indices behave as a
+/// relative selector and identify an entity relative to some other entity.
+/// `Selector` is used by operations that support both of these selection
+/// mechanisms.
 ///
 /// An index is typically used to select a neighbor or contained (and ordered)
-/// topological structure, such as a neighboring face.
+/// entity, such as a neighboring face.
 ///
 /// # Examples
 ///
@@ -371,9 +387,9 @@ impl<K> From<usize> for Selector<K> {
 
 /// Half-edge graph representation of a mesh.
 ///
-/// Provides topological data in the form of vertices, arcs, edges, and faces.
-/// An arc is directed from one vertex to another, with an opposing arc joining
-/// the vertices in the other direction.
+/// Provides topological information using four entities: vertices, arcs, edges,
+/// and faces.  An arc is directed from one vertex to another, with an opposing
+/// arc joining the vertices in the other direction.
 ///
 /// `MeshGraph`s expose topological views, which can be used to traverse and
 /// manipulate topology and geometry in the graph.
@@ -434,10 +450,6 @@ where
     }
 
     /// Gets an iterator of orphan views over the vertices in the graph.
-    ///
-    /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use
-    /// `vertex_mut` instead.
     pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
         self.as_storage_mut_of::<Vertex<_>>()
             .iter_mut()
@@ -470,10 +482,6 @@ where
     }
 
     /// Gets an iterator of orphan views over the arcs in the graph.
-    ///
-    /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use `arc_mut`
-    /// instead.
     pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
         self.as_storage_mut_of::<Arc<_>>()
             .iter_mut()
@@ -506,10 +514,6 @@ where
     }
 
     /// Gets an iterator of orphan views over the edges in the graph.
-    ///
-    /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use `edge_mut`
-    /// instead.
     pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
         self.as_storage_mut_of::<Edge<_>>()
             .iter_mut()
@@ -542,10 +546,6 @@ where
     }
 
     /// Gets an iterator of orphan views over the faces in the graph.
-    ///
-    /// Because this only yields orphan views, only geometry can be mutated.
-    /// For topological mutations, collect the necessary keys and use `face_mut`
-    /// instead.
     pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
         self.as_storage_mut_of::<Face<_>>()
             .iter_mut()
@@ -1380,7 +1380,7 @@ mod tests {
     type E3 = Point3<N64>;
 
     #[test]
-    fn collect_topology_into_mesh() {
+    fn collect() {
         let graph = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
@@ -1391,7 +1391,7 @@ mod tests {
     }
 
     #[test]
-    fn iterate_mesh_topology() {
+    fn iterate() {
         let mut graph = UvSphere::new(4, 2)
             .polygons::<Position<E3>>() // 8 triangles, 24 vertices.
             .collect::<MeshGraph<Point3<f64>>>();
@@ -1452,7 +1452,7 @@ mod tests {
     }
 
     #[test]
-    fn error_on_non_manifold_mesh() {
+    fn error_on_non_manifold() {
         // Construct a graph with a "fan" of three triangles sharing the same
         // arc along the Z-axis. The edge would have three associated faces,
         // which should not be possible.

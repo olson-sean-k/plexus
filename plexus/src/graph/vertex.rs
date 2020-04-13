@@ -24,14 +24,14 @@ use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
-/// Graph vertex.
+/// Vertex entity.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Vertex<G>
 where
     G: GraphGeometry,
 {
-    /// User geometry.
+    /// Geometry.
     ///
     /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
@@ -60,6 +60,7 @@ where
     type Storage = SlotStorage<Self>;
 }
 
+/// Vertex key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VertexKey(DefaultKey);
 
@@ -75,10 +76,11 @@ impl OpaqueKey for VertexKey {
     }
 }
 
-/// View of a vertex in a graph.
+/// View of a vertex entity.
 ///
-/// Provides traversals, queries, and mutations related to vertices in a graph.
-/// See the module documentation for more information about topological views.
+/// Exposes references to a vertex entity and provides the primary vertex API.
+///
+/// See the module documentation for more information about views.
 pub struct VertexView<B>
 where
     B: Reborrow,
@@ -119,11 +121,7 @@ impl<'a, M> VertexView<&'a mut M>
 where
     M: AsStorageMut<Vertex<Geometry<M>>> + Geometric,
 {
-    /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
-    ///
+    // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
     ///
     /// ```rust

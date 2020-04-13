@@ -24,11 +24,10 @@ use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 
-/// Edge-like structure. Abstracts arcs and edges.
+/// Structure that participates in an edge.
 ///
-/// Types implementing this trait participate in a composite edge and can be
-/// converted into an arc or edge that is a part of that composite edge. This
-/// trait allows edge structures to be abstracted.
+/// Types that implement this trait expose an arc and edge from the composite
+/// edge in which they participate.
 pub trait Edgoid<B>: Sized
 where
     B: Reborrow,
@@ -49,14 +48,14 @@ where
 // topological mutations and sometimes requires that arcs be rekeyed. For this
 // reason, `Arc` has no fields representing its source and destination vertices
 // nor its opposite arc; such fields would be redundant.
-/// Graph arc.
+/// Arc entity.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Arc<G>
 where
     G: GraphGeometry,
 {
-    /// User geometry.
+    /// Geometry.
     ///
     /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
@@ -94,6 +93,7 @@ where
     type Storage = HashStorage<Self>;
 }
 
+/// Arc key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ArcKey(VertexKey, VertexKey);
 
@@ -128,18 +128,18 @@ impl OpaqueKey for ArcKey {
     }
 }
 
-/// View of an arc in a graph.
+/// View of an arc entity.
 ///
-/// Provides traversals, queries, and mutations related to arcs in a graph. See
-/// the module documentation for more information about topological views.
+/// Exposes references to an arc entity and provides the primary arc API. An arc
+/// from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$. This is
+/// shorthand for the path notation $\overrightarrow{(A,B)}$.
 ///
 /// Arcs provide the connectivity information within a `MeshGraph` and are the
 /// primary mechanism for traversing its topology. Moreover, most edge-like
-/// operations are exposed by arcs, because they are directed and therefore can
-/// emit deterministic results (this is not true of edges).
+/// operations are exposed by arcs, because they are directed and therefore emit
+/// deterministic results.
 ///
-/// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
-/// This is shorthand for the path notation $\overrightarrow{(A,B)}$.
+/// See the module documentation for more information about views.
 ///
 /// # Examples
 ///
@@ -212,11 +212,7 @@ impl<'a, M> ArcView<&'a mut M>
 where
     M: AsStorageMut<Arc<Geometry<M>>> + Geometric,
 {
-    /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
-    ///
+    // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
     ///
     /// ```rust
@@ -1066,14 +1062,14 @@ where
     }
 }
 
-/// Graph edge.
+/// Edge entity.
 #[derivative(Clone, Copy, Debug, Hash)]
 #[derive(Derivative)]
 pub struct Edge<G>
 where
     G: GraphGeometry,
 {
-    /// User geometry.
+    /// Geometry.
     ///
     /// The type of this field is derived from `GraphGeometry`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
@@ -1099,6 +1095,7 @@ where
     type Storage = SlotStorage<Self>;
 }
 
+/// Edge key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EdgeKey(DefaultKey);
 
@@ -1114,15 +1111,13 @@ impl OpaqueKey for EdgeKey {
     }
 }
 
-/// View of an edge in a graph.
+/// View of an edge entity.
 ///
-/// Provides traversals, queries, and mutations related to edges in a graph.
-/// See the module documentation for more information about topological views.
+/// Exposes references to an edge entity and provides the primary edge API. An
+/// edge connecting a vertex $A$ and a vertex $B$ is notated
+/// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
 ///
-/// An edge connecting a vertex $A$ and a vertex $B$ is notated
-/// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$ (both representing
-/// the same edge). Typically, edges are described by one of their arcs (e.g.,
-/// "the edge of $\overrightarrow{AB}$").
+/// See the module documentation for more information about views.
 pub struct EdgeView<B>
 where
     B: Reborrow,
@@ -1155,10 +1150,6 @@ impl<'a, M> EdgeView<&'a mut M>
 where
     M: AsStorageMut<Edge<Geometry<M>>> + Geometric,
 {
-    /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
     pub fn into_ref(self) -> EdgeView<&'a M> {
         self.inner.into_ref().into()
     }

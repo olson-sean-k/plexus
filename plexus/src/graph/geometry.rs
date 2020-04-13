@@ -104,8 +104,10 @@ where
 /// and faces in a graph. Arbitrary types can be used, including `()` for no
 /// geometry at all.
 ///
-/// Geometry is vertex-based. Geometric operations depend on understanding the
-/// positional data in vertices exposed by the `AsPosition` trait.
+/// Geometric operations depend on understanding the positional data in vertices
+/// exposed by the `AsPosition` trait. If the `Vertex` type implements
+/// `AsPosition`, then geometric operations supported by the `Position` type are
+/// exposed by graph APIs.
 ///
 /// # Examples
 ///
