@@ -26,7 +26,8 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Vector2<T>) -> Self {
-        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
+        let [x, y]: [_; 2] = other.into();
+        (U::from(x).unwrap(), U::from(y).unwrap())
     }
 }
 
@@ -50,10 +51,11 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Vector3<T>) -> Self {
+        let [x, y, z]: [_; 3] = other.into();
         (
-            U::from(other.x).unwrap(),
-            U::from(other.y).unwrap(),
-            U::from(other.z).unwrap(),
+            U::from(x).unwrap(),
+            U::from(y).unwrap(),
+            U::from(z).unwrap(),
         )
     }
 }
@@ -74,7 +76,8 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Point2<T>) -> Self {
-        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
+        let [x, y]: [_; 2] = other.coords.into();
+        (U::from(x).unwrap(), U::from(y).unwrap())
     }
 }
 
@@ -98,10 +101,11 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Point3<T>) -> Self {
+        let [x, y, z]: [_; 3] = other.coords.into();
         (
-            U::from(other.x).unwrap(),
-            U::from(other.y).unwrap(),
-            U::from(other.z).unwrap(),
+            U::from(x).unwrap(),
+            U::from(y).unwrap(),
+            U::from(z).unwrap(),
         )
     }
 }
