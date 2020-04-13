@@ -21,8 +21,9 @@ use crate::IteratorExt as _;
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
-#[allow(clippy::type_complexity)]
-type Mutant<G> = Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
+type OwnedCore<G> = Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
+type RefCore<'a, G> =
+    Core<G, &'a Storage<Vertex<G>>, &'a Storage<Arc<G>>, &'a Storage<Edge<G>>, ()>;
 
 pub struct EdgeMutation<M>
 where
@@ -39,9 +40,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn to_ref_core(
-        &self,
-    ) -> Core<G, &Storage<Vertex<G>>, &Storage<Arc<G>>, &Storage<Edge<G>>, ()> {
+    pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner
             .to_ref_core()
             .fuse(&self.storage.0)
@@ -186,12 +185,12 @@ where
     }
 }
 
-impl<M, G> From<Mutant<G>> for EdgeMutation<M>
+impl<M, G> From<OwnedCore<G>> for EdgeMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(core: Mutant<G>) -> Self {
+    fn from(core: OwnedCore<G>) -> Self {
         let (vertices, arcs, edges, ..) = core.unfuse();
         EdgeMutation {
             inner: Core::empty().fuse(vertices).into(),
@@ -200,12 +199,12 @@ where
     }
 }
 
-impl<M, G> Transact<Mutant<G>> for EdgeMutation<M>
+impl<M, G> Transact<OwnedCore<G>> for EdgeMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    type Output = Mutant<G>;
+    type Output = OwnedCore<G>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {

@@ -20,8 +20,6 @@ use crate::network::view::{ClosedView, View};
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 
-type Mutant<G> = OwnedCore<G>;
-
 pub struct FaceMutation<M>
 where
     M: Geometric,
@@ -189,12 +187,12 @@ where
     }
 }
 
-impl<M, G> From<Mutant<G>> for FaceMutation<M>
+impl<M, G> From<OwnedCore<G>> for FaceMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(core: Mutant<G>) -> Self {
+    fn from(core: OwnedCore<G>) -> Self {
         let (vertices, arcs, edges, faces) = core.unfuse();
         FaceMutation {
             storage: faces,
@@ -203,12 +201,12 @@ where
     }
 }
 
-impl<M, G> Transact<Mutant<G>> for FaceMutation<M>
+impl<M, G> Transact<OwnedCore<G>> for FaceMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    type Output = Mutant<G>;
+    type Output = OwnedCore<G>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {

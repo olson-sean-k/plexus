@@ -10,7 +10,8 @@ use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::network::view::View;
 use crate::transact::Transact;
 
-type Mutant<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
+type OwnedCore<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a Storage<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
@@ -24,7 +25,7 @@ where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn to_ref_core(&self) -> Core<G, &Storage<Vertex<G>>, (), (), ()> {
+    pub fn to_ref_core(&self) -> RefCore<G> {
         Core::empty().fuse(&self.storage)
     }
 
@@ -60,23 +61,23 @@ where
     }
 }
 
-impl<M, G> From<Mutant<G>> for VertexMutation<M>
+impl<M, G> From<OwnedCore<G>> for VertexMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    fn from(core: Mutant<G>) -> Self {
+    fn from(core: OwnedCore<G>) -> Self {
         let (vertices, ..) = core.unfuse();
         VertexMutation { storage: vertices }
     }
 }
 
-impl<M, G> Transact<Mutant<G>> for VertexMutation<M>
+impl<M, G> Transact<OwnedCore<G>> for VertexMutation<M>
 where
     M: Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    type Output = Mutant<G>;
+    type Output = OwnedCore<G>;
     type Error = GraphError;
 
     fn commit(self) -> Result<Self::Output, Self::Error> {
