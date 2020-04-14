@@ -1,24 +1,11 @@
 [package]
 name = "pictor"
 version = "0.0.0"
-# This package should not be published.
-#
-# Because of this, published packages can not take a dependency on this one and
-# it must be removed from the manifest when publishing. This code is part of a
-# separate crate so that it can be shared by examples and can enable necessary
-# features without the need for additional command line options. See the
-# following issues:
-#
-#   https://github.com/rust-lang/cargo/issues/4242
-#   https://github.com/rust-lang/cargo/issues/4663
-#
-publish = false
 edition = "2018"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
-
-[lib]
-name = "pictor"
+description = "Support library for Plexus examples."
+publish = false
 
 [dependencies]
 decorum = "^0.1.1"
@@ -33,8 +20,5 @@ rand = "^0.7.0"
 path = "../plexus"
 default-features = false
 features = [
-    # The `encoding-ply` feature is not needed by this package. It is enabled
-    # here to support examples.
-    "encoding-ply",
     "geometry-nalgebra",
 ]

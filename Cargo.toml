@@ -1,5 +1,8 @@
 [workspace]
 members = [
+    "examples/sphere",
+    "examples/subdivide",
+    "examples/teapot",
     "pictor",
     "plexus"
 ]

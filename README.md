@@ -44,9 +44,9 @@ render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 The [`decorum`](https://crates.io/crates/decorum) crate is used for
 floating-point values that can be hashed for fast indexing and signaling of
 unwanted values. See the
-[sphere](https://github.com/olson-sean-k/plexus/tree/master/examples/sphere.rs)
+[sphere](https://github.com/olson-sean-k/plexus/tree/master/examples/sphere/src/main.rs)
 and
-[teapot](https://github.com/olson-sean-k/plexus/tree/master/examples/teapot.rs)
+[teapot](https://github.com/olson-sean-k/plexus/tree/master/examples/teapot/src/main.rs)
 examples for demonstrations of rendering.
 
 ## Half-Edge Graphs

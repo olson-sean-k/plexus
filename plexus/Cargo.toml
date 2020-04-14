@@ -32,29 +32,6 @@ rustdoc-args = [
     "doc/katex-header.html"
 ]
 
-[[example]]
-name = "sphere"
-path = "../examples/sphere.rs"
-required-features = ["geometry-nalgebra"]
-
-[[example]]
-name = "subdivide"
-path = "../examples/subdivide.rs"
-required-features = ["geometry-nalgebra"]
-
-[[example]]
-name = "teapot"
-path = "../examples/teapot.rs"
-required-features = ["encoding-ply", "geometry-nalgebra"]
-
-[[example]]
-name = "zip"
-path = "../examples/zip.rs"
-required-features = ["geometry-nalgebra"]
-
-[lib]
-name = "plexus"
-
 [features]
 default = []
 encoding-ply = ["ply-rs"]

@@ -1,7 +1,7 @@
 use plexus::integration::nalgebra;
 
-use self::nalgebra::Point3;
 use decorum::R64;
+use nalgebra::Point3;
 use pictor::pipeline::Vertex;
 use pictor::{self, Color4};
 use plexus::encoding::ply::{FromPly, PositionEncoding};
@@ -14,7 +14,7 @@ fn main() {
     let to = Point3::new(0.0, 0.0, 1.0);
     pictor::draw_with(from, to, move || {
         // Read PLY data into a graph.
-        let ply: &[u8] = include_bytes!("../data/teapot.ply");
+        let ply: &[u8] = include_bytes!("../../../data/teapot.ply");
         let encoding = PositionEncoding::<E3>::default();
         let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).expect("teapot");
 

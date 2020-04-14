@@ -1,0 +1,21 @@
+[package]
+name = "example-sphere"
+version = "0.0.0"
+edition = "2018"
+authors = ["Sean Olson <olson.sean.k@gmail.com>"]
+license = "MIT"
+publish = false
+
+[dependencies]
+decorum = "^0.1.1"
+
+[dependencies.pictor]
+path = "../../pictor"
+
+[dependencies.plexus]
+path = "../../plexus"
+default-features = false
+features = [
+    "encoding-ply",
+    "geometry-nalgebra"
+]
