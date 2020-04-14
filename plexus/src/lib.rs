@@ -7,6 +7,8 @@
 // authors find `nth(0)` more clear, especially as part of a non-trivial
 // iterator expression. This may be revisited though.
 #![allow(clippy::iter_nth_zero)]
+#![doc(html_favicon_url = "https://plexus.rs/img/favicon.ico")]
+#![doc(html_logo_url = "https://plexus.rs/img/plexus.svg")]
 
 pub mod buffer;
 pub mod builder;
