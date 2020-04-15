@@ -394,7 +394,7 @@ impl ArcExtrudeCache {
 
 pub fn get_or_insert_with<M, N, F>(
     mut mutation: N,
-    span: (VertexKey, VertexKey),
+    endpoints: (VertexKey, VertexKey),
     f: F,
 ) -> Result<CompositeEdgeKey, GraphError>
 where
@@ -407,15 +407,15 @@ where
 {
     fn get_or_insert_arc<M, N>(
         mut mutation: N,
-        span: (VertexKey, VertexKey),
+        endpoints: (VertexKey, VertexKey),
         geometry: <Geometry<M> as GraphGeometry>::Arc,
     ) -> (Option<EdgeKey>, ArcKey)
     where
         N: AsMut<Mutation<M>>,
         M: Mutable,
     {
-        let (a, _) = span;
-        let ab = span.into();
+        let (a, _) = endpoints;
+        let ab = endpoints.into();
         if let Some(arc) = mutation.as_mut().storage.0.get(&ab) {
             (arc.edge, ab)
         }
@@ -431,7 +431,7 @@ where
     }
 
     let geometry = f();
-    let (a, b) = span;
+    let (a, b) = endpoints;
     let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), geometry.1);
     let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), geometry.1);
     match (e1, e2) {

@@ -458,12 +458,11 @@ where
     ///
     /// This can be thought of as the opposite of `merge`.
     ///
-    /// Returns the inserted arc that spans from the source vertex to the
-    /// destination vertex if successful. If a face $\overrightarrow{\\{A,B,
-    /// C,D\\}}$ is split from $A$ to $C$, then it will be decomposed into faces
-    /// in the rings $\overrightarrow{\\{A,B,C\\}}$ and
-    /// $\overrightarrow{\\{C,D,A\\}}$ and the arc $\overrightarrow{AC}$ will be
-    /// returned.
+    /// Returns the arc inserted from the source vertex to the destination
+    /// vertex if successful. If a face $\overrightarrow{\\{A,B, C,D\\}}$ is
+    /// split from $A$ to $C$, then it will be decomposed into faces in the
+    /// rings $\overrightarrow{\\{A,B,C\\}}$ and $\overrightarrow{\\{C,D,A\\}}$
+    /// and the arc $\overrightarrow{AC}$ will be returned.
     ///
     /// # Errors
     ///
