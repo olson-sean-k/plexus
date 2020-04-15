@@ -633,7 +633,7 @@ where
         let (storage, ab) = self.unbind();
         let cache = EdgeSplitCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::split_with(mutation, cache, f))
+            .commit_with(|mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| Bind::bind(storage, m).expect_consistent())
             .expect_consistent()
     }
@@ -779,7 +779,7 @@ where
         // from the snapshot to propagate.
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::bridge(mutation, cache))
+            .commit_with(|mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .expect_consistent())
     }
@@ -840,9 +840,7 @@ where
         let (storage, ab) = self.unbind();
         let cache = ArcExtrudeCache::snapshot(&storage, ab).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| {
-                edge::extrude_with(mutation, cache, || normal * offset.into())
-            })
+            .commit_with(|mutation| edge::extrude_with(mutation, cache, || normal * offset.into()))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .expect_consistent())
     }
@@ -860,7 +858,7 @@ where
         let (storage, ab) = self.unbind();
         let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| edge::remove(mutation, cache))
+            .commit_with(|mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| Bind::bind(storage, a))
             .expect_consistent()
     }

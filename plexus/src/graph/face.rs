@@ -515,7 +515,7 @@ where
         // from the snapshot to propagate.
         let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::split(mutation, cache))
+            .commit_with(|mutation| face::split(mutation, cache))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .expect_consistent())
     }
@@ -612,7 +612,7 @@ where
         // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::bridge(mutation, cache))
+            .commit_with(|mutation| face::bridge(mutation, cache))
             .expect_consistent();
         Ok(())
     }
@@ -678,7 +678,7 @@ where
         let (storage, abc) = self.unbind();
         let cache = FacePokeCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::poke_with(mutation, cache, f))
+            .commit_with(|mutation| face::poke_with(mutation, cache, f))
             .map(|(storage, vertex)| Bind::bind(storage, vertex).expect_consistent())
             .expect_consistent()
     }
@@ -768,9 +768,7 @@ where
         let (storage, abc) = self.unbind();
         let cache = FaceExtrudeCache::snapshot(&storage, abc).expect_consistent();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| {
-                face::extrude_with(mutation, cache, || normal * offset.into())
-            })
+            .commit_with(|mutation| face::extrude_with(mutation, cache, || normal * offset.into()))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .expect_consistent())
     }
@@ -782,7 +780,7 @@ where
         let (storage, abc) = self.unbind();
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
-            .commit_with(move |mutation| face::remove(mutation, cache))
+            .commit_with(|mutation| face::remove(mutation, cache))
             .map(|(storage, face)| ArcView::bind(storage, face.arc))
             .expect_consistent()
             .map(|arc| arc.into_ring())
@@ -1161,8 +1159,8 @@ where
             let (storage, _) = self.arc.unbind();
             let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
             Mutation::replace(storage, Default::default())
-                .commit_with(move |mutation| {
-                    face::insert_with(mutation.as_mut(), cache, || (Default::default(), f()))
+                .commit_with(|mutation| {
+                    face::insert_with(mutation, cache, || (Default::default(), f()))
                 })
                 .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
                 .expect_consistent()
