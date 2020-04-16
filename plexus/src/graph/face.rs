@@ -585,8 +585,8 @@ where
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         let geometry = self.geometry;
         // TODO: Batch this operation by using the mutation API instead.
-        Ok(Rebind::<_, ArcView<_>>::rebind(self, ab)
-            .expect_consistent()
+        let arc: ArcView<_> = self.rebind(ab).expect_consistent();
+        Ok(arc
             .remove()
             // Removing an edge between faces must yield a vertex.
             .expect_consistent()
