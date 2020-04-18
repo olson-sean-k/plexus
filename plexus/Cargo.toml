@@ -58,9 +58,9 @@ name = "plexus"
 [features]
 default = []
 encoding-ply = ["ply-rs"]
-geometry-cgmath = ["cgmath", "theon/geometry-cgmath"]
-geometry-mint = ["mint", "theon/geometry-mint"]
-geometry-nalgebra = ["nalgebra", "theon/geometry-nalgebra"]
+geometry-cgmath = ["theon/geometry-cgmath"]
+geometry-mint = ["theon/geometry-mint"]
+geometry-nalgebra = ["theon/geometry-nalgebra"]
 
 [dependencies]
 arrayvec = "^0.5.0"
@@ -74,9 +74,6 @@ smallvec = "^1.0.0"
 thiserror = "^1.0.3"
 typenum = "^1.10.0"
 
-cgmath = { version = "^0.17.0", optional = true }
-mint = { version = "^0.5.0", optional = true }
-nalgebra = { version = "^0.19.0", optional = true }
 ply-rs = { version = "^0.1.2", optional = true }
 
 [dependencies.fool] # Unstable.
@@ -85,12 +82,16 @@ rev = "b0015b90882fb42ac443f721f646fb44acd0b6e8"
 
 [dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "ed0782cf93785a0a4be66dfcc23948d587e09aae"
+rev = "5ac8643afa741b60ebf38b57090e4bc5439c4d11"
 default-features = false
-features = ["array"]
+features = ["lapack"]
 
 [dev-dependencies]
-nalgebra = "^0.19.0"
+# For brevity and simplicity, tests (and documentation comments) use a direct
+# dependency on `nalgebra`. This approach requires that the version
+# specification is compatible with `theon`. Other crates use re-exported types
+# and do not take a direct dependency on `nalgebra`.
+nalgebra = "^0.21.0"
 # This dependency must be removed when publishing. Cargo does not allow
 # non-published dependencies, even if they are for development only. See the
 # following issues:
@@ -99,3 +100,12 @@ nalgebra = "^0.19.0"
 #   https://github.com/rust-lang/cargo/issues/4663
 #
 pictor = { path = "../pictor" }
+
+[dev-dependencies.theon] # Unstable.
+git = "https://github.com/olson-sean-k/theon.git"
+rev = "5ac8643afa741b60ebf38b57090e4bc5439c4d11"
+default-features = false
+features = [
+    "geometry-nalgebra",
+    "lapack"
+]

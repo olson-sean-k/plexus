@@ -1,9 +1,11 @@
+use plexus::integration::{nalgebra, theon};
+
 use decorum;
 use gfx;
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
 use num::NumCast;
 use std::hash::{Hash, Hasher};
-use theon::ops::Map;
+use theon::adjunct::Map;
 
 pub use self::pipeline::*;
 
@@ -15,7 +17,7 @@ trait IntoArray {
 
 impl<T> IntoArray for Matrix4<T>
 where
-    T: Scalar,
+    T: Copy + Scalar,
 {
     type Output = [[T; 4]; 4];
 
@@ -37,7 +39,7 @@ where
     type Output = [T; 3];
 
     fn into_array(self) -> Self::Output {
-        [self[0], self[1], self[2]]
+        self.coords.into()
     }
 }
 
@@ -48,7 +50,7 @@ where
     type Output = [T; 3];
 
     fn into_array(self) -> Self::Output {
-        [self[0], self[1], self[2]]
+        self.into()
     }
 }
 
@@ -59,7 +61,7 @@ where
     type Output = [T; 4];
 
     fn into_array(self) -> Self::Output {
-        [self[0], self[1], self[2], self[3]]
+        self.into()
     }
 }
 

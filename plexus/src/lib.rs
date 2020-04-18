@@ -15,7 +15,7 @@ pub mod builder;
 pub mod encoding;
 pub mod graph;
 pub mod index;
-mod integration;
+pub mod integration;
 mod network;
 pub mod primitive;
 mod transact;

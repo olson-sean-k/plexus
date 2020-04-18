@@ -1,6 +1,10 @@
 #![cfg(feature = "geometry-cgmath")]
 
-use cgmath::{self, Point2, Point3, Vector2, Vector3};
+use theon::integration::cgmath;
+
+#[doc(hidden)]
+pub use self::cgmath::*;
+
 use decorum::{Finite, NotNan, Ordered, Primitive};
 use num::{Float, NumCast, ToPrimitive};
 

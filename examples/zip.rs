@@ -1,5 +1,7 @@
+use plexus::integration::nalgebra;
+
+use self::nalgebra::{Point3, Vector2};
 use decorum::N64;
-use nalgebra::{Point3, Vector2};
 use plexus::index::{Flat3, HashIndexer};
 use plexus::prelude::*;
 use plexus::primitive;

@@ -1,10 +1,14 @@
 #![cfg(feature = "geometry-nalgebra")]
 
+use theon::integration::nalgebra;
+
+#[doc(hidden)]
+pub use self::nalgebra::*;
+
+use self::nalgebra::base::allocator::Allocator;
+use self::nalgebra::base::default_allocator::DefaultAllocator;
+use self::nalgebra::base::dimension::DimName;
 use decorum::{Finite, NotNan, Ordered, Primitive};
-use nalgebra::base::allocator::Allocator;
-use nalgebra::base::default_allocator::DefaultAllocator;
-use nalgebra::base::dimension::DimName;
-use nalgebra::{MatrixMN, Point, Point2, Point3, Scalar, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
@@ -26,7 +30,8 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Vector2<T>) -> Self {
-        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
+        let [x, y]: [T; 2] = other.into();
+        (U::from(x).unwrap(), U::from(y).unwrap())
     }
 }
 
@@ -50,10 +55,11 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Vector3<T>) -> Self {
+        let [x, y, z]: [T; 3] = other.into();
         (
-            U::from(other.x).unwrap(),
-            U::from(other.y).unwrap(),
-            U::from(other.z).unwrap(),
+            U::from(x).unwrap(),
+            U::from(y).unwrap(),
+            U::from(z).unwrap(),
         )
     }
 }
@@ -74,7 +80,8 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Point2<T>) -> Self {
-        (U::from(other.x).unwrap(), U::from(other.y).unwrap())
+        let [x, y]: [T; 2] = other.coords.into();
+        (U::from(x).unwrap(), U::from(y).unwrap())
     }
 }
 
@@ -98,10 +105,11 @@ where
     U: NumCast,
 {
     fn from_geometry(other: Point3<T>) -> Self {
+        let [x, y, z]: [T; 3] = other.coords.into();
         (
-            U::from(other.x).unwrap(),
-            U::from(other.y).unwrap(),
-            U::from(other.z).unwrap(),
+            U::from(x).unwrap(),
+            U::from(y).unwrap(),
+            U::from(z).unwrap(),
         )
     }
 }

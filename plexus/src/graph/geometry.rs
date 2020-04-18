@@ -66,10 +66,11 @@
 // necessary, constraints are specified there so that they do not pollute user
 // code.
 
+use theon::adjunct::FromItems;
 use theon::ops::{Cross, Interpolate, Project};
 use theon::query::Plane;
 use theon::space::{EuclideanSpace, FiniteDimensional, InnerSpace, Vector, VectorSpace};
-use theon::{AsPosition, FromItems, Position};
+use theon::{AsPosition, Position};
 use typenum::U3;
 
 use crate::graph::edge::{Arc, ArcView, Edge, Edgoid};
@@ -455,23 +456,23 @@ where
             + Geometric<Geometry = Self>;
 }
 
-// TODO: The `array` feature only supports Linux. See
+// TODO: The `lapack` feature only supports Linux. See
 //       https://github.com/olson-sean-k/theon/issues/1
 #[cfg(target_os = "linux")]
 mod array {
     use super::*;
 
     use smallvec::SmallVec;
-    use theon::array::ArrayScalar;
+    use theon::adjunct::{FromItems, IntoItems};
+    use theon::lapack::Lapack;
     use theon::space::Scalar;
-    use theon::{FromItems, IntoItems};
 
     impl<G> FacePlane for G
     where
         G: GraphGeometry,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
-        Scalar<VertexPosition<G>>: ArrayScalar,
+        Scalar<VertexPosition<G>>: Lapack,
         Vector<VertexPosition<G>>: FromItems + IntoItems,
     {
         fn plane<T, B>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>

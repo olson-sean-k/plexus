@@ -1,3 +1,5 @@
+use plexus::integration::nalgebra;
+
 use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, RealField, Scalar, Vector3};
 
 #[derive(Clone, Copy, Debug)]

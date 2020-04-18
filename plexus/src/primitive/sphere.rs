@@ -29,7 +29,7 @@ use decorum::Real;
 use num::traits::FloatConst;
 use num::{NumCast, One, ToPrimitive};
 use std::cmp;
-use theon::ops::Map;
+use theon::adjunct::Map;
 use theon::query::Unit;
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use typenum::U3;

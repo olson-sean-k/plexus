@@ -83,10 +83,11 @@ use num::{Integer, One, Zero};
 use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use theon::ops::{Cross, Fold, Map, Push, ZipMap};
+use theon::adjunct::{Adjunct, Converged, Fold, FromItems, IntoItems, Map, Push, ZipMap};
+use theon::ops::Cross;
 use theon::query::{Intersection, Line, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
-use theon::{AsPosition, Composite, Converged, FromItems, IntoItems, Position};
+use theon::{AsPosition, Position};
 use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
@@ -100,12 +101,12 @@ use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 /// graphs and polygonal structures, but may also include degenerate forms like
 /// monogons.
 pub trait Topological:
-    AsMut<[<Self as Composite>::Item]>
-    + AsRef<[<Self as Composite>::Item]>
-    + Composite<Item = <Self as Topological>::Vertex>
+    Adjunct<Item = <Self as Topological>::Vertex>
+    + AsMut<[<Self as Adjunct>::Item]>
+    + AsRef<[<Self as Adjunct>::Item]>
     + DynamicArity<Dynamic = usize>
     + Sized
-    + IntoIterator<Item = <Self as Composite>::Item>
+    + IntoIterator<Item = <Self as Adjunct>::Item>
     + Sized
 {
     type Vertex;
@@ -387,7 +388,7 @@ where
     }
 }
 
-impl<A> Composite for NGon<A>
+impl<A> Adjunct for NGon<A>
 where
     A: Array,
 {
@@ -731,7 +732,7 @@ impl<T> AsMut<[T]> for Polygon<T> {
     }
 }
 
-impl<T> Composite for Polygon<T> {
+impl<T> Adjunct for Polygon<T> {
     type Item = T;
 }
 
@@ -960,8 +961,8 @@ where
 #[cfg(test)]
 mod tests {
     use nalgebra::Point2;
+    use theon::adjunct::Converged;
     use theon::space::EuclideanSpace;
-    use theon::Converged;
 
     use crate::primitive::{NGon, Polygonal, Tetragon, Trigon};
 

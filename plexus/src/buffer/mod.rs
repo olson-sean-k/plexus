@@ -82,8 +82,7 @@ use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use theon::ops::Map;
-use theon::FromItems;
+use theon::adjunct::{FromItems, Map};
 use thiserror::Error;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 

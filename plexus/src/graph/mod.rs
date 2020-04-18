@@ -186,7 +186,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use theon::ops::Map;
+use theon::adjunct::Map;
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use theon::AsPosition;

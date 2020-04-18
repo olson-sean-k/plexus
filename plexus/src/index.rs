@@ -58,7 +58,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use theon::ops::Map;
+use theon::adjunct::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;

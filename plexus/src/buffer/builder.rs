@@ -1,7 +1,7 @@
 use arrayvec::Array;
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
-use theon::FromItems;
+use theon::adjunct::FromItems;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};

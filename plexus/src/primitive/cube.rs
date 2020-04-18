@@ -20,10 +20,9 @@
 //! ```
 
 use num::One;
-use theon::ops::Map;
+use theon::adjunct::{Converged, Map};
 use theon::query::Unit;
 use theon::space::{Basis, EuclideanSpace, FiniteDimensional, InnerSpace, Scalar, Vector};
-use theon::Converged;
 use typenum::U3;
 
 use crate::primitive::generate::{

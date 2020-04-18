@@ -6,8 +6,8 @@
 use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
+use theon::adjunct::IntoItems;
 use theon::ops::Interpolate;
-use theon::IntoItems;
 
 use crate::primitive::{Edge, Polygon, Polygonal, Tetragon, Topological, Trigon};
 

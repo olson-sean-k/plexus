@@ -1,7 +1,11 @@
 #![cfg(feature = "geometry-mint")]
 
+use theon::integration::mint;
+
+#[doc(hidden)]
+pub use self::mint::*;
+
 use decorum::{Finite, NotNan, Ordered, Primitive};
-use mint::{Point2, Point3, Vector2, Vector3};
 use num::{Float, NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;

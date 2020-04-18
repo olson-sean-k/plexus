@@ -1,7 +1,9 @@
 #![allow(clippy::iter_nth_zero)]
 
+use plexus::integration::nalgebra;
+
+use self::nalgebra::Point2;
 use decorum::N64;
-use nalgebra::Point2;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph};
 use plexus::prelude::*;
 use plexus::primitive::NGon;

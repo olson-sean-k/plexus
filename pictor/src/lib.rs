@@ -5,6 +5,8 @@ pub mod camera;
 pub mod pipeline;
 pub mod renderer;
 
+use plexus::integration::{nalgebra, theon};
+
 use glutin::{ContextBuilder, ControlFlow, Event, EventsLoop, WindowBuilder, WindowEvent};
 use nalgebra::{Matrix4, Point3, Scalar, Vector4};
 use num::cast;
@@ -14,7 +16,7 @@ use plexus::UnitGeometry;
 use rand::distributions::{Distribution, Standard};
 use rand::{self, Rng};
 use std::f32::consts::PI;
-use theon::ops::Map;
+use theon::adjunct::Map;
 
 use crate::camera::Camera;
 use crate::pipeline::{Transform, Vertex};

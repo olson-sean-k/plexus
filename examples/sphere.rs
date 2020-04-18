@@ -1,5 +1,7 @@
+use plexus::integration::nalgebra;
+
+use self::nalgebra::Point3;
 use decorum::R64;
-use nalgebra::Point3;
 use pictor::pipeline::Vertex;
 use pictor::{self, Color4};
 use plexus::prelude::*;
