@@ -1,0 +1,5 @@
+[build]
+rustdocflags = [
+    # Enable KaTeX support.
+    "--html-in-header=../doc/katex-header.html"
+]

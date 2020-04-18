@@ -841,8 +841,7 @@ where
     ///
     /// # Examples
     ///
-    /// Creating a `MeshBuffer` from a graph loaded from PLY data and used to
-    /// compute normals:
+    /// Creating a `MeshBuffer` from a graph used to compute normals:
     ///
     /// ```rust
     /// # extern crate decorum;
@@ -853,9 +852,10 @@ where
     /// use decorum::N64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
-    /// use plexus::encoding::ply::{FromPly, PositionEncoding};
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::Polygon;
     /// use theon::space::Vector;
     ///
@@ -866,12 +866,9 @@ where
     ///     pub normal: Vector<E3>,
     /// }
     ///
-    /// let ply: &[u8] = {
-    ///     // ...
-    /// #     include_bytes!("../../../data/cube.ply")
-    /// };
-    /// let encoding = PositionEncoding::<E3>::default();
-    /// let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).unwrap();
+    /// let graph = Cube::new()
+    ///     .polygons::<Position<E3>>()
+    ///     .collect::<MeshGraph<E3>>();
     ///
     /// let buffer: MeshBuffer<Polygon<usize>, _> = graph
     ///     .to_mesh_by_face_with(|face, vertex| Vertex {
