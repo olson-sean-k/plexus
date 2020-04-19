@@ -1,5 +1,13 @@
 [build]
 rustdocflags = [
     # Enable KaTeX support.
+    # TODO: This path breaks `cargo doc`, because it executes `rustdoc` from a
+    #       different directory than `cargo test`. Fixing this for `cargo doc`
+    #       in turn breaks `cargo test`. This path is used, because `cargo test`
+    #       is generally more importan than `cargo doc`. To document Plexus, use
+    #       the `rustdoc.sh` script or set the `RUSTDOCFLAGS` environment
+    #       variable.
+    #
+    #       See https://github.com/rust-lang/cargo/issues/8097
     "--html-in-header=../doc/katex-header.html"
 ]
