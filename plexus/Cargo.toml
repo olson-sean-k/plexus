@@ -59,7 +59,7 @@ rev = "b0015b90882fb42ac443f721f646fb44acd0b6e8"
 
 [dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "5ac8643afa741b60ebf38b57090e4bc5439c4d11"
+rev = "35a45901c0c717127afe24685a1fe3a2182978b2"
 default-features = false
 features = ["lapack"]
 
@@ -80,7 +80,7 @@ pictor = { path = "../pictor" }
 
 [dev-dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "5ac8643afa741b60ebf38b57090e4bc5439c4d11"
+rev = "35a45901c0c717127afe24685a1fe3a2182978b2"
 default-features = false
 features = [
     "geometry-nalgebra",
