@@ -1,7 +1,9 @@
+// Macros require that crate roots are explicitly imported.
+#![allow(clippy::single_component_path_imports)]
+
 use plexus::integration::{nalgebra, theon};
 
-use decorum;
-use gfx;
+use gfx; // Imported for use in macro invocations.
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
 use num::NumCast;
 use std::hash::{Hash, Hasher};

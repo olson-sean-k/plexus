@@ -3,8 +3,6 @@ use gfx::handle::{DepthStencilView, RenderTargetView};
 use gfx::state::{CullFace, FrontFace, RasterMethod, Rasterizer};
 use gfx::traits::FactoryExt;
 use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
-use gfx_device_gl;
-use gfx_window_glutin;
 use glutin::{NotCurrent, PossiblyCurrent, WindowedContext};
 use plexus::buffer::MeshBuffer3;
 
