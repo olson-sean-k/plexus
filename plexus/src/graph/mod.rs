@@ -192,6 +192,7 @@ mod path;
 mod trace;
 mod vertex;
 
+use decorum::cmp::IntrinsicOrd;
 use decorum::N64;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
@@ -574,6 +575,7 @@ where
     where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
+        Scalar<VertexPosition<G>>: IntrinsicOrd,
     {
         Aabb::from_points(self.vertices().map(|vertex| *vertex.geometry.as_position()))
     }

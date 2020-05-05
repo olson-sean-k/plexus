@@ -395,12 +395,12 @@ where
     type Item = A::Item;
 }
 
-impl<A, U> Fold<U> for NGon<A>
+impl<A> Fold for NGon<A>
 where
     Self: Topological + IntoItems,
     A: Array,
 {
-    fn fold<F>(self, mut seed: U, mut f: F) -> U
+    fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
         F: FnMut(U, Self::Item) -> U,
     {
@@ -747,8 +747,8 @@ impl<T> DynamicArity for Polygon<T> {
     }
 }
 
-impl<T, U> Fold<U> for Polygon<T> {
-    fn fold<F>(self, mut seed: U, mut f: F) -> U
+impl<T> Fold for Polygon<T> {
+    fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
         F: FnMut(U, Self::Item) -> U,
     {

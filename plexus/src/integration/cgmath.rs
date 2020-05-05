@@ -5,8 +5,8 @@ use theon::integration::cgmath;
 #[doc(hidden)]
 pub use self::cgmath::*;
 
-use decorum::{Finite, NotNan, Ordered, Primitive};
-use num::{Float, NumCast, ToPrimitive};
+use decorum::{Encoding, Finite, Infinite, Nan, NotNan, Primitive, Total};
+use num::{NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
 use crate::{FromGeometry, UnitGeometry};
@@ -135,7 +135,7 @@ macro_rules! impl_from_geometry_ordered {
     (geometry => $g:ident,proxy => $p:ident) => {
         impl<T> FromGeometry<$g<$p<T>>> for $g<T>
         where
-            T: Float + Primitive,
+            T: Encoding + Infinite + Nan + Primitive,
         {
             fn from_geometry(other: $g<$p<T>>) -> Self {
                 other.map(|value| value.into_inner())
@@ -144,7 +144,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<$g<T>> for $g<$p<T>>
         where
-            T: Float + Primitive,
+            T: Encoding + Infinite + Nan + Primitive,
         {
             fn from_geometry(other: $g<T>) -> Self {
                 other.map($p::<T>::from_inner)
@@ -154,13 +154,13 @@ macro_rules! impl_from_geometry_ordered {
 }
 impl_from_geometry_ordered!(geometry => Vector2, proxy => Finite);
 impl_from_geometry_ordered!(geometry => Vector2, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Vector2, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Vector2, proxy => Total);
 impl_from_geometry_ordered!(geometry => Vector3, proxy => Finite);
 impl_from_geometry_ordered!(geometry => Vector3, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Vector3, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Vector3, proxy => Total);
 impl_from_geometry_ordered!(geometry => Point2, proxy => Finite);
 impl_from_geometry_ordered!(geometry => Point2, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Point2, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Point2, proxy => Total);
 impl_from_geometry_ordered!(geometry => Point3, proxy => Finite);
 impl_from_geometry_ordered!(geometry => Point3, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Point3, proxy => Ordered);
+impl_from_geometry_ordered!(geometry => Point3, proxy => Total);
