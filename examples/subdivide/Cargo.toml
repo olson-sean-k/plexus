@@ -7,7 +7,7 @@ license = "MIT"
 publish = false
 
 [dependencies]
-decorum = "^0.1.1"
+decorum = "^0.2.0"
 smallvec = "^1.0.0"
 
 [dependencies.plexus]
