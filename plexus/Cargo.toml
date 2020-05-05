@@ -69,14 +69,6 @@ features = ["lapack"]
 # specification is compatible with `theon`. Other crates use re-exported types
 # and do not take a direct dependency on `nalgebra`.
 nalgebra = "^0.21.0"
-# This dependency must be removed when publishing. Cargo does not allow
-# non-published dependencies, even if they are for development only. See the
-# following issues:
-#
-#   https://github.com/rust-lang/cargo/issues/4242
-#   https://github.com/rust-lang/cargo/issues/4663
-#
-pictor = { path = "../pictor" }
 
 [dev-dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
