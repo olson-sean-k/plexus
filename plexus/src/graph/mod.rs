@@ -219,9 +219,7 @@ use crate::graph::geometry::Geometric;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
-use crate::network::storage::{
-    AsStorage, AsStorageMut, AsStorageMutOf, AsStorageOf, Fuse, OpaqueKey, Storage,
-};
+use crate::network::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
 use crate::network::view::{Bind, Orphan, View};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;

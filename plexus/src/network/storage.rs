@@ -82,11 +82,7 @@ pub trait AsStorageOf {
     {
         self.as_storage()
     }
-}
 
-impl<T> AsStorageOf for T {}
-
-pub trait AsStorageMutOf {
     fn as_storage_mut_of<E>(&mut self) -> &mut Storage<E>
     where
         E: Entity,
@@ -96,7 +92,7 @@ pub trait AsStorageMutOf {
     }
 }
 
-impl<T> AsStorageMutOf for T {}
+impl<T> AsStorageOf for T {}
 
 // TODO: Avoid boxing when GATs are stabilized. See
 //       https://github.com/rust-lang/rust/issues/44265
