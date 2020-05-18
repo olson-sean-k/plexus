@@ -7,7 +7,7 @@ license = "MIT"
 publish = false
 
 [dependencies]
-decorum = "^0.2.0"
+decorum = "^0.3.0"
 
 [dependencies.pictor]
 path = "../../pictor"
