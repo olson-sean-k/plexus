@@ -3,6 +3,7 @@
 
 use plexus::integration::{nalgebra, theon};
 
+use decorum::hash::FloatHash;
 use gfx; // Imported for use in macro invocations.
 use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
 use num::NumCast;
@@ -132,8 +133,8 @@ impl Hash for Vertex {
     where
         H: Hasher,
     {
-        decorum::hash_float_array(&self.position, state);
-        decorum::hash_float_array(&self.normal, state);
-        decorum::hash_float_array(&self.color, state);
+        self.position.hash(state);
+        self.normal.hash(state);
+        self.color.hash(state);
     }
 }

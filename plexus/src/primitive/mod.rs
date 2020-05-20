@@ -78,8 +78,7 @@ use arrayvec::{Array, ArrayVec};
 use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
-use num::traits::FloatConst;
-use num::{Integer, One, Zero};
+use num::{Integer, One, Signed, Zero};
 use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
@@ -264,9 +263,8 @@ pub trait Polygonal: Topological {
     where
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
-        Scalar<Position<Self::Vertex>>: FloatConst,
     {
-        let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
+        let pi = <Scalar<Position<Self::Vertex>> as Real>::PI;
         let mut sum = <Scalar<Position<Self::Vertex>> as Zero>::zero();
         for (t1, t2) in angles(self).perimeter() {
             if (t1 * t2) <= Zero::zero() {
@@ -923,7 +921,6 @@ where
     P: Polygonal,
     P::Vertex: AsPosition,
     Position<P::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
-    Scalar<Position<P::Vertex>>: FloatConst,
 {
     polygon
         .as_ref()
@@ -936,17 +933,17 @@ where
         .map(|(x, y)| Real::atan2(x, y)) // Absolute angle.
         .perimeter()
         .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
-        .map(|angle| {
-            // Wrap angles into `(-pi, pi]`.
-            let pi = <Scalar<Position<P::Vertex>> as FloatConst>::PI();
-            if angle <= -pi {
-                angle + (pi + pi)
+        .map(|t| {
+            // Wrap the angle into the interval `(-pi, pi]`.
+            let pi = <Scalar<Position<P::Vertex>> as Real>::PI;
+            if t <= -pi {
+                t + (pi + pi)
             }
-            else if angle > pi {
-                angle - (pi + pi)
+            else if t > pi {
+                t - (pi + pi)
             }
             else {
-                angle
+                t
             }
         })
 }

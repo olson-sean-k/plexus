@@ -5,7 +5,7 @@ use theon::integration::mint;
 #[doc(hidden)]
 pub use self::mint::*;
 
-use decorum::{Encoding, Finite, Infinite, Nan, NotNan, Primitive, Total};
+use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
@@ -141,7 +141,7 @@ macro_rules! impl_from_geometry_ordered {
     (proxy => $p:ident) => {
         impl<T> FromGeometry<Vector2<$p<T>>> for Vector2<T>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Vector2<$p<T>>) -> Self {
                 Vector2 {
@@ -153,7 +153,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Vector2<T>> for Vector2<$p<T>>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Vector2<T>) -> Self {
                 Vector2 {
@@ -165,7 +165,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Vector3<$p<T>>> for Vector3<T>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Vector3<$p<T>>) -> Self {
                 Vector3 {
@@ -178,7 +178,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Vector3<T>> for Vector3<$p<T>>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Vector3<T>) -> Self {
                 Vector3 {
@@ -191,7 +191,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Point2<$p<T>>> for Point2<T>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Point2<$p<T>>) -> Self {
                 Point2 {
@@ -203,7 +203,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Point2<T>> for Point2<$p<T>>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Point2<T>) -> Self {
                 Point2 {
@@ -215,7 +215,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Point3<$p<T>>> for Point3<T>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Point3<$p<T>>) -> Self {
                 Point3 {
@@ -228,7 +228,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<Point3<T>> for Point3<$p<T>>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: Point3<T>) -> Self {
                 Point3 {
