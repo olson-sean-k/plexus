@@ -103,7 +103,7 @@ where
     fn drain_and_commit(&mut self) -> Result<&'a mut T, <Self as Transact<&'a mut T>>::Error> {
         let (target, inner) = self.drain();
         let mutant = inner.commit()?;
-        mem::replace(target, mutant);
+        *target = mutant;
         Ok(target)
     }
 
