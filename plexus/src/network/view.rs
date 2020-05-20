@@ -86,12 +86,13 @@ where
     B::Target: AsStorage<E>,
     E: Entity,
 {
+    #[allow(unstable_name_collisions)]
     pub fn bind(storage: B, key: E::Key) -> Option<Self> {
         storage
             .reborrow()
             .as_storage()
             .contains_key(&key)
-            .some(View::bind_unchecked(storage, key))
+            .then_some(View::bind_unchecked(storage, key))
     }
 
     pub fn bind_unchecked(storage: B, key: E::Key) -> Self {

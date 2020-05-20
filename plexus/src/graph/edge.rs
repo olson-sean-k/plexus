@@ -254,13 +254,14 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Geometric,
 {
+    #[allow(unstable_name_collisions)]
     pub(in crate::graph) fn into_reachable_boundary_arc(self) -> Option<Self> {
         if self.is_boundary_arc() {
             Some(self)
         }
         else {
             self.into_reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().some(opposite))
+                .and_then(|opposite| opposite.is_boundary_arc().then_some(opposite))
         }
     }
 
@@ -279,13 +280,14 @@ where
         key.and_then(|key| self.rebind(key))
     }
 
+    #[allow(unstable_name_collisions)]
     pub(in crate::graph) fn reachable_boundary_arc(&self) -> Option<ArcView<&M>> {
         if self.is_boundary_arc() {
             Some(self.to_ref())
         }
         else {
             self.reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().some_with(|| opposite))
+                .and_then(|opposite| opposite.is_boundary_arc().then_some(opposite))
         }
     }
 

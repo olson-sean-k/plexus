@@ -715,9 +715,10 @@ where
     M: AsStorage<Arc<G>> + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
+    #[allow(unstable_name_collisions)]
     fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
-            .and_then(|outgoing| self.trace.insert(outgoing).some(outgoing))
+            .and_then(|outgoing| self.trace.insert(outgoing).then_some(outgoing))
             .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage
