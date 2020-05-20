@@ -8,7 +8,7 @@ pub use self::nalgebra::*;
 use self::nalgebra::base::allocator::Allocator;
 use self::nalgebra::base::default_allocator::DefaultAllocator;
 use self::nalgebra::base::dimension::DimName;
-use decorum::{Encoding, Finite, Infinite, Nan, NotNan, Primitive, Total};
+use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
@@ -139,7 +139,7 @@ macro_rules! impl_from_geometry_ordered {
     (proxy => $p:ident) => {
         impl<T, R, C> FromGeometry<MatrixMN<$p<T>, R, C>> for MatrixMN<T, R, C>
         where
-            T: Encoding + Infinite + Nan + Primitive + Scalar,
+            T: Float + Primitive + Scalar,
             R: DimName,
             C: DimName,
             DefaultAllocator: Allocator<T, R, C> + Allocator<$p<T>, R, C>,
@@ -151,7 +151,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T, R, C> FromGeometry<MatrixMN<T, R, C>> for MatrixMN<$p<T>, R, C>
         where
-            T: Encoding + Infinite + Nan + Primitive + Scalar,
+            T: Float + Primitive + Scalar,
             R: DimName,
             C: DimName,
             DefaultAllocator: Allocator<$p<T>, R, C> + Allocator<T, R, C>,
@@ -163,7 +163,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T, D> FromGeometry<Point<$p<T>, D>> for Point<T, D>
         where
-            T: Encoding + Infinite + Nan + Primitive + Scalar,
+            T: Float + Primitive + Scalar,
             D: DimName,
             DefaultAllocator: Allocator<T, D> + Allocator<$p<T>, D>,
         {
@@ -174,7 +174,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T, D> FromGeometry<Point<T, D>> for Point<$p<T>, D>
         where
-            T: Encoding + Infinite + Nan + Primitive + Scalar,
+            T: Float + Primitive + Scalar,
             D: DimName,
             DefaultAllocator: Allocator<$p<T>, D> + Allocator<T, D>,
         {

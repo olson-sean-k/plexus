@@ -5,7 +5,7 @@ use theon::integration::cgmath;
 #[doc(hidden)]
 pub use self::cgmath::*;
 
-use decorum::{Encoding, Finite, Infinite, Nan, NotNan, Primitive, Total};
+use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::graph::GraphGeometry;
@@ -135,7 +135,7 @@ macro_rules! impl_from_geometry_ordered {
     (geometry => $g:ident,proxy => $p:ident) => {
         impl<T> FromGeometry<$g<$p<T>>> for $g<T>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: $g<$p<T>>) -> Self {
                 other.map(|value| value.into_inner())
@@ -144,7 +144,7 @@ macro_rules! impl_from_geometry_ordered {
 
         impl<T> FromGeometry<$g<T>> for $g<$p<T>>
         where
-            T: Encoding + Infinite + Nan + Primitive,
+            T: Float + Primitive,
         {
             fn from_geometry(other: $g<T>) -> Self {
                 other.map($p::<T>::from_inner)
