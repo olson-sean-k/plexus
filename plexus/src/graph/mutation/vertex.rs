@@ -7,7 +7,6 @@ use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Fuse, Storage};
-use crate::network::view::View;
 use crate::transact::Transact;
 
 type OwnedCore<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
@@ -30,19 +29,24 @@ where
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
-        View::bind(&mut self.storage, a)
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .map(|mut vertex| {
-                vertex.arc = Some(ab);
-            })
+        self.with_vertex_mut(a, |vertex| vertex.arc = Some(ab))
     }
 
     // TODO: See `edge::split_with_cache`.
     #[allow(dead_code)]
     pub fn disconnect_outgoing_arc(&mut self, a: VertexKey) -> Result<Option<ArcKey>, GraphError> {
-        View::bind(&mut self.storage, a)
-            .ok_or_else(|| GraphError::TopologyNotFound)
-            .map(|mut vertex| vertex.arc.take())
+        self.with_vertex_mut(a, |vertex| vertex.arc.take())
+    }
+
+    fn with_vertex_mut<T, F>(&mut self, a: VertexKey, mut f: F) -> Result<T, GraphError>
+    where
+        F: FnMut(&mut Vertex<G>) -> T,
+    {
+        let vertex = self
+            .storage
+            .get_mut(&a)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        Ok(f(vertex))
     }
 }
 

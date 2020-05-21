@@ -1,20 +1,18 @@
 use fool::and;
 use std::ops::{Deref, DerefMut};
-use theon::space::{EuclideanSpace, Vector};
-use theon::AsPosition;
 
 use crate::graph::core::Core;
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::{self, VertexMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::vertex::{Vertex, VertexKey};
+use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Fuse, Storage};
-use crate::network::view::{ClosedView, View};
+use crate::network::view::{Bind, ClosedView};
 use crate::transact::Transact;
 use crate::IteratorExt as _;
 
@@ -194,9 +192,7 @@ impl ArcRemoveCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let arc = View::bind(storage, ab)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         // If the edge has no neighbors, then `xa` and `bx` will refer to the
         // opposite arc of `ab`. In this case, the vertices `a` and `b` should
         // have no leading arcs after the removal. The cache will have its `xa`
@@ -239,9 +235,7 @@ impl EdgeRemoveCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let arc = View::bind(storage, ab)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
         let ba = arc.opposite_arc().key();
@@ -274,9 +268,7 @@ impl EdgeSplitCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let arc = View::bind(storage, ab)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let opposite = arc
             .reachable_opposite_arc()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
@@ -316,12 +308,9 @@ impl ArcBridgeCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let source = View::bind(storage, source)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination = View::bind(storage, destination)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let source = ArcView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?;
+        let destination =
+            ArcView::bind(storage, destination).ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = source
             .reachable_source_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
@@ -345,7 +334,7 @@ impl ArcBridgeCache {
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| View::bind(storage, ab.into()).map(ArcView::from))
+            .flat_map(|ab| ArcView::bind(storage, ab.into()))
         {
             if !arc.is_boundary_arc() {
                 return Err(GraphError::TopologyConflict);
@@ -380,9 +369,7 @@ impl ArcExtrudeCache {
             + Consistent
             + Geometric,
     {
-        let arc = View::bind(storage, ab)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         if !arc.is_boundary_arc() {
             Err(GraphError::TopologyConflict)
         }
@@ -465,7 +452,7 @@ where
     N: AsMut<Mutation<M>>,
     M: Mutable,
 {
-    fn remove_arc_with_cache<M, N>(
+    fn remove_arc<M, N>(
         mut mutation: N,
         cache: ArcRemoveCache,
     ) -> Result<Arc<Geometry<M>>, GraphError>
@@ -515,8 +502,8 @@ where
     Ok((
         edge,
         (
-            remove_arc_with_cache(mutation.as_mut(), arc)?,
-            remove_arc_with_cache(mutation.as_mut(), opposite)?,
+            remove_arc(mutation.as_mut(), arc)?,
+            remove_arc(mutation.as_mut(), opposite)?,
         ),
     ))
 }
@@ -625,6 +612,10 @@ where
     face::insert_with(mutation.as_mut(), cache, Default::default)
 }
 
+// The identifiers `a`, `b`, `c`, and `d` are probably well understood in this
+// context and `f` is used in a manner that is consistent with the standard
+// library.
+#[allow(clippy::many_single_char_names)]
 pub fn extrude_with<M, N, F>(
     mut mutation: N,
     cache: ArcExtrudeCache,
@@ -633,32 +624,21 @@ pub fn extrude_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> Vector<VertexPosition<Geometry<M>>>,
-    <Geometry<M> as GraphGeometry>::Vertex: AsPosition,
-    VertexPosition<Geometry<M>>: EuclideanSpace,
+    F: Fn(<Geometry<M> as GraphGeometry>::Vertex) -> <Geometry<M> as GraphGeometry>::Vertex,
 {
     let ArcExtrudeCache { ab } = cache;
     let (c, d) = {
-        let translation = f();
-        let arc = View::bind(mutation.as_mut(), ab)
-            .map(ArcView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let mut c = arc
-            .reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+        let (a, b) = ab.into();
+        let c = VertexView::bind(mutation.as_mut(), b)
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry;
-        let mut d = arc
-            .reachable_source_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+        let d = VertexView::bind(mutation.as_mut(), a)
+            .ok_or_else(|| GraphError::TopologyNotFound)?
             .geometry;
-        c.transform(|position| *position + translation);
-        d.transform(|position| *position + translation);
-        (c, d)
+        (f(c), f(d))
     };
     let c = vertex::insert(mutation.as_mut(), c);
     let d = vertex::insert(mutation.as_mut(), d);
-    // TODO: If this arc already exists, then this should probably return an
-    //       error.
     let cd =
         get_or_insert_with(mutation.as_mut(), (c, d), Default::default).map(|(_, (cd, _))| cd)?;
     let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;

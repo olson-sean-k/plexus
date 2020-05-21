@@ -144,8 +144,9 @@
 //! let mut graph = UvSphere::new(8, 8)
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .collect::<MeshGraph<Point3<N64>>>();
-//! let key = graph.faces().nth(0).unwrap().key(); // Get the key of the first face.
-//! let face = graph.face_mut(key).unwrap().extrude(1.0); // Extrude the face.
+//! // Get the key of the first face and then extrude it.
+//! let key = graph.faces().nth(0).unwrap().key();
+//! let face = graph.face_mut(key).unwrap().extrude_with_offset(1.0);
 //! ```
 //!
 //! Traversing and circulating over a graph:
@@ -756,7 +757,7 @@ where
     ///     .polygons::<Position<E3>>()
     ///     .collect::<MeshGraph<E3>>();
     /// let key = graph.faces().nth(0).unwrap().key();
-    /// graph.face_mut(key).unwrap().extrude(1.0);
+    /// graph.face_mut(key).unwrap().extrude_with_offset(1.0);
     ///
     /// let buffer = graph.to_mesh_by_vertex::<MeshBufferN<usize, E3>>().unwrap();
     /// ```

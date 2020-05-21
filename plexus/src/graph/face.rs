@@ -205,7 +205,7 @@ where
     /// let face = graph
     ///     .face_mut(key)
     ///     .unwrap()
-    ///     .extrude(1.0)
+    ///     .extrude_with_offset(1.0)
     ///     .unwrap()
     ///     .into_ref();
     ///
@@ -510,8 +510,6 @@ where
         let source = source.key_or_else(key_at_index)?;
         let destination = destination.key_or_else(key_at_index)?;
         let (storage, abc) = self.unbind();
-        // Errors can easily be caused by inputs to this function. Allow errors
-        // from the snapshot to propagate.
         let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::split(mutation, cache))
@@ -607,8 +605,6 @@ where
     /// the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
         let (storage, source) = self.unbind();
-        // Errors can easily be caused by inputs to this function. Allow errors
-        // from the snapshot to propagate.
         let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::bridge(mutation, cache))
@@ -675,6 +671,7 @@ where
         F: FnOnce() -> G::Vertex,
     {
         let (storage, abc) = self.unbind();
+        // This should never fail here.
         let cache = FacePokeCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::poke_with(mutation, cache, f))
@@ -749,27 +746,60 @@ where
         }))
     }
 
-    /// Extrudes the face.
+    /// Extrudes the face along its normal.
     ///
-    /// Returns the extruded face if successful.
+    /// Returns the extruded face.
     ///
     /// # Errors
     ///
     /// Returns an error if the geometry could not be computed.
-    pub fn extrude<T>(self, offset: T) -> Result<FaceView<&'a mut M>, GraphError>
+    pub fn extrude_with_offset<T>(self, offset: T) -> Result<FaceView<&'a mut M>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let normal = self.normal()?;
+        let translation = self.normal()? * offset.into();
+        Ok(self.extrude_with_translation(translation))
+    }
+
+    /// Extrudes the face along a translation.
+    ///
+    /// Returns the extruded face.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the geometry could not be computed.
+    pub fn extrude_with_translation(
+        self,
+        translation: Vector<VertexPosition<G>>,
+    ) -> FaceView<&'a mut M>
+    where
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
+    {
+        self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
+    }
+
+    /// Extrudes a face using the given vertex geometry.
+    ///
+    /// Returns the extruded face.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the geometry could not be computed.
+    pub fn extrude_with<F>(self, f: F) -> FaceView<&'a mut M>
+    where
+        F: Fn(G::Vertex) -> G::Vertex,
+    {
         let (storage, abc) = self.unbind();
+        // This should never fail here.
         let cache = FaceExtrudeCache::snapshot(&storage, abc).expect_consistent();
-        Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::extrude_with(mutation, cache, || normal * offset.into()))
+        Mutation::replace(storage, Default::default())
+            .commit_with(|mutation| face::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
-            .expect_consistent())
+            .expect_consistent()
     }
 
     /// Removes the face.
@@ -777,6 +807,7 @@ where
     /// Returns the remaining ring of the face if it is not entirely disjoint.
     pub fn remove(self) -> Option<Ring<&'a mut M>> {
         let (storage, abc) = self.unbind();
+        // This should never fail here.
         let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::remove(mutation, cache))
@@ -1151,6 +1182,7 @@ where
         else {
             let perimeter = self.vertices().keys().collect::<Vec<_>>();
             let (storage, _) = self.arc.unbind();
+            // This should never fail here.
             let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
             Mutation::replace(storage, Default::default())
                 .commit_with(|mutation| {
@@ -1597,7 +1629,7 @@ mod tests {
             let face = graph
                 .face_mut(key)
                 .unwrap()
-                .extrude(1.0)
+                .extrude_with_offset(1.0)
                 .unwrap()
                 .into_ref();
 

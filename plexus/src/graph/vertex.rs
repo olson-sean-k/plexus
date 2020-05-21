@@ -416,6 +416,7 @@ where
     /// ```
     pub fn remove(self) {
         let (storage, a) = self.unbind();
+        // This should never fail here.
         let cache = VertexRemoveCache::snapshot(&storage, a).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| vertex::remove(mutation, cache))

@@ -3,13 +3,11 @@ use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
-use theon::space::{EuclideanSpace, Vector};
-use theon::AsPosition;
 
 use crate::graph::core::{Core, OwnedCore, RefCore};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::face::{Face, FaceKey, FaceView};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry, VertexPosition};
+use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::vertex;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -17,7 +15,7 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, Ringoid};
 use crate::network::borrow::Reborrow;
 use crate::network::storage::{AsStorage, Fuse, Storage};
-use crate::network::view::{ClosedView, View};
+use crate::network::view::{Bind, ClosedView};
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 
@@ -38,14 +36,10 @@ where
         self.inner.to_ref_core().fuse(&self.storage)
     }
 
-    // TODO: Should there be a distinction between `connect_face_to_edge` and
-    //       `connect_edge_to_face`?
+    // TODO: Should there be a distinction between `connect_face_to_arc` and
+    //       `connect_arc_to_face`?
     pub fn connect_face_to_arc(&mut self, ab: ArcKey, abc: FaceKey) -> Result<(), GraphError> {
-        self.storage
-            .get_mut(&abc)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
-            .arc = ab;
-        Ok(())
+        self.with_face_mut(abc, |face| face.arc = ab)
     }
 
     fn connect_face_interior(&mut self, arcs: &[ArcKey], face: FaceKey) -> Result<(), GraphError> {
@@ -77,8 +71,7 @@ where
             let ba = ab.into_opposite();
             let neighbors = {
                 let core = &self.to_ref_core();
-                if View::bind(core, ba)
-                    .map(ArcView::from)
+                if ArcView::bind(core, ba)
                     .ok_or_else(|| GraphError::TopologyMalformed)?
                     .is_boundary_arc()
                 {
@@ -89,11 +82,10 @@ where
                     let ax = outgoing[&a]
                         .iter()
                         .cloned()
-                        .flat_map(|ax| View::bind(core, ax).map(ArcView::from))
+                        .flat_map(|ax| ArcView::bind(core, ax))
                         .find(|next| next.is_boundary_arc())
                         .or_else(|| {
-                            View::bind(core, ab)
-                                .map(ArcView::from)
+                            ArcView::bind(core, ab)
                                 .and_then(|arc| arc.into_reachable_previous_arc())
                                 .and_then(|previous| previous.into_reachable_opposite_arc())
                         })
@@ -101,11 +93,10 @@ where
                     let xb = incoming[&b]
                         .iter()
                         .cloned()
-                        .flat_map(|xb| View::bind(core, xb).map(ArcView::from))
+                        .flat_map(|xb| ArcView::bind(core, xb))
                         .find(|previous| previous.is_boundary_arc())
                         .or_else(|| {
-                            View::bind(core, ab)
-                                .map(ArcView::from)
+                            ArcView::bind(core, ab)
                                 .and_then(|arc| arc.into_reachable_next_arc())
                                 .and_then(|next| next.into_reachable_opposite_arc())
                         })
@@ -122,6 +113,17 @@ where
             }
         }
         Ok(())
+    }
+
+    fn with_face_mut<T, F>(&mut self, abc: FaceKey, mut f: F) -> Result<T, GraphError>
+    where
+        F: FnMut(&mut Face<G>) -> T,
+    {
+        let face = self
+            .storage
+            .get_mut(&abc)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        Ok(f(face))
     }
 }
 
@@ -222,8 +224,8 @@ impl FaceInsertCache {
         let vertices = perimeter
             .iter()
             .cloned()
-            .flat_map(|key| View::bind_into(storage, key))
-            .collect::<SmallVec<[VertexView<_>; 4]>>();
+            .flat_map(|key| VertexView::bind(storage, key))
+            .collect::<SmallVec<[_; 4]>>();
         if vertices.len() != arity {
             // Vertex keys refer to nonexistent vertices.
             return Err(GraphError::TopologyNotFound);
@@ -232,7 +234,7 @@ impl FaceInsertCache {
             .iter()
             .cloned()
             .perimeter()
-            .map(|keys| View::bind(storage, keys.into()).map(ArcView::from))
+            .map(|keys| ArcView::bind(storage, keys.into()))
             .perimeter()
         {
             if let Some(previous) = previous {
@@ -288,9 +290,7 @@ impl FaceRemoveCache {
             + Consistent
             + Geometric,
     {
-        let face = View::bind(storage, abc)
-            .map(FaceView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let face = FaceView::bind(storage, abc).ok_or_else(|| GraphError::TopologyNotFound)?;
         let arcs = face.interior_arcs().map(|arc| arc.key()).collect();
         Ok(FaceRemoveCache { abc, arcs })
     }
@@ -318,9 +318,7 @@ impl FaceSplitCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let face = View::bind(storage, abc)
-            .map(FaceView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let face = FaceView::bind(storage, abc).ok_or_else(|| GraphError::TopologyNotFound)?;
         face.distance(source.into(), destination.into())
             .and_then(|distance| {
                 if distance <= 1 {
@@ -373,8 +371,7 @@ impl FacePokeCache {
             + Geometric,
     {
         let storage = storage.reborrow();
-        let vertices = View::bind(storage, abc)
-            .map(FaceView::from)
+        let vertices = FaceView::bind(storage, abc)
             .ok_or_else(|| GraphError::TopologyNotFound)?
             .vertices()
             .map(|vertex| vertex.key())
@@ -412,12 +409,9 @@ impl FaceBridgeCache {
             FaceRemoveCache::snapshot(storage, destination)?,
         );
         // Ensure that the opposite face exists and has the same arity.
-        let source = View::bind(storage, source)
-            .map(FaceView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination = View::bind(storage, destination)
-            .map(FaceView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let source = FaceView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?;
+        let destination =
+            FaceView::bind(storage, destination).ok_or_else(|| GraphError::TopologyNotFound)?;
         if source.arity() != destination.arity() {
             return Err(GraphError::ArityNonUniform);
         }
@@ -448,9 +442,7 @@ impl FaceExtrudeCache {
     {
         let storage = storage.reborrow();
         let cache = FaceRemoveCache::snapshot(storage, abc)?;
-        let face = View::bind(storage, abc)
-            .map(FaceView::from)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let face = FaceView::bind(storage, abc).ok_or_else(|| GraphError::TopologyNotFound)?;
         let sources = face.vertices().keys().collect();
         Ok(FaceExtrudeCache { sources, cache })
     }
@@ -590,24 +582,17 @@ pub fn extrude_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> Vector<VertexPosition<Geometry<M>>>,
-    <Geometry<M> as GraphGeometry>::Vertex: AsPosition,
-    VertexPosition<Geometry<M>>: EuclideanSpace,
+    F: Fn(<Geometry<M> as GraphGeometry>::Vertex) -> <Geometry<M> as GraphGeometry>::Vertex,
 {
     let FaceExtrudeCache { sources, cache } = cache;
     remove(mutation.as_mut(), cache)?;
     let destinations = {
-        let translation = f();
         let mutation = &*mutation.as_mut();
         sources
             .iter()
             .cloned()
-            .flat_map(|a| View::bind(mutation, a).map(VertexView::from))
-            .map(|source| {
-                let mut geometry = source.geometry;
-                geometry.transform(|position| *position + translation);
-                geometry
-            })
+            .flat_map(|a| VertexView::bind(mutation, a))
+            .map(|source| f(source.geometry))
             .collect::<Vec<_>>()
     };
     if sources.len() != destinations.len() {

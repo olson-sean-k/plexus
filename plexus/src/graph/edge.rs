@@ -237,7 +237,12 @@ where
     ///     .find(|arc| arc.is_boundary_arc())
     ///     .unwrap()
     ///     .key();
-    /// let arc = graph.arc_mut(key).unwrap().extrude(1.0).unwrap().into_ref();
+    /// let arc = graph
+    ///     .arc_mut(key)
+    ///     .unwrap()
+    ///     .extrude_with_offset(1.0)
+    ///     .unwrap()
+    ///     .into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
     /// let _ = arc.into_next_arc().into_next_arc().into_face();
@@ -593,7 +598,8 @@ where
         + Mutable<Geometry = G>,
     G: GraphGeometry,
 {
-    /// Splits a composite edge into two neighboring edges that share a vertex.
+    /// Splits the composite edge of the arc into two neighboring edges that
+    /// share a vertex.
     ///
     /// Splitting inserts a new vertex with the geometry provided by the given
     /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
@@ -632,6 +638,7 @@ where
         F: FnOnce() -> G::Vertex,
     {
         let (storage, ab) = self.unbind();
+        // This should never fail here.
         let cache = EdgeSplitCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::split_with(mutation, cache, f))
@@ -639,7 +646,7 @@ where
             .expect_consistent()
     }
 
-    /// Splits an edge (and its arcs) at the midpoint of the arc's vertices.
+    /// Splits the composite edge of the arc at its midpoint.
     ///
     /// Splitting inserts a new vertex with the geometry of the arc's source
     /// vertex but modified such that the positional data of the vertex is the
@@ -694,7 +701,7 @@ where
     // TODO: What if an edge in the bridging quadrilateral is collapsed, such as
     //       bridging arcs within a triangular ring? Document these edge cases
     //       (no pun intended).
-    /// Connects a boundary arc to another boundary arc with a face.
+    /// Connects the arc to another arc by forming a new ring and face.
     ///
     /// Bridging arcs inserts a new face and, as needed, new arcs and edges.
     /// The inserted face is always a quadrilateral. The bridged arcs must be
@@ -776,8 +783,6 @@ where
                 .map(|arc| arc.key())
         })?;
         let (storage, source) = self.unbind();
-        // Errors can easily be caused by inputs to this function. Allow errors
-        // from the snapshot to propagate.
         let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::bridge(mutation, cache))
@@ -785,21 +790,17 @@ where
             .expect_consistent())
     }
 
-    /// Extrudes a boundary arc along its normal into a composite edge.
+    /// Extrudes the arc along its normal.
     ///
-    /// Extrusion inserts a new composite edge with the same geometry as the
-    /// initiating arc and its composite edge, but modifies the positional
-    /// geometry of the new edge's vertices such that they extend geometrically
-    /// along the normal of the originating arc. The originating arc is then
-    /// bridged with an arc in the opposing edge. This inserts a quadrilateral
-    /// face. See `bridge`.
+    /// The positional geometry of each extruded vertex is translated along the
+    /// arc's normal by the given offset.
     ///
     /// An arc's normal is perpendicular to the arc and also coplanar with the
     /// arc and one of its neighbors. This is computed via a projection and
     /// supports both 2D and 3D geometries.
     ///
-    /// Returns the opposing arc. This is the arc in the destination edge that
-    /// is within the same ring as the initiating arc.
+    /// Returns the extruded arc, which is in the same ring as the initiating
+    /// arc.
     ///
     /// # Errors
     ///
@@ -828,20 +829,65 @@ where
     ///     .find(|arc| arc.is_boundary_arc())
     ///     .map(|arc| arc.key())
     ///     .unwrap();
-    /// graph.arc_mut(key).unwrap().extrude(1.0).unwrap();
+    /// graph
+    ///     .arc_mut(key)
+    ///     .unwrap()
+    ///     .extrude_with_offset(1.0)
+    ///     .unwrap();
     /// ```
-    pub fn extrude<T>(self, offset: T) -> Result<ArcView<&'a mut M>, GraphError>
+    pub fn extrude_with_offset<T>(self, offset: T) -> Result<ArcView<&'a mut M>, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: ArcNormal,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
     {
-        let normal = self.normal();
+        let translation = self.normal() * offset.into();
+        self.extrude_with_translation(translation)
+    }
+
+    /// Extrudes the arc along a translation.
+    ///
+    /// The positional geometry of each extruded vertex is translated by the
+    /// given translation (vector).
+    ///
+    /// Returns the extruded arc, which is in the same ring as the initiating
+    /// arc.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arc is not a boundary arc.
+    pub fn extrude_with_translation(
+        self,
+        translation: Vector<VertexPosition<G>>,
+    ) -> Result<ArcView<&'a mut M>, GraphError>
+    where
+        G::Vertex: AsPosition,
+        VertexPosition<G>: EuclideanSpace,
+    {
+        self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
+    }
+
+    /// Extrudes the arc using the given vertex geometry.
+    ///
+    /// The geometry of each extruded vertex is determined by the given
+    /// function, which maps the geometry of each source vertex into the
+    /// geometry of the corresponding destination vertex.
+    ///
+    /// Returns the extruded arc, which is in the same ring as the initiating
+    /// arc.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the arc is not a boundary arc.
+    pub fn extrude_with<F>(self, f: F) -> Result<ArcView<&'a mut M>, GraphError>
+    where
+        F: Fn(G::Vertex) -> G::Vertex,
+    {
         let (storage, ab) = self.unbind();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab).expect_consistent();
+        let cache = ArcExtrudeCache::snapshot(&storage, ab)?;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| edge::extrude_with(mutation, cache, || normal * offset.into()))
+            .commit_with(|mutation| edge::extrude_with(mutation, cache, f))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .expect_consistent())
     }
@@ -857,6 +903,7 @@ where
     pub fn remove(self) -> Option<VertexView<&'a mut M>> {
         let a = self.source_vertex().key();
         let (storage, ab) = self.unbind();
+        // This should never fail here.
         let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::remove(mutation, cache))
@@ -1657,7 +1704,11 @@ mod tests {
         )
         .unwrap();
         let source = find_arc_with_vertex_geometry(&graph, ((1.0, 1.0), (1.0, 0.0))).unwrap();
-        graph.arc_mut(source).unwrap().extrude(1.0).unwrap();
+        graph
+            .arc_mut(source)
+            .unwrap()
+            .extrude_with_offset(1.0)
+            .unwrap();
 
         assert_eq!(14, graph.arc_count());
         assert_eq!(2, graph.face_count());
