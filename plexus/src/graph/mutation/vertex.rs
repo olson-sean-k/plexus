@@ -1,3 +1,5 @@
+use crate::entity::borrow::Reborrow;
+use crate::entity::storage::{AsStorage, Fuse, Storage};
 use crate::graph::core::Core;
 use crate::graph::edge::ArcKey;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
@@ -5,8 +7,6 @@ use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey};
 use crate::graph::GraphError;
-use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, Fuse, Storage};
 use crate::transact::Transact;
 
 type OwnedCore<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;

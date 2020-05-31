@@ -214,19 +214,20 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
+use crate::entity::view::{Bind, Orphan, View};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
 use crate::graph::geometry::Geometric;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
-use crate::network::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
-use crate::network::view::{Bind, Orphan, View};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
+pub use crate::entity::view::{ClosedView, Rebind};
 pub use crate::graph::edge::{
     Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, Edgoid,
 };
@@ -237,7 +238,6 @@ pub use crate::graph::geometry::{
 };
 pub use crate::graph::path::Path;
 pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
-pub use crate::network::view::{ClosedView, Rebind};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;

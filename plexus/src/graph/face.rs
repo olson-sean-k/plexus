@@ -14,6 +14,11 @@ use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use theon::AsPosition;
 use typenum::U3;
 
+use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
+use crate::entity::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
+use crate::entity::Entity;
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
 use crate::graph::geometry::{
     FaceCentroid, FaceNormal, FacePlane, Geometric, Geometry, GraphGeometry, VertexPosition,
@@ -26,11 +31,6 @@ use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::trace::{Trace, TraceFirst};
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
-use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
-use crate::network::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
-use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 

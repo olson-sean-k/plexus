@@ -1,9 +1,9 @@
 use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
-use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, OpaqueKey};
-use crate::network::Entity;
+use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
+use crate::entity::Entity;
 
 pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     type Key: OpaqueKey;

@@ -4,7 +4,7 @@ use slotmap::Key as SlotKey;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
-use crate::network::Entity;
+use crate::entity::Entity;
 
 pub type Rekeying<E> = HashMap<<E as Entity>::Key, <E as Entity>::Key, FnvBuildHasher>;
 pub type InnerKey<K> = <K as OpaqueKey>::Inner;

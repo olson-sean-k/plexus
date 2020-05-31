@@ -10,6 +10,10 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::AsPosition;
 
+use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
+use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
+use crate::entity::Entity;
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring};
 use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, Geometric, Geometry, GraphGeometry, VertexPosition,
@@ -21,10 +25,6 @@ use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
-use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
-use crate::network::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::network::Entity;
 use crate::transact::{Mutate, Transact};
 
 /// Structure that participates in an edge.

@@ -4,6 +4,7 @@ pub mod vertex;
 
 use std::ops::{Deref, DerefMut};
 
+use crate::entity::storage::{AsStorage, Storage};
 use crate::graph::core::OwnedCore;
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
@@ -11,7 +12,6 @@ use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::vertex::Vertex;
 use crate::graph::GraphError;
-use crate::network::storage::{AsStorage, Storage};
 use crate::transact::Transact;
 
 /// Marker trait for graph representations that promise to be in a consistent

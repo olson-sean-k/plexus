@@ -2,14 +2,14 @@ use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
+use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::storage::{AsStorage, AsStorageMut};
+use crate::entity::view::{Bind, ClosedView};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, Selector};
-use crate::network::borrow::{Reborrow, ReborrowMut};
-use crate::network::storage::{AsStorage, AsStorageMut};
-use crate::network::view::{Bind, ClosedView};
 use crate::IteratorExt as _;
 
 /// Non-intersecting path.

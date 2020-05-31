@@ -1,9 +1,9 @@
 use std::collections::{HashSet, VecDeque};
 use std::marker::PhantomData;
 
-use crate::network::borrow::Reborrow;
-use crate::network::storage::AsStorage;
-use crate::network::view::{Bind, ClosedView, Unbind};
+use crate::entity::borrow::Reborrow;
+use crate::entity::storage::AsStorage;
+use crate::entity::view::{Bind, ClosedView, Unbind};
 
 pub type BreadthTraversal<B, T> = Traversal<B, T, VecDeque<<T as ClosedView>::Key>>;
 pub type DepthTraversal<B, T> = Traversal<B, T, Vec<<T as ClosedView>::Key>>;

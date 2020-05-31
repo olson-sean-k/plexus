@@ -3,7 +3,7 @@ pub mod storage;
 pub mod traverse;
 pub mod view;
 
-use crate::network::storage::{Get, OpaqueKey, Remove, Sequence};
+use crate::entity::storage::{Get, OpaqueKey, Remove, Sequence};
 
 pub trait Entity: Copy + Sized {
     type Key: OpaqueKey;

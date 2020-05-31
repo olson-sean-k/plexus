@@ -4,6 +4,9 @@ use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
+use crate::entity::borrow::Reborrow;
+use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::view::{Bind, ClosedView};
 use crate::graph::core::{Core, OwnedCore, RefCore};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::face::{Face, FaceKey, FaceView};
@@ -13,9 +16,6 @@ use crate::graph::mutation::vertex;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, Ringoid};
-use crate::network::borrow::Reborrow;
-use crate::network::storage::{AsStorage, Fuse, Storage};
-use crate::network::view::{Bind, ClosedView};
 use crate::transact::Transact;
 use crate::{DynamicArity, IteratorExt as _};
 

@@ -19,10 +19,10 @@
 pub mod buffer;
 pub mod builder;
 pub mod encoding;
+mod entity;
 pub mod graph;
 pub mod index;
 pub mod integration;
-mod network;
 pub mod primitive;
 mod transact;
 
@@ -30,7 +30,7 @@ use itertools::{Itertools, MinMaxResult};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::network::view::ClosedView;
+use crate::entity::view::ClosedView;
 
 pub use theon::{AsPosition, Position};
 pub use typenum::{U2, U3, U4};
