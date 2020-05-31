@@ -133,8 +133,8 @@ impl Hash for Vertex {
     where
         H: Hasher,
     {
-        self.position.hash(state);
-        self.normal.hash(state);
-        self.color.hash(state);
+        self.position.float_hash(state);
+        self.normal.float_hash(state);
+        self.color.float_hash(state);
     }
 }

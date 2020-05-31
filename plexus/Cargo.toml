@@ -41,7 +41,7 @@ geometry-nalgebra = ["theon/geometry-nalgebra"]
 
 [dependencies]
 arrayvec = "^0.5.0"
-decorum = "^0.3.0"
+decorum = "^0.3.1"
 derivative = "^2.1.0"
 fnv = "^1.0.6"
 fool = "0.0.3" # Unstable.
