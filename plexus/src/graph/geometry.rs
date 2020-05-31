@@ -243,7 +243,7 @@ where
     {
         Ok(VertexPosition::<Self>::centroid(
             vertex
-                .neighboring_vertices()
+                .adjacent_verticies()
                 .map(|vertex| *vertex.geometry.as_position()),
         )
         .expect_consistent())
@@ -280,7 +280,7 @@ where
     {
         Vector::<VertexPosition<Self>>::mean(
             vertex
-                .neighboring_faces()
+                .adjacent_faces()
                 .map(<Self as FaceNormal>::normal)
                 .collect::<Result<Vec<_>, _>>()?,
         )

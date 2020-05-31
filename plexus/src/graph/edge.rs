@@ -598,8 +598,8 @@ where
         + Mutable<Geometry = G>,
     G: GraphGeometry,
 {
-    /// Splits the composite edge of the arc into two neighboring edges that
-    /// share a vertex.
+    /// Splits the composite edge of the arc into two adjacent edges that share
+    /// a vertex.
     ///
     /// Splitting inserts a new vertex with the geometry provided by the given
     /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
@@ -796,7 +796,7 @@ where
     /// arc's normal by the given offset.
     ///
     /// An arc's normal is perpendicular to the arc and also coplanar with the
-    /// arc and one of its neighbors. This is computed via a projection and
+    /// arc and one of its adjacent arcs. This is computed via a projection and
     /// supports both 2D and 3D geometries.
     ///
     /// Returns the extruded arc, which is in the same ring as the initiating

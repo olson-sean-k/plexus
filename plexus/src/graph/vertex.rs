@@ -214,9 +214,9 @@ where
     /// breadth-first order beginning with the vertex on which this function is
     /// called.
     ///
-    /// The traversal moves from the vertex to its neighboring vertices and so
-    /// on. If there are disjoint subgraphs in the graph, then a traversal will
-    /// not reach every vertex in the graph.
+    /// The traversal moves from the vertex to its adjacent vertices and so on.
+    /// If there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every vertex in the graph.
     pub fn traverse_by_breadth<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
@@ -227,9 +227,9 @@ where
     /// Gets an iterator that traverses the vertices of the graph in depth-first
     /// order beginning with the vertex on which this function is called.
     ///
-    /// The traversal moves from the vertex to its neighboring vertices and so
-    /// on. If there are disjoint subgraphs in the graph, then a traversal will
-    /// not reach every vertex in the graph.
+    /// The traversal moves from the vertex to its adjacent vertices and so on.
+    /// If there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every vertex in the graph.
     pub fn traverse_by_depth<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
@@ -237,7 +237,7 @@ where
         DepthTraversal::from(self.to_ref())
     }
 
-    pub fn neighboring_vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
+    pub fn adjacent_verticies<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
     {
@@ -268,11 +268,11 @@ where
 
     /// Gets the valence of the vertex.
     ///
-    /// A vertex's _valence_ is the number of neighboring vertices to which it
-    /// is connected by arcs. The valence of a vertex is the same as its
-    /// _degree_, which is the number of edges to which the vertex is connected.
+    /// A vertex's _valence_ is the number of adjacent vertices to which it is
+    /// connected by arcs. The valence of a vertex is the same as its _degree_,
+    /// which is the number of edges to which the vertex is connected.
     pub fn valence(&self) -> usize {
-        self.neighboring_vertices().count()
+        self.adjacent_verticies().count()
     }
 
     pub fn centroid(&self) -> VertexPosition<Geometry<B>>
@@ -289,7 +289,7 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
-    pub fn neighboring_vertex_orphans<'a>(
+    pub fn adjacent_vertex_orphans<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = VertexOrphan<'a, Geometry<B>>>
     where
@@ -327,11 +327,11 @@ where
         + Consistent
         + Geometric,
 {
-    /// Gets an iterator of views over the neighboring faces of the vertex.
+    /// Gets an iterator of views over the adjacent faces of the vertex.
     ///
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn neighboring_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
+    pub fn adjacent_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
     {
@@ -356,12 +356,11 @@ where
         + Consistent
         + Geometric,
 {
-    /// Gets an iterator of orphan views over the neighboring faces of the
-    /// vertex.
+    /// Gets an iterator of orphan views over the adjacent faces of the vertex.
     ///
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn neighboring_face_orphans<'a>(
+    pub fn adjacent_face_orphans<'a>(
         &'a mut self,
     ) -> impl Iterator<Item = FaceOrphan<'a, Geometry<B>>>
     where
@@ -434,7 +433,7 @@ where
     type Output = SmallVec<[Self::Key; 8]>;
 
     fn adjacency(&self) -> Self::Output {
-        self.neighboring_vertices().keys().collect()
+        self.adjacent_verticies().keys().collect()
     }
 }
 

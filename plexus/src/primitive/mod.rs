@@ -343,7 +343,7 @@ where
 /// Monomorphic $n$-gon.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
-/// represents vertex data in order with neighboring elements being connected by
+/// represents vertex data in order with adjacent elements being connected by
 /// an implicit undirected edge. For example, an `NGon` with three vertices
 /// (`NGon<[T; 3]>`) would represent a triangle (trigon). Generally these
 /// elements are labeled $A$, $B$, $C$, etc.

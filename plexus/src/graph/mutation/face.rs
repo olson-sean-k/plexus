@@ -44,7 +44,7 @@ where
 
     fn connect_face_interior(&mut self, arcs: &[ArcKey], face: FaceKey) -> Result<(), GraphError> {
         for (ab, bc) in arcs.iter().cloned().perimeter() {
-            self.connect_neighboring_arcs(ab, bc)?;
+            self.connect_adjacent_arcs(ab, bc)?;
             self.connect_arc_to_face(ab, face)?;
         }
         Ok(())
@@ -69,7 +69,7 @@ where
         for ab in arcs.iter().cloned() {
             let (a, b) = ab.into();
             let ba = ab.into_opposite();
-            let neighbors = {
+            let adjacent = {
                 let core = &self.to_ref_core();
                 if ArcView::bind(core, ba)
                     .ok_or_else(|| GraphError::TopologyMalformed)?
@@ -107,9 +107,9 @@ where
                     None
                 }
             };
-            if let Some((ax, xb)) = neighbors {
-                self.connect_neighboring_arcs(ba, ax)?;
-                self.connect_neighboring_arcs(xb, ba)?;
+            if let Some((ax, xb)) = adjacent {
+                self.connect_adjacent_arcs(ba, ax)?;
+                self.connect_adjacent_arcs(xb, ba)?;
             }
         }
         Ok(())
@@ -245,9 +245,9 @@ impl FaceInsertCache {
                 // Let the previous arc be AB and the next arc be BC. The
                 // vertices A, B, and C lie within the implied ring in order.
                 //
-                // If BC does not exist and AB is neighbors with some arc BX,
-                // then X must not lie within the implied ring (the ordered set
-                // of vertices given to this function). If X is within the path,
+                // If BC does not exist and AB is adjacent to some arc BX, then
+                // X must not lie within the implied ring (the ordered set of
+                // vertices given to this function). If X is within the path,
                 // then BX must bisect the implied ring (because X cannot be C).
                 if next.is_none() {
                     if let Some(next) = previous.reachable_next_arc() {

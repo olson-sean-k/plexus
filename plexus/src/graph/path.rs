@@ -98,7 +98,7 @@ where
                 .key(),
             Selector::ByIndex(index) => {
                 let x = back
-                    .neighboring_vertices()
+                    .adjacent_verticies()
                     .keys()
                     .nth(index)
                     .ok_or_else(|| GraphError::TopologyNotFound)?;
@@ -162,7 +162,7 @@ where
                 .key(),
             Selector::ByIndex(index) => {
                 let x = front
-                    .neighboring_vertices()
+                    .adjacent_verticies()
                     .keys()
                     .nth(index)
                     .ok_or_else(|| GraphError::TopologyNotFound)?;

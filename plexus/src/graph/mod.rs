@@ -31,8 +31,8 @@
 //! and $\overrightarrow{BA}$. Together, these arcs form an _edge_, which is not
 //! directed. An edge and its two arcs are together called a _composite edge_.
 //!
-//! Arcs are connected to their neighbors, known as _next_ and _previous arcs_.
-//! A traversal along a series of arcs is a _path_. The path formed by
+//! Arcs are connected to their adjacent arcs, known as _next_ and _previous
+//! arcs_. A traversal along a series of arcs is a _path_. The path formed by
 //! traversing from an arc to its next arc and so on is a _ring_. When a face is
 //! present within an ring, the arcs will refer to that face and the face will
 //! refer to exactly one of the arcs in the ring (this is the leading arc of the
@@ -56,8 +56,8 @@
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
 //! effecient traversals of topology. For example, it becomes trivial to find
-//! neighboring topologies, such as the faces that share a given vertex or the
-//! neighboring faces of a given face.
+//! adjacent topologies, such as the faces that share a given vertex or the
+//! adjacent faces of a given face.
 //!
 //! `MeshGraph`s store entities using associative storage and keys that are
 //! exposed as strongly typed and opaque values. These keys are used to refer to
@@ -175,7 +175,7 @@
 //!     .into_opposite_arc()
 //!     .into_next_arc()
 //!     .into_destination_vertex();
-//! for mut face in vertex.neighboring_face_orphans() {
+//! for mut face in vertex.adjacent_face_orphans() {
 //!     // `face.geometry` is mutable here.
 //! }
 //! ```
@@ -307,8 +307,8 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// `Selector` is used by operations that support both of these selection
 /// mechanisms.
 ///
-/// An index is typically used to select a neighbor or contained (and ordered)
-/// entity, such as a neighboring face.
+/// An index is typically used to select an adjacent entity or contained (and
+/// ordered) entity, such as an adjacent face.
 ///
 /// # Examples
 ///
@@ -591,7 +591,7 @@ where
     ///
     /// Each position is translated by its offset from its centroid scaled by
     /// the given factor. The centroid of a vertex position is the mean of the
-    /// positions of its neighboring vertices. That is, given a factor $k$ and a
+    /// positions of its adjacent vertices. That is, given a factor $k$ and a
     /// vertex with position $P$ and centroid $Q$, its position becomes
     /// $P+k(Q-P)$.
     pub fn smooth<T>(&mut self, factor: T)

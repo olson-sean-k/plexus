@@ -263,9 +263,9 @@ where
     /// Gets an iterator that traverses the faces of the graph in breadth-first
     /// order beginning with the face on which this function is called.
     ///
-    /// The traversal moves from the face to its neighboring faces and so on.
-    /// If there are disjoint faces in the graph, then a traversal will not
-    /// reach all faces in the graph.
+    /// The traversal moves from the face to its adjacent faces and so on. If
+    /// there are disjoint faces in the graph, then a traversal will not reach
+    /// all faces in the graph.
     pub fn traverse_by_breadth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
@@ -276,9 +276,9 @@ where
     /// Gets an iterator that traverses the faces of the graph in depth-first
     /// order beginning with the face on which this function is called.
     ///
-    /// The traversal moves from the face to its neighboring faces and so on.
-    /// If there are disjoint faces in the graph, then a traversal will not
-    /// reach all faces in the graph.
+    /// The traversal moves from the face to its adjacent faces and so on. If
+    /// there are disjoint faces in the graph, then a traversal will not reach
+    /// all faces in the graph.
     pub fn traverse_by_depth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
@@ -294,8 +294,8 @@ where
         ArcCirculator::from(self.ring())
     }
 
-    /// Gets an iterator of views over neighboring faces.
-    pub fn neighboring_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
+    /// Gets an iterator of views over adjacent faces.
+    pub fn adjacent_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
     {
@@ -367,10 +367,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorageMut<Face<Geometry<B>>> + Consistent + Geometric,
 {
-    /// Gets an iterator of orphan views over neighboring faces.
-    pub fn neighboring_face_orphans<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = FaceOrphan<Geometry<B>>>
+    /// Gets an iterator of orphan views over adjacent faces.
+    pub fn adjacent_face_orphans<'a>(&'a mut self) -> impl Iterator<Item = FaceOrphan<Geometry<B>>>
     where
         M: 'a,
     {
@@ -451,7 +449,7 @@ where
     G: GraphGeometry,
 {
     /// Splits the face by bisecting it with a composite edge inserted between
-    /// two non-neighboring vertices within the face's perimeter.
+    /// two non-adjacent vertices within the face's perimeter.
     ///
     /// The vertices can be chosen by key or index, where index selects the
     /// $n^\text{th}$ vertex within the face's ring.
@@ -517,11 +515,10 @@ where
             .expect_consistent())
     }
 
-    /// Merges the face into a neighboring face over their shared composite
-    /// edge.
+    /// Merges the face into an adjacent face over their shared composite edge.
     ///
-    /// The neighboring face can be chosen by key or index, where index selects
-    /// the $n^\text{th}$ neighbor of the face.
+    /// The adjacent face can be chosen by key or index, where index selects
+    /// the $n^\text{th}$ adjacent face.
     ///
     /// This can be thought of as the opposite of `split`.
     ///
@@ -529,12 +526,12 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the destination face cannot be found or is not a
-    /// neighbor of the initiating face.
+    /// Returns an error if the destination face cannot be found or is not
+    /// adjacent to the initiating face.
     ///
     /// # Examples
     ///
-    /// Merging two neighboring quadrilateral faces:
+    /// Merging two adjacent quadrilateral faces:
     ///
     /// ```rust
     /// # extern crate nalgebra;
@@ -568,7 +565,7 @@ where
     /// ```
     pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
         let destination = destination.key_or_else(|index| {
-            self.neighboring_faces()
+            self.adjacent_faces()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|face| face.key())
@@ -826,7 +823,7 @@ where
     type Output = SmallVec<[Self::Key; 8]>;
 
     fn adjacency(&self) -> Self::Output {
-        self.neighboring_faces().keys().collect()
+        self.adjacent_faces().keys().collect()
     }
 }
 
@@ -1041,9 +1038,9 @@ where
 
 /// Ring.
 ///
-/// Rings are closed paths formed by arcs and their immediate neighboring arcs.
-/// In a consistent graph, every arc forms such a path. Such paths may or may
-/// not be occupied by faces.
+/// Rings are closed paths formed by arcs and their immediate adjacent arcs. In
+/// a consistent graph, every arc forms such a path. Such paths may or may not
+/// be occupied by faces.
 ///
 /// Rings are notated by their path. A ring with a perimeter formed by vertices
 /// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
@@ -1569,8 +1566,9 @@ mod tests {
             .collect::<MeshGraph<Point3<f64>>>();
         let face = graph.faces().nth(0).unwrap();
 
-        // No matter which face is selected, it should have three neighbors.
-        assert_eq!(3, face.neighboring_faces().count());
+        // No matter which face is selected, it should have three adjacent
+        // faces.
+        assert_eq!(3, face.adjacent_faces().count());
     }
 
     #[test]
@@ -1633,9 +1631,9 @@ mod tests {
                 .unwrap()
                 .into_ref();
 
-            // The extruded face, being a triangle, should have three
-            // neighboring faces.
-            assert_eq!(3, face.neighboring_faces().count());
+            // The extruded face, being a triangle, should have three adjacent
+            // faces.
+            assert_eq!(3, face.adjacent_faces().count());
         }
 
         assert_eq!(8, graph.vertex_count());
@@ -1687,7 +1685,7 @@ mod tests {
         let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
 
         // Diverging a quadrilateral yields a tetrahedron.
-        assert_eq!(4, vertex.neighboring_faces().count());
+        assert_eq!(4, vertex.adjacent_faces().count());
 
         // Traverse to one of the triangles in the tetrahedron.
         let face = vertex.into_outgoing_arc().into_face().unwrap();
@@ -1697,7 +1695,7 @@ mod tests {
         // Diverge the triangle.
         let vertex = face.poke_at_centroid();
 
-        assert_eq!(3, vertex.neighboring_faces().count());
+        assert_eq!(3, vertex.adjacent_faces().count());
     }
 
     #[test]

@@ -45,7 +45,7 @@ where
             .fuse(&self.storage.1)
     }
 
-    pub fn connect_neighboring_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
+    pub fn connect_adjacent_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
         self.with_arc_mut(ab, |arc| arc.next = Some(bc))?;
         self.with_arc_mut(bc, |arc| arc.previous = Some(ab))?;
         Ok(())
@@ -163,7 +163,7 @@ where
             storage: (arcs, edges),
             ..
         } = self;
-        // In a consistent graph, all arcs must have neighboring arcs and an
+        // In a consistent graph, all arcs must have adjacent arcs and an
         // associated edge.
         for (_, arc) in arcs.iter() {
             if !(and!(&arc.next, &arc.previous, &arc.edge)) {
@@ -488,10 +488,10 @@ where
     }
     // Connect previous and next arcs across the edge to be removed.
     if let (Some(xa), Some(ax)) = (arc.xa, opposite.bx) {
-        mutation.as_mut().connect_neighboring_arcs(xa, ax)?;
+        mutation.as_mut().connect_adjacent_arcs(xa, ax)?;
     }
     if let (Some(xb), Some(bx)) = (opposite.xa, arc.bx) {
-        mutation.as_mut().connect_neighboring_arcs(xb, bx)?;
+        mutation.as_mut().connect_adjacent_arcs(xb, bx)?;
     }
     let edge = mutation
         .as_mut()
@@ -564,12 +564,12 @@ where
         let mb = get_or_insert_with(mutation.as_mut(), (m, b), || (Default::default(), geometry))
             .map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
-        mutation.as_mut().connect_neighboring_arcs(am, mb)?;
+        mutation.as_mut().connect_adjacent_arcs(am, mb)?;
         if let Some(xa) = previous {
-            mutation.as_mut().connect_neighboring_arcs(xa, am)?;
+            mutation.as_mut().connect_adjacent_arcs(xa, am)?;
         }
         if let Some(bx) = next {
-            mutation.as_mut().connect_neighboring_arcs(mb, bx)?;
+            mutation.as_mut().connect_adjacent_arcs(mb, bx)?;
         }
         // Update the associated face, if any, because it may refer to the
         // removed arc.
