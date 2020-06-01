@@ -243,7 +243,7 @@ where
     {
         Ok(VertexPosition::<Self>::centroid(
             vertex
-                .adjacent_verticies()
+                .adjacent_vertices()
                 .map(|vertex| *vertex.geometry.as_position()),
         )
         .expect_consistent())

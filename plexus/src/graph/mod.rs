@@ -227,6 +227,7 @@ use crate::primitive::Polygonal;
 use crate::transact::Transact;
 use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
+pub use crate::entity::dijkstra::Metric;
 pub use crate::entity::view::{ClosedView, Rebind};
 pub use crate::graph::edge::{
     Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, Edgoid,

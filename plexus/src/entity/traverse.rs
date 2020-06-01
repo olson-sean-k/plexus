@@ -5,8 +5,29 @@ use crate::entity::borrow::Reborrow;
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView, Unbind};
 
-pub type BreadthTraversal<B, T> = Traversal<B, T, VecDeque<<T as ClosedView>::Key>>;
-pub type DepthTraversal<B, T> = Traversal<B, T, Vec<<T as ClosedView>::Key>>;
+pub enum Breadth {}
+pub enum Depth {}
+
+pub trait Order<T>
+where
+    T: Adjacency,
+{
+    type Buffer: Buffer<T::Key>;
+}
+
+impl<T> Order<T> for Breadth
+where
+    T: Adjacency,
+{
+    type Buffer = VecDeque<T::Key>;
+}
+
+impl<T> Order<T> for Depth
+where
+    T: Adjacency,
+{
+    type Buffer = Vec<T::Key>;
+}
 
 pub trait Adjacency: ClosedView {
     type Output: IntoIterator<Item = Self::Key>;
@@ -40,16 +61,16 @@ impl<T> Buffer<T> for VecDeque<T> {
 }
 
 #[derive(Debug)]
-pub struct Traversal<B, T, R>
+pub struct Traversal<B, T, R = Depth>
 where
     B: Reborrow,
     B::Target: AsStorage<T::Entity>,
-    T: ClosedView,
-    R: Buffer<T::Key>,
+    T: Adjacency,
+    R: Order<T>,
 {
     storage: B,
     breadcrumbs: HashSet<T::Key>,
-    buffer: R,
+    buffer: R::Buffer,
     phantom: PhantomData<T>,
 }
 
@@ -57,8 +78,9 @@ impl<B, T, R> Clone for Traversal<B, T, R>
 where
     B: Clone + Reborrow,
     B::Target: AsStorage<T::Entity>,
-    T: ClosedView,
-    R: Clone + Buffer<T::Key>,
+    T: Adjacency,
+    R: Order<T>,
+    R::Buffer: Clone,
 {
     fn clone(&self) -> Self {
         Traversal {
@@ -74,13 +96,13 @@ impl<B, T, R> From<T> for Traversal<B, T, R>
 where
     B: Reborrow,
     B::Target: AsStorage<T::Entity>,
-    T: Unbind<B>,
-    R: Buffer<T::Key>,
+    T: Adjacency + Unbind<B>,
+    R: Order<T>,
 {
     fn from(view: T) -> Self {
         let (storage, key) = view.unbind();
         let capacity = storage.reborrow().as_storage().len();
-        let mut buffer = R::default();
+        let mut buffer = R::Buffer::default();
         buffer.push(key);
         Traversal {
             storage,
@@ -95,22 +117,15 @@ impl<'a, M, T, R> Iterator for Traversal<&'a M, T, R>
 where
     M: 'a + AsStorage<T::Entity>,
     T: Adjacency + Bind<&'a M>,
-    R: Buffer<<T as ClosedView>::Key>,
+    R: Order<T>,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(view) = self
-            .buffer
-            .pop()
-            .and_then(|key| -> Option<T> { T::bind(self.storage, key) })
-        {
+        while let Some(view) = self.buffer.pop().and_then(|key| T::bind(self.storage, key)) {
             if self.breadcrumbs.insert(view.key()) {
                 self.buffer.extend(view.adjacency());
                 return Some(view);
-            }
-            else {
-                continue;
             }
         }
         None

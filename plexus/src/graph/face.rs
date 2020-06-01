@@ -16,7 +16,7 @@ use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
-use crate::entity::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
@@ -260,30 +260,28 @@ where
         self.reachable_arc().expect_consistent()
     }
 
-    /// Gets an iterator that traverses the faces of the graph in breadth-first
-    /// order beginning with the face on which this function is called.
+    /// Gets an iterator that traverses adjacent faces by breadth.
     ///
     /// The traversal moves from the face to its adjacent faces and so on. If
-    /// there are disjoint faces in the graph, then a traversal will not reach
-    /// all faces in the graph.
+    /// there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every face in the graph.
     pub fn traverse_by_breadth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
     {
-        BreadthTraversal::from(self.to_ref())
+        Traversal::<_, _, Breadth>::from(self.to_ref())
     }
 
-    /// Gets an iterator that traverses the faces of the graph in depth-first
-    /// order beginning with the face on which this function is called.
+    /// Gets an iterator that traverses adjacent faces by depth.
     ///
     /// The traversal moves from the face to its adjacent faces and so on. If
-    /// there are disjoint faces in the graph, then a traversal will not reach
-    /// all faces in the graph.
+    /// there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every face in the graph.
     pub fn traverse_by_depth<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
     where
         M: 'a,
     {
-        DepthTraversal::from(self.to_ref())
+        Traversal::<_, _, Depth>::from(self.to_ref())
     }
 
     /// Gets an iterator of views over the arcs in the face's ring.

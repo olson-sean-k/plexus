@@ -11,8 +11,9 @@ use theon::space::Vector;
 use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::dijkstra::{self, Metric};
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
-use crate::entity::traverse::{Adjacency, BreadthTraversal, DepthTraversal};
+use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
@@ -22,6 +23,7 @@ use crate::graph::geometry::{
 };
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::path::Path;
 use crate::graph::trace::{Trace, TraceAny, TraceFirst};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::transact::{Mutate, Transact};
@@ -210,9 +212,30 @@ where
         self.reachable_outgoing_arc().expect_consistent()
     }
 
-    /// Gets an iterator that traverses the vertices of the graph in
-    /// breadth-first order beginning with the vertex on which this function is
-    /// called.
+    pub fn shortest_path(&self, key: VertexKey) -> Result<Path<&M>, GraphError> {
+        self.shortest_path_with(key, |_, _| 1usize)
+    }
+
+    pub fn shortest_path_with<Q, F>(&self, mut key: VertexKey, f: F) -> Result<Path<&M>, GraphError>
+    where
+        Q: Copy + Metric,
+        F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
+    {
+        let metrics = dijkstra::metrics_with(self.to_ref(), Some(key), f);
+        let mut keys = vec![key];
+        while let Some((Some(previous), _)) = metrics.get(&key) {
+            key = *previous;
+            keys.push(key);
+        }
+        let (storage, _) = self.to_ref().unbind();
+        // TODO: This will fail if `key` is not found in the graph or is
+        //       unreachable, but with a `TopologyMalformed` error. It would be
+        //       better to emit `TopologyNotFound` and some kind of unreachable
+        //       error in these cases.
+        Path::bind(storage, keys.iter().rev())
+    }
+
+    /// Gets an iterator that traverses adjacent vertices by breadth.
     ///
     /// The traversal moves from the vertex to its adjacent vertices and so on.
     /// If there are disjoint subgraphs in the graph, then a traversal will not
@@ -221,11 +244,10 @@ where
     where
         M: 'a,
     {
-        BreadthTraversal::from(self.to_ref())
+        Traversal::<_, _, Breadth>::from(self.to_ref())
     }
 
-    /// Gets an iterator that traverses the vertices of the graph in depth-first
-    /// order beginning with the vertex on which this function is called.
+    /// Gets an iterator that traverses adjacent vertices by depth.
     ///
     /// The traversal moves from the vertex to its adjacent vertices and so on.
     /// If there are disjoint subgraphs in the graph, then a traversal will not
@@ -234,10 +256,10 @@ where
     where
         M: 'a,
     {
-        DepthTraversal::from(self.to_ref())
+        Traversal::<_, _, Depth>::from(self.to_ref())
     }
 
-    pub fn adjacent_verticies<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
+    pub fn adjacent_vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
         M: 'a,
     {
@@ -272,7 +294,7 @@ where
     /// connected by arcs. The valence of a vertex is the same as its _degree_,
     /// which is the number of edges to which the vertex is connected.
     pub fn valence(&self) -> usize {
-        self.adjacent_verticies().count()
+        self.adjacent_vertices().count()
     }
 
     pub fn centroid(&self) -> VertexPosition<Geometry<B>>
@@ -433,7 +455,7 @@ where
     type Output = SmallVec<[Self::Key; 8]>;
 
     fn adjacency(&self) -> Self::Output {
-        self.adjacent_verticies().keys().collect()
+        self.adjacent_vertices().keys().collect()
     }
 }
 
@@ -896,13 +918,14 @@ where
 #[cfg(test)]
 mod tests {
     use decorum::N64;
-    use nalgebra::Point3;
+    use nalgebra::{Point2, Point3};
 
     use crate::graph::MeshGraph;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
+    use crate::primitive::Trigon;
 
     type E3 = Point3<N64>;
 
@@ -917,6 +940,22 @@ mod tests {
         for vertex in graph.vertices() {
             assert_eq!(4, vertex.incoming_arcs().count());
         }
+    }
+
+    #[test]
+    fn path() {
+        let graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
+            vec![Trigon::new(0usize, 1, 2)],
+            vec![(-1.0, 0.0), (0.0, 1.0), (1.0, 0.0)],
+        )
+        .unwrap();
+        let from = graph.vertices().nth(0).unwrap();
+        let to = from.outgoing_arc().destination_vertex().key();
+        let path = from.shortest_path(to).unwrap();
+
+        assert_eq!(path.back().key(), from.key());
+        assert_eq!(path.front().key(), to);
+        assert_eq!(path.arcs().count(), 1);
     }
 
     #[test]

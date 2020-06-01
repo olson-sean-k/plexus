@@ -1,4 +1,5 @@
 pub mod borrow;
+pub mod dijkstra;
 pub mod storage;
 pub mod traverse;
 pub mod view;
