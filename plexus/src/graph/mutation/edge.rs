@@ -270,16 +270,20 @@ impl EdgeSplitCache {
         let storage = storage.reborrow();
         let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let opposite = arc
-            .reachable_opposite_arc()
+            .to_ref()
+            .into_reachable_opposite_arc()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
         let source = opposite
-            .reachable_destination_vertex()
+            .to_ref()
+            .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
         let destination = arc
-            .reachable_destination_vertex()
+            .to_ref()
+            .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?;
         let edge = arc
-            .reachable_edge()
+            .to_ref()
+            .into_reachable_edge()
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(EdgeSplitCache {
             a: source.key(),
@@ -312,19 +316,23 @@ impl ArcBridgeCache {
         let destination =
             ArcView::bind(storage, destination).ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = source
-            .reachable_source_vertex()
+            .to_ref()
+            .into_reachable_source_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
         let b = source
-            .reachable_destination_vertex()
+            .to_ref()
+            .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
         let c = destination
-            .reachable_source_vertex()
+            .to_ref()
+            .into_reachable_source_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
         let d = destination
-            .reachable_destination_vertex()
+            .to_ref()
+            .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
         // At this point, we can assume the vertices A, B, C, and D exist in the
@@ -340,18 +348,7 @@ impl ArcBridgeCache {
                 return Err(GraphError::TopologyConflict);
             }
         }
-        Ok(ArcBridgeCache {
-            a,
-            b,
-            c,
-            d,
-            /*arc: source.geometry,
-             *face: source
-             *    .reachable_opposite_arc()
-             *    .and_then(|opposite| opposite.into_reachable_face())
-             *    .map(|face| face.geometry)
-             *    .unwrap_or_else(Default::default), */
-        })
+        Ok(ArcBridgeCache { a, b, c, d })
     }
 }
 

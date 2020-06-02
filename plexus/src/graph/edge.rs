@@ -284,30 +284,6 @@ where
         let key = self.previous;
         key.and_then(|key| self.rebind(key))
     }
-
-    #[allow(unstable_name_collisions)]
-    pub(in crate::graph) fn reachable_boundary_arc(&self) -> Option<ArcView<&M>> {
-        if self.is_boundary_arc() {
-            Some(self.to_ref())
-        }
-        else {
-            self.reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().then_some(opposite))
-        }
-    }
-
-    pub(in crate::graph) fn reachable_opposite_arc(&self) -> Option<ArcView<&M>> {
-        let key = self.key().into_opposite();
-        self.to_ref().rebind(key)
-    }
-
-    pub(in crate::graph) fn reachable_next_arc(&self) -> Option<ArcView<&M>> {
-        self.next.and_then(|key| self.to_ref().rebind(key))
-    }
-
-    pub(in crate::graph) fn reachable_previous_arc(&self) -> Option<ArcView<&M>> {
-        self.previous.and_then(|key| self.to_ref().rebind(key))
-    }
 }
 
 impl<B, M> ArcView<B>
@@ -347,22 +323,22 @@ where
 
     /// Returns the same arc if it is a boundary arc, otherwise `None`.
     pub fn boundary_arc(&self) -> Option<ArcView<&M>> {
-        self.reachable_boundary_arc()
+        self.to_ref().into_boundary_arc()
     }
 
     /// Gets the opposite arc.
     pub fn opposite_arc(&self) -> ArcView<&M> {
-        self.reachable_opposite_arc().expect_consistent()
+        self.to_ref().into_opposite_arc()
     }
 
     /// Gets the next arc.
     pub fn next_arc(&self) -> ArcView<&M> {
-        self.reachable_next_arc().expect_consistent()
+        self.to_ref().into_next_arc()
     }
 
     /// Gets the previous arc.
     pub fn previous_arc(&self) -> ArcView<&M> {
-        self.reachable_previous_arc().expect_consistent()
+        self.to_ref().into_previous_arc()
     }
 }
 
@@ -380,16 +356,6 @@ where
     pub(in crate::graph) fn into_reachable_destination_vertex(self) -> Option<VertexView<B>> {
         let (_, key) = self.key().into();
         self.rebind(key)
-    }
-
-    pub(in crate::graph) fn reachable_source_vertex(&self) -> Option<VertexView<&M>> {
-        let (key, _) = self.key().into();
-        self.to_ref().rebind(key)
-    }
-
-    pub(in crate::graph) fn reachable_destination_vertex(&self) -> Option<VertexView<&M>> {
-        let (_, key) = self.key().into();
-        self.to_ref().rebind(key)
     }
 }
 
@@ -420,12 +386,12 @@ where
 
     /// Gets the source vertex of the arc.
     pub fn source_vertex(&self) -> VertexView<&M> {
-        self.reachable_source_vertex().expect_consistent()
+        self.to_ref().into_source_vertex()
     }
 
     /// Gets the destination vertex of the arc.
     pub fn destination_vertex(&self) -> VertexView<&M> {
-        self.reachable_destination_vertex().expect_consistent()
+        self.to_ref().into_destination_vertex()
     }
 }
 
@@ -438,10 +404,6 @@ where
     pub(in crate::graph) fn into_reachable_edge(self) -> Option<EdgeView<B>> {
         let key = self.edge;
         key.and_then(|key| self.rebind(key))
-    }
-
-    pub(in crate::graph) fn reachable_edge(&self) -> Option<EdgeView<&M>> {
-        self.edge.and_then(|key| self.to_ref().rebind(key))
     }
 }
 
@@ -471,10 +433,6 @@ where
         let key = self.face;
         key.and_then(|key| self.rebind(key))
     }
-
-    pub(in crate::graph) fn reachable_face(&self) -> Option<FaceView<&M>> {
-        self.face.and_then(|key| self.to_ref().rebind(key))
-    }
 }
 
 impl<B, M> ArcView<B>
@@ -493,7 +451,7 @@ where
     ///
     /// If this is a boundary arc, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M>> {
-        self.reachable_face()
+        self.to_ref().into_face()
     }
 }
 
@@ -960,7 +918,7 @@ where
     }
 
     fn edge(&self) -> EdgeView<&M> {
-        self.reachable_edge().expect_consistent()
+        Edgoid::into_edge(self.to_ref())
     }
 }
 
@@ -1217,11 +1175,6 @@ where
         let key = self.arc;
         self.rebind(key)
     }
-
-    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
-        let key = self.arc;
-        self.to_ref().rebind(key)
-    }
 }
 
 impl<B, M> EdgeView<B>
@@ -1287,7 +1240,7 @@ where
     }
 
     fn arc(&self) -> ArcView<&M> {
-        self.reachable_arc().expect_consistent()
+        Edgoid::into_arc(self.to_ref())
     }
 
     fn into_edge(self) -> EdgeView<B> {
@@ -1602,7 +1555,8 @@ where
             .face
             .into_iter()
             .chain(
-                arc.reachable_opposite_arc()
+                arc.to_ref()
+                    .into_reachable_opposite_arc()
                     .and_then(|opposite| opposite.face)
                     .into_iter(),
             )

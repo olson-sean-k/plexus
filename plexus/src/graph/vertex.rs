@@ -171,10 +171,6 @@ where
         key.and_then(|key| self.rebind(key))
     }
 
-    pub(in crate::graph) fn reachable_outgoing_arc(&self) -> Option<ArcView<&M>> {
-        self.arc.and_then(|key| self.to_ref().rebind(key))
-    }
-
     pub(in crate::graph) fn reachable_incoming_arcs<'a>(
         &'a self,
     ) -> impl Clone + Iterator<Item = ArcView<&'a M>>
@@ -209,7 +205,7 @@ where
 
     /// Gets the leading (outgoing) arc of the vertex.
     pub fn outgoing_arc(&self) -> ArcView<&M> {
-        self.reachable_outgoing_arc().expect_consistent()
+        self.to_ref().into_outgoing_arc()
     }
 
     pub fn shortest_path(&self, key: VertexKey) -> Result<Path<&M>, GraphError> {

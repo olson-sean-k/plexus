@@ -250,7 +250,7 @@ impl FaceInsertCache {
                 // vertices given to this function). If X is within the path,
                 // then BX must bisect the implied ring (because X cannot be C).
                 if next.is_none() {
-                    if let Some(next) = previous.reachable_next_arc() {
+                    if let Some(next) = previous.into_reachable_next_arc() {
                         let (_, destination) = next.key().into();
                         if set.contains(&destination) {
                             return Err(GraphError::TopologyConflict);

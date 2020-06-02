@@ -228,11 +228,6 @@ where
         let key = self.arc;
         self.rebind(key)
     }
-
-    pub(in crate::graph) fn reachable_arc(&self) -> Option<ArcView<&M>> {
-        let key = self.arc;
-        self.to_ref().rebind(key)
-    }
 }
 
 impl<B, M> FaceView<B>
@@ -257,7 +252,7 @@ where
 
     /// Gets the leading arc of the face.
     pub fn arc(&self) -> ArcView<&M> {
-        self.reachable_arc().expect_consistent()
+        self.to_ref().into_arc()
     }
 
     /// Gets an iterator that traverses adjacent faces by breadth.
@@ -1137,8 +1132,7 @@ where
     ///
     /// If the path has no associated face, then `None` is returned.
     pub fn face(&self) -> Option<FaceView<&M>> {
-        let key = self.arc.face;
-        key.map(|key| self.arc.to_ref().rebind(key).expect_consistent())
+        self.to_ref().into_face()
     }
 }
 
