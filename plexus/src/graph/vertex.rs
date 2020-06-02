@@ -213,10 +213,26 @@ where
     }
 
     pub fn shortest_path(&self, key: VertexKey) -> Result<Path<&M>, GraphError> {
-        self.shortest_path_with(key, |_, _| 1usize)
+        self.to_ref().into_shortest_path(key)
     }
 
-    pub fn shortest_path_with<Q, F>(&self, mut key: VertexKey, f: F) -> Result<Path<&M>, GraphError>
+    pub fn into_shortest_path(self, key: VertexKey) -> Result<Path<B>, GraphError> {
+        self.into_shortest_path_with(key, |_, _| 1usize)
+    }
+
+    pub fn shortest_path_with<Q, F>(&self, key: VertexKey, f: F) -> Result<Path<&M>, GraphError>
+    where
+        Q: Copy + Metric,
+        F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
+    {
+        self.to_ref().into_shortest_path_with(key, f)
+    }
+
+    pub fn into_shortest_path_with<Q, F>(
+        self,
+        mut key: VertexKey,
+        f: F,
+    ) -> Result<Path<B>, GraphError>
     where
         Q: Copy + Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
@@ -227,7 +243,7 @@ where
             key = *previous;
             keys.push(key);
         }
-        let (storage, _) = self.to_ref().unbind();
+        let (storage, _) = self.unbind();
         // TODO: This will fail if `key` is not found in the graph or is
         //       unreachable, but with a `TopologyMalformed` error. It would be
         //       better to emit `TopologyNotFound` and some kind of unreachable
