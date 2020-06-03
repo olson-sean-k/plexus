@@ -5,7 +5,7 @@ use crate::graph::edge::ArcKey;
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
-use crate::graph::vertex::{Vertex, VertexKey};
+use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
@@ -98,12 +98,12 @@ pub struct VertexRemoveCache {
 }
 
 impl VertexRemoveCache {
-    pub fn snapshot<B>(storage: B, a: VertexKey) -> Result<Self, GraphError>
+    pub fn from_vertex<B>(vertex: VertexView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
         B::Target: AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
     {
-        let _ = (storage, a);
+        let _ = vertex;
         unimplemented!()
     }
 }

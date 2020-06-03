@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, Fuse, Storage};
-use crate::entity::view::{Bind, ClosedView};
+use crate::entity::view::{Bind, ClosedView, Rebind};
 use crate::graph::core::Core;
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
@@ -182,7 +182,7 @@ struct ArcRemoveCache {
 }
 
 impl ArcRemoveCache {
-    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
         B::Target: AsStorage<Arc<Geometry<B>>>
@@ -191,17 +191,16 @@ impl ArcRemoveCache {
             + Consistent
             + Geometric,
     {
-        let storage = storage.reborrow();
-        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         // If the edge has no neighbors, then `xa` and `bx` will refer to the
         // opposite arc of `ab`. In this case, the vertices `a` and `b` should
         // have no leading arcs after the removal. The cache will have its `xa`
         // and `bx` fields set to `None` in this case.
+        let ab = arc.key();
         let ba = arc.opposite_arc().key();
         let xa = arc.previous_arc().key();
         let bx = arc.next_arc().key();
         let cache = if let Some(face) = arc.face() {
-            Some(FaceRemoveCache::snapshot(storage, face.key())?)
+            Some(FaceRemoveCache::from_face(face)?)
         }
         else {
             None
@@ -224,7 +223,7 @@ pub struct EdgeRemoveCache {
 }
 
 impl EdgeRemoveCache {
-    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
         B::Target: AsStorage<Arc<Geometry<B>>>
@@ -234,18 +233,15 @@ impl EdgeRemoveCache {
             + Consistent
             + Geometric,
     {
-        let storage = storage.reborrow();
-        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
-        let ba = arc.opposite_arc().key();
         let ab_ba = arc.edge().key();
         Ok(EdgeRemoveCache {
             a,
             b,
             ab_ba,
-            arc: ArcRemoveCache::snapshot(storage, ab)?,
-            opposite: ArcRemoveCache::snapshot(storage, ba)?,
+            arc: ArcRemoveCache::from_arc(arc.to_ref())?,
+            opposite: ArcRemoveCache::from_arc(arc.into_opposite_arc())?,
         })
     }
 }
@@ -259,7 +255,7 @@ pub struct EdgeSplitCache {
 }
 
 impl EdgeSplitCache {
-    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
         B::Target: AsStorage<Arc<Geometry<B>>>
@@ -267,8 +263,6 @@ impl EdgeSplitCache {
             + AsStorage<Vertex<Geometry<B>>>
             + Geometric,
     {
-        let storage = storage.reborrow();
-        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let opposite = arc
             .to_ref()
             .into_reachable_opposite_arc()
@@ -303,24 +297,21 @@ pub struct ArcBridgeCache {
 }
 
 impl ArcBridgeCache {
-    pub fn snapshot<B>(storage: B, source: ArcKey, destination: ArcKey) -> Result<Self, GraphError>
+    pub fn from_arc<B>(arc: ArcView<B>, destination: ArcKey) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
-            + Geometric,
+        B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
     {
-        let storage = storage.reborrow();
-        let source = ArcView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?;
-        let destination =
-            ArcView::bind(storage, destination).ok_or_else(|| GraphError::TopologyNotFound)?;
-        let a = source
+        let destination: ArcView<_> = arc
+            .to_ref()
+            .rebind(destination)
+            .ok_or_else(|| GraphError::TopologyNotFound)?;
+        let a = arc
             .to_ref()
             .into_reachable_source_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
-        let b = source
+        let b = arc
             .to_ref()
             .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
@@ -335,20 +326,33 @@ impl ArcBridgeCache {
             .into_reachable_destination_vertex()
             .ok_or_else(|| GraphError::TopologyMalformed)?
             .key();
-        // At this point, we can assume the vertices A, B, C, and D exist in the
-        // mesh. Before mutating the mesh, ensure that existing interior arcs
-        // are boundaries.
+        // Ensure that existing interior arcs are boundaries.
         for arc in [a, b, c, d]
             .iter()
             .cloned()
             .perimeter()
-            .flat_map(|ab| ArcView::bind(storage, ab.into()))
+            .flat_map(|ab| -> Option<ArcView<_>> { arc.to_ref().rebind(ab.into()) })
         {
             if !arc.is_boundary_arc() {
                 return Err(GraphError::TopologyConflict);
             }
         }
         Ok(ArcBridgeCache { a, b, c, d })
+    }
+
+    pub fn from_storage<B>(
+        storage: B,
+        source: ArcKey,
+        destination: ArcKey,
+    ) -> Result<Self, GraphError>
+    where
+        B: Reborrow,
+        B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
+    {
+        ArcBridgeCache::from_arc(
+            ArcView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?,
+            destination,
+        )
     }
 }
 
@@ -357,7 +361,7 @@ pub struct ArcExtrudeCache {
 }
 
 impl ArcExtrudeCache {
-    pub fn snapshot<B>(storage: B, ab: ArcKey) -> Result<Self, GraphError>
+    pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
         B::Target: AsStorage<Arc<Geometry<B>>>
@@ -366,12 +370,11 @@ impl ArcExtrudeCache {
             + Consistent
             + Geometric,
     {
-        let arc = ArcView::bind(storage, ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         if !arc.is_boundary_arc() {
             Err(GraphError::TopologyConflict)
         }
         else {
-            Ok(ArcExtrudeCache { ab })
+            Ok(ArcExtrudeCache { ab: arc.key() })
         }
     }
 }
@@ -605,7 +608,7 @@ where
     M: Mutable,
 {
     let ArcBridgeCache { a, b, c, d } = cache;
-    let cache = FaceInsertCache::snapshot(mutation.as_mut(), &[a, b, c, d])?;
+    let cache = FaceInsertCache::from_storage(mutation.as_mut(), &[a, b, c, d])?;
     face::insert_with(mutation.as_mut(), cache, Default::default)
 }
 
@@ -638,6 +641,6 @@ where
     let d = vertex::insert(mutation.as_mut(), d);
     let cd =
         get_or_insert_with(mutation.as_mut(), (c, d), Default::default).map(|(_, (cd, _))| cd)?;
-    let cache = ArcBridgeCache::snapshot(mutation.as_mut(), ab, cd)?;
+    let cache = ArcBridgeCache::from_storage(mutation.as_mut(), ab, cd)?;
     bridge(mutation, cache).map(|_| cd)
 }

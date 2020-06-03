@@ -500,8 +500,8 @@ where
         };
         let source = source.key_or_else(key_at_index)?;
         let destination = destination.key_or_else(key_at_index)?;
-        let (storage, abc) = self.unbind();
-        let cache = FaceSplitCache::snapshot(&storage, abc, source, destination)?;
+        let cache = FaceSplitCache::from_face(self.to_ref(), source, destination)?;
+        let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::split(mutation, cache))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
@@ -594,8 +594,8 @@ where
     /// Returns an error if the destination face cannot be found or the arity of
     /// the face and its destination are not the same.
     pub fn bridge(self, destination: FaceKey) -> Result<(), GraphError> {
-        let (storage, source) = self.unbind();
-        let cache = FaceBridgeCache::snapshot(&storage, source, destination)?;
+        let cache = FaceBridgeCache::from_face(self.to_ref(), destination)?;
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::bridge(mutation, cache))
             .expect_consistent();
@@ -660,9 +660,9 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (storage, abc) = self.unbind();
         // This should never fail here.
-        let cache = FacePokeCache::snapshot(&storage, abc).expect_consistent();
+        let cache = FacePokeCache::from_face(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::poke_with(mutation, cache, f))
             .map(|(storage, vertex)| Bind::bind(storage, vertex).expect_consistent())
@@ -783,9 +783,9 @@ where
     where
         F: Fn(G::Vertex) -> G::Vertex,
     {
-        let (storage, abc) = self.unbind();
         // This should never fail here.
-        let cache = FaceExtrudeCache::snapshot(&storage, abc).expect_consistent();
+        let cache = FaceExtrudeCache::from_face(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
@@ -796,9 +796,9 @@ where
     ///
     /// Returns the remaining ring of the face if it is not entirely disjoint.
     pub fn remove(self) -> Option<Ring<&'a mut M>> {
-        let (storage, abc) = self.unbind();
         // This should never fail here.
-        let cache = FaceRemoveCache::snapshot(&storage, abc).expect_consistent();
+        let cache = FaceRemoveCache::from_face(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::remove(mutation, cache))
             .map(|(storage, face)| ArcView::bind(storage, face.arc))
@@ -1169,10 +1169,9 @@ where
             self.arc.rebind(key).expect_consistent()
         }
         else {
-            let perimeter = self.vertices().keys().collect::<Vec<_>>();
-            let (storage, _) = self.arc.unbind();
             // This should never fail here.
-            let cache = FaceInsertCache::snapshot(&storage, &perimeter).expect_consistent();
+            let cache = FaceInsertCache::from_ring(self.to_ref()).expect_consistent();
+            let (storage, _) = self.arc.unbind();
             Mutation::replace(storage, Default::default())
                 .commit_with(|mutation| {
                     face::insert_with(mutation, cache, || (Default::default(), f()))

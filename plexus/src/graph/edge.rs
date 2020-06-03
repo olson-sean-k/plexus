@@ -595,9 +595,9 @@ where
     where
         F: FnOnce() -> G::Vertex,
     {
-        let (storage, ab) = self.unbind();
         // This should never fail here.
-        let cache = EdgeSplitCache::snapshot(&storage, ab).expect_consistent();
+        let cache = EdgeSplitCache::from_arc(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| Bind::bind(storage, m).expect_consistent())
@@ -740,8 +740,8 @@ where
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
         })?;
-        let (storage, source) = self.unbind();
-        let cache = ArcBridgeCache::snapshot(&storage, source, destination)?;
+        let cache = ArcBridgeCache::from_arc(self.to_ref(), destination)?;
+        let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
@@ -842,8 +842,8 @@ where
     where
         F: Fn(G::Vertex) -> G::Vertex,
     {
-        let (storage, ab) = self.unbind();
-        let cache = ArcExtrudeCache::snapshot(&storage, ab)?;
+        let cache = ArcExtrudeCache::from_arc(self.to_ref())?;
+        let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::extrude_with(mutation, cache, f))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
@@ -860,9 +860,9 @@ where
     /// removed and its source vertex is not disjoint, then $A$ is returned.
     pub fn remove(self) -> Option<VertexView<&'a mut M>> {
         let a = self.source_vertex().key();
-        let (storage, ab) = self.unbind();
         // This should never fail here.
-        let cache = EdgeRemoveCache::snapshot(&storage, ab).expect_consistent();
+        let cache = EdgeRemoveCache::from_arc(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| Bind::bind(storage, a))

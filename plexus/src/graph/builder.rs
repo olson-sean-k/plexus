@@ -103,7 +103,7 @@ where
         T: AsRef<[VertexKey]>,
         U: IntoGeometry<Self::Facet>,
     {
-        let cache = FaceInsertCache::snapshot(&self.mutation, keys.as_ref())?;
+        let cache = FaceInsertCache::from_storage(&self.mutation, keys.as_ref())?;
         let geometry = geometry.into_geometry();
         face::insert_with(&mut self.mutation, cache, || (Default::default(), geometry))
     }

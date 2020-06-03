@@ -448,9 +448,9 @@ where
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
     pub fn remove(self) {
-        let (storage, a) = self.unbind();
         // This should never fail here.
-        let cache = VertexRemoveCache::snapshot(&storage, a).expect_consistent();
+        let cache = VertexRemoveCache::from_vertex(self.to_ref()).expect_consistent();
+        let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| vertex::remove(mutation, cache))
             .map(|_| ())

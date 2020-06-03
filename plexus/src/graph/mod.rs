@@ -1078,7 +1078,7 @@ where
                 .into_iter()
                 .map(|index| keys[index])
                 .collect::<SmallVec<[_; 4]>>();
-            let cache = FaceInsertCache::snapshot(&mutation, perimeter.as_slice())?;
+            let cache = FaceInsertCache::from_storage(&mutation, perimeter.as_slice())?;
             let geometry = geometry.into_geometry();
             mutation::face::insert_with(&mut mutation, cache, || (Default::default(), geometry))?;
         }
@@ -1113,7 +1113,7 @@ where
                 .into_iter()
                 .map(|index| vertices[index])
                 .collect::<SmallVec<[_; 4]>>();
-            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
@@ -1164,7 +1164,7 @@ where
                         .ok_or_else(|| GraphError::TopologyNotFound)?,
                 );
             }
-            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
@@ -1246,7 +1246,7 @@ where
                         .ok_or_else(|| GraphError::TopologyNotFound)?,
                 );
             }
-            let cache = FaceInsertCache::snapshot(&mutation, &perimeter)?;
+            let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
         mutation.commit()
