@@ -151,7 +151,7 @@ where
 
 impl<'a, M, E> View<&'a mut M, E>
 where
-    M: 'a + AsStorageMut<E>,
+    M: 'a + AsStorage<E>,
     E: 'a + Entity,
 {
     pub fn into_ref(self) -> View<&'a M, E> {

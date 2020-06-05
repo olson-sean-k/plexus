@@ -124,7 +124,7 @@ where
 
 impl<'a, M> VertexView<&'a mut M>
 where
-    M: AsStorageMut<Vertex<Geometry<M>>> + Geometric,
+    M: AsStorage<Vertex<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples

@@ -205,7 +205,7 @@ where
 
 impl<'a, M> ArcView<&'a mut M>
 where
-    M: AsStorageMut<Arc<Geometry<M>>> + Geometric,
+    M: AsStorage<Arc<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -1133,7 +1133,7 @@ where
 impl<B, M> EdgeView<B>
 where
     B: ReborrowMut<Target = M>,
-    M: AsStorageMut<Edge<Geometry<B>>> + Geometric,
+    M: AsStorage<Edge<Geometry<B>>> + Geometric,
 {
     pub fn to_mut(&mut self) -> EdgeView<&mut M> {
         self.inner.to_mut().into()
@@ -1142,7 +1142,7 @@ where
 
 impl<'a, M> EdgeView<&'a mut M>
 where
-    M: AsStorageMut<Edge<Geometry<M>>> + Geometric,
+    M: AsStorage<Edge<Geometry<M>>> + Geometric,
 {
     pub fn into_ref(self) -> EdgeView<&'a M> {
         self.inner.into_ref().into()

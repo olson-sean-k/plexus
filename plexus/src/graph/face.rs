@@ -143,7 +143,7 @@ where
 
 impl<'a, M> FaceView<&'a mut M>
 where
-    M: AsStorageMut<Face<Geometry<M>>> + Geometric,
+    M: AsStorage<Face<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -1035,9 +1035,6 @@ where
     }
 }
 
-// TODO: Notice that the bounds on `M` do NOT require `AsStorageMut`. This
-//       should become the typical pattern, as mutability for particular
-//       storage does not matter in this context.
 impl<B, M> Ring<B>
 where
     B: ReborrowMut<Target = M>,
@@ -1064,7 +1061,7 @@ where
 
 impl<'a, M> Ring<&'a mut M>
 where
-    M: AsStorageMut<Arc<Geometry<M>>> + Consistent + Geometric,
+    M: AsStorage<Arc<Geometry<M>>> + Consistent + Geometric,
 {
     pub fn into_ref(self) -> Ring<&'a M> {
         self.arc.into_ref().into_ring()

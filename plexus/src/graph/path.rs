@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut};
+use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
@@ -269,7 +269,7 @@ where
 impl<B, M, G> Path<B>
 where
     B: ReborrowMut<Target = M>,
-    M: AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     pub fn to_mut(&mut self) -> Path<&mut M> {
@@ -281,7 +281,7 @@ where
 
 impl<'a, M, G> Path<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.
