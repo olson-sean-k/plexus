@@ -39,7 +39,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [macOS-latest, ubuntu-latest, windows-latest]
-        toolchain: [stable, beta]
+        # TODO: Test both the stable and beta Rust toolchains.
+        #
+        #       Beta is disabled to avoid dynamic linking errors against
+        #       `intel-mkl` on Linux during doctests.
+        #
+        #       See https://github.com/olson-sean-k/theon/issues/9
+        toolchain: [stable]
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
