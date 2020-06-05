@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::AsPosition;
 
-use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -203,9 +203,10 @@ where
     }
 }
 
-impl<'a, M> ArcView<&'a mut M>
+impl<'a, B> ArcView<B>
 where
-    M: AsStorage<Arc<Geometry<M>>> + Geometric,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Arc<Geometry<B::Target>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -240,7 +241,7 @@ where
     /// let _ = arc.into_next_arc().into_next_arc().into_face();
     /// let _ = arc.into_opposite_arc().into_face();
     /// ```
-    pub fn into_ref(self) -> ArcView<&'a M> {
+    pub fn into_ref(self) -> ArcView<&'a B::Target> {
         self.inner.into_ref().into()
     }
 }
@@ -1140,11 +1141,12 @@ where
     }
 }
 
-impl<'a, M> EdgeView<&'a mut M>
+impl<'a, B> EdgeView<B>
 where
-    M: AsStorage<Edge<Geometry<M>>> + Geometric,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Edge<Geometry<B::Target>>> + Geometric,
 {
-    pub fn into_ref(self) -> EdgeView<&'a M> {
+    pub fn into_ref(self) -> EdgeView<&'a B::Target> {
         self.inner.into_ref().into()
     }
 }

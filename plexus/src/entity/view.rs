@@ -1,7 +1,7 @@
 use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
-use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
 use crate::entity::Entity;
 
@@ -149,14 +149,15 @@ where
     }
 }
 
-impl<'a, M, E> View<&'a mut M, E>
+impl<'a, B, E> View<B, E>
 where
-    M: 'a + AsStorage<E>,
-    E: 'a + Entity,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<E>,
+    E: Entity,
 {
-    pub fn into_ref(self) -> View<&'a M, E> {
+    pub fn into_ref(self) -> View<&'a B::Target, E> {
         let (storage, key) = self.unbind();
-        View::bind_unchecked(&*storage, key)
+        View::bind_unchecked(storage.reborrow_into(), key)
     }
 }
 

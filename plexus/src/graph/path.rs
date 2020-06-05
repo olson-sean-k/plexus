@@ -2,7 +2,7 @@ use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
-use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
@@ -279,20 +279,21 @@ where
     }
 }
 
-impl<'a, M, G> Path<&'a mut M>
+impl<'a, B, G> Path<B>
 where
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> Path<&'a M> {
+    pub fn into_ref(self) -> Path<&'a B::Target> {
         let Path { keys, storage, .. } = self;
         Path {
             keys,
-            storage: &*storage,
+            storage: storage.reborrow_into(),
         }
     }
 }

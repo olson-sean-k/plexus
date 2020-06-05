@@ -14,7 +14,7 @@ use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use theon::AsPosition;
 use typenum::U3;
 
-use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
@@ -141,9 +141,10 @@ where
     }
 }
 
-impl<'a, M> FaceView<&'a mut M>
+impl<'a, B> FaceView<B>
 where
-    M: AsStorage<Face<Geometry<M>>> + Geometric,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Face<Geometry<B::Target>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -175,7 +176,7 @@ where
     /// let _ = face.into_arc();
     /// let _ = face.into_arc().into_next_arc();
     /// ```
-    pub fn into_ref(self) -> FaceView<&'a M> {
+    pub fn into_ref(self) -> FaceView<&'a B::Target> {
         self.inner.into_ref().into()
     }
 }
@@ -1059,11 +1060,12 @@ where
     }
 }
 
-impl<'a, M> Ring<&'a mut M>
+impl<'a, B> Ring<B>
 where
-    M: AsStorage<Arc<Geometry<M>>> + Consistent + Geometric,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Arc<Geometry<B::Target>>> + Consistent + Geometric,
 {
-    pub fn into_ref(self) -> Ring<&'a M> {
+    pub fn into_ref(self) -> Ring<&'a B::Target> {
         self.arc.into_ref().into_ring()
     }
 }

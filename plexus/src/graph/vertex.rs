@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use theon::space::Vector;
 use theon::AsPosition;
 
-use crate::entity::borrow::{Reborrow, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra::{self, Metric};
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
@@ -122,9 +122,10 @@ where
     }
 }
 
-impl<'a, M> VertexView<&'a mut M>
+impl<'a, B> VertexView<B>
 where
-    M: AsStorage<Vertex<Geometry<M>>> + Geometric,
+    B: ReborrowInto<'a>,
+    B::Target: AsStorage<Vertex<Geometry<B::Target>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -155,7 +156,7 @@ where
     ///     .into_face()
     ///     .unwrap();
     /// ```
-    pub fn into_ref(self) -> VertexView<&'a M> {
+    pub fn into_ref(self) -> VertexView<&'a B::Target> {
         self.inner.into_ref().into()
     }
 }
