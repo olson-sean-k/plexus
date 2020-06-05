@@ -296,6 +296,46 @@ where
             storage: storage.reborrow_into(),
         }
     }
+
+    /// Splits the path into two immutable paths at the given vertex.
+    ///
+    /// Given a path $\overrightarrow{(A,\cdots,M,\cdots,B)}$, splitting at the
+    /// vertex $M$ results in the paths $\overrightarrow{(A,\cdots,M)}$ and
+    /// $\overrightarrow{(M,\cdots,B)}$.
+    ///
+    /// **Splitting a path does not mutate its graph in any way** (unlike
+    /// `ArcView::split` or `FaceView::split`, for example). To split a graph
+    /// along a path (and thus mutate the graph) use `MeshGraph::split_at_path`.
+    ///
+    /// It is not possible to split a path at its back or front vertices.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the given vertex cannot be found or the path cannot
+    /// be split at that vertex.
+    pub fn split(self, at: Selector<VertexKey>) -> Result<(Path<&'a M>, Path<&'a M>), GraphError> {
+        let index = at.index_or_else(|key| {
+            self.vertices()
+                .keys()
+                .enumerate()
+                .find(|(_, a)| *a == key)
+                .map(|(n, _)| n)
+                .ok_or_else(|| GraphError::TopologyNotFound)
+        })?;
+        if index == 0 || index >= self.keys.len() {
+            return Err(GraphError::TopologyMalformed);
+        }
+        let Path {
+            keys: mut right,
+            storage,
+            ..
+        } = self.into_ref();
+        let left = right.split_off(index);
+        Ok((
+            Path::bind_unchecked(storage, left),
+            Path::bind_unchecked(storage, right),
+        ))
+    }
 }
 
 impl<B, M, G> PartialEq for Path<B>
@@ -314,9 +354,9 @@ where
 mod tests {
     use nalgebra::Point2;
 
-    use crate::buffer::FromRawBuffers;
     use crate::graph::{ClosedView, MeshGraph, Selector};
-    use crate::primitive::Trigon;
+    use crate::prelude::*;
+    use crate::primitive::{Tetragon, Trigon};
     use crate::IteratorExt;
 
     use Selector::ByKey;
@@ -347,5 +387,25 @@ mod tests {
         path.push_front(ByKey(keys[0])).unwrap();
         assert!(path.is_closed());
         assert_eq!(path.front().key(), path.back().key());
+    }
+
+    #[test]
+    fn split() {
+        let graph =
+            MeshGraph::<()>::from_raw_buffers(vec![Tetragon::from([0usize, 1, 2, 3])], vec![(); 4])
+                .unwrap();
+        let source = graph.vertices().nth(0).unwrap();
+        let destination = source
+            .into_outgoing_arc()
+            .into_next_arc()
+            .into_destination_vertex();
+
+        let path = source.shortest_path(destination.key()).unwrap();
+        assert_eq!(path.arcs().count(), 2);
+
+        let (left, right) = path.split(ByIndex(1)).unwrap();
+        assert_eq!(left.front().key(), right.back().key());
+        assert_eq!(left.arcs().count(), 1);
+        assert_eq!(right.arcs().count(), 1);
     }
 }
