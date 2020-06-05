@@ -203,10 +203,10 @@ where
     }
 }
 
-impl<'a, B> ArcView<B>
+impl<'a, B, M> ArcView<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Arc<Geometry<B::Target>>> + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Arc<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -241,7 +241,7 @@ where
     /// let _ = arc.into_next_arc().into_next_arc().into_face();
     /// let _ = arc.into_opposite_arc().into_face();
     /// ```
-    pub fn into_ref(self) -> ArcView<&'a B::Target> {
+    pub fn into_ref(self) -> ArcView<&'a M> {
         self.inner.into_ref().into()
     }
 }
@@ -1141,12 +1141,12 @@ where
     }
 }
 
-impl<'a, B> EdgeView<B>
+impl<'a, B, M> EdgeView<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Edge<Geometry<B::Target>>> + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Edge<Geometry<M>>> + Geometric,
 {
-    pub fn into_ref(self) -> EdgeView<&'a B::Target> {
+    pub fn into_ref(self) -> EdgeView<&'a M> {
         self.inner.into_ref().into()
     }
 }

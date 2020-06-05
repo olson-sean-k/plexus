@@ -279,17 +279,17 @@ where
     }
 }
 
-impl<'a, B, G> Path<B>
+impl<'a, B, M, G> Path<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
     /// Converts a mutable view into an immutable view.
     ///
     /// This is useful when mutations are not (or no longer) needed and mutual
     /// access is desired.
-    pub fn into_ref(self) -> Path<&'a B::Target> {
+    pub fn into_ref(self) -> Path<&'a M> {
         let Path { keys, storage, .. } = self;
         Path {
             keys,

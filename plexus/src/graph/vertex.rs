@@ -122,10 +122,10 @@ where
     }
 }
 
-impl<'a, B> VertexView<B>
+impl<'a, B, M> VertexView<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Vertex<Geometry<B::Target>>> + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Vertex<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -156,7 +156,7 @@ where
     ///     .into_face()
     ///     .unwrap();
     /// ```
-    pub fn into_ref(self) -> VertexView<&'a B::Target> {
+    pub fn into_ref(self) -> VertexView<&'a M> {
         self.inner.into_ref().into()
     }
 }

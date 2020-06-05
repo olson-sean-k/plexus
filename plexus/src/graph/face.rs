@@ -141,10 +141,10 @@ where
     }
 }
 
-impl<'a, B> FaceView<B>
+impl<'a, B, M> FaceView<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Face<Geometry<B::Target>>> + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Face<Geometry<M>>> + Geometric,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -176,7 +176,7 @@ where
     /// let _ = face.into_arc();
     /// let _ = face.into_arc().into_next_arc();
     /// ```
-    pub fn into_ref(self) -> FaceView<&'a B::Target> {
+    pub fn into_ref(self) -> FaceView<&'a M> {
         self.inner.into_ref().into()
     }
 }
@@ -1060,12 +1060,12 @@ where
     }
 }
 
-impl<'a, B> Ring<B>
+impl<'a, B, M> Ring<B>
 where
-    B: ReborrowInto<'a>,
-    B::Target: AsStorage<Arc<Geometry<B::Target>>> + Consistent + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: AsStorage<Arc<Geometry<M>>> + Consistent + Geometric,
 {
-    pub fn into_ref(self) -> Ring<&'a B::Target> {
+    pub fn into_ref(self) -> Ring<&'a M> {
         self.arc.into_ref().into_ring()
     }
 }
