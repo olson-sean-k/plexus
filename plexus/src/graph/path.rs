@@ -332,8 +332,14 @@ where
         } = self.into_ref();
         let left = right.split_off(index);
         Ok((
-            Path::bind_unchecked(storage, left),
-            Path::bind_unchecked(storage, right),
+            Path {
+                keys: left,
+                storage,
+            },
+            Path {
+                keys: right,
+                storage,
+            },
         ))
     }
 }
