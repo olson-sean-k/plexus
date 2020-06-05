@@ -27,11 +27,7 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 
-/// Structure that participates in an edge.
-///
-/// Types that implement this trait expose an arc and edge from the composite
-/// edge in which they participate.
-pub trait Edgoid<B>: Sized
+pub trait ToArc<B>: Sized
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Edge<Geometry<B>>> + Consistent + Geometric,
@@ -39,10 +35,6 @@ where
     fn into_arc(self) -> ArcView<B>;
 
     fn arc(&self) -> ArcView<&B::Target>;
-
-    fn into_edge(self) -> EdgeView<B>;
-
-    fn edge(&self) -> EdgeView<&B::Target>;
 }
 
 // Unlike other graph structures, the vertex connectivity of an arc is immutable
@@ -414,12 +406,12 @@ where
 {
     /// Converts the arc into its edge.
     pub fn into_edge(self) -> EdgeView<B> {
-        Edgoid::into_edge(self)
+        self.into_reachable_edge().expect_consistent()
     }
 
     /// Gets the edge of the arc.
     pub fn edge(&self) -> EdgeView<&M> {
-        Edgoid::edge(self)
+        self.to_ref().into_edge()
     }
 }
 
@@ -899,29 +891,6 @@ where
     }
 }
 
-impl<B, M, G> Edgoid<B> for ArcView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    fn into_arc(self) -> ArcView<B> {
-        self
-    }
-
-    fn arc(&self) -> ArcView<&M> {
-        self.to_ref()
-    }
-
-    fn into_edge(self) -> EdgeView<B> {
-        self.into_reachable_edge().expect_consistent()
-    }
-
-    fn edge(&self) -> EdgeView<&M> {
-        Edgoid::into_edge(self.to_ref())
-    }
-}
-
 impl<B, M, G> Copy for ArcView<B>
 where
     B: Reborrow<Target = M>,
@@ -997,6 +966,21 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
+    }
+}
+
+impl<B, M, G> ToArc<B> for ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn into_arc(self) -> ArcView<B> {
+        self
+    }
+
+    fn arc(&self) -> ArcView<&M> {
+        self.to_ref()
     }
 }
 
@@ -1183,11 +1167,11 @@ where
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Edge<Geometry<B>>> + Consistent + Geometric,
 {
     pub fn into_arc(self) -> ArcView<B> {
-        Edgoid::into_arc(self)
+        self.into_reachable_arc().expect_consistent()
     }
 
     pub fn arc(&self) -> ArcView<&M> {
-        Edgoid::arc(self)
+        self.to_ref().into_arc()
     }
 
     pub fn is_boundary_edge(&self) -> bool {
@@ -1226,29 +1210,6 @@ where
         EdgeView {
             inner: self.inner.clone(),
         }
-    }
-}
-
-impl<B, M, G> Edgoid<B> for EdgeView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    fn into_arc(self) -> ArcView<B> {
-        self.into_reachable_arc().expect_consistent()
-    }
-
-    fn arc(&self) -> ArcView<&M> {
-        Edgoid::into_arc(self.to_ref())
-    }
-
-    fn into_edge(self) -> EdgeView<B> {
-        self
-    }
-
-    fn edge(&self) -> EdgeView<&M> {
-        self.to_ref()
     }
 }
 
@@ -1331,6 +1292,21 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
+    }
+}
+
+impl<B, M, G> ToArc<B> for EdgeView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Edge<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn into_arc(self) -> ArcView<B> {
+        EdgeView::into_arc(self)
+    }
+
+    fn arc(&self) -> ArcView<&M> {
+        EdgeView::arc(self)
     }
 }
 

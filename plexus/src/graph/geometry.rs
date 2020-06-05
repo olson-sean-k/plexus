@@ -75,8 +75,8 @@ use typenum::U3;
 
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::AsStorage;
-use crate::graph::edge::{Arc, ArcView, Edge, Edgoid};
-use crate::graph::face::{Face, Ringoid};
+use crate::graph::edge::{Arc, ArcView, Edge, ToArc};
+use crate::graph::face::{Face, ToRing};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexView};
 use crate::graph::{GraphError, OptionExt as _};
@@ -332,15 +332,15 @@ pub trait EdgeMidpoint: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn midpoint<T, B>(edge: T) -> Result<VertexPosition<Self>, GraphError>
+    fn midpoint<B, T>(edge: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        T: Edgoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Edge<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>;
+            + Geometric<Geometry = Self>,
+        T: ToArc<B>;
 }
 
 impl<G> EdgeMidpoint for G
@@ -349,15 +349,15 @@ where
     G::Vertex: AsPosition,
     VertexPosition<G>: Interpolate<Output = VertexPosition<G>>,
 {
-    fn midpoint<T, B>(edge: T) -> Result<VertexPosition<Self>, GraphError>
+    fn midpoint<B, T>(edge: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        T: Edgoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Edge<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
             + Geometric<Geometry = Self>,
+        T: ToArc<B>,
     {
         let arc = edge.into_arc();
         let (a, b) =
@@ -370,14 +370,14 @@ pub trait FaceCentroid: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn centroid<T, B>(ring: T) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<B, T>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>;
+            + Geometric<Geometry = Self>,
+        T: ToRing<B>;
 }
 
 impl<G> FaceCentroid for G
@@ -385,14 +385,14 @@ where
     G: GraphGeometry,
     G::Vertex: AsPosition,
 {
-    fn centroid<T, B>(ring: T) -> Result<VertexPosition<Self>, GraphError>
+    fn centroid<B, T>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
             + Geometric<Geometry = Self>,
+        T: ToRing<B>,
     {
         let ring = ring.into_ring();
         Ok(
@@ -406,14 +406,14 @@ pub trait FaceNormal: GraphGeometry
 where
     Self::Vertex: AsPosition,
 {
-    fn normal<T, B>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B, T>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>;
+            + Geometric<Geometry = Self>,
+        T: ToRing<B>;
 }
 
 impl<G> FaceNormal for G
@@ -423,14 +423,14 @@ where
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
 {
-    fn normal<T, B>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
+    fn normal<B, T>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
             + Geometric<Geometry = Self>,
+        T: ToRing<B>,
     {
         let ring = ring.into_ring();
         let (a, b) =
@@ -448,14 +448,14 @@ where
     Self::Vertex: AsPosition,
     VertexPosition<Self>: FiniteDimensional<N = U3>,
 {
-    fn plane<T, B>(ring: T) -> Result<Plane<VertexPosition<Self>>, GraphError>
+    fn plane<B, T>(ring: T) -> Result<Plane<VertexPosition<Self>>, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>;
+            + Geometric<Geometry = Self>,
+        T: ToRing<B>;
 }
 
 // TODO: The `lapack` feature only supports Linux. See
@@ -477,14 +477,14 @@ mod array {
         Scalar<VertexPosition<G>>: Lapack,
         Vector<VertexPosition<G>>: FromItems + IntoItems,
     {
-        fn plane<T, B>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>
+        fn plane<B, T>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>
         where
-            T: Ringoid<B>,
             B: Reborrow,
             B::Target: AsStorage<Arc<Self>>
                 + AsStorage<Vertex<Self>>
                 + Consistent
                 + Geometric<Geometry = Self>,
+            T: ToRing<B>,
         {
             let ring = ring.into_ring();
             let points = ring

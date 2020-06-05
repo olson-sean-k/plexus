@@ -230,9 +230,9 @@ use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 pub use crate::entity::dijkstra::Metric;
 pub use crate::entity::view::{ClosedView, Rebind};
 pub use crate::graph::edge::{
-    Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, Edgoid,
+    Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, ToArc,
 };
-pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, Ringoid};
+pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, ToRing};
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
     VertexNormal, VertexPosition,

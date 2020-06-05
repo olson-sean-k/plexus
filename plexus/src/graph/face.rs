@@ -44,11 +44,7 @@ use Selector::ByIndex;
 //       notable difference, keeping in mind that in a consistent graph all arcs
 //       are part of a ring.
 
-/// Structure that participates in a ring.
-///
-/// Types that implement this trait expose the ring in which they participate
-/// and support ring-like operations.
-pub trait Ringoid<B>: DynamicArity<Dynamic = usize> + Sized
+pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
@@ -56,40 +52,6 @@ where
     fn into_ring(self) -> Ring<B>;
 
     fn ring(&self) -> Ring<&B::Target>;
-
-    /// Gets the distance (number of arcs) between two vertices within the ring.
-    fn distance(
-        &self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
-    ) -> Result<usize, GraphError>
-    where
-        B::Target: AsStorage<Vertex<Geometry<B>>>,
-    {
-        let arity = self.arity();
-        let index_of_selector = |selector: Selector<_>| match selector {
-            Selector::ByKey(key) => self
-                .ring()
-                .vertices()
-                .keys()
-                .enumerate()
-                .find(|(_, a)| *a == key)
-                .map(|(index, _)| index)
-                .ok_or_else(|| GraphError::TopologyNotFound),
-            Selector::ByIndex(index) => {
-                if index >= arity {
-                    Err(GraphError::TopologyNotFound)
-                }
-                else {
-                    Ok(index)
-                }
-            }
-        };
-        let source = index_of_selector(source)? as isize;
-        let destination = index_of_selector(destination)? as isize;
-        let difference = (source - destination).abs() as usize;
-        Ok(cmp::min(difference, arity - difference))
-    }
 }
 
 /// Face entity.
@@ -237,7 +199,7 @@ where
 {
     /// Converts the face into its ring.
     pub fn into_ring(self) -> Ring<B> {
-        Ringoid::into_ring(self)
+        self.into_arc().into_ring()
     }
 
     /// Converts the face into its leading arc.
@@ -247,7 +209,7 @@ where
 
     /// Gets the ring of the face.
     pub fn ring(&self) -> Ring<&M> {
-        Ringoid::ring(self)
+        self.to_ref().into_ring()
     }
 
     /// Gets the leading arc of the face.
@@ -312,7 +274,15 @@ where
         M: 'a,
         G: 'a,
     {
-        ArcCirculator::from(self.ring()).map(|arc| arc.into_source_vertex())
+        VertexCirculator::from(ArcCirculator::from(self.ring()))
+    }
+
+    pub fn distance(
+        &self,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
+    ) -> Result<usize, GraphError> {
+        self.ring().distance(source, destination)
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -931,21 +901,6 @@ where
     }
 }
 
-impl<B, M, G> Ringoid<B> for FaceView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    fn into_ring(self) -> Ring<B> {
-        self.into_arc().into_ring()
-    }
-
-    fn ring(&self) -> Ring<&M> {
-        self.to_ref().into_ring()
-    }
-}
-
 impl<B, M, G> StaticArity for FaceView<B>
 where
     B: Reborrow<Target = M>,
@@ -955,6 +910,21 @@ where
     type Static = <MeshGraph<G> as StaticArity>::Static;
 
     const ARITY: Self::Static = MeshGraph::<G>::ARITY;
+}
+
+impl<B, M, G> ToRing<B> for FaceView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn into_ring(self) -> Ring<B> {
+        FaceView::into_ring(self)
+    }
+
+    fn ring(&self) -> Ring<&M> {
+        FaceView::ring(self)
+    }
 }
 
 /// Orphan view of a face.
@@ -1065,13 +1035,30 @@ where
     }
 }
 
+// TODO: Notice that the bounds on `M` do NOT require `AsStorageMut`. This
+//       should become the typical pattern, as mutability for particular
+//       storage does not matter in this context.
+impl<B, M> Ring<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+{
+    pub fn to_mut(&mut self) -> Ring<&mut M> {
+        self.arc.to_mut().into_ring()
+    }
+}
+
 impl<B, M> Ring<B>
 where
     B: ReborrowMut<Target = M>,
     M: AsStorageMut<Arc<Geometry<B>>> + Consistent + Geometric,
 {
-    pub fn to_mut(&mut self) -> Ring<&mut M> {
-        self.arc.to_mut().into_ring()
+    /// Gets an iterator of orphan views over the arcs in the ring.
+    pub fn interior_arc_orphans<'a>(&'a mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>>
+    where
+        M: 'a,
+    {
+        ArcCirculator::from(self.to_mut())
     }
 }
 
@@ -1111,6 +1098,50 @@ where
         M: 'a,
     {
         ArcCirculator::from(self.to_ref()).map(|arc| arc.into_source_vertex())
+    }
+
+    /// Gets the distance (number of arcs) between two vertices within the ring.
+    pub fn distance(
+        &self,
+        source: Selector<VertexKey>,
+        destination: Selector<VertexKey>,
+    ) -> Result<usize, GraphError> {
+        let arity = self.arity();
+        let index_of_selector = |selector: Selector<_>| match selector {
+            Selector::ByKey(key) => self
+                .vertices()
+                .keys()
+                .enumerate()
+                .find(|(_, a)| *a == key)
+                .map(|(index, _)| index)
+                .ok_or_else(|| GraphError::TopologyNotFound),
+            Selector::ByIndex(index) => {
+                if index >= arity {
+                    Err(GraphError::TopologyNotFound)
+                }
+                else {
+                    Ok(index)
+                }
+            }
+        };
+        let source = index_of_selector(source)? as isize;
+        let destination = index_of_selector(destination)? as isize;
+        let difference = (source - destination).abs() as usize;
+        Ok(cmp::min(difference, arity - difference))
+    }
+}
+
+impl<B, M> Ring<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
+{
+    /// Gets an iterator of orphan views over the vertices that form the ring.
+    pub fn vertex_orphans<'a>(&'a mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>>
+    where
+        M: 'a,
+    {
+        VertexCirculator::from(ArcCirculator::from(self.to_mut()))
     }
 }
 
@@ -1220,7 +1251,18 @@ where
     }
 }
 
-impl<B, M, G> Ringoid<B> for Ring<B>
+impl<B, M, G> StaticArity for Ring<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    type Static = <MeshGraph<G> as StaticArity>::Static;
+
+    const ARITY: Self::Static = MeshGraph::<G>::ARITY;
+}
+
+impl<B, M, G> ToRing<B> for Ring<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
@@ -1233,17 +1275,6 @@ where
     fn ring(&self) -> Ring<&M> {
         self.to_ref()
     }
-}
-
-impl<B, M, G> StaticArity for Ring<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    type Static = <MeshGraph<G> as StaticArity>::Static;
-
-    const ARITY: Self::Static = MeshGraph::<G>::ARITY;
 }
 
 pub struct VertexCirculator<B>

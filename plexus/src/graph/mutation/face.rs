@@ -9,7 +9,7 @@ use crate::entity::storage::{AsStorage, Fuse, Storage};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
 use crate::graph::core::{Core, OwnedCore, RefCore};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
-use crate::graph::face::{Face, FaceKey, FaceView, Ringoid};
+use crate::graph::face::{Face, FaceKey, FaceView, ToRing};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::vertex;
@@ -199,15 +199,15 @@ pub struct FaceInsertCache {
 }
 
 impl FaceInsertCache {
-    pub fn from_ring<T, B>(ring: T) -> Result<Self, GraphError>
+    pub fn from_ring<B, T>(ring: T) -> Result<Self, GraphError>
     where
-        T: Ringoid<B>,
         B: Reborrow,
         B::Target: AsStorage<Arc<Geometry<B>>>
             + AsStorage<Face<Geometry<B>>>
             + AsStorage<Vertex<Geometry<B>>>
             + Consistent
             + Geometric,
+        T: ToRing<B>,
     {
         let ring = ring.into_ring();
         let (storage, _) = ring.arc().unbind();
