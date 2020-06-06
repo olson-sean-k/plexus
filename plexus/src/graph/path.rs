@@ -5,11 +5,14 @@ use std::collections::{HashSet, VecDeque};
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView};
-use crate::graph::edge::{Arc, ArcKey, ArcView};
+use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
+use crate::graph::face::{Face, FaceView};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
-use crate::graph::mutation::Consistent;
+use crate::graph::mutation::path::{self, PathExtrudeCache};
+use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
-use crate::graph::{GraphError, OptionExt as _, Selector};
+use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
 /// Non-intersecting path.
@@ -259,9 +262,14 @@ where
         Path { storage, keys }
     }
 
+    fn unbind(self) -> B {
+        let Path { storage, .. } = self;
+        storage
+    }
+
     fn endpoints(&self) -> (VertexKey, VertexKey) {
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
-        let (_, b) = self.keys.front().cloned().expect("empty pathy").into();
+        let (_, b) = self.keys.front().cloned().expect("empty path").into();
         (a, b)
     }
 }
@@ -341,6 +349,29 @@ where
                 storage,
             },
         ))
+    }
+}
+
+impl<'a, M, G> Path<&'a mut M>
+where
+    M: AsStorage<Arc<G>>
+        + AsStorage<Edge<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Default
+        + Mutable<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn extrude_with<F>(self, f: F) -> Result<FaceView<&'a mut M>, GraphError>
+    where
+        F: Fn(G::Vertex) -> G::Vertex,
+    {
+        let cache = PathExtrudeCache::from_path(self.to_ref())?;
+        let storage = self.unbind();
+        Ok(Mutation::replace(storage, Default::default())
+            .commit_with(|mutation| path::extrude_with(mutation, cache, f))
+            .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+            .expect_consistent())
     }
 }
 

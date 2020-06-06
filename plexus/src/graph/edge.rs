@@ -97,6 +97,16 @@ impl ArcKey {
         let (a, b) = self.into();
         (b, a).into()
     }
+
+    pub(in crate::graph) fn into_source(self) -> VertexKey {
+        let (a, _) = self.into();
+        a
+    }
+
+    pub(in crate::graph) fn into_destination(self) -> VertexKey {
+        let (_, b) = self.into();
+        b
+    }
 }
 
 impl From<(VertexKey, VertexKey)> for ArcKey {
