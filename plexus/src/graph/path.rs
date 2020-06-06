@@ -4,9 +4,9 @@ use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::AsStorage;
-use crate::entity::view::{Bind, ClosedView};
+use crate::entity::view::{Bind, ClosedView, Unbind};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
-use crate::graph::face::{Face, FaceView};
+use crate::graph::face::{Face, FaceView, Ring};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::path::{self, PathExtrudeCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -395,6 +395,19 @@ where
             .commit_with(|mutation| path::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .expect_consistent())
+    }
+}
+
+impl<B, M, G> From<Ring<B>> for Path<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    fn from(ring: Ring<B>) -> Self {
+        let keys: VecDeque<_> = ring.interior_arcs().keys().collect();
+        let (storage, _) = ring.into_arc().unbind();
+        Path { keys, storage }
     }
 }
 

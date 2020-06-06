@@ -28,6 +28,7 @@ use crate::graph::mutation::face::{
     FaceSplitCache,
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::path::Path;
 use crate::graph::trace::{Trace, TraceFirst};
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
@@ -1091,6 +1092,14 @@ where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
+    pub fn into_path(self) -> Path<B> {
+        self.into()
+    }
+
+    pub fn path(&self) -> Path<&M> {
+        self.to_ref().into_path()
+    }
+
     /// Gets an iterator of views over the vertices within the ring.
     pub fn vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
     where
