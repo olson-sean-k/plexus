@@ -15,6 +15,8 @@ use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
+use Selector::ByKey;
+
 /// Non-intersecting path.
 ///
 /// A path is an ordered set of vertices that are joined by arcs. Paths are
@@ -126,6 +128,16 @@ where
         }
     }
 
+    /// Pushes the source vertex of the previous arc onto the back of the path.
+    pub fn push_previous_arc(&mut self) -> Result<ArcKey, GraphError> {
+        let key = ArcView::bind(self.storage.reborrow(), *self.keys.back().unwrap())
+            .expect_consistent()
+            .into_previous_arc()
+            .into_source_vertex()
+            .key();
+        self.push_back(ByKey(key))
+    }
+
     /// Pops a vertex from the back of the path.
     pub fn pop_back(&mut self) -> Option<ArcKey> {
         // Empty paths are forbidden.
@@ -188,6 +200,17 @@ where
             self.keys.push_front(bx);
             Ok(bx)
         }
+    }
+
+    /// Pushes the destination vertex of the next arc onto the front of the
+    /// path.
+    pub fn push_next_arc(&mut self) -> Result<ArcKey, GraphError> {
+        let key = ArcView::bind(self.storage.reborrow(), *self.keys.front().unwrap())
+            .expect_consistent()
+            .into_next_arc()
+            .into_destination_vertex()
+            .key();
+        self.push_front(ByKey(key))
     }
 
     /// Pops a vertex from the front of the path.
