@@ -285,11 +285,6 @@ where
         Path { storage, keys }
     }
 
-    fn unbind(self) -> B {
-        let Path { storage, .. } = self;
-        storage
-    }
-
     fn endpoints(&self) -> (VertexKey, VertexKey) {
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
         let (_, b) = self.keys.front().cloned().expect("empty path").into();
@@ -390,7 +385,7 @@ where
         F: Fn(G::Vertex) -> G::Vertex,
     {
         let cache = PathExtrudeCache::from_path(self.to_ref())?;
-        let storage = self.unbind();
+        let Path { storage, .. } = self;
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| path::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
