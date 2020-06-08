@@ -238,12 +238,8 @@ impl FaceInsertCache {
         let vertices = perimeter
             .iter()
             .cloned()
-            .flat_map(|key| VertexView::bind(storage, key))
-            .collect::<SmallVec<[_; 4]>>();
-        if vertices.len() != arity {
-            // Vertex keys refer to nonexistent vertices.
-            return Err(GraphError::TopologyNotFound);
-        }
+            .map(|key| VertexView::bind(storage, key).ok_or_else(|| GraphError::TopologyNotFound))
+            .collect::<Result<SmallVec<[_; 4]>, _>>()?;
         for (previous, next) in perimeter
             .iter()
             .cloned()
