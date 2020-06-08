@@ -579,11 +579,16 @@ where
     ///
     /// Returns the terminating face of the decomposition.
     pub fn triangulate(self) -> Self {
+        // TODO: This naive approach exhibits bad behaviors when faces are
+        //       concave, linear, collapsed, or are otherwise degenerate.
+        //       Additionally, splitting may fail under certain conditions!
+        //       Triangulation that ignores geometry is likely much less useful
+        //       than a triangulation algorithm that considers position data.
         let mut face = self;
         while face.arity() > 3 {
             face = face
                 .split(ByIndex(0), ByIndex(2))
-                .expect_consistent()
+                .expect_consistent() // TODO: This may panic!
                 .into_face()
                 .expect_consistent();
         }

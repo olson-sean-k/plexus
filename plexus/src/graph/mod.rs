@@ -580,10 +580,17 @@ where
         Aabb::from_points(self.vertices().map(|vertex| *vertex.geometry.as_position()))
     }
 
+    // TODO: This triangulation does not consider geometry and exhibits some
+    //       bad behavior in certain situations. Triangulation needs to be
+    //       reworked and may need to expose a bit more complexity. A geometric
+    //       triangulation algorithm would be a useful addition and could
+    //       detect concave faces and provide more optimal splits. See comments
+    //       on `FaceView::triangulate`.
     /// Triangulates the graph, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
         let faces = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
         for face in faces {
+            // TODO: This is broken and may panic!
             self.face_mut(face).unwrap().triangulate();
         }
     }
