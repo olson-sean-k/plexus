@@ -40,7 +40,7 @@ impl PathExtrudeCache {
     }
 }
 
-pub fn extrude_with<M, N, F>(
+pub fn extrude_contour_with<M, N, F>(
     mut mutation: N,
     cache: PathExtrudeCache,
     f: F,

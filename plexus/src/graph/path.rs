@@ -380,16 +380,40 @@ where
         + Mutable<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn extrude_with<F>(self, f: F) -> Result<FaceView<&'a mut M>, GraphError>
+    /// Extrudes the contour of a boundary path.
+    ///
+    /// A path is a boundary path if all of its arcs are boundary arcs.
+    /// Extruding the path transforms the vertices along the path in order using
+    /// the given function and inserts a face between the path and its extruded
+    /// contour.
+    ///
+    /// Unlike extruding individual arcs, extruding the contour of a path
+    /// inserts a single face in which all involved arcs participate.
+    ///
+    /// Returns the inserted face.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is not a boundary path.
+    pub fn extrude_contour_with<F>(self, f: F) -> Result<FaceView<&'a mut M>, GraphError>
     where
         F: Fn(G::Vertex) -> G::Vertex,
     {
         let cache = PathExtrudeCache::from_path(self.to_ref())?;
         let Path { storage, .. } = self;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| path::extrude_with(mutation, cache, f))
+            .commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .expect_consistent())
+    }
+
+    /// Extrudes the surface of a closed path.
+    pub fn extrude_surface_with<F>(self, f: F) -> Result<Self, GraphError>
+    where
+        F: Fn(G::Vertex) -> G::Vertex,
+    {
+        let _ = f;
+        todo!()
     }
 }
 
