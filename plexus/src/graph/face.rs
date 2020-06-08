@@ -584,6 +584,8 @@ where
         //       Additionally, splitting may fail under certain conditions!
         //       Triangulation that ignores geometry is likely much less useful
         //       than a triangulation algorithm that considers position data.
+        // TODO: This implementation differs from `MeshGraph::triangulate`,
+        //       because it is not possible to retry `split` in this context.
         let mut face = self;
         while face.arity() > 3 {
             face = face

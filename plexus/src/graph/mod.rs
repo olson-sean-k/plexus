@@ -588,10 +588,35 @@ where
     //       on `FaceView::triangulate`.
     /// Triangulates the graph, tessellating all faces into triangles.
     pub fn triangulate(&mut self) {
-        let faces = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
-        for face in faces {
-            // TODO: This is broken and may panic!
-            self.face_mut(face).unwrap().triangulate();
+        // TODO: This implementation is a bit fragile and depends on the
+        //       semantics of `TopologyConflict` in this context. It also panics
+        //       if no valid split is found given all offsets or if some other
+        //       error is encountered while splitting. Can this code assume that
+        //       any of these conditions aren't possible? This should work a bit
+        //       better than using `FaceView::triangulate` until triangulation
+        //       is reworked.
+        let keys = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
+        for key in keys {
+            let mut face = self.face_mut(key).unwrap();
+            let mut offset = 0;
+            while face.arity() > 3 {
+                match face.split(ByIndex(offset), ByIndex(offset + 2)) {
+                    Ok(next) => {
+                        face = next.into_face().expect_consistent();
+                        offset = 0;
+                    }
+                    Err(GraphError::TopologyConflict) => {
+                        // Retry if the split intersected another face. See
+                        // `FaceSplitCache::from_face`.
+                        face = self.face_mut(key).unwrap();
+                        offset += 1;
+                        if offset >= face.arity() {
+                            panic!()
+                        }
+                    }
+                    _ => panic!(),
+                }
+            }
         }
     }
 
