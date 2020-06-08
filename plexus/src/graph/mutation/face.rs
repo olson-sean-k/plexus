@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
@@ -333,6 +332,31 @@ impl FaceSplitCache {
             + Consistent
             + Geometric,
     {
+        let perimeter = |face: FaceView<_>| {
+            face.vertices()
+                .keys()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .cycle()
+        };
+        // This closure determines if any arcs in the given perimeter are
+        // connected to a face other than the face initiating the split. This
+        // may occur if an adjacent face shares two or more edges with the
+        // initiating face and the source and destination vertices of the split
+        // lie along that boundary.
+        let is_intersecting = |perimeter: &[_]| {
+            for (a, b) in perimeter.iter().cloned().perimeter() {
+                let ab = (a, b).into();
+                if let Some(arc) = Rebind::<_, ArcView<_>>::rebind(face.to_ref(), ab) {
+                    if let Some(key) = arc.face().map(|face| face.key()) {
+                        if key != face.key() {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
         face.distance(source.into(), destination.into())
             .and_then(|distance| {
                 if distance <= 1 {
@@ -342,25 +366,22 @@ impl FaceSplitCache {
                     Ok(())
                 }
             })?;
-        let perimeter = face
-            .vertices()
-            .map(|vertex| vertex.key())
-            .collect::<Vec<_>>()
-            .into_iter()
-            .cycle();
-        let left = perimeter
-            .clone()
-            .tuple_windows()
+        // Note that the winding of the perimeters must be relatively oriented.
+        let left = perimeter(face.to_ref())
+            .perimeter()
             .skip_while(|(_, b)| *b != source)
             .take_while(|(a, _)| *a != destination)
             .map(|(_, b)| b)
             .collect::<Vec<_>>();
-        let right = perimeter
-            .tuple_windows()
+        let right = perimeter(face.to_ref())
+            .perimeter()
             .skip_while(|(_, b)| *b != destination)
             .take_while(|(a, _)| *a != source)
             .map(|(_, b)| b)
             .collect::<Vec<_>>();
+        if is_intersecting(&left) || is_intersecting(&right) {
+            return Err(GraphError::TopologyConflict);
+        }
         Ok(FaceSplitCache {
             cache: FaceRemoveCache::from_face(face)?,
             left,
