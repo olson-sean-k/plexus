@@ -1,7 +1,5 @@
 #! /usr/bin/env bash
 
-# TODO: This requires the `--no-deps` flag. Without it, when `rustdoc` attempts
-#       to embed the KaTeX header it will fail to resolve the path.
 # TODO: This script sets the `RUSTDOCFLAGS` environment variable to configure
 #       the KaTeX header for documentation. This cannot be accomplished with
 #       Cargo configuration yet.
@@ -10,5 +8,5 @@
 
 set -e
 
-RUSTDOCFLAGS=--html-in-header=./doc/katex-header.html \
-cargo +nightly doc --no-deps $@
+RUSTDOCFLAGS=--html-in-header=$(realpath ./doc/katex-header.html) \
+cargo +nightly doc $@
