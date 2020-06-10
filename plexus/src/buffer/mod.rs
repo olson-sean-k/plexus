@@ -602,7 +602,7 @@ where
     P: Grouping + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     Q: Into<<P as Grouping>::Item>,
-    <P as Grouping>::Item: Copy + IntoVertices + Topological<Vertex = P::Vertex>,
+    <P as Grouping>::Item: Clone + IntoVertices + Topological<Vertex = P::Vertex>,
 {
     type Error = BufferError;
 
@@ -648,7 +648,9 @@ where
         let is_out_of_bounds = {
             let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
             indices.iter().any(|polygon| {
+                // TODO: Avoid copying data here.
                 polygon
+                    .clone()
                     .into_vertices()
                     .into_iter()
                     .any(|index| index >= len)
@@ -872,18 +874,18 @@ mod tests {
     use decorum::N64;
     use nalgebra::Point3;
 
-    use crate::buffer::{MeshBuffer, MeshBuffer3, MeshBufferN};
+    use crate::buffer::{MeshBuffer, MeshBuffer3};
     use crate::graph::MeshGraph;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
-    use crate::primitive::{BoundedPolygon, Tetragon};
+    use crate::primitive::{BoundedPolygon, Tetragon, UnboundedPolygon};
 
     type E3 = Point3<N64>;
 
     #[test]
-    fn collect_topology_into_flat_buffer() {
+    fn collect_into_flat_buffer() {
         let buffer = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .triangulate()
@@ -894,13 +896,25 @@ mod tests {
     }
 
     #[test]
-    fn collect_topology_into_structured_buffer() {
+    fn collect_into_bounded_buffer() {
         let buffer = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshBufferN<u32, Point3<f64>>>();
+            .collect::<MeshBuffer<BoundedPolygon<u32>, Point3<f64>>>();
 
         assert_eq!(6, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
+    }
+
+    #[test]
+    fn collect_into_unbounded_buffer() {
+        let buffer: MeshBuffer<UnboundedPolygon<usize>, E3> =
+            Cube::new().polygons::<Position<E3>>().collect();
+
+        assert_eq!(6, buffer.as_index_slice().len());
+        assert_eq!(8, buffer.as_vertex_slice().len());
+        for polygon in buffer.as_index_slice() {
+            assert_eq!(4, polygon.arity());
+        }
     }
 
     #[test]

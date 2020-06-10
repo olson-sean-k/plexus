@@ -955,6 +955,14 @@ impl<T> IndexMut<usize> for UnboundedPolygon<T> {
     }
 }
 
+impl<T> IntoItems for UnboundedPolygon<T> {
+    type Output = SmallVec<[T; 4]>;
+
+    fn into_items(self) -> Self::Output {
+        self.0
+    }
+}
+
 impl<T> IntoIterator for UnboundedPolygon<T> {
     type IntoIter = <SmallVec<[T; 4]> as IntoIterator>::IntoIter;
     type Item = T;

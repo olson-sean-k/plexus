@@ -63,7 +63,7 @@ use theon::adjunct::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{BoundedPolygon, Topological};
+use crate::primitive::Topological;
 use crate::{Monomorphic, StaticArity};
 
 // Note that it isn't possible for `IndexBuffer` types to implement
@@ -96,17 +96,10 @@ where
 
 impl<P> IndexBuffer<P> for Vec<P>
 where
-    P: Monomorphic + Topological,
+    P: Topological,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
     type Index = P::Vertex;
-}
-
-impl<N> IndexBuffer<BoundedPolygon<N>> for Vec<BoundedPolygon<N>>
-where
-    N: Copy + Integer + NumCast + Unsigned,
-{
-    type Index = <BoundedPolygon<N> as Topological>::Vertex;
 }
 
 pub trait Push<R, P>: IndexBuffer<R>
