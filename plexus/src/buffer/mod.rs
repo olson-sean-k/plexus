@@ -174,17 +174,17 @@ pub struct MeshBuffer<R, G>
 where
     R: Grouping,
 {
-    indices: Vec<R::Item>,
+    indices: Vec<R::Group>,
     vertices: Vec<G>,
 }
 
 impl<R, G> MeshBuffer<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     pub(in crate::buffer) fn from_raw_buffers_unchecked(
-        indices: Vec<R::Item>,
+        indices: Vec<R::Group>,
         vertices: Vec<G>,
     ) -> Self {
         MeshBuffer { indices, vertices }
@@ -209,7 +209,7 @@ impl<R, G> MeshBuffer<R, G>
 where
     R: Grouping,
 {
-    pub fn into_raw_buffers(self) -> (Vec<R::Item>, Vec<G>) {
+    pub fn into_raw_buffers(self) -> (Vec<R::Group>, Vec<G>) {
         let MeshBuffer { indices, vertices } = self;
         (indices, vertices)
     }
@@ -252,7 +252,7 @@ where
     }
 
     /// Gets a slice of the index data.
-    pub fn as_index_slice(&self) -> &[R::Item] {
+    pub fn as_index_slice(&self) -> &[R::Group] {
         self.indices.as_slice()
     }
 
@@ -296,7 +296,7 @@ where
 impl<R, G> Buildable for MeshBuffer<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
     BufferBuilder<R, G>: MeshBuilder<Error = BufferError, Output = Self, Vertex = G, Facet = ()>,
 {
     type Builder = BufferBuilder<R, G>;
@@ -313,7 +313,7 @@ where
 impl<R, G> Default for MeshBuffer<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     fn default() -> Self {
         MeshBuffer {
@@ -379,7 +379,7 @@ where
     pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
     where
         R: Grouping,
-        R::Item: Into<<Flat<A, N> as Grouping>::Item>,
+        R::Group: Into<<Flat<A, N> as Grouping>::Group>,
         H: IntoGeometry<G>,
     {
         let offset = N::from(self.vertices.len()).unwrap();
@@ -428,11 +428,11 @@ where
     ///     .triangulate()
     ///     .collect::<MeshGraph<Point3<R64>>>();
     /// ```
-    pub fn into_polygons(self) -> impl Iterator<Item = <<P as Grouping>::Item as Map<G>>::Output>
+    pub fn into_polygons(self) -> impl Iterator<Item = <<P as Grouping>::Group as Map<G>>::Output>
     where
         G: Clone,
-        <P as Grouping>::Item: Map<G> + Topological,
-        <<P as Grouping>::Item as Topological>::Vertex: ToPrimitive,
+        <P as Grouping>::Group: Map<G> + Topological,
+        <<P as Grouping>::Group as Topological>::Vertex: ToPrimitive,
     {
         let (indices, vertices) = self.into_raw_buffers();
         indices
@@ -449,10 +449,11 @@ where
     pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
     where
         R: Grouping,
-        R::Item: Into<<P as Grouping>::Item>,
+        R::Group: Into<<P as Grouping>::Group>,
         H: IntoGeometry<G>,
-        <P as Grouping>::Item:
-            Copy + Map<P::Vertex, Output = <P as Grouping>::Item> + Topological<Vertex = P::Vertex>,
+        <P as Grouping>::Group: Copy
+            + Map<P::Vertex, Output = <P as Grouping>::Group>
+            + Topological<Vertex = P::Vertex>,
     {
         let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
         self.vertices.extend(
@@ -490,13 +491,13 @@ where
 impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological<Vertex = <Vec<R::Item> as IndexBuffer<R>>::Index>,
+    P: Map<<Vec<R::Group> as IndexBuffer<R>>::Index> + Topological,
+    P::Output: Topological<Vertex = <Vec<R::Group> as IndexBuffer<R>>::Index>,
     P::Vertex: IntoGeometry<G>,
-    Vec<R::Item>: Push<R, P::Output>,
-    Self: FromRawBuffers<R::Item, G>,
+    Vec<R::Group>: Push<R, P::Output>,
+    Self: FromRawBuffers<R::Group, G>,
 {
-    type Error = <Self as FromRawBuffers<R::Item, G>>::Error;
+    type Error = <Self as FromRawBuffers<R::Group, G>>::Error;
 
     fn from_indexer<I, M>(input: I, indexer: M) -> Result<Self, Self::Error>
     where
@@ -516,7 +517,7 @@ where
     R: Grouping,
     P: Topological,
     P::Vertex: Copy + Eq + Hash + IntoGeometry<G>,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
     Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
@@ -532,7 +533,7 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     M: Copy + Integer + NumCast + Unsigned,
-    <Flat<A, N> as Grouping>::Item: ToPrimitive,
+    <Flat<A, N> as Grouping>::Group: ToPrimitive,
 {
     type Error = BufferError;
 
@@ -579,7 +580,7 @@ where
     {
         let indices = indices
             .into_iter()
-            .map(|index| <<Flat<A, N> as Grouping>::Item as NumCast>::from(index).unwrap())
+            .map(|index| <<Flat<A, N> as Grouping>::Group as NumCast>::from(index).unwrap())
             .collect::<Vec<_>>();
         if indices.len() % A::USIZE != 0 {
             Err(BufferError::IndexUnaligned)
@@ -601,8 +602,8 @@ impl<P, Q, G> FromRawBuffers<Q, G> for MeshBuffer<P, G>
 where
     P: Grouping + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Q: Into<<P as Grouping>::Item>,
-    <P as Grouping>::Item: Clone + IntoVertices + Topological<Vertex = P::Vertex>,
+    Q: Into<<P as Grouping>::Group>,
+    <P as Grouping>::Group: Clone + IntoVertices + Topological<Vertex = P::Vertex>,
 {
     type Error = BufferError;
 
@@ -780,7 +781,7 @@ where
 impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat3<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
-    Trigon<N>: Grouping<Item = Trigon<N>>,
+    Trigon<N>: Grouping<Group = Trigon<N>>,
 {
     type Item = Trigon<N>;
 
@@ -817,7 +818,7 @@ where
             .into_iter()
             .chunks(U3::USIZE)
             .into_iter()
-            .map(<Self::Item as Grouping>::Item::from_items)
+            .map(<Self::Item as Grouping>::Group::from_items)
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
@@ -827,7 +828,7 @@ where
 impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat4<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
-    Tetragon<N>: Grouping<Item = Tetragon<N>>,
+    Tetragon<N>: Grouping<Group = Tetragon<N>>,
 {
     type Item = Tetragon<N>;
 
@@ -862,7 +863,7 @@ where
             .into_iter()
             .chunks(U4::USIZE)
             .into_iter()
-            .map(<Self::Item as Grouping>::Item::from_items)
+            .map(<Self::Item as Grouping>::Group::from_items)
             .collect::<Option<Vec<_>>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }

@@ -137,7 +137,7 @@ where
 }
 
 pub trait Grouping: StaticArity {
-    type Item;
+    type Group;
 }
 
 /// Flat index buffer meta-grouping.
@@ -180,7 +180,7 @@ where
 {
     /// Flat index buffers directly contain indices. These indices are
     /// implicitly grouped by the arity of the buffer.
-    type Item = N;
+    type Group = N;
 }
 
 impl<A, N> Monomorphic for Flat<A, N>
@@ -232,7 +232,7 @@ where
 {
     /// `Topological` index buffers contain $n$-gons that explicitly group their
     /// indices.
-    type Item = P;
+    type Group = P;
 }
 
 /// Vertex indexer.
@@ -466,12 +466,12 @@ where
     R: Grouping,
     P: Topological,
 {
-    fn index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
+    fn index_vertices_with<N, K, F>(self, indexer: N, f: F) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K;
 
-    fn index_vertices<N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
+    fn index_vertices<N>(self, indexer: N) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         N: Indexer<P, P::Vertex>,
     {
@@ -483,11 +483,11 @@ impl<R, P, I> GroupedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
     R: Grouping,
-    P: Map<<Vec<R::Item> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological<Vertex = <Vec<R::Item> as IndexBuffer<R>>::Index>,
-    Vec<R::Item>: Push<R, P::Output>,
+    P: Map<<Vec<R::Group> as IndexBuffer<R>>::Index> + Topological,
+    P::Output: Topological<Vertex = <Vec<R::Group> as IndexBuffer<R>>::Index>,
+    Vec<R::Group>: Push<R, P::Output>,
 {
-    fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
+    fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         N: Indexer<P, K>,
         F: Fn(&P::Vertex) -> &K,
@@ -551,7 +551,7 @@ where
 {
     /// Indexes a stream of $n$-gons into raw index and vertex buffers using the
     /// given grouping, indexer, and keying function.
-    fn index_vertices_with<R, N, K, F>(self, indexer: N, f: F) -> (Vec<R::Item>, Vec<P::Vertex>)
+    fn index_vertices_with<R, N, K, F>(self, indexer: N, f: F) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         Self: GroupedIndexVertices<R, P>,
         R: Grouping,
@@ -586,7 +586,7 @@ where
     ///     .triangulate()
     ///     .index_vertices::<Trigon<usize>, _>(HashIndexer::default());
     /// ```
-    fn index_vertices<R, N>(self, indexer: N) -> (Vec<R::Item>, Vec<P::Vertex>)
+    fn index_vertices<R, N>(self, indexer: N) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         Self: GroupedIndexVertices<R, P>,
         R: Grouping,

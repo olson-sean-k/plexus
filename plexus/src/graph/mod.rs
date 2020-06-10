@@ -1122,7 +1122,7 @@ impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
     G: GraphGeometry,
     P: Map<usize> + Polygonal,
-    P::Output: Grouping<Item = P::Output> + IntoVertices + Polygonal<Vertex = usize>,
+    P::Output: Grouping<Group = P::Output> + IntoVertices + Polygonal<Vertex = usize>,
     P::Vertex: IntoGeometry<G::Vertex>,
     Vec<P::Output>: IndexBuffer<P::Output, Index = usize>,
 {
@@ -1357,7 +1357,7 @@ where
 
 impl<P, H, G> TryFrom<MeshBuffer<P, H>> for MeshGraph<G>
 where
-    P: Grouping<Item = P> + IntoVertices + Polygonal,
+    P: Grouping<Group = P> + IntoVertices + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     H: Clone + IntoGeometry<G::Vertex>,
     G: GraphGeometry,

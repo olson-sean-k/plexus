@@ -14,20 +14,20 @@ use crate::{Arity, IntoGeometry};
 //       example, `FacetBuilder<Key = usize>`). Is it important to check for
 //       out-of-bounds indices in `insert_facet`?
 
-pub type VertexKey<R> = <Vec<<R as Grouping>::Item> as IndexBuffer<R>>::Index;
+pub type VertexKey<R> = <Vec<<R as Grouping>::Group> as IndexBuffer<R>>::Index;
 
 pub struct BufferBuilder<R, G>
 where
     R: Grouping,
 {
-    indices: Vec<R::Item>,
+    indices: Vec<R::Group>,
     vertices: Vec<G>,
 }
 
 impl<R, G> Default for BufferBuilder<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     fn default() -> Self {
         BufferBuilder {
@@ -40,7 +40,7 @@ where
 impl<R, G> ClosedInput for BufferBuilder<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     type Input = ();
 }
@@ -75,7 +75,7 @@ where
 
 impl<P, G> FacetBuilder<P::Vertex> for BufferBuilder<P, G>
 where
-    P: Grouping<Item = P> + Topological,
+    P: Grouping<Group = P> + Topological,
     P::Vertex: Copy + Hash + Integer + NumCast + Unsigned,
     Vec<P>: IndexBuffer<P>,
 {
@@ -102,7 +102,7 @@ where
     Self: SurfaceBuilder<Vertex = G, Facet = ()>,
     R: Grouping,
     VertexKey<R>: Hash,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     type Builder = Self;
 
@@ -123,7 +123,7 @@ where
     Self: FacetBuilder<VertexKey<R>, Facet = ()>,
     R: Grouping,
     VertexKey<R>: Hash,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     type Builder = Self;
     type Key = VertexKey<R>;
@@ -152,7 +152,7 @@ where
 impl<R, G> Transact<<Self as ClosedInput>::Input> for BufferBuilder<R, G>
 where
     R: Grouping,
-    Vec<R::Item>: IndexBuffer<R>,
+    Vec<R::Group>: IndexBuffer<R>,
 {
     type Output = MeshBuffer<R, G>;
     type Error = BufferError;
