@@ -80,6 +80,7 @@ use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::{Integer, One, Signed, Zero};
 use smallvec::{smallvec, SmallVec};
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use theon::adjunct::{Adjunct, Converged, Fold, FromItems, IntoItems, Map, Push, ZipMap};
@@ -109,6 +110,11 @@ pub trait Topological:
     + Sized
 {
     type Vertex;
+
+    fn try_from_slice<T>(vertices: T) -> Option<Self>
+    where
+        Self::Vertex: Copy,
+        T: AsRef<[Self::Vertex]>;
 
     /// Embeds an $n$-gon from $\Reals^2$ into $\Reals^3$.
     ///
@@ -589,6 +595,14 @@ macro_rules! impl_ngon {
 
         impl<T> Topological for NGon<[T; $n]> {
             type Vertex = T;
+
+            fn try_from_slice<U>(vertices: U) -> Option<Self>
+            where
+                Self::Vertex: Copy,
+                U: AsRef<[Self::Vertex]>,
+            {
+                vertices.as_ref().try_into().map(NGon).ok()
+            }
         }
 
         impl_zip_ngon!(composite => NGon, length => $n);
@@ -855,6 +869,19 @@ impl<T> StaticArity for BoundedPolygon<T> {
 
 impl<T> Topological for BoundedPolygon<T> {
     type Vertex = T;
+
+    fn try_from_slice<U>(vertices: U) -> Option<Self>
+    where
+        Self::Vertex: Copy,
+        U: AsRef<[Self::Vertex]>,
+    {
+        let vertices = vertices.as_ref();
+        match vertices.len() {
+            3 => Some(BoundedPolygon::N3(NGon(vertices.try_into().unwrap()))),
+            4 => Some(BoundedPolygon::N4(NGon(vertices.try_into().unwrap()))),
+            _ => None,
+        }
+    }
 }
 
 /// Unbounded polymorphic $n$-gon.
@@ -869,20 +896,6 @@ impl<T> Topological for BoundedPolygon<T> {
 pub struct UnboundedPolygon<T>(SmallVec<[T; 4]>);
 
 impl<T> UnboundedPolygon<T> {
-    pub fn try_from_slice<U>(vertices: U) -> Option<Self>
-    where
-        T: Clone,
-        U: AsRef<[T]>,
-    {
-        let vertices = vertices.as_ref();
-        if vertices.len() > 2 {
-            Some(UnboundedPolygon(SmallVec::from(vertices)))
-        }
-        else {
-            None
-        }
-    }
-
     pub fn trigon(a: T, b: T, c: T) -> Self {
         UnboundedPolygon(smallvec![a, b, c])
     }
@@ -993,6 +1006,20 @@ impl<T> StaticArity for UnboundedPolygon<T> {
 
 impl<T> Topological for UnboundedPolygon<T> {
     type Vertex = T;
+
+    fn try_from_slice<U>(vertices: U) -> Option<Self>
+    where
+        Self::Vertex: Copy,
+        U: AsRef<[Self::Vertex]>,
+    {
+        let vertices = vertices.as_ref();
+        if vertices.len() > 2 {
+            Some(UnboundedPolygon(SmallVec::from(vertices)))
+        }
+        else {
+            None
+        }
+    }
 }
 
 macro_rules! impl_unbounded_polygon {
