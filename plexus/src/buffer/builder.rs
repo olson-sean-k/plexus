@@ -1,15 +1,13 @@
-use arrayvec::Array;
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
-use theon::adjunct::FromItems;
 use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::index::{Flat, Grouping, IndexBuffer};
-use crate::primitive::{BoundedPolygon, NGon, Topological};
+use crate::primitive::Topological;
 use crate::transact::{ClosedInput, Transact};
-use crate::IntoGeometry;
+use crate::{Arity, IntoGeometry};
 
 // TODO: It should not be possible to manufacture keys without placing
 //       additional constraints on the type bounds of `FacetBuilder` (for
@@ -75,65 +73,27 @@ where
     }
 }
 
-impl<A, G> FacetBuilder<A::Item> for BufferBuilder<NGon<A>, G>
+impl<P, G> FacetBuilder<P::Vertex> for BufferBuilder<P, G>
 where
-    A: Array,
-    A::Item: Copy + Hash + Integer + NumCast + Unsigned,
-    NGon<A>: FromItems<Item = A::Item> + Grouping<Item = NGon<A>>,
-    Vec<NGon<A>>: IndexBuffer<NGon<A>>,
+    P: Grouping<Item = P> + Topological,
+    P::Vertex: Copy + Hash + Integer + NumCast + Unsigned,
+    Vec<P>: IndexBuffer<P>,
 {
     type Facet = ();
     type Key = ();
 
     fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
     where
-        T: AsRef<[A::Item]>,
+        T: AsRef<[P::Vertex]>,
         U: IntoGeometry<Self::Facet>,
     {
-        let keys = keys.as_ref();
-        if keys.len() == A::CAPACITY {
-            let ngon = NGon::<A>::from_items(keys.iter().cloned()).unwrap();
-            self.indices.push(ngon);
-            Ok(())
-        }
-        else {
-            Err(BufferError::ArityConflict {
-                expected: A::CAPACITY,
-                actual: keys.len(),
+        let arity = keys.as_ref().len();
+        P::try_from_slice(keys)
+            .ok_or_else(|| BufferError::ArityConflict {
+                expected: P::ARITY.into_interval().0,
+                actual: arity,
             })
-        }
-    }
-}
-
-impl<K, G> FacetBuilder<K> for BufferBuilder<BoundedPolygon<K>, G>
-where
-    K: Copy + Hash + Integer + NumCast + Unsigned,
-    BoundedPolygon<K>: Grouping<Item = BoundedPolygon<K>>,
-    Vec<BoundedPolygon<K>>: IndexBuffer<BoundedPolygon<K>>,
-{
-    type Facet = ();
-    type Key = ();
-
-    fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
-    where
-        T: AsRef<[<BoundedPolygon<K> as Topological>::Vertex]>,
-        U: IntoGeometry<Self::Facet>,
-    {
-        let keys = keys.as_ref();
-        let polygon = match keys.len() {
-            3 => Ok(BoundedPolygon::N3(
-                NGon::from_items(keys.iter().cloned()).unwrap(),
-            )),
-            4 => Ok(BoundedPolygon::N4(
-                NGon::from_items(keys.iter().cloned()).unwrap(),
-            )),
-            _ => Err(BufferError::ArityConflict {
-                expected: 0, // TODO: Cannot report a non-uniform arity.
-                actual: keys.len(),
-            }),
-        }?;
-        self.indices.push(polygon);
-        Ok(())
+            .map(|polygon| self.indices.push(polygon))
     }
 }
 
