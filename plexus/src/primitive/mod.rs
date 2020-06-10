@@ -79,7 +79,7 @@ use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::{Integer, One, Signed, Zero};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use theon::adjunct::{Adjunct, Converged, Fold, FromItems, IntoItems, Map, Push, ZipMap};
@@ -701,51 +701,52 @@ impl<T> Rotate for Tetragon<T> {
     }
 }
 
-/// Polymorphic $n$-gon.
+/// Bounded polymorphic $n$-gon.
 ///
-/// `Polygon` represents an $n$-gon with three or more edges where $n$ may
-/// change at runtime. `Polygon` does not support all polygons that can be
-/// represented by `NGon`; only common arities used by generators are provided.
+/// `BoundedPolygon` represents an $n$-gon with at least three edges by
+/// enumerating `NGon`s. As such, $n$ is bounded, because the enumeration only
+/// supports a limited set of polygons. Only common arities used by generators
+/// are provided.
 #[derive(Clone, Copy, Debug)]
-pub enum Polygon<T> {
+pub enum BoundedPolygon<T> {
     N3(Trigon<T>),
     N4(Tetragon<T>),
 }
 
-impl<T> AsRef<[T]> for Polygon<T> {
+impl<T> AsRef<[T]> for BoundedPolygon<T> {
     fn as_ref(&self) -> &[T] {
         match *self {
-            Polygon::N3(ref trigon) => trigon.as_ref(),
-            Polygon::N4(ref tetragon) => tetragon.as_ref(),
+            BoundedPolygon::N3(ref trigon) => trigon.as_ref(),
+            BoundedPolygon::N4(ref tetragon) => tetragon.as_ref(),
         }
     }
 }
 
-impl<T> AsMut<[T]> for Polygon<T> {
+impl<T> AsMut<[T]> for BoundedPolygon<T> {
     fn as_mut(&mut self) -> &mut [T] {
         match *self {
-            Polygon::N3(ref mut trigon) => trigon.as_mut(),
-            Polygon::N4(ref mut tetragon) => tetragon.as_mut(),
+            BoundedPolygon::N3(ref mut trigon) => trigon.as_mut(),
+            BoundedPolygon::N4(ref mut tetragon) => tetragon.as_mut(),
         }
     }
 }
 
-impl<T> Adjunct for Polygon<T> {
+impl<T> Adjunct for BoundedPolygon<T> {
     type Item = T;
 }
 
-impl<T> DynamicArity for Polygon<T> {
+impl<T> DynamicArity for BoundedPolygon<T> {
     type Dynamic = usize;
 
     fn arity(&self) -> Self::Dynamic {
         match *self {
-            Polygon::N3(..) => Trigon::<T>::ARITY,
-            Polygon::N4(..) => Tetragon::<T>::ARITY,
+            BoundedPolygon::N3(..) => Trigon::<T>::ARITY,
+            BoundedPolygon::N4(..) => Tetragon::<T>::ARITY,
         }
     }
 }
 
-impl<T> Fold for Polygon<T> {
+impl<T> Fold for BoundedPolygon<T> {
     fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
         F: FnMut(U, Self::Item) -> U,
@@ -757,62 +758,62 @@ impl<T> Fold for Polygon<T> {
     }
 }
 
-impl<T> From<[T; 3]> for Polygon<T> {
+impl<T> From<[T; 3]> for BoundedPolygon<T> {
     fn from(array: [T; 3]) -> Self {
-        Polygon::N3(array.into())
+        BoundedPolygon::N3(array.into())
     }
 }
 
-impl<T> From<[T; 4]> for Polygon<T> {
+impl<T> From<[T; 4]> for BoundedPolygon<T> {
     fn from(array: [T; 4]) -> Self {
-        Polygon::N4(array.into())
+        BoundedPolygon::N4(array.into())
     }
 }
 
-impl<T> From<Trigon<T>> for Polygon<T> {
+impl<T> From<Trigon<T>> for BoundedPolygon<T> {
     fn from(trigon: Trigon<T>) -> Self {
-        Polygon::N3(trigon)
+        BoundedPolygon::N3(trigon)
     }
 }
 
-impl<T> From<Tetragon<T>> for Polygon<T> {
+impl<T> From<Tetragon<T>> for BoundedPolygon<T> {
     fn from(tetragon: Tetragon<T>) -> Self {
-        Polygon::N4(tetragon)
+        BoundedPolygon::N4(tetragon)
     }
 }
 
-impl<T> Index<usize> for Polygon<T> {
+impl<T> Index<usize> for BoundedPolygon<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
         match *self {
-            Polygon::N3(ref trigon) => trigon.index(index),
-            Polygon::N4(ref tetragon) => tetragon.index(index),
+            BoundedPolygon::N3(ref trigon) => trigon.index(index),
+            BoundedPolygon::N4(ref tetragon) => tetragon.index(index),
         }
     }
 }
 
-impl<T> IndexMut<usize> for Polygon<T> {
+impl<T> IndexMut<usize> for BoundedPolygon<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match *self {
-            Polygon::N3(ref mut trigon) => trigon.index_mut(index),
-            Polygon::N4(ref mut tetragon) => tetragon.index_mut(index),
+            BoundedPolygon::N3(ref mut trigon) => trigon.index_mut(index),
+            BoundedPolygon::N4(ref mut tetragon) => tetragon.index_mut(index),
         }
     }
 }
 
-impl<T> IntoItems for Polygon<T> {
+impl<T> IntoItems for BoundedPolygon<T> {
     type Output = SmallVec<[T; 4]>;
 
     fn into_items(self) -> Self::Output {
         match self {
-            Polygon::N3(trigon) => trigon.into_items().into_iter().collect(),
-            Polygon::N4(tetragon) => tetragon.into_items().into_iter().collect(),
+            BoundedPolygon::N3(trigon) => trigon.into_items().into_iter().collect(),
+            BoundedPolygon::N4(tetragon) => tetragon.into_items().into_iter().collect(),
         }
     }
 }
 
-impl<T> IntoIterator for Polygon<T> {
+impl<T> IntoIterator for BoundedPolygon<T> {
     type Item = T;
     type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
 
@@ -821,40 +822,187 @@ impl<T> IntoIterator for Polygon<T> {
     }
 }
 
-impl<T, U> Map<U> for Polygon<T> {
-    type Output = Polygon<U>;
+impl<T, U> Map<U> for BoundedPolygon<T> {
+    type Output = BoundedPolygon<U>;
 
     fn map<F>(self, f: F) -> Self::Output
     where
         F: FnMut(Self::Item) -> U,
     {
         match self {
-            Polygon::N3(trigon) => Polygon::N3(trigon.map(f)),
-            Polygon::N4(tetragon) => Polygon::N4(tetragon.map(f)),
+            BoundedPolygon::N3(trigon) => BoundedPolygon::N3(trigon.map(f)),
+            BoundedPolygon::N4(tetragon) => BoundedPolygon::N4(tetragon.map(f)),
         }
     }
 }
 
-impl<T> Polygonal for Polygon<T> {}
+impl<T> Polygonal for BoundedPolygon<T> {}
 
-impl<T> Rotate for Polygon<T> {
+impl<T> Rotate for BoundedPolygon<T> {
     fn rotate(self, n: isize) -> Self {
         match self {
-            Polygon::N3(trigon) => Polygon::N3(trigon.rotate(n)),
-            Polygon::N4(tetragon) => Polygon::N4(tetragon.rotate(n)),
+            BoundedPolygon::N3(trigon) => BoundedPolygon::N3(trigon.rotate(n)),
+            BoundedPolygon::N4(tetragon) => BoundedPolygon::N4(tetragon.rotate(n)),
         }
     }
 }
 
-impl<T> StaticArity for Polygon<T> {
+impl<T> StaticArity for BoundedPolygon<T> {
     type Static = (usize, usize);
 
     const ARITY: Self::Static = (3, 4);
 }
 
-impl<T> Topological for Polygon<T> {
+impl<T> Topological for BoundedPolygon<T> {
     type Vertex = T;
 }
+
+/// Unbounded polymorphic $n$-gon.
+///
+/// `UnboundedPolygon` represents an $n$-gon with three or more edges. Unlike
+/// `BoundedPolygon`, there is no limit to the arity of polygons that
+/// `UnboundedPolygon` may represent.
+///
+/// It is not possible to trivially convert an `UnboundedPolygon` into another
+/// well-formed topological type such as `NGon`.
+#[derive(Clone, Debug)]
+pub struct UnboundedPolygon<T>(SmallVec<[T; 4]>);
+
+impl<T> UnboundedPolygon<T> {
+    pub fn try_from_slice<U>(vertices: U) -> Option<Self>
+    where
+        T: Clone,
+        U: AsRef<[T]>,
+    {
+        let vertices = vertices.as_ref();
+        if vertices.len() > 2 {
+            Some(UnboundedPolygon(SmallVec::from(vertices)))
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn trigon(a: T, b: T, c: T) -> Self {
+        UnboundedPolygon(smallvec![a, b, c])
+    }
+
+    pub fn tetragon(a: T, b: T, c: T, d: T) -> Self {
+        UnboundedPolygon(smallvec![a, b, c, d])
+    }
+
+    pub fn positions(&self) -> UnboundedPolygon<&Position<T>>
+    where
+        T: AsPosition,
+    {
+        UnboundedPolygon(self.0.iter().map(|vertex| vertex.as_position()).collect())
+    }
+}
+
+impl<'a, T> UnboundedPolygon<&'a T>
+where
+    T: Clone,
+{
+    pub fn cloned(self) -> UnboundedPolygon<T> {
+        self.map(|vertex| vertex.clone())
+    }
+}
+
+impl<T> Adjunct for UnboundedPolygon<T> {
+    type Item = T;
+}
+
+impl<T> AsRef<[T]> for UnboundedPolygon<T> {
+    fn as_ref(&self) -> &[T] {
+        self.0.as_ref()
+    }
+}
+
+impl<T> AsMut<[T]> for UnboundedPolygon<T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self.0.as_mut()
+    }
+}
+
+impl<T> DynamicArity for UnboundedPolygon<T> {
+    type Dynamic = usize;
+
+    fn arity(&self) -> Self::Dynamic {
+        self.0.len()
+    }
+}
+
+impl<T> From<BoundedPolygon<T>> for UnboundedPolygon<T>
+where
+    T: Clone,
+{
+    fn from(polygon: BoundedPolygon<T>) -> Self {
+        UnboundedPolygon(SmallVec::from(polygon.as_ref()))
+    }
+}
+
+impl<T> Index<usize> for UnboundedPolygon<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.0.index(index)
+    }
+}
+
+impl<T> IndexMut<usize> for UnboundedPolygon<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.index_mut(index)
+    }
+}
+
+impl<T> IntoIterator for UnboundedPolygon<T> {
+    type IntoIter = <SmallVec<[T; 4]> as IntoIterator>::IntoIter;
+    type Item = T;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<T, U> Map<U> for UnboundedPolygon<T> {
+    type Output = UnboundedPolygon<U>;
+
+    fn map<F>(self, f: F) -> Self::Output
+    where
+        F: FnMut(Self::Item) -> U,
+    {
+        UnboundedPolygon(self.0.into_iter().map(f).collect())
+    }
+}
+
+impl<T> Polygonal for UnboundedPolygon<T> {}
+
+impl<T> StaticArity for UnboundedPolygon<T> {
+    type Static = (usize, Option<usize>);
+
+    const ARITY: Self::Static = (3, None);
+}
+
+impl<T> Topological for UnboundedPolygon<T> {
+    type Vertex = T;
+}
+
+macro_rules! impl_unbounded_polygon {
+    (length => $n:expr) => (
+        impl<T> From<NGon<[T; $n]>> for UnboundedPolygon<T>
+        where
+            T: Clone,
+        {
+            fn from(ngon: NGon<[T; $n]>) -> Self {
+                UnboundedPolygon(SmallVec::from(ngon.as_ref()))
+            }
+        }
+    );
+    (lengths => $($n:expr),*$(,)?) => (
+        $(impl_unbounded_polygon!(length => $n);)*
+    );
+}
+impl_unbounded_polygon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 /// Zips the vertices and topologies from multiple iterators into a single
 /// iterator.

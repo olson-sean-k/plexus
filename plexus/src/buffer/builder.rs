@@ -7,7 +7,7 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::index::{Flat, Grouping, IndexBuffer};
-use crate::primitive::{NGon, Polygon, Topological};
+use crate::primitive::{BoundedPolygon, NGon, Topological};
 use crate::transact::{ClosedInput, Transact};
 use crate::IntoGeometry;
 
@@ -105,24 +105,28 @@ where
     }
 }
 
-impl<K, G> FacetBuilder<K> for BufferBuilder<Polygon<K>, G>
+impl<K, G> FacetBuilder<K> for BufferBuilder<BoundedPolygon<K>, G>
 where
     K: Copy + Hash + Integer + NumCast + Unsigned,
-    Polygon<K>: Grouping<Item = Polygon<K>>,
-    Vec<Polygon<K>>: IndexBuffer<Polygon<K>>,
+    BoundedPolygon<K>: Grouping<Item = BoundedPolygon<K>>,
+    Vec<BoundedPolygon<K>>: IndexBuffer<BoundedPolygon<K>>,
 {
     type Facet = ();
     type Key = ();
 
     fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
     where
-        T: AsRef<[<Polygon<K> as Topological>::Vertex]>,
+        T: AsRef<[<BoundedPolygon<K> as Topological>::Vertex]>,
         U: IntoGeometry<Self::Facet>,
     {
         let keys = keys.as_ref();
         let polygon = match keys.len() {
-            3 => Ok(Polygon::N3(NGon::from_items(keys.iter().cloned()).unwrap())),
-            4 => Ok(Polygon::N4(NGon::from_items(keys.iter().cloned()).unwrap())),
+            3 => Ok(BoundedPolygon::N3(
+                NGon::from_items(keys.iter().cloned()).unwrap(),
+            )),
+            4 => Ok(BoundedPolygon::N4(
+                NGon::from_items(keys.iter().cloned()).unwrap(),
+            )),
             _ => Err(BufferError::ArityConflict {
                 expected: 0, // TODO: Cannot report a non-uniform arity.
                 actual: keys.len(),

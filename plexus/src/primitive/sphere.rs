@@ -37,7 +37,7 @@ use crate::primitive::generate::{
     AttributeGenerator, AttributePolygonGenerator, AttributeVertexGenerator, Generator,
     IndexingPolygonGenerator, Normal, PolygonGenerator, Position,
 };
-use crate::primitive::{Polygon, Tetragon, Trigon};
+use crate::primitive::{BoundedPolygon, Tetragon, Trigon};
 
 #[derive(Clone, Copy)]
 pub struct Bounds<S>
@@ -169,7 +169,7 @@ impl<S> AttributePolygonGenerator<Normal<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    type Output = Polygon<Unit<Vector<S>>>;
+    type Output = BoundedPolygon<Unit<Vector<S>>>;
 
     fn polygon_from(&self, _: &Self::State, index: usize) -> Self::Output {
         AttributePolygonGenerator::<Position<S>>::polygon_from(self, &Default::default(), index)
@@ -180,7 +180,7 @@ where
 }
 
 impl<S> IndexingPolygonGenerator<Normal<S>> for UvSphere {
-    type Output = Polygon<usize>;
+    type Output = BoundedPolygon<usize>;
 
     fn indexing_polygon(&self, index: usize) -> Self::Output {
         IndexingPolygonGenerator::<Position<S>>::indexing_polygon(self, index)
@@ -223,7 +223,7 @@ impl<S> AttributePolygonGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
 {
-    type Output = Polygon<S>;
+    type Output = BoundedPolygon<S>;
 
     fn polygon_from(&self, state: &Self::State, index: usize) -> Self::Output {
         // Prevent floating point rounding errors by wrapping the incremented
@@ -278,7 +278,7 @@ where
 }
 
 impl<S> IndexingPolygonGenerator<Position<S>> for UvSphere {
-    type Output = Polygon<usize>;
+    type Output = BoundedPolygon<usize>;
 
     fn indexing_polygon(&self, index: usize) -> Self::Output {
         let (u, v) = self.map_polygon_index(index);

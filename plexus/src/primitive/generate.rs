@@ -71,12 +71,12 @@ impl<S> Attribute for Normal<S> {}
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
-/// use plexus::primitive::Polygon;
+/// use plexus::primitive::BoundedPolygon;
 ///
 /// let (indices, positions) = Cube::new()
 ///     .polygons::<Position<Point3<N64>>>()
 ///     .triangulate()
-///     .index_vertices::<Polygon<usize>, _>(HashIndexer::default());
+///     .index_vertices::<BoundedPolygon<usize>, _>(HashIndexer::default());
 /// ```
 pub struct Position<S = ()> {
     phantom: PhantomData<S>,

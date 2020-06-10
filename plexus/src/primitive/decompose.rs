@@ -9,7 +9,7 @@ use std::iter::IntoIterator;
 use theon::adjunct::IntoItems;
 use theon::ops::Interpolate;
 
-use crate::primitive::{Edge, Polygon, Polygonal, Tetragon, Topological, Trigon};
+use crate::primitive::{BoundedPolygon, Edge, Polygonal, Tetragon, Topological, Trigon};
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -177,7 +177,7 @@ where
     }
 }
 
-impl<T> IntoEdges for Polygon<T>
+impl<T> IntoEdges for BoundedPolygon<T>
 where
     T: Clone,
 {
@@ -185,8 +185,8 @@ where
 
     fn into_edges(self) -> Self::Output {
         match self {
-            Polygon::N3(trigon) => trigon.into_edges().into_iter().collect(),
-            Polygon::N4(tetragon) => tetragon.into_edges().into_iter().collect(),
+            BoundedPolygon::N3(trigon) => trigon.into_edges().into_iter().collect(),
+            BoundedPolygon::N4(tetragon) => tetragon.into_edges().into_iter().collect(),
         }
     }
 }
@@ -211,7 +211,7 @@ where
     }
 }
 
-impl<T> IntoTrigons for Polygon<T>
+impl<T> IntoTrigons for BoundedPolygon<T>
 where
     T: Clone,
 {
@@ -219,8 +219,8 @@ where
 
     fn into_trigons(self) -> Self::Output {
         match self {
-            Polygon::N3(trigon) => trigon.into_trigons().into_iter().collect(),
-            Polygon::N4(tetragon) => tetragon.into_trigons().into_iter().collect(),
+            BoundedPolygon::N3(trigon) => trigon.into_trigons().into_iter().collect(),
+            BoundedPolygon::N4(tetragon) => tetragon.into_trigons().into_iter().collect(),
         }
     }
 }
@@ -276,7 +276,7 @@ where
     }
 }
 
-impl<T> IntoSubdivisions for Polygon<T>
+impl<T> IntoSubdivisions for BoundedPolygon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
@@ -284,12 +284,12 @@ where
 
     fn into_subdivisions(self) -> Self::Output {
         match self {
-            Polygon::N3(trigon) => trigon
+            BoundedPolygon::N3(trigon) => trigon
                 .into_subdivisions()
                 .into_iter()
                 .map(|trigon| trigon.into())
                 .collect(),
-            Polygon::N4(tetragon) => tetragon
+            BoundedPolygon::N4(tetragon) => tetragon
                 .into_subdivisions()
                 .into_iter()
                 .map(|tetragon| tetragon.into())

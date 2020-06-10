@@ -21,8 +21,9 @@
 //!
 //! Structured index buffers contain sub-structures that explicitly group
 //! indices, such as `Vec<Trigon<usize>>`. Structured index buffers typically
-//! contain `Trigon`s, `Tetragon`s, or `Polygon`s. Notably, `Polygon` can
-//! describe the topology of a mesh even if its arity is non-constant.
+//! contain `Trigon`s, `Tetragon`s, or `BoundedPolygon`s. Notably,
+//! `BoundedPolygon` can describe the topology of a mesh even if its arity is
+//! non-constant.
 //!
 //! The primary interface of this module is the `IndexVertices` and
 //! `CollectWithIndexer` traits along with the `HashIndexer` and `LruIndexer`
@@ -62,7 +63,7 @@ use theon::adjunct::Map;
 use typenum::{NonZero, U3, U4};
 
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Polygon, Topological};
+use crate::primitive::{BoundedPolygon, Topological};
 use crate::{Monomorphic, StaticArity};
 
 // Note that it isn't possible for `IndexBuffer` types to implement
@@ -101,11 +102,11 @@ where
     type Index = P::Vertex;
 }
 
-impl<N> IndexBuffer<Polygon<N>> for Vec<Polygon<N>>
+impl<N> IndexBuffer<BoundedPolygon<N>> for Vec<BoundedPolygon<N>>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
-    type Index = <Polygon<N> as Topological>::Vertex;
+    type Index = <BoundedPolygon<N> as Topological>::Vertex;
 }
 
 pub trait Push<R, P>: IndexBuffer<R>
@@ -218,7 +219,7 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 /// quadrilaterals is needed.
 ///
 /// Unlike flat groupings, structured groupings can be specified directly using
-/// a topological primitive type like `Trigon<usize>` or `Polygon<usize>`.
+/// a topological primitive type like `Trigon<usize>` or `BoundedPolygon<usize>`.
 ///
 /// # Examples
 ///
@@ -227,9 +228,9 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 /// ```rust
 /// use plexus::buffer::MeshBuffer;
 /// use plexus::prelude::*;
-/// use plexus::primitive::Polygon;
+/// use plexus::primitive::BoundedPolygon;
 ///
-/// let mut buffer = MeshBuffer::<Polygon<usize>, (f64, f64, f64)>::default();
+/// let mut buffer = MeshBuffer::<BoundedPolygon<usize>, (f64, f64, f64)>::default();
 /// ```
 impl<P> Grouping for P
 where

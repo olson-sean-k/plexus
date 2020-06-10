@@ -890,7 +890,7 @@ where
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
-    /// use plexus::primitive::Polygon;
+    /// use plexus::primitive::BoundedPolygon;
     /// use theon::space::Vector;
     ///
     /// type E3 = Point3<N64>;
@@ -904,7 +904,7 @@ where
     ///     .polygons::<Position<E3>>()
     ///     .collect::<MeshGraph<E3>>();
     ///
-    /// let buffer: MeshBuffer<Polygon<usize>, _> = graph
+    /// let buffer: MeshBuffer<BoundedPolygon<usize>, _> = graph
     ///     .to_mesh_by_face_with(|face, vertex| Vertex {
     ///         position: *vertex.position(),
     ///         normal: face.normal().unwrap(),

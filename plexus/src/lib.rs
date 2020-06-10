@@ -152,11 +152,11 @@ pub trait DynamicArity: StaticArity {
 /// (triangle) with an arity of three. [`Trigon`] values always have an arity of
 /// three and types composed of only [`Trigon`]s have a compound arity of three.
 ///
-/// This contrasts _polymorphic_ types like [`Polygon`], which have an interval
-/// arity at the type-level and a singular but varying arity for values (because
-/// a [`Polygon`] value may be either a trigon or tertragon).
+/// This contrasts _polymorphic_ types like [`BoundedPolygon`], which have an
+/// interval arity at the type-level and a singular but varying arity for values
+/// (because a [`BoundedPolygon`] value may be either a trigon or tertragon).
 ///
-/// [`Polygon`]: primitive/enum.Polygon.html
+/// [`BoundedPolygon`]: primitive/enum.BoundedPolygon.html
 /// [`Trigon`]: primitive/type.Trigon.html
 pub trait Monomorphic: StaticArity<Static = usize> {}
 

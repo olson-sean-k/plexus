@@ -94,7 +94,7 @@ use crate::index::{
     Push,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{Polygon, Polygonal, Tetragon, Topological, Trigon};
+use crate::primitive::{BoundedPolygon, Polygonal, Tetragon, Topological, Trigon};
 use crate::IntoGeometry;
 use crate::{DynamicArity, MeshArity, Monomorphic, StaticArity};
 
@@ -118,7 +118,7 @@ pub type MeshBuffer3<N, G> = MeshBuffer<Flat3<N>, G>;
 pub type MeshBuffer4<N, G> = MeshBuffer<Flat4<N>, G>;
 
 /// Alias for a structured and polygonal `MeshBuffer`.
-pub type MeshBufferN<N, G> = MeshBuffer<Polygon<N>, G>;
+pub type MeshBufferN<N, G> = MeshBuffer<BoundedPolygon<N>, G>;
 
 pub trait FromRawBuffers<N, G>: Sized {
     type Error: Debug;
@@ -347,14 +347,14 @@ where
     }
 }
 
-impl<N, G> DynamicArity for MeshBuffer<Polygon<N>, G>
+impl<N, G> DynamicArity for MeshBuffer<BoundedPolygon<N>, G>
 where
     N: Copy + Integer + NumCast + Unsigned,
 {
     type Dynamic = MeshArity;
 
     fn arity(&self) -> Self::Dynamic {
-        MeshArity::from_components::<Polygon<N>, _>(self.indices.iter())
+        MeshArity::from_components::<BoundedPolygon<N>, _>(self.indices.iter())
     }
 }
 
@@ -470,9 +470,9 @@ where
     }
 }
 
-impl<E, G> FromEncoding<E> for MeshBuffer<Polygon<usize>, G>
+impl<E, G> FromEncoding<E> for MeshBuffer<BoundedPolygon<usize>, G>
 where
-    E: FaceDecoder<Face = (), Index = Polygon<usize>> + VertexDecoder,
+    E: FaceDecoder<Face = (), Index = BoundedPolygon<usize>> + VertexDecoder,
     E::Vertex: IntoGeometry<G>,
 {
     type Error = BufferError;
@@ -878,7 +878,7 @@ mod tests {
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
-    use crate::primitive::{Polygon, Tetragon};
+    use crate::primitive::{BoundedPolygon, Tetragon};
 
     type E3 = Point3<N64>;
 
@@ -907,7 +907,7 @@ mod tests {
     fn append_structured_buffers() {
         let mut buffer = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshBuffer<Polygon<u32>, Point3<f64>>>();
+            .collect::<MeshBuffer<BoundedPolygon<u32>, Point3<f64>>>();
         buffer.append(
             &mut Cube::new()
                 .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
