@@ -94,7 +94,9 @@ use crate::index::{
     Push,
 };
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::{BoundedPolygon, Polygonal, Tetragon, Topological, Trigon};
+use crate::primitive::{
+    BoundedPolygon, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
+};
 use crate::IntoGeometry;
 use crate::{DynamicArity, MeshArity, Monomorphic, StaticArity};
 
@@ -108,17 +110,22 @@ pub enum BufferError {
     ArityConflict { expected: usize, actual: usize },
 }
 
-/// Alias for a flat and triangular `MeshBuffer`.
+/// Alias for a triangular `MeshBuffer`.
 ///
-/// For most applications, this alias can be used to avoid more complex and
-/// verbose type parameters. Flat and triangular index buffers are most common
-/// and should generally be preferred.
-pub type MeshBuffer3<N, G> = MeshBuffer<Flat3<N>, G>;
-/// Alias for a flat and quadrilateral `MeshBuffer`.
-pub type MeshBuffer4<N, G> = MeshBuffer<Flat4<N>, G>;
+/// The index buffer for this type contains `Trigon`s. This should be preferred
+/// over flat index buffers, which are more prone to error. For applications
+/// where a flat index buffer is necessary, consider `IntoFlatIndex` or the
+/// `Flat3` meta-grouping.
+pub type MeshBuffer3<N, G> = MeshBuffer<Trigon<N>, G>;
 
-/// Alias for a structured and polygonal `MeshBuffer`.
-pub type MeshBufferN<N, G> = MeshBuffer<BoundedPolygon<N>, G>;
+/// Alias for a quadrilateral `MeshBuffer`.
+///
+/// The index buffer for this type contains `Tetragon`s. This should be
+/// preferred over flat index buffers, which are more prone to error.
+pub type MeshBuffer4<N, G> = MeshBuffer<Tetragon<N>, G>;
+
+/// Alias for a `MeshBuffer` that supports arbitrary polygons.
+pub type MeshBufferN<N, G> = MeshBuffer<UnboundedPolygon<N>, G>;
 
 pub trait FromRawBuffers<N, G>: Sized {
     type Error: Debug;
@@ -413,20 +420,22 @@ where
     /// #
     /// use decorum::R64;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBufferN;
+    /// use plexus::buffer::MeshBuffer;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::primitive::BoundedPolygon;
     ///
-    /// let buffer = UvSphere::new(8, 8)
-    ///     .polygons::<Position<Point3<R64>>>()
-    ///     .collect::<MeshBufferN<usize, Point3<R64>>>();
-    /// let graph = buffer
+    /// type E3 = Point3<R64>;
+    ///
+    /// let buffer: MeshBuffer<BoundedPolygon<usize>, E3> =
+    ///     UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
+    /// let graph: MeshGraph<E3> = buffer
     ///     .into_polygons()
     ///     .map_vertices(|position| position * 2.0.into())
     ///     .triangulate()
-    ///     .collect::<MeshGraph<Point3<R64>>>();
+    ///     .collect();
     /// ```
     pub fn into_polygons(self) -> impl Iterator<Item = <<P as Grouping>::Group as Map<G>>::Output>
     where
@@ -451,9 +460,8 @@ where
         R: Grouping,
         R::Group: Into<<P as Grouping>::Group>,
         H: IntoGeometry<G>,
-        <P as Grouping>::Group: Copy
-            + Map<P::Vertex, Output = <P as Grouping>::Group>
-            + Topological<Vertex = P::Vertex>,
+        <P as Grouping>::Group:
+            Map<P::Vertex, Output = <P as Grouping>::Group> + Topological<Vertex = P::Vertex>,
     {
         let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
         self.vertices.extend(
@@ -554,7 +562,7 @@ where
     /// #
     /// use decorum::N64;
     /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::buffer::MeshBuffer;
     /// use plexus::index::{Flat3, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive;
@@ -571,7 +579,7 @@ where
     /// ))
     /// .triangulate()
     /// .index_vertices::<Flat3, _>(HashIndexer::default());
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(indices, vertices).unwrap();
+    /// let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, vertices).unwrap();
     /// ```
     fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
@@ -794,17 +802,18 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::index::Flat3;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>()
     ///         .triangulate()
     ///         .vertices(),
-    ///     cube.vertices::<Position<Point3<f32>>>(),
+    ///     cube.vertices::<Position<Point3<f64>>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
@@ -848,7 +857,7 @@ where
     ///
     /// let cube = Cube::new();
     /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
-    ///     cube.indexing_polygons::<Position>().vertices(),
+    ///     cube.indexing_polygons::<Position>(),
     ///     cube.vertices::<Position<Point3<f64>>>(),
     /// )
     /// .unwrap();
@@ -875,22 +884,23 @@ mod tests {
     use decorum::N64;
     use nalgebra::Point3;
 
-    use crate::buffer::{MeshBuffer, MeshBuffer3};
+    use crate::buffer::{MeshBuffer, MeshBuffer4, MeshBufferN};
     use crate::graph::MeshGraph;
+    use crate::index::Flat3;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
-    use crate::primitive::{BoundedPolygon, Tetragon, UnboundedPolygon};
+    use crate::primitive::{BoundedPolygon, UnboundedPolygon};
 
     type E3 = Point3<N64>;
 
     #[test]
     fn collect_into_flat_buffer() {
-        let buffer = UvSphere::new(3, 2)
+        let buffer: MeshBuffer<Flat3<usize>, E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .triangulate()
-            .collect::<MeshBuffer3<u32, Point3<f64>>>();
+            .collect();
 
         assert_eq!(18, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -898,9 +908,9 @@ mod tests {
 
     #[test]
     fn collect_into_bounded_buffer() {
-        let buffer = UvSphere::new(3, 2)
+        let buffer: MeshBuffer<BoundedPolygon<usize>, E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshBuffer<BoundedPolygon<u32>, Point3<f64>>>();
+            .collect();
 
         assert_eq!(6, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
@@ -920,13 +930,13 @@ mod tests {
 
     #[test]
     fn append_structured_buffers() {
-        let mut buffer = UvSphere::new(3, 2)
+        let mut buffer: MeshBufferN<usize, E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshBuffer<BoundedPolygon<u32>, Point3<f64>>>();
+            .collect();
         buffer.append(
             &mut Cube::new()
                 .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-                .collect::<MeshBuffer<Tetragon<u32>, Point3<f64>>>(),
+                .collect::<MeshBuffer4<usize, E3>>(),
         );
 
         assert_eq!(12, buffer.as_index_slice().len());
@@ -935,27 +945,23 @@ mod tests {
 
     #[test]
     fn convert_mesh_to_buffer_by_vertex() {
-        let graph = UvSphere::new(3, 2)
+        let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
-        let buffer = graph
-            .to_mesh_by_vertex::<MeshBuffer3<u32, Point3<f64>>>()
-            .unwrap();
+            .collect();
+        let buffer: MeshBufferN<usize, E3> = graph.to_mesh_by_vertex().unwrap();
 
-        assert_eq!(18, buffer.as_index_slice().len());
+        assert_eq!(6, buffer.as_index_slice().len());
         assert_eq!(5, buffer.as_vertex_slice().len());
     }
 
     #[test]
     fn convert_mesh_to_buffer_by_face() {
-        let graph = UvSphere::new(3, 2)
+        let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
-        let buffer = graph
-            .to_mesh_by_face::<MeshBuffer3<u32, Point3<f64>>>()
-            .unwrap();
+            .collect();
+        let buffer: MeshBufferN<usize, E3> = graph.to_mesh_by_face().unwrap();
 
-        assert_eq!(18, buffer.as_index_slice().len());
+        assert_eq!(6, buffer.as_index_slice().len());
         assert_eq!(18, buffer.as_vertex_slice().len());
     }
 }

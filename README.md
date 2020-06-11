@@ -22,9 +22,10 @@ their vertices. These can be transformed, decomposed (tessellated), indexed, and
 collected into mesh data structures.
 
 ```rust
-use decorum::N64;
+use decorum::R64;
 use nalgebra::Point3;
-use plexus::buffer::MeshBuffer3;
+use plexus::buffer::MeshBuffer;
+use plexus::index::Flat3;
 use plexus::prelude::*;
 use plexus::primitive::generate::Position;
 use plexus::primitive::sphere::UvSphere;
@@ -32,12 +33,14 @@ use plexus::primitive::sphere::UvSphere;
 // Example rendering module.
 use render::{self, Color4, Vertex};
 
+type E3 = Point3<R64>;
+
 // Construct a linear buffer of index and vertex data from a sphere.
 let buffer = UvSphere::new(16, 16)
-    .polygons::<Position<Point3<N64>>>()
+    .polygons::<Position<E3>>()
     .map_vertices(|position| Vertex::new(position, Color4::white()))
     .triangulate()
-    .collect::<MeshBuffer3<u64, Vertex>>();
+    .collect::<MeshBuffer<Flat3, Vertex>>();
 render::draw(buffer.as_index_slice(), buffer.as_vertex_slice());
 ```
 

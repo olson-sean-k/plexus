@@ -282,14 +282,14 @@ pub trait Generator: Sized {
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer3;
+    /// use plexus::buffer::MeshBuffer4;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer3::<usize, _>::from_raw_buffers(
-    ///     cube.indexing_polygons::<Position>().vertices(),
+    /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
+    ///     cube.indexing_polygons::<Position>(),
     ///     cube.vertices::<Position<Point3<f64>>>(),
     /// );
     /// ```

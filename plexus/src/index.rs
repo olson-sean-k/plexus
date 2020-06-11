@@ -40,7 +40,7 @@
 //! #
 //! use decorum::N64;
 //! use nalgebra::Point3;
-//! use plexus::buffer::MeshBuffer3;
+//! use plexus::buffer::MeshBuffer;
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
@@ -50,7 +50,7 @@
 //!     .polygons::<Position<Point3<N64>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
-//! let buffer = MeshBuffer3::<u32, _>::from_raw_buffers(indices, positions).unwrap();
+//! let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, positions).unwrap();
 //! ```
 
 use num::{Integer, NumCast, Unsigned};
@@ -148,7 +148,9 @@ pub trait Grouping: StaticArity {
 /// Unlike structured groupings, this meta-grouping is needed to associate an
 /// index type with an arity. For example, `Vec<usize>` implements both
 /// `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
-/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer).
+/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer). Care must be taken
+/// when using flat index buffers, because they are more prone to mismatched
+/// arity than structured buffers.
 ///
 /// # Examples
 ///
@@ -212,7 +214,7 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 /// quadrilaterals is needed.
 ///
 /// Unlike flat groupings, structured groupings can be specified directly using
-/// a topological primitive type like `Trigon<usize>` or `BoundedPolygon<usize>`.
+/// a topological type like `Trigon<usize>` or `BoundedPolygon<usize>`.
 ///
 /// # Examples
 ///
