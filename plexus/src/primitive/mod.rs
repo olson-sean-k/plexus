@@ -102,11 +102,11 @@ use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 /// monogons.
 pub trait Topological:
     Adjunct<Item = <Self as Topological>::Vertex>
-    + AsMut<[<Self as Adjunct>::Item]>
-    + AsRef<[<Self as Adjunct>::Item]>
+    + AsMut<[<Self as Topological>::Vertex]>
+    + AsRef<[<Self as Topological>::Vertex]>
     + DynamicArity<Dynamic = usize>
     + Sized
-    + IntoIterator<Item = <Self as Adjunct>::Item>
+    + IntoIterator<Item = <Self as Topological>::Vertex>
     + Sized
 {
     type Vertex;

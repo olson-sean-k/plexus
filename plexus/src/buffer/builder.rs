@@ -48,7 +48,7 @@ where
 impl<A, N, G> FacetBuilder<N> for BufferBuilder<Flat<A, N>, G>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Hash + Integer + NumCast + Unsigned,
+    N: Copy + Hash + Integer + Unsigned,
     Vec<N>: IndexBuffer<Flat<A, N>>,
 {
     type Facet = ();
@@ -76,7 +76,7 @@ where
 impl<P, G> FacetBuilder<P::Vertex> for BufferBuilder<P, G>
 where
     P: Grouping<Group = P> + Topological,
-    P::Vertex: Copy + Hash + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Hash + Integer + Unsigned,
     Vec<P>: IndexBuffer<P>,
 {
     type Facet = ();
@@ -121,8 +121,9 @@ where
 impl<R, G> SurfaceBuilder for BufferBuilder<R, G>
 where
     Self: FacetBuilder<VertexKey<R>, Facet = ()>,
+    Self::Error: From<BufferError>, // TODO: Why is this necessary?
     R: Grouping,
-    VertexKey<R>: Hash,
+    VertexKey<R>: Hash + NumCast,
     Vec<R::Group>: IndexBuffer<R>,
 {
     type Builder = Self;
@@ -143,7 +144,8 @@ where
     where
         T: IntoGeometry<Self::Vertex>,
     {
-        let key = <VertexKey<R> as NumCast>::from(self.vertices.len()).unwrap();
+        let key = <VertexKey<R> as NumCast>::from(self.vertices.len())
+            .ok_or_else(|| BufferError::IndexOverflow)?;
         self.vertices.push(geometry.into_geometry());
         Ok(key)
     }

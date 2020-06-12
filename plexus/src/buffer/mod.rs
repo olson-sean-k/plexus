@@ -44,10 +44,10 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! let buffer = UvSphere::new(16, 16)
+//! let buffer: MeshBuffer3<u32, Point3<f32>> = UvSphere::new(16, 16)
 //!     .polygons::<Position<Point3<N32>>>()
 //!     .triangulate()
-//!     .collect::<MeshBuffer3<u32, Point3<f32>>>();
+//!     .collect();
 //! let indices = buffer.as_index_slice();
 //! let positions = buffer.as_vertex_slice();
 //! ```
@@ -59,7 +59,7 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R64;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer4;
 //! use plexus::graph::MeshGraph;
@@ -67,12 +67,10 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
 //!
-//! let graph = Cube::new()
-//!     .polygons::<Position<Point3<N64>>>()
-//!     .collect::<MeshGraph<Point3<N64>>>();
-//! let buffer = graph
-//!     .to_mesh_by_vertex::<MeshBuffer4<usize, Point3<N64>>>()
-//!     .unwrap();
+//! type E3 = Point3<R64>;
+//!
+//! let graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
+//! let buffer: MeshBuffer4<usize, E3> = graph.to_mesh_by_vertex().unwrap();
 //! ```
 
 mod builder;
@@ -90,20 +88,21 @@ use crate::buffer::builder::BufferBuilder;
 use crate::builder::{Buildable, MeshBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::index::{
-    Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer,
-    Push,
+    BufferOf, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexOf,
+    IndexVertices, Indexer, Push,
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{
     BoundedPolygon, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
 };
-use crate::IntoGeometry;
-use crate::{DynamicArity, MeshArity, Monomorphic, StaticArity};
+use crate::{Arity, DynamicArity, FromGeometry, IntoGeometry, MeshArity, Monomorphic, StaticArity};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
     #[error("index into vertex data out of bounds")]
     IndexOutOfBounds,
+    #[error("index overflow")]
+    IndexOverflow,
     #[error("index buffer conflicts with arity")]
     IndexUnaligned,
     #[error("conflicting arity; expected {expected}, but got {actual}")]
@@ -153,14 +152,14 @@ pub trait IntoFlatIndex<A, G>
 where
     A: NonZero + typenum::Unsigned,
 {
-    type Item: Copy + Integer + NumCast + Unsigned;
+    type Item: Copy + Integer + Unsigned;
 
     fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G>;
 }
 
 pub trait IntoStructuredIndex<G>
 where
-    <Self::Item as Topological>::Vertex: Copy + Integer + NumCast + Unsigned,
+    <Self::Item as Topological>::Vertex: Copy + Integer + Unsigned,
 {
     type Item: Polygonal;
 
@@ -239,10 +238,10 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
-    /// let buffer = UvSphere::new(16, 8)
+    /// let buffer: MeshBuffer3<usize, Point3<f64>> = UvSphere::new(16, 8)
     ///     .polygons::<Position<Point3<N64>>>()
     ///     .triangulate()
-    ///     .collect::<MeshBuffer3<usize, Point3<f64>>>();
+    ///     .collect();
     /// // Translate the positions.
     /// let translation = Vector3::<f64>::x() * 2.0;
     /// let buffer = buffer.map_vertices(|position| position + translation);
@@ -333,7 +332,7 @@ where
 impl<A, N, G> DynamicArity for MeshBuffer<Flat<A, N>, G>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Dynamic = <Flat<A, N> as StaticArity>::Static;
 
@@ -345,7 +344,7 @@ where
 impl<P, G> DynamicArity for MeshBuffer<P, G>
 where
     P: Grouping + Monomorphic + Polygonal,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
 {
     type Dynamic = <P as StaticArity>::Static;
 
@@ -356,12 +355,23 @@ where
 
 impl<N, G> DynamicArity for MeshBuffer<BoundedPolygon<N>, G>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Dynamic = MeshArity;
 
     fn arity(&self) -> Self::Dynamic {
         MeshArity::from_components::<BoundedPolygon<N>, _>(self.indices.iter())
+    }
+}
+
+impl<N, G> DynamicArity for MeshBuffer<UnboundedPolygon<N>, G>
+where
+    N: Copy + Integer + Unsigned,
+{
+    type Dynamic = MeshArity;
+
+    fn arity(&self) -> Self::Dynamic {
+        MeshArity::from_components::<UnboundedPolygon<N>, _>(self.indices.iter())
     }
 }
 
@@ -383,13 +393,17 @@ where
 {
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
-    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an index overflows.
+    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>) -> Result<(), BufferError>
     where
         R: Grouping,
         R::Group: Into<<Flat<A, N> as Grouping>::Group>,
         H: IntoGeometry<G>,
     {
-        let offset = N::from(self.vertices.len()).unwrap();
+        let offset = N::from(self.vertices.len()).ok_or_else(|| BufferError::IndexOverflow)?;
         self.vertices.extend(
             buffer
                 .vertices
@@ -397,7 +411,8 @@ where
                 .map(|vertex| vertex.into_geometry()),
         );
         self.indices
-            .extend(buffer.indices.drain(..).map(|index| index.into() + offset))
+            .extend(buffer.indices.drain(..).map(|index| index.into() + offset));
+        Ok(())
     }
 }
 
@@ -455,7 +470,11 @@ where
 
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
-    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if an index overflows.
+    pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>) -> Result<(), BufferError>
     where
         R: Grouping,
         R::Group: Into<<P as Grouping>::Group>,
@@ -463,7 +482,8 @@ where
         <P as Grouping>::Group:
             Map<P::Vertex, Output = <P as Grouping>::Group> + Topological<Vertex = P::Vertex>,
     {
-        let offset = <P::Vertex as NumCast>::from(self.vertices.len()).unwrap();
+        let offset = <P::Vertex as NumCast>::from(self.vertices.len())
+            .ok_or_else(|| BufferError::IndexOverflow)?;
         self.vertices.extend(
             buffer
                 .vertices
@@ -475,22 +495,34 @@ where
                 .indices
                 .drain(..)
                 .map(|topology| topology.into().map(|index| index + offset)),
-        )
+        );
+        Ok(())
     }
 }
 
-impl<E, G> FromEncoding<E> for MeshBuffer<BoundedPolygon<usize>, G>
+impl<E, P, G> FromEncoding<E> for MeshBuffer<P, G>
 where
-    E: FaceDecoder<Face = (), Index = BoundedPolygon<usize>> + VertexDecoder,
+    E: FaceDecoder<Face = ()> + VertexDecoder,
+    E::Index: AsRef<[P::Vertex]>,
     E::Vertex: IntoGeometry<G>,
+    P: Polygonal<Vertex = usize>,
+    Self: FromRawBuffers<P, G, Error = BufferError>,
 {
-    type Error = BufferError;
+    type Error = <Self as FromRawBuffers<P, G>>::Error;
 
     fn from_encoding(
         vertices: <E as VertexDecoder>::Output,
         faces: <E as FaceDecoder>::Output,
     ) -> Result<Self, Self::Error> {
-        let indices = faces.into_iter().map(|(index, _)| index);
+        let indices: Vec<_> = faces
+            .into_iter()
+            .map(|(index, _)| {
+                P::try_from_slice(index.as_ref()).ok_or_else(|| BufferError::ArityConflict {
+                    expected: P::ARITY.into_interval().0,
+                    actual: index.as_ref().len(),
+                })
+            })
+            .collect::<Result<_, _>>()?;
         let vertices = vertices.into_iter().map(|vertex| vertex.into_geometry());
         MeshBuffer::from_raw_buffers(indices, vertices)
     }
@@ -499,10 +531,11 @@ where
 impl<R, P, G> FromIndexer<P, P> for MeshBuffer<R, G>
 where
     R: Grouping,
-    P: Map<<Vec<R::Group> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological<Vertex = <Vec<R::Group> as IndexBuffer<R>>::Index>,
-    P::Vertex: IntoGeometry<G>,
-    Vec<R::Group>: Push<R, P::Output>,
+    G: FromGeometry<P::Vertex>,
+    P: Map<IndexOf<R>> + Topological,
+    P::Output: Topological<Vertex = IndexOf<R>>,
+    BufferOf<R>: Push<R, P::Output>,
+    IndexOf<R>: NumCast,
     Self: FromRawBuffers<R::Group, G>,
 {
     type Error = <Self as FromRawBuffers<R::Group, G>>::Error;
@@ -523,9 +556,10 @@ where
 impl<R, P, G> FromIterator<P> for MeshBuffer<R, G>
 where
     R: Grouping,
+    G: FromGeometry<P::Vertex>,
     P: Topological,
-    P::Vertex: Copy + Eq + Hash + IntoGeometry<G>,
-    Vec<R::Group>: IndexBuffer<R>,
+    P::Vertex: Copy + Eq + Hash,
+    BufferOf<R>: IndexBuffer<R>,
     Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
@@ -541,7 +575,6 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     M: Copy + Integer + NumCast + Unsigned,
-    <Flat<A, N> as Grouping>::Group: ToPrimitive,
 {
     type Error = BufferError;
 
@@ -588,13 +621,13 @@ where
     {
         let indices = indices
             .into_iter()
-            .map(|index| <<Flat<A, N> as Grouping>::Group as NumCast>::from(index).unwrap())
-            .collect::<Vec<_>>();
+            .map(|index| <N as NumCast>::from(index).ok_or_else(|| BufferError::IndexOverflow))
+            .collect::<Result<Vec<_>, _>>()?;
         if indices.len() % A::USIZE != 0 {
             Err(BufferError::IndexUnaligned)
         }
         else {
-            let vertices = vertices.into_iter().collect::<Vec<_>>();
+            let vertices: Vec<_> = vertices.into_iter().collect();
             let len = N::from(vertices.len()).unwrap();
             if indices.iter().any(|index| *index >= len) {
                 Err(BufferError::IndexOutOfBounds)
@@ -608,10 +641,8 @@ where
 
 impl<P, Q, G> FromRawBuffers<Q, G> for MeshBuffer<P, G>
 where
-    P: Grouping + Polygonal,
+    P: From<Q> + Grouping<Group = P> + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    Q: Into<<P as Grouping>::Group>,
-    <P as Grouping>::Group: Clone + IntoVertices + Topological<Vertex = P::Vertex>,
 {
     type Error = BufferError;
 
@@ -646,24 +677,17 @@ where
         I: IntoIterator<Item = Q>,
         J: IntoIterator<Item = G>,
     {
-        let indices = indices
+        let indices: Vec<_> = indices
             .into_iter()
-            .map(|topology| topology.into())
-            .collect::<Vec<_>>();
-        let vertices = vertices
-            .into_iter()
-            .map(|geometry| geometry)
-            .collect::<Vec<_>>();
+            .map(|polygon| P::from(polygon))
+            .collect();
+        let vertices: Vec<_> = vertices.into_iter().map(|geometry| geometry).collect();
         let is_out_of_bounds = {
-            let len = <P::Vertex as NumCast>::from(vertices.len()).unwrap();
-            indices.iter().any(|polygon| {
-                // TODO: Avoid copying data here.
-                polygon
-                    .clone()
-                    .into_vertices()
-                    .into_iter()
-                    .any(|index| index >= len)
-            })
+            let len = <P::Vertex as NumCast>::from(vertices.len())
+                .ok_or_else(|| BufferError::IndexOverflow)?;
+            indices
+                .iter()
+                .any(|polygon| polygon.as_ref().iter().any(|index| *index >= len))
         };
         if is_out_of_bounds {
             Err(BufferError::IndexOutOfBounds)
@@ -677,7 +701,7 @@ where
 impl<A, N, G> IntoFlatIndex<A, G> for MeshBuffer<Flat<A, N>, G>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Item = N;
 
@@ -688,7 +712,7 @@ where
 
 impl<N, G> IntoFlatIndex<U3, G> for MeshBuffer<Trigon<N>, G>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Item = N;
 
@@ -732,7 +756,7 @@ where
 
 impl<N, G> IntoFlatIndex<U4, G> for MeshBuffer<Tetragon<N>, G>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Item = N;
 
@@ -777,7 +801,7 @@ where
 impl<P, G> IntoStructuredIndex<G> for MeshBuffer<P, G>
 where
     P: Grouping + Polygonal,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
 {
     type Item = P;
 
@@ -788,7 +812,7 @@ where
 
 impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat3<N>, G>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
     Trigon<N>: Grouping<Group = Trigon<N>>,
 {
     type Item = Trigon<N>;
@@ -836,7 +860,7 @@ where
 
 impl<N, G> IntoStructuredIndex<G> for MeshBuffer<Flat4<N>, G>
 where
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
     Tetragon<N>: Grouping<Group = Tetragon<N>>,
 {
     type Item = Tetragon<N>;
@@ -933,11 +957,13 @@ mod tests {
         let mut buffer: MeshBufferN<usize, E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect();
-        buffer.append(
-            &mut Cube::new()
-                .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-                .collect::<MeshBuffer4<usize, E3>>(),
-        );
+        buffer
+            .append(
+                &mut Cube::new()
+                    .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
+                    .collect::<MeshBuffer4<usize, E3>>(),
+            )
+            .unwrap();
 
         assert_eq!(12, buffer.as_index_slice().len());
         assert_eq!(13, buffer.as_vertex_slice().len());

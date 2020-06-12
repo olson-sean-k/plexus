@@ -363,13 +363,27 @@ where
 mod tests {
     use nalgebra::Point3;
 
+    use crate::buffer::MeshBuffer;
     use crate::encoding::ply::{FromPly, PositionEncoding};
     use crate::graph::MeshGraph;
+    use crate::primitive::Tetragon;
 
     type E3 = Point3<f64>;
 
     #[test]
-    fn decode() {
+    fn decode_into_buffer() {
+        let buffer = {
+            let ply: &[u8] = include_bytes!("../../../data/cube.ply");
+            MeshBuffer::<Tetragon<usize>, E3>::from_ply(PositionEncoding::<E3>::default(), ply)
+                .unwrap()
+                .0
+        };
+        assert_eq!(8, buffer.as_vertex_slice().len());
+        assert_eq!(6, buffer.as_index_slice().len());
+    }
+
+    #[test]
+    fn decode_into_graph() {
         let graph = {
             let ply: &[u8] = include_bytes!("../../../data/cube.ply");
             MeshGraph::<E3>::from_ply(PositionEncoding::<E3>::default(), ply)

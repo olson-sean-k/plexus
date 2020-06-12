@@ -66,6 +66,9 @@ use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Topological;
 use crate::{Monomorphic, StaticArity};
 
+pub(in crate) type BufferOf<R> = Vec<<R as Grouping>::Group>;
+pub(in crate) type IndexOf<R> = <BufferOf<R> as IndexBuffer<R>>::Index;
+
 // Note that it isn't possible for `IndexBuffer` types to implement
 // `DynamicArity`, because they are typically parameterized by `R` (see
 // implementations for `Vec<_>`). Instead, `DynamicArity` is implemented for
@@ -83,13 +86,13 @@ where
     R: Grouping,
 {
     /// The type of individual indices in the buffer.
-    type Index: Copy + Integer + NumCast + Unsigned;
+    type Index: Copy + Integer + Unsigned;
 }
 
 impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Index = N;
 }
@@ -97,7 +100,7 @@ where
 impl<P> IndexBuffer<P> for Vec<P>
 where
     P: Topological,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
 {
     type Index = P::Vertex;
 }
@@ -106,7 +109,7 @@ pub trait Push<R, P>: IndexBuffer<R>
 where
     R: Grouping,
     P: Topological<Vertex = Self::Index>,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
 {
     fn push(&mut self, index: P);
 }
@@ -114,7 +117,7 @@ where
 impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
     P: Monomorphic + IntoVertices + Topological<Vertex = N>,
 {
     fn push(&mut self, index: P) {
@@ -127,7 +130,7 @@ where
 impl<P, Q> Push<P, Q> for Vec<P>
 where
     P: From<Q> + Grouping + Topological,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
     Q: Topological<Vertex = P::Vertex>,
     Self: IndexBuffer<P, Index = P::Vertex>,
 {
@@ -170,7 +173,7 @@ pub trait Grouping: StaticArity {
 pub struct Flat<A = U3, N = usize>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     phantom: PhantomData<(A, N)>,
 }
@@ -178,7 +181,7 @@ where
 impl<A, N> Grouping for Flat<A, N>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     /// Flat index buffers directly contain indices. These indices are
     /// implicitly grouped by the arity of the buffer.
@@ -188,14 +191,14 @@ where
 impl<A, N> Monomorphic for Flat<A, N>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
 }
 
 impl<A, N> StaticArity for Flat<A, N>
 where
     A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    N: Copy + Integer + Unsigned,
 {
     type Static = usize;
 
@@ -230,7 +233,7 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 impl<P> Grouping for P
 where
     P: Topological,
-    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    P::Vertex: Copy + Integer + Unsigned,
 {
     /// `Topological` index buffers contain $n$-gons that explicitly group their
     /// indices.
@@ -485,9 +488,10 @@ impl<R, P, I> GroupedIndexVertices<R, P> for I
 where
     I: Iterator<Item = P>,
     R: Grouping,
-    P: Map<<Vec<R::Group> as IndexBuffer<R>>::Index> + Topological,
-    P::Output: Topological<Vertex = <Vec<R::Group> as IndexBuffer<R>>::Index>,
-    Vec<R::Group>: Push<R, P::Output>,
+    P: Map<IndexOf<R>> + Topological,
+    P::Output: Topological<Vertex = IndexOf<R>>,
+    BufferOf<R>: Push<R, P::Output>,
+    IndexOf<R>: NumCast,
 {
     fn index_vertices_with<N, K, F>(self, mut indexer: N, f: F) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
