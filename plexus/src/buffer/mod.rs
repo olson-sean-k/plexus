@@ -677,10 +677,7 @@ where
         I: IntoIterator<Item = Q>,
         J: IntoIterator<Item = G>,
     {
-        let indices: Vec<_> = indices
-            .into_iter()
-            .map(|polygon| P::from(polygon))
-            .collect();
+        let indices: Vec<_> = indices.into_iter().map(P::from).collect();
         let vertices: Vec<_> = vertices.into_iter().map(|geometry| geometry).collect();
         let is_out_of_bounds = {
             let len = <P::Vertex as NumCast>::from(vertices.len())
