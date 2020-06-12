@@ -105,7 +105,6 @@ pub trait Topological:
     + AsMut<[<Self as Topological>::Vertex]>
     + AsRef<[<Self as Topological>::Vertex]>
     + DynamicArity<Dynamic = usize>
-    + Sized
     + IntoIterator<Item = <Self as Topological>::Vertex>
     + Sized
 {
