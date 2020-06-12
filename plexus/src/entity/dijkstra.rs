@@ -45,12 +45,17 @@ where
     Q: Copy + Metric,
     F: Fn(T, T) -> Q,
 {
-    // TODO: Specify suitable capacities to avoid reallocation.
-    let mut buffer = BinaryHeap::new();
-    let mut metrics = HashMap::new();
-    let mut breadcrumbs = HashSet::new();
-
     let (storage, from) = from.unbind();
+    let capacity = if to.is_some() {
+        0
+    }
+    else {
+        storage.as_storage().len()
+    };
+    let mut buffer = BinaryHeap::new();
+    let mut breadcrumbs = HashSet::with_capacity(capacity);
+    let mut metrics = HashMap::with_capacity(capacity);
+
     metrics.insert(from, (None, Q::zero()));
     buffer.push(KeyedMetric(from, Reverse(Q::zero())));
     while let Some(KeyedMetric(key, Reverse(metric))) = buffer.pop() {
@@ -64,6 +69,8 @@ where
                 .into_iter()
                 .map(|key| T::bind(storage, key).unwrap())
             {
+                // TODO: Consider returning an error if the output of `f` is
+                //       less than zero.
                 let metric = metric + f(entity, adjacent);
                 match metrics.entry(adjacent.key()) {
                     Entry::Occupied(entry) => {
