@@ -4,7 +4,7 @@ use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::AsStorage;
-use crate::entity::view::{Bind, ClosedView, Unbind};
+use crate::entity::view::{Bind, ClosedView, Unbind, View};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceView, Ring};
 use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
@@ -130,8 +130,8 @@ where
 
     /// Pushes the source vertex of the previous arc onto the back of the path.
     pub fn push_previous_arc(&mut self) -> Result<ArcKey, GraphError> {
-        let key = ArcView::bind(self.storage.reborrow(), *self.keys.back().unwrap())
-            .expect_consistent()
+        let key = *self.keys.back().expect("empty path");
+        let key = ArcView::from(View::bind_unchecked(self.storage.reborrow(), key))
             .into_previous_arc()
             .into_source_vertex()
             .key();
@@ -205,8 +205,8 @@ where
     /// Pushes the destination vertex of the next arc onto the front of the
     /// path.
     pub fn push_next_arc(&mut self) -> Result<ArcKey, GraphError> {
-        let key = ArcView::bind(self.storage.reborrow(), *self.keys.front().unwrap())
-            .expect_consistent()
+        let key = *self.keys.front().expect("empty path");
+        let key = ArcView::from(View::bind_unchecked(self.storage.reborrow(), key))
             .into_next_arc()
             .into_destination_vertex()
             .key();
@@ -227,37 +227,13 @@ where
     /// Gets the vertex at the back of the path.
     pub fn back(&self) -> VertexView<&M> {
         let (key, _) = self.endpoints();
-        Bind::bind(self.storage.reborrow(), key).expect_consistent()
+        View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
     }
 
     /// Gets the vertex at the front of the path.
     pub fn front(&self) -> VertexView<&M> {
         let (_, key) = self.endpoints();
-        Bind::bind(self.storage.reborrow(), key).expect_consistent()
-    }
-
-    /// Gets an iterator over the vertices in the path.
-    pub fn vertices<'a>(&'a self) -> impl Iterator<Item = VertexView<&'a M>>
-    where
-        M: 'a,
-    {
-        let back = self.back();
-        Some(back)
-            .into_iter()
-            .chain(self.arcs().map(|arc| arc.into_destination_vertex()))
-    }
-
-    /// Gets an iterator over the arcs in the path.
-    pub fn arcs<'a>(&'a self) -> impl ExactSizeIterator<Item = ArcView<&'a M>>
-    where
-        M: 'a,
-    {
-        let storage = self.storage.reborrow();
-        self.keys
-            .iter()
-            .rev()
-            .cloned()
-            .map(move |key| Bind::bind(storage, key).expect_consistent())
+        View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
     }
 
     /// Returns `true` if the path is open.
@@ -367,6 +343,51 @@ where
                 storage,
             },
         ))
+    }
+}
+
+impl<'a, B, M, G> Path<B>
+where
+    B: ReborrowInto<'a, Target = M>,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn into_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
+        let (key, _) = self.endpoints();
+        let Path { keys, storage, .. } = self.into_ref();
+        Some(key)
+            .into_iter()
+            .chain(keys.into_iter().rev().map(|key| {
+                let (_, key) = key.into();
+                key
+            }))
+            .map(move |key| View::bind_unchecked(storage, key))
+            .map(From::from)
+    }
+
+    pub fn into_arcs(self) -> impl Clone + ExactSizeIterator<Item = ArcView<&'a M>> {
+        let Path { keys, storage, .. } = self.into_ref();
+        keys.into_iter()
+            .rev()
+            .map(move |key| View::bind_unchecked(storage, key))
+            .map(From::from)
+    }
+}
+
+impl<B, G> Path<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    /// Gets an iterator over the vertices in the path.
+    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
+        self.to_ref().into_vertices()
+    }
+
+    /// Gets an iterator over the arcs in the path.
+    pub fn arcs(&self) -> impl Clone + ExactSizeIterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_arcs()
     }
 }
 

@@ -122,10 +122,11 @@ where
     }
 }
 
-impl<'a, B, M> VertexView<B>
+impl<'a, B, M, G> VertexView<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: AsStorage<Vertex<Geometry<M>>> + Geometric,
+    M: AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -162,42 +163,23 @@ where
 }
 
 /// Reachable API.
-impl<B, M> VertexView<B>
+impl<B, M, G> VertexView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
     pub(in crate::graph) fn into_reachable_outgoing_arc(self) -> Option<ArcView<B>> {
         let key = self.arc;
         key.and_then(|key| self.rebind(key))
     }
-
-    pub(in crate::graph) fn reachable_incoming_arcs<'a>(
-        &'a self,
-    ) -> impl Clone + Iterator<Item = ArcView<&'a M>>
-    where
-        M: 'a,
-    {
-        // This reachable circulator is needed for face insertions.
-        ArcCirculator::<TraceAny<_>, _>::from(self.to_ref())
-    }
-
-    pub(in crate::graph) fn reachable_outgoing_arcs<'a>(
-        &'a self,
-    ) -> impl Clone + Iterator<Item = ArcView<&'a M>>
-    where
-        M: 'a,
-    {
-        // This reachable circulator is needed for face insertions.
-        self.reachable_incoming_arcs()
-            .flat_map(|arc| arc.into_reachable_opposite_arc())
-    }
 }
 
-impl<B, M> VertexView<B>
+impl<B, M, G> VertexView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
     /// Converts the vertex into its leading (outgoing) arc.
     pub fn into_outgoing_arc(self) -> ArcView<B> {
@@ -248,59 +230,6 @@ where
         Path::bind(storage, keys.iter().rev())
     }
 
-    /// Gets an iterator that traverses adjacent vertices by breadth.
-    ///
-    /// The traversal moves from the vertex to its adjacent vertices and so on.
-    /// If there are disjoint subgraphs in the graph, then a traversal will not
-    /// reach every vertex in the graph.
-    pub fn traverse_by_breadth<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
-    where
-        M: 'a,
-    {
-        Traversal::<_, _, Breadth>::from(self.to_ref())
-    }
-
-    /// Gets an iterator that traverses adjacent vertices by depth.
-    ///
-    /// The traversal moves from the vertex to its adjacent vertices and so on.
-    /// If there are disjoint subgraphs in the graph, then a traversal will not
-    /// reach every vertex in the graph.
-    pub fn traverse_by_depth<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
-    where
-        M: 'a,
-    {
-        Traversal::<_, _, Depth>::from(self.to_ref())
-    }
-
-    pub fn adjacent_vertices<'a>(&'a self) -> impl Clone + Iterator<Item = VertexView<&'a M>>
-    where
-        M: 'a,
-    {
-        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()))
-    }
-
-    /// Gets an iterator of views over the incoming arcs of the vertex.
-    ///
-    /// The ordering of arcs is deterministic and is based on the leading arc of
-    /// the vertex.
-    pub fn incoming_arcs<'a>(&'a self) -> impl Clone + Iterator<Item = ArcView<&'a M>>
-    where
-        M: 'a,
-    {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref())
-    }
-
-    /// Gets an iterator of views over the outgoing arcs of the vertex.
-    ///
-    /// The ordering of arcs is deterministic and is based on the leading arc of
-    /// the vertex.
-    pub fn outgoing_arcs<'a>(&'a self) -> impl Clone + Iterator<Item = ArcView<&'a M>>
-    where
-        M: 'a,
-    {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()).map(|arc| arc.into_opposite_arc())
-    }
-
     /// Gets the valence of the vertex.
     ///
     /// A vertex's _valence_ is the number of adjacent vertices to which it is
@@ -310,82 +239,240 @@ where
         self.adjacent_vertices().count()
     }
 
-    pub fn centroid(&self) -> VertexPosition<Geometry<B>>
+    pub fn centroid(&self) -> VertexPosition<G>
     where
-        Geometry<B>: VertexCentroid,
-        <Geometry<B> as GraphGeometry>::Vertex: AsPosition,
+        G: VertexCentroid,
+        G::Vertex: AsPosition,
     {
-        <Geometry<B> as VertexCentroid>::centroid(self.to_ref()).expect_consistent()
+        <G as VertexCentroid>::centroid(self.to_ref()).expect_consistent()
     }
 }
 
-impl<B, M> VertexView<B>
+impl<B, M, G> VertexView<B>
 where
-    B: ReborrowMut<Target = M>,
-    M: AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
-    pub fn adjacent_vertex_orphans<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = VertexOrphan<'a, Geometry<B>>>
+    pub fn normal(&self) -> Result<Vector<VertexPosition<G>>, GraphError>
     where
-        M: 'a,
+        G: VertexNormal,
+        G::Vertex: AsPosition,
     {
-        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut()))
+        <G as VertexNormal>::normal(self.to_ref())
     }
 }
 
-impl<B, M> VertexView<B>
+/// Reachable API.
+impl<'a, B, M, G> VertexView<B>
 where
-    B: ReborrowMut<Target = M>,
-    M: AsStorageMut<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
+    B: ReborrowInto<'a, Target = M>,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
-    /// Gets an iterator of orphan views over the incoming arcs of the vertex.
+    pub(in crate::graph) fn into_reachable_incoming_arcs(
+        self,
+    ) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+        // This reachable circulator is needed for face insertions.
+        ArcCirculator::<TraceAny<_>, _>::from(self.into_ref())
+    }
+
+    pub(in crate::graph) fn into_reachable_outgoing_arcs(
+        self,
+    ) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+        // This reachable circulator is needed for face insertions.
+        self.into_reachable_incoming_arcs()
+            .flat_map(|arc| arc.into_reachable_opposite_arc())
+    }
+}
+
+/// Reachable API.
+impl<B, G> VertexView<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub(in crate::graph) fn reachable_incoming_arcs(
+        &self,
+    ) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_reachable_incoming_arcs()
+    }
+
+    pub(in crate::graph) fn reachable_outgoing_arcs(
+        &self,
+    ) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_reachable_outgoing_arcs()
+    }
+}
+
+impl<'a, B, M, G> VertexView<B>
+where
+    B: ReborrowInto<'a, Target = M>,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn into_adjacent_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.into_ref()))
+    }
+
+    pub fn into_incoming_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+        ArcCirculator::<TraceFirst<_>, _>::from(self.into_ref())
+    }
+
+    pub fn into_outgoing_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+        self.into_incoming_arcs().map(|arc| arc.into_opposite_arc())
+    }
+}
+
+impl<B, G> VertexView<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn adjacent_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
+        self.to_ref().into_adjacent_vertices()
+    }
+
+    /// Gets an iterator of views over the incoming arcs of the vertex.
     ///
     /// The ordering of arcs is deterministic and is based on the leading arc of
     /// the vertex.
-    pub fn incoming_arc_orphans<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = ArcOrphan<'a, Geometry<B>>>
-    where
-        M: 'a,
-    {
-        ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut())
+    pub fn incoming_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_incoming_arcs()
+    }
+
+    /// Gets an iterator of views over the outgoing arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc of
+    /// the vertex.
+    pub fn outgoing_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_outgoing_arcs()
+    }
+
+    /// Gets an iterator that traverses adjacent vertices by breadth.
+    ///
+    /// The traversal moves from the vertex to its adjacent vertices and so on.
+    /// If there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every vertex in the graph.
+    pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
+        Traversal::<_, _, Breadth>::from(self.to_ref())
+    }
+
+    /// Gets an iterator that traverses adjacent vertices by depth.
+    ///
+    /// The traversal moves from the vertex to its adjacent vertices and so on.
+    /// If there are disjoint subgraphs in the graph, then a traversal will not
+    /// reach every vertex in the graph.
+    pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
+        Traversal::<_, _, Depth>::from(self.to_ref())
     }
 }
 
-impl<B, M> VertexView<B>
+impl<'a, B, M, G> VertexView<B>
 where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<Geometry<B>>>
-        + AsStorage<Face<Geometry<B>>>
-        + AsStorage<Vertex<Geometry<B>>>
+    B: ReborrowInto<'a, Target = M>,
+    M: 'a
+        + AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
         + Consistent
-        + Geometric,
+        + Geometric<Geometry = G>,
+    G: GraphGeometry,
+{
+    pub fn into_adjacent_faces(self) -> impl Clone + Iterator<Item = FaceView<&'a M>> {
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.into_ref()))
+    }
+}
+
+impl<B, G> VertexView<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Arc<G>>
+        + AsStorage<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Geometric<Geometry = G>,
+    G: GraphGeometry,
 {
     /// Gets an iterator of views over the adjacent faces of the vertex.
     ///
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn adjacent_faces<'a>(&'a self) -> impl Clone + Iterator<Item = FaceView<&'a M>>
-    where
-        M: 'a,
-    {
-        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_ref()))
-    }
-
-    pub fn normal(&self) -> Result<Vector<VertexPosition<Geometry<B>>>, GraphError>
-    where
-        Geometry<B>: VertexNormal,
-        <Geometry<B> as GraphGeometry>::Vertex: AsPosition,
-    {
-        <Geometry<B> as VertexNormal>::normal(self.to_ref())
+    pub fn adjacent_faces(&self) -> impl Clone + Iterator<Item = FaceView<&B::Target>> {
+        self.to_ref().into_adjacent_faces()
     }
 }
 
-impl<B, M> VertexView<B>
+impl<'a, M, G> VertexView<&'a mut M>
 where
-    B: ReborrowMut<Target = M>,
-    M: AsStorage<Arc<Geometry<B>>>
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: 'a + GraphGeometry,
+{
+    pub fn into_adjacent_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, G>> {
+        VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self))
+    }
+}
+
+impl<B> VertexView<B>
+where
+    B: ReborrowMut,
+    B::Target:
+        AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
+{
+    pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_vertex_orphans()
+    }
+}
+
+impl<'a, M, G> VertexView<&'a mut M>
+where
+    M: AsStorageMut<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
+    G: 'a + GraphGeometry,
+{
+    pub fn into_incoming_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
+        ArcCirculator::<TraceFirst<_>, _>::from(self)
+    }
+}
+
+impl<B> VertexView<B>
+where
+    B: ReborrowMut,
+    B::Target:
+        AsStorageMut<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
+{
+    /// Gets an iterator of orphan views over the incoming arcs of the vertex.
+    ///
+    /// The ordering of arcs is deterministic and is based on the leading arc of
+    /// the vertex.
+    pub fn incoming_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
+        self.to_mut().into_incoming_arc_orphans()
+    }
+}
+
+impl<'a, M, G> VertexView<&'a mut M>
+where
+    M: AsStorage<Arc<G>>
+        + AsStorageMut<Face<G>>
+        + AsStorage<Vertex<G>>
+        + Consistent
+        + Geometric<Geometry = G>,
+    G: 'a + GraphGeometry,
+{
+    pub fn into_adjacent_face_orphans(self) -> impl Iterator<Item = FaceOrphan<'a, G>> {
+        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self))
+    }
+}
+
+impl<B> VertexView<B>
+where
+    B: ReborrowMut,
+    B::Target: AsStorage<Arc<Geometry<B>>>
         + AsStorageMut<Face<Geometry<B>>>
         + AsStorage<Vertex<Geometry<B>>>
         + Consistent
@@ -395,13 +482,8 @@ where
     ///
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
-    pub fn adjacent_face_orphans<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = FaceOrphan<'a, Geometry<B>>>
-    where
-        M: 'a,
-    {
-        FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self.to_mut()))
+    pub fn adjacent_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_face_orphans()
     }
 }
 
@@ -706,7 +788,7 @@ impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     type Item = VertexView<&'a M>;
 
@@ -808,7 +890,7 @@ impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
     M: AsStorage<Arc<G>> + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     type Item = ArcView<&'a M>;
 
@@ -902,7 +984,7 @@ impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
     M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    G: GraphGeometry,
 {
     type Item = FaceView<&'a M>;
 
