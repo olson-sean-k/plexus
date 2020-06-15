@@ -13,7 +13,7 @@ gfx = "0.18.0"
 gfx_device_gl = "0.16.0"
 gfx_window_glutin = "0.31.0"
 glutin = "0.21.2"
-num = "^0.2.0"
+num = "^0.3.0"
 rand = "^0.7.0"
 
 [dependencies.plexus]
