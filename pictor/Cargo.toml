@@ -12,7 +12,7 @@ decorum = "^0.3.1"
 gfx = "0.18.0"
 gfx_device_gl = "0.16.0"
 gfx_window_glutin = "0.31.0"
-glutin = "0.21.2"
+glutin = "0.24.1"
 num = "^0.3.0"
 rand = "^0.7.0"
 
