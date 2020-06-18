@@ -215,7 +215,7 @@ pub trait FacePropertyDecoder: FaceDecoder {
 }
 
 pub trait FromPly<E>: Sized {
-    fn from_ply<R>(decoder: E, read: R) -> Result<(Self, Header), PlyError>
+    fn from_ply<R>(decoder: E, read: R) -> Result<(Self, (Header, Payload)), PlyError>
     where
         R: Read;
 }
@@ -226,7 +226,7 @@ where
     PlyError: From<<T as FromEncoding<E>>::Error>,
     E: FaceElementDecoder + FacePropertyDecoder + VertexPropertyDecoder + VertexElementDecoder,
 {
-    fn from_ply<R>(decoder: E, mut read: R) -> Result<(Self, Header), PlyError>
+    fn from_ply<R>(decoder: E, mut read: R) -> Result<(Self, (Header, Payload)), PlyError>
     where
         R: Read,
     {
@@ -242,7 +242,7 @@ where
                 decoder.decode_face_properties(definition, elements)
             })?;
         let mesh = T::from_encoding(vertices, faces)?;
-        Ok((mesh, ply.header.elements))
+        Ok((mesh, (ply.header.elements, ply.payload)))
     }
 }
 
