@@ -287,7 +287,7 @@ impl<T> FacePropertyDecoder for PositionEncoding<T> {
                 let indices = element.list("vertex_index")?;
                 Ok((indices, ()))
             })
-            .collect::<Result<_, _>>()
+            .collect()
     }
 }
 
@@ -321,7 +321,7 @@ where
                 );
                 Ok(vertex)
             })
-            .collect::<Result<_, _>>()
+            .collect()
     }
 }
 
