@@ -46,7 +46,7 @@ use std::io::{self, Read, Write};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use theon::space::{EuclideanSpace, FiniteDimensional};
-use typenum::U3;
+use typenum::{NonZero, Unsigned, U2, U3};
 
 use crate::buffer::BufferError;
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
@@ -93,33 +93,37 @@ impl From<GraphError> for PlyError {
 }
 
 pub trait ElementExt {
-    fn scalar<T>(&self, key: &str) -> Result<T, PlyError>
+    fn scalar<K, T>(&self, key: K) -> Result<T, PlyError>
     where
+        K: AsRef<str>,
         T: NumCast;
 
-    fn list<T, I>(&self, key: &str) -> Result<I, PlyError>
+    fn list<K, T, I>(&self, key: K) -> Result<I, PlyError>
     where
+        K: AsRef<str>,
         T: NumCast,
         I: FromIterator<T>;
 }
 
 impl ElementExt for Element {
-    fn scalar<T>(&self, key: &str) -> Result<T, PlyError>
+    fn scalar<K, T>(&self, key: K) -> Result<T, PlyError>
     where
+        K: AsRef<str>,
         T: NumCast,
     {
-        self.get(key)
+        self.get(key.as_ref())
             .ok_or_else(|| PlyError::PropertyNotFound)?
             .clone()
             .into_scalar()
     }
 
-    fn list<T, I>(&self, key: &str) -> Result<I, PlyError>
+    fn list<K, T, I>(&self, key: K) -> Result<I, PlyError>
     where
+        K: AsRef<str>,
         T: NumCast,
         I: FromIterator<T>,
     {
-        self.get(key)
+        self.get(key.as_ref())
             .ok_or_else(|| PlyError::PropertyNotFound)?
             .clone()
             .into_list()
@@ -252,6 +256,37 @@ pub trait ToPly<E> {
         W: Write;
 }
 
+pub trait DecodePosition<N>: FiniteDimensional<N = N> + Sized
+where
+    N: NonZero + Unsigned,
+{
+    fn decode_position(element: &Element) -> Result<Self, PlyError>;
+}
+
+impl<T> DecodePosition<U2> for T
+where
+    T: EuclideanSpace + FiniteDimensional<N = U2>,
+{
+    fn decode_position(element: &Element) -> Result<Self, PlyError> {
+        let position = EuclideanSpace::from_xy(element.scalar("x")?, element.scalar("y")?);
+        Ok(position)
+    }
+}
+
+impl<T> DecodePosition<U3> for T
+where
+    T: EuclideanSpace + FiniteDimensional<N = U3>,
+{
+    fn decode_position(element: &Element) -> Result<Self, PlyError> {
+        let position = EuclideanSpace::from_xyz(
+            element.scalar("x")?,
+            element.scalar("y")?,
+            element.scalar("z")?,
+        );
+        Ok(position)
+    }
+}
+
 pub struct PositionEncoding<T> {
     phantom: PhantomData<T>,
 }
@@ -298,10 +333,10 @@ impl<T> VertexDecoder for PositionEncoding<T> {
 
 impl<T> VertexElementDecoder for PositionEncoding<T> {}
 
-// TODO: Support two-dimensional spaces.
-impl<T> VertexPropertyDecoder for PositionEncoding<T>
+impl<T, N> VertexPropertyDecoder for PositionEncoding<T>
 where
-    T: EuclideanSpace + FiniteDimensional<N = U3>,
+    T: DecodePosition<N> + FiniteDimensional<N = N>,
+    N: NonZero + Unsigned,
 {
     fn decode_vertex_properties<'a, I>(
         &self,
@@ -313,14 +348,7 @@ where
     {
         elements
             .into_iter()
-            .map(|element| {
-                let vertex = EuclideanSpace::from_xyz(
-                    element.scalar("x")?,
-                    element.scalar("y")?,
-                    element.scalar("z")?,
-                );
-                Ok(vertex)
-            })
+            .map(|element| T::decode_position(element))
             .collect()
     }
 }
@@ -328,13 +356,13 @@ where
 pub fn decode_elements<'a, K>(
     definitions: &'a Header,
     elements: &'a Payload,
-    name: K,
+    key: K,
 ) -> Result<(&'a ElementDefinition, &'a Vec<Element>), PlyError>
 where
     K: AsRef<str>,
 {
     definitions
-        .get(name.as_ref())
+        .get(key.as_ref())
         .ok_or_else(|| PlyError::ElementNotFound)
         .map(|definition| (definition, elements.get(&definition.name).unwrap()))
 }
