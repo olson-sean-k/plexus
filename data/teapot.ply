@@ -5,7 +5,7 @@ property float32 x
 property float32 y
 property float32 z
 element face 2256
-property list uint8 uint32 index
+property list uint8 uint32 vertex_index
 end_header
 1.38137 0 2.45469
 1.4 0 2.4

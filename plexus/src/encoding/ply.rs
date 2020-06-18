@@ -93,18 +93,18 @@ impl From<GraphError> for PlyError {
 }
 
 pub trait ElementExt {
-    fn read_scalar<T>(&self, key: &str) -> Result<T, PlyError>
+    fn scalar<T>(&self, key: &str) -> Result<T, PlyError>
     where
         T: NumCast;
 
-    fn read_list<T, I>(&self, key: &str) -> Result<I, PlyError>
+    fn list<T, I>(&self, key: &str) -> Result<I, PlyError>
     where
         T: NumCast,
         I: FromIterator<T>;
 }
 
 impl ElementExt for Element {
-    fn read_scalar<T>(&self, key: &str) -> Result<T, PlyError>
+    fn scalar<T>(&self, key: &str) -> Result<T, PlyError>
     where
         T: NumCast,
     {
@@ -114,7 +114,7 @@ impl ElementExt for Element {
             .into_scalar()
     }
 
-    fn read_list<T, I>(&self, key: &str) -> Result<I, PlyError>
+    fn list<T, I>(&self, key: &str) -> Result<I, PlyError>
     where
         T: NumCast,
         I: FromIterator<T>,
@@ -284,7 +284,7 @@ impl<T> FacePropertyDecoder for PositionEncoding<T> {
         elements
             .into_iter()
             .map(|element| {
-                let indices = element.read_list("index")?;
+                let indices = element.list("vertex_index")?;
                 Ok((indices, ()))
             })
             .collect::<Result<_, _>>()
@@ -315,9 +315,9 @@ where
             .into_iter()
             .map(|element| {
                 let vertex = EuclideanSpace::from_xyz(
-                    element.read_scalar("x")?,
-                    element.read_scalar("y")?,
-                    element.read_scalar("z")?,
+                    element.scalar("x")?,
+                    element.scalar("y")?,
+                    element.scalar("z")?,
                 );
                 Ok(vertex)
             })
