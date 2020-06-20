@@ -66,6 +66,24 @@ pub type Header = KeyMap<ElementDefinition>;
 pub type Payload = KeyMap<Vec<Element>>;
 pub type Element = KeyMap<Property>;
 
+pub struct Ply {
+    pub header: Header,
+    pub payload: Payload,
+}
+
+impl Ply {
+    pub fn parse<R>(mut read: R) -> Result<Self, PlyError>
+    where
+        R: Read,
+    {
+        let ply = Parser::<Element>::new().read_ply(&mut read)?;
+        Ok(Ply {
+            header: ply.header.elements,
+            payload: ply.payload,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub enum PlyError {
     ElementNotFound,
@@ -219,7 +237,7 @@ pub trait FacePropertyDecoder: FaceDecoder {
 }
 
 pub trait FromPly<E>: Sized {
-    fn from_ply<R>(decoder: E, read: R) -> Result<(Self, (Header, Payload)), PlyError>
+    fn from_ply<R>(decoder: E, read: R) -> Result<(Self, Ply), PlyError>
     where
         R: Read;
 }
@@ -230,23 +248,16 @@ where
     PlyError: From<<T as FromEncoding<E>>::Error>,
     E: FaceElementDecoder + FacePropertyDecoder + VertexPropertyDecoder + VertexElementDecoder,
 {
-    fn from_ply<R>(decoder: E, mut read: R) -> Result<(Self, (Header, Payload)), PlyError>
+    fn from_ply<R>(decoder: E, mut read: R) -> Result<(Self, Ply), PlyError>
     where
         R: Read,
     {
-        let ply = Parser::<Element>::new().read_ply(&mut read)?;
-        let vertices = decoder
-            .decode_vertex_elements(&ply.header.elements, &ply.payload)
-            .and_then(|(definition, elements)| {
-                decoder.decode_vertex_properties(definition, elements)
-            })?;
-        let faces = decoder
-            .decode_face_elements(&ply.header.elements, &ply.payload)
-            .and_then(|(definition, elements)| {
-                decoder.decode_face_properties(definition, elements)
-            })?;
-        let mesh = T::from_encoding(vertices, faces)?;
-        Ok((mesh, (ply.header.elements, ply.payload)))
+        let ply = Ply::parse(&mut read)?;
+        let mesh = T::from_encoding(
+            decode_vertex_properties(&decoder, &ply.header, &ply.payload)?,
+            decode_face_properties(&decoder, &ply.header, &ply.payload)?,
+        )?;
+        Ok((mesh, ply))
     }
 }
 
@@ -364,7 +375,38 @@ where
     definitions
         .get(key.as_ref())
         .ok_or_else(|| PlyError::ElementNotFound)
-        .map(|definition| (definition, elements.get(&definition.name).unwrap()))
+        .and_then(|definition| {
+            elements
+                .get(&definition.name)
+                .ok_or_else(|| PlyError::ElementNotFound)
+                .map(|elements| (definition, elements))
+        })
+}
+
+pub fn decode_vertex_properties<E>(
+    decoder: &E,
+    definitions: &Header,
+    elements: &Payload,
+) -> Result<E::Output, PlyError>
+where
+    E: VertexElementDecoder + VertexPropertyDecoder,
+{
+    decoder
+        .decode_vertex_elements(definitions, elements)
+        .and_then(|(definition, elements)| decoder.decode_vertex_properties(definition, elements))
+}
+
+pub fn decode_face_properties<E>(
+    decoder: &E,
+    definitions: &Header,
+    elements: &Payload,
+) -> Result<E::Output, PlyError>
+where
+    E: FaceElementDecoder + FacePropertyDecoder,
+{
+    decoder
+        .decode_face_elements(definitions, elements)
+        .and_then(|(definition, elements)| decoder.decode_face_properties(definition, elements))
 }
 
 fn num_cast_scalar<T, U>(value: T) -> Result<U, PlyError>

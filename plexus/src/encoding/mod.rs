@@ -31,6 +31,9 @@ pub trait FaceDecoder {
     type Face;
 }
 
+// TODO: This trait is a bit limiting. Consider implementing more specific
+//       traits like `FromPly` directly. This could allow more specific
+//       features to be supported, such as edge geometry for `MeshGraph`s.
 pub trait FromEncoding<E>: Sized
 where
     E: FaceDecoder + VertexDecoder,
