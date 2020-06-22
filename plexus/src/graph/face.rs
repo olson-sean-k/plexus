@@ -137,7 +137,7 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Face<Geometry<B>>> + Geometric,
 {
-    pub fn to_mut(&mut self) -> FaceView<&mut M> {
+    fn to_mut(&mut self) -> FaceView<&mut M> {
         self.inner.to_mut().into()
     }
 }
@@ -1112,7 +1112,7 @@ where
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn to_mut(&mut self) -> Ring<&mut M> {
+    fn to_mut(&mut self) -> Ring<&mut M> {
         self.arc.to_mut().into_ring()
     }
 }

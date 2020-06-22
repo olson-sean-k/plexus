@@ -94,17 +94,23 @@
 //! of a graph and, unlike mutable views, they are not exclusive.
 //!
 //! Views perform _interior reborrows_, which reborrow the reference to storage
-//! to construct other views. These reborrows can be performed explicitly using
-//! conversion API described below:
+//! to construct other views. Immutable reborrows can be performed explicitly using
+//! the conversions described below:
 //!
-//! | Function   | Receiver    | Reference |
-//! |------------|-------------|-----------|
-//! | `to_ref`   | `&self`     | `&_`      |
-//! | `to_mut`   | `&mut self` | `&mut _`  |
-//! | `into_ref` | `self`      | `&*_`     |
+//! | Function   | Receiver    | Borrow | Output    |
+//! |------------|-------------|--------|-----------|
+//! | `to_ref`   | `&self`     | `&_`   | Immutable |
+//! | `into_ref` | `self`      | `&*_`  | Immutable |
 //!
-//! APIs that interact with views generally take views by value and client code
-//! should use these functions to copy or move views into these APIs.
+//! It is not possible to explicitly perform a mutable interior reborrow. Such a
+//! reborrow could invalidate the source view by performing a topological
+//! mutation. Mutable reborrows are performed beneath safe APIs, such as those
+//! exposing iterators over orphan views.
+//!
+//! Note that `into_ref` is analogous to an immutable reborrow of a mutable
+//! `&mut` Rust reference. Despite the downgraded reference, the mutable source
+//! reference remains and so it is not possible to obtain an additional mutable
+//! view after using `into_ref` until the originating view is dropped.
 //!
 //! # Examples
 //!

@@ -198,7 +198,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Arc<Geometry<B>>> + Geometric,
 {
-    pub fn to_mut(&mut self) -> ArcView<&mut M> {
+    // This function is also used to implement `Ring::to_mut`.
+    pub(in crate::graph) fn to_mut(&mut self) -> ArcView<&mut M> {
         self.inner.to_mut().into()
     }
 }
@@ -1170,16 +1171,6 @@ where
 {
     pub fn to_ref(&self) -> EdgeView<&M> {
         self.inner.to_ref().into()
-    }
-}
-
-impl<B, M> EdgeView<B>
-where
-    B: ReborrowMut<Target = M>,
-    M: AsStorage<Edge<Geometry<B>>> + Geometric,
-{
-    pub fn to_mut(&mut self) -> EdgeView<&mut M> {
-        self.inner.to_mut().into()
     }
 }
 

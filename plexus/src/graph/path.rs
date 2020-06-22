@@ -2,7 +2,7 @@ use fool::BoolExt;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
-use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
+use crate::entity::borrow::{Reborrow, ReborrowInto};
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView, Unbind, View};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
@@ -265,19 +265,6 @@ where
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
         let (_, b) = self.keys.front().cloned().expect("empty path").into();
         (a, b)
-    }
-}
-
-impl<B, M, G> Path<B>
-where
-    B: ReborrowMut<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
-{
-    pub fn to_mut(&mut self) -> Path<&mut M> {
-        let storage = self.storage.reborrow_mut();
-        let keys = self.keys.iter();
-        Path::bind_unchecked(storage, keys)
     }
 }
 

@@ -117,7 +117,7 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Vertex<Geometry<B>>> + Geometric,
 {
-    pub fn to_mut(&mut self) -> VertexView<&mut M> {
+    fn to_mut(&mut self) -> VertexView<&mut M> {
         self.inner.to_mut().into()
     }
 }
