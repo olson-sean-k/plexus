@@ -8,10 +8,10 @@ website](https://plexus.rs) for the most recent [API
 documentation](https://plexus.rs/rustdoc/plexus) and the [user
 guide](https://plexus.rs/user-guide/getting-started).
 
-[![CI](https://github.com/olson-sean-k/plexus/workflows/CI/badge.svg)](https://github.com/olson-sean-k/plexus/actions)
-[![Documentation](https://docs.rs/plexus/badge.svg)](https://docs.rs/plexus)
-[![Crate](https://img.shields.io/crates/v/plexus.svg)](https://crates.io/crates/plexus)
-[![Chat](https://badges.gitter.im/plexus-rs/community.svg)](https://gitter.im/plexus-rs/community)
+[![GitHub](https://img.shields.io/badge/GitHub-olson--sean--k/plexus-8da0cb?logo=github&style=for-the-badge)](https://github.com/olson-sean-k/plexus)
+[![docs.rs](https://img.shields.io/badge/docs.rs-plexus-66c2a5?logo=rust&style=for-the-badge)](https://docs.rs/plexus)
+[![crates.io](https://img.shields.io/crates/v/plexus.svg?logo=rust&style=for-the-badge)](https://crates.io/crates/plexus)
+[![Gitter](https://img.shields.io/badge/Gitter-plexus--rs-c266a5?logo=gitter&style=for-the-badge)](https://gitter.im/plexus-rs/community)
 
 ## Primitives and Iterator Expressions
 
