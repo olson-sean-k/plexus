@@ -368,9 +368,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     fn has_at_least(self, n: usize) -> Option<MultiPeek<Self>> {
         let mut peekable = itertools::multipeek(self);
-        let mut i = 0usize;
-        while i < n {
-            i = i + 1;
+        for _ in 0..n {
             peekable.peek()?;
         }
         peekable.reset_peek();
