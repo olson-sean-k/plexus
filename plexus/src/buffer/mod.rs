@@ -73,13 +73,26 @@
 //! let buffer: MeshBuffer4<usize, E3> = graph.to_mesh_by_vertex().unwrap();
 //! ```
 
+// `MeshBuffer`s must convert and sum indices into their vertex data. Some of
+// these conversions may fail, but others are never expected to fail, because of
+// invariants enforced by `MeshBuffer`.
+//
+// Index types require `Unsigned` and `Vec` capacity is limited by word size
+// (the width of `usize`). An overflow cannot occur in some contexts, because a
+// consistent `MeshBuffer` cannot index into a `Vec` with an index larger than
+// its maximum addressable capacity (the maximum value that `usize` can
+// represent).
+
+// TODO: More consistently `expect` or `ok_or_else` index conversions and sums.
+
 mod builder;
 
 use itertools::Itertools;
-use num::{Integer, NumCast, ToPrimitive, Unsigned};
+use num::{Integer, NumCast, Unsigned};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
+use std::vec;
 use theon::adjunct::{FromItems, Map};
 use thiserror::Error;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
@@ -93,7 +106,7 @@ use crate::index::{
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{
-    BoundedPolygon, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
+    BoundedPolygon, IntoPolygons, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
 };
 use crate::{Arity, DynamicArity, FromGeometry, IntoGeometry, MeshArity, Monomorphic, StaticArity};
 
@@ -421,53 +434,6 @@ where
     P: Grouping + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
-    /// Converts a structured `MeshBuffer` into an iterator of polygons
-    /// containing vertex data.
-    ///
-    /// # Examples
-    ///
-    /// Mapping over the polygons described by a buffer:
-    ///
-    /// ```rust
-    /// # extern crate decorum;
-    /// # extern crate nalgebra;
-    /// # extern crate plexus;
-    /// #
-    /// use decorum::R64;
-    /// use nalgebra::Point3;
-    /// use plexus::buffer::MeshBuffer;
-    /// use plexus::graph::MeshGraph;
-    /// use plexus::prelude::*;
-    /// use plexus::primitive::generate::Position;
-    /// use plexus::primitive::sphere::UvSphere;
-    /// use plexus::primitive::BoundedPolygon;
-    ///
-    /// type E3 = Point3<R64>;
-    ///
-    /// let buffer: MeshBuffer<BoundedPolygon<usize>, E3> =
-    ///     UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
-    /// let graph: MeshGraph<E3> = buffer
-    ///     .into_polygons()
-    ///     .map_vertices(|position| position * 2.0.into())
-    ///     .triangulate()
-    ///     .collect();
-    /// ```
-    pub fn into_polygons(self) -> impl Iterator<Item = <<P as Grouping>::Group as Map<G>>::Output>
-    where
-        G: Clone,
-        <P as Grouping>::Group: Map<G> + Topological,
-        <<P as Grouping>::Group as Topological>::Vertex: ToPrimitive,
-    {
-        let (indices, vertices) = self.into_raw_buffers();
-        indices
-            .into_iter()
-            .map(|polygon| {
-                polygon.map(|index| vertices[<usize as NumCast>::from(index).unwrap()].clone())
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-
     /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
     /// source buffer is drained.
     ///
@@ -792,6 +758,152 @@ where
                 .collect(),
             vertices,
         }
+    }
+}
+
+impl<N, G> IntoPolygons for MeshBuffer<Flat3<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+    G: Clone,
+    Trigon<N>: Grouping<Group = Trigon<N>>,
+{
+    type Output = vec::IntoIter<Self::Polygon>;
+    type Polygon = Trigon<G>;
+
+    /// Converts a triangular flat `MeshBuffer` into an iterator of `Trigon`s
+    /// containing vertex data.
+    fn into_polygons(self) -> Self::Output {
+        let (indices, vertices) = self.into_raw_buffers();
+        indices
+            .into_iter()
+            .chunks(U3::USIZE)
+            .into_iter()
+            .map(|chunk| {
+                // These conversions should never fail.
+                Trigon::from_items(chunk.map(|index| {
+                    let index = <usize as NumCast>::from(index).expect("index overflow");
+                    vertices[index].clone()
+                }))
+                .expect("inconsistent index buffer")
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}
+
+impl<N, G> IntoPolygons for MeshBuffer<Flat4<N>, G>
+where
+    N: Copy + Integer + NumCast + Unsigned,
+    G: Clone,
+    Trigon<N>: Grouping<Group = Trigon<N>>,
+{
+    type Output = vec::IntoIter<Self::Polygon>;
+    type Polygon = Tetragon<G>;
+
+    /// Converts a quadrilateral flat `MeshBuffer` into an iterator of
+    /// `Tetragon`s containing vertex data.
+    ///
+    /// # Examples
+    ///
+    /// Mapping over the polygons described by a flat buffer:
+    ///
+    /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::R64;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::index::Flat4;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::cube::Cube;
+    /// use plexus::primitive::generate::Position;
+    ///
+    /// type E3 = Point3<R64>;
+    ///
+    /// let buffer: MeshBuffer<Flat4, E3> = Cube::new().polygons::<Position<E3>>().collect();
+    /// let graph: MeshGraph<E3> = buffer
+    ///     .into_polygons()
+    ///     .map_vertices(|position| position * 2.0.into())
+    ///     .collect();
+    /// ```
+    fn into_polygons(self) -> Self::Output {
+        let (indices, vertices) = self.into_raw_buffers();
+        indices
+            .into_iter()
+            .chunks(U4::USIZE)
+            .into_iter()
+            .map(|chunk| {
+                // These conversions should never fail.
+                Tetragon::from_items(chunk.map(|index| {
+                    let index = <usize as NumCast>::from(index).expect("index overflow");
+                    vertices[index].clone()
+                }))
+                .expect("inconsistent index buffer")
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}
+
+impl<P, G> IntoPolygons for MeshBuffer<P, G>
+where
+    P: Grouping + Polygonal,
+    P::Group: Map<G> + Polygonal,
+    <P::Group as Map<G>>::Output: Polygonal<Vertex = G>,
+    <P::Group as Topological>::Vertex: NumCast,
+    P::Vertex: Copy + Integer + NumCast + Unsigned,
+    G: Clone,
+{
+    type Output = vec::IntoIter<Self::Polygon>;
+    type Polygon = <P::Group as Map<G>>::Output;
+
+    /// Converts a structured `MeshBuffer` into an iterator of polygons
+    /// containing vertex data.
+    ///
+    /// # Examples
+    ///
+    /// Mapping over the polygons described by a structured buffer:
+    ///
+    /// ```rust
+    /// # extern crate decorum;
+    /// # extern crate nalgebra;
+    /// # extern crate plexus;
+    /// #
+    /// use decorum::R64;
+    /// use nalgebra::Point3;
+    /// use plexus::buffer::MeshBuffer;
+    /// use plexus::graph::MeshGraph;
+    /// use plexus::prelude::*;
+    /// use plexus::primitive::generate::Position;
+    /// use plexus::primitive::sphere::UvSphere;
+    /// use plexus::primitive::BoundedPolygon;
+    ///
+    /// type E3 = Point3<R64>;
+    ///
+    /// let buffer: MeshBuffer<BoundedPolygon<usize>, E3> =
+    ///     UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
+    /// let graph: MeshGraph<E3> = buffer
+    ///     .into_polygons()
+    ///     .map_vertices(|position| position * 2.0.into())
+    ///     .triangulate()
+    ///     .collect();
+    /// ```
+    fn into_polygons(self) -> Self::Output {
+        let (indices, vertices) = self.into_raw_buffers();
+        indices
+            .into_iter()
+            .map(|polygon| {
+                polygon.map(|index| {
+                    // This conversion should never fail.
+                    let index = <usize as NumCast>::from(index).expect("index overflow");
+                    vertices[index].clone()
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 

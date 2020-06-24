@@ -210,7 +210,8 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use theon::adjunct::Map;
+use std::vec;
+use theon::adjunct::{FromItems, Map};
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use theon::AsPosition;
@@ -229,7 +230,7 @@ use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
-use crate::primitive::Polygonal;
+use crate::primitive::{IntoPolygons, Polygonal, UnboundedPolygon};
 use crate::transact::Transact;
 use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
 
@@ -1305,6 +1306,26 @@ where
     fn into(self) -> OwnedCore<G> {
         let MeshGraph { core, .. } = self;
         core
+    }
+}
+
+impl<G> IntoPolygons for MeshGraph<G>
+where
+    G: GraphGeometry,
+{
+    type Output = vec::IntoIter<Self::Polygon>;
+    type Polygon = UnboundedPolygon<G::Vertex>;
+
+    fn into_polygons(self) -> Self::Output {
+        self.faces()
+            .map(|face| {
+                // The arity of a face in a graph must be polygonal (three or
+                // higher) so this should never fail.
+                let vertices = face.vertices().map(|vertex| vertex.geometry);
+                UnboundedPolygon::from_items(vertices).expect_consistent()
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 

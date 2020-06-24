@@ -26,7 +26,7 @@ pub mod integration;
 pub mod primitive;
 mod transact;
 
-use itertools::{Itertools, MinMaxResult};
+use itertools::{self, Itertools, MinMaxResult, MultiPeek};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
@@ -77,7 +77,9 @@ pub mod prelude {
         IntoVertices as _, Subdivide as _, Tetrahedrons as _, Triangulate as _, Vertices as _,
     };
     pub use crate::primitive::generate::Generator as _;
-    pub use crate::primitive::{MapVertices as _, Polygonal as _, Topological as _};
+    pub use crate::primitive::{
+        IntoPolygons as _, MapVertices as _, Polygonal as _, Topological as _,
+    };
     pub use crate::IteratorExt as _;
     pub use crate::{DynamicArity as _, FromGeometry as _, IntoGeometry as _};
 
@@ -337,6 +339,44 @@ pub trait IteratorExt: Iterator + Sized {
         Self::Item: ClosedView,
     {
         Keys::new(self)
+    }
+
+    /// Determines if an iterator provides `n` or more elements.
+    ///
+    /// Returns a peekable iterator if the source iterator provides at least `n`
+    /// elements, otherwise `None`.
+    ///
+    /// # Examples
+    ///
+    /// Ensuring that an iterator over vertices has an arity of at least three:
+    ///
+    /// ```rust
+    /// use plexus::IteratorExt;
+    ///
+    /// fn is_convex(vertices: impl Iterator<Item = [f64; 2]>) -> bool {
+    ///     vertices
+    ///         .has_at_least(3)
+    ///         .and_then(|vertices| {
+    ///             for vertex in vertices {
+    ///                 // ...
+    ///             }
+    ///             // ...
+    ///             # Some(0usize)
+    ///         })
+    ///         .is_some()
+    /// }
+    /// ```
+    fn has_at_least(self, n: usize) -> Option<MultiPeek<Self>> {
+        let mut peekable = itertools::multipeek(self);
+        let mut i = 0usize;
+        while i < n {
+            i = i + 1;
+            if peekable.peek().is_none() {
+                return None;
+            }
+        }
+        peekable.reset_peek();
+        Some(peekable)
     }
 }
 

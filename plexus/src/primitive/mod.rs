@@ -281,6 +281,13 @@ pub trait Polygonal: Topological {
     }
 }
 
+pub trait IntoPolygons: Sized {
+    type Output: IntoIterator<Item = Self::Polygon>;
+    type Polygon: Polygonal;
+
+    fn into_polygons(self) -> Self::Output;
+}
+
 pub trait Rotate {
     fn rotate(self, n: isize) -> Self;
 }
@@ -950,6 +957,18 @@ where
 {
     fn from(polygon: BoundedPolygon<T>) -> Self {
         UnboundedPolygon(SmallVec::from(polygon.as_ref()))
+    }
+}
+
+impl<T> FromItems for UnboundedPolygon<T> {
+    fn from_items<I>(items: I) -> Option<Self>
+    where
+        I: IntoIterator<Item = Self::Item>,
+    {
+        items
+            .into_iter()
+            .has_at_least(3)
+            .map(|items| UnboundedPolygon(items.collect()))
     }
 }
 
