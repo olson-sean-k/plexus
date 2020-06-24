@@ -371,9 +371,7 @@ pub trait IteratorExt: Iterator + Sized {
         let mut i = 0usize;
         while i < n {
             i = i + 1;
-            if peekable.peek().is_none() {
-                return None;
-            }
+            peekable.peek()?;
         }
         peekable.reset_peek();
         Some(peekable)
