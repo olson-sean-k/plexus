@@ -78,7 +78,7 @@ use arrayvec::{Array, ArrayVec};
 use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
-use num::{Integer, One, Signed, Zero};
+use num::{Integer, One, Signed, Unsigned, Zero};
 use smallvec::{smallvec, SmallVec};
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -277,7 +277,35 @@ pub trait Polygonal: Topological {
             }
             sum = sum + t1;
         }
+        // TODO: Use an approximate comparison and do not explicitly round.
         (sum / (pi + pi)).round().abs() == One::one()
+    }
+}
+
+pub trait IntoIndexed<N>: Polygonal
+where
+    N: Copy + Integer + Unsigned,
+{
+    type Indexed: Polygonal<Vertex = (N, Self::Vertex)>;
+
+    fn into_indexed(self) -> Self::Indexed;
+}
+
+impl<N, P, Q> IntoIndexed<N> for P
+where
+    P: Map<(N, <P as Topological>::Vertex), Output = Q> + Polygonal,
+    Q: Polygonal<Vertex = (N, P::Vertex)>,
+    N: Copy + Integer + Unsigned,
+{
+    type Indexed = Q;
+
+    fn into_indexed(self) -> Self::Indexed {
+        let mut index = Zero::zero();
+        self.map(|vertex| {
+            let vertex = (index, vertex);
+            index = index + One::one();
+            vertex
+        })
     }
 }
 

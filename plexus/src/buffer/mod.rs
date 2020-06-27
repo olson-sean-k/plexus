@@ -106,7 +106,8 @@ use crate::index::{
 };
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{
-    BoundedPolygon, IntoPolygons, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
+    BoundedPolygon, IntoIndexed, IntoPolygons, Polygonal, Tetragon, Topological, Trigon,
+    UnboundedPolygon,
 };
 use crate::{Arity, DynamicArity, FromGeometry, IntoGeometry, MeshArity, Monomorphic, StaticArity};
 
@@ -463,6 +464,30 @@ where
                 .map(|topology| topology.into().map(|index| index + offset)),
         );
         Ok(())
+    }
+}
+
+impl<P, Q, T, R, N, G> From<P> for MeshBuffer<R, G>
+where
+    P: IntoIndexed<N, Indexed = Q> + Polygonal,
+    Q: Clone + Map<G, Output = T> + Map<N, Output = R> + Polygonal<Vertex = (N, P::Vertex)>,
+    T: Polygonal<Vertex = G>,
+    R: Grouping<Group = R> + Polygonal<Vertex = N>,
+    N: Copy + Integer + NumCast + Unsigned,
+    G: FromGeometry<P::Vertex>,
+{
+    fn from(polygon: P) -> Self {
+        let indexed = polygon.into_indexed();
+        MeshBuffer::from_raw_buffers(
+            // It is tempting to use a range over the polygon's arity to
+            // construct `R`, but that weakens the relationship between the
+            // input polygon `P` and the index buffer grouping `R`. These types
+            // must have compatible type-level arity, so this implementation
+            // relies on the `Map` implementation from `P` to `R`.
+            Some(indexed.clone().map(|(index, _)| index)),
+            Map::<G>::map(indexed, |(_, vertex)| vertex.into_geometry()),
+        )
+        .expect("inconsistent index buffer")
     }
 }
 

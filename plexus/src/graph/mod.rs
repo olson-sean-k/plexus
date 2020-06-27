@@ -1085,6 +1085,19 @@ where
     }
 }
 
+impl<P, G> From<P> for MeshGraph<G>
+where
+    P: Polygonal,
+    G: GraphGeometry,
+    G::Vertex: FromGeometry<P::Vertex>,
+{
+    fn from(polygon: P) -> Self {
+        let arity = polygon.arity();
+        MeshGraph::from_raw_buffers_with_arity(0..arity, polygon, arity)
+            .expect("inconsistent polygon")
+    }
+}
+
 impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
     G: GraphGeometry,
