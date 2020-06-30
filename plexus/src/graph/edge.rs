@@ -1,6 +1,3 @@
-// TODO: The `derivative` attribute macro causes this lint failure.
-#![allow(clippy::match_single_binding)]
-
 use arrayvec::ArrayVec;
 use derivative::Derivative;
 use fool::BoolExt;

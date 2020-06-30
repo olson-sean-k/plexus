@@ -1,6 +1,3 @@
-// TODO: The `derivative` attribute macro causes this lint failure.
-#![allow(clippy::match_single_binding)]
-
 use derivative::Derivative;
 use num::{One, Zero};
 use std::cmp::Reverse;
