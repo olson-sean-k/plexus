@@ -21,9 +21,9 @@
 //! use nalgebra::Point2;
 //! use plexus::buffer::MeshBuffer3;
 //! use plexus::builder::Buildable;
+//! use plexus::geometry::FromGeometry;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
-//! use plexus::FromGeometry;
 //!
 //! fn trigon<B, T>(points: [T; 3]) -> Result<B, B::Error>
 //! where
@@ -56,8 +56,8 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use crate::geometry::FromGeometry;
 use crate::transact::ClosedInput;
-use crate::IntoGeometry;
 
 /// Mesh data structure that can be built incrementally.
 ///
@@ -168,7 +168,7 @@ pub trait SurfaceBuilder: ClosedInput {
     /// to insert facets with a `FacetBuilder`.
     fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
     where
-        T: IntoGeometry<Self::Vertex>;
+        Self::Vertex: FromGeometry<T>;
 }
 
 pub trait FacetBuilder<K>: ClosedInput
@@ -190,6 +190,6 @@ where
     /// Returns a key that refers to the inserted facet.
     fn insert_facet<T, U>(&mut self, keys: T, geometry: U) -> Result<Self::Key, Self::Error>
     where
-        T: AsRef<[K]>,
-        U: IntoGeometry<Self::Facet>;
+        Self::Facet: FromGeometry<U>,
+        T: AsRef<[K]>;
 }

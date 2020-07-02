@@ -76,21 +76,24 @@ pub mod sphere;
 
 use arrayvec::{Array, ArrayVec};
 use decorum::Real;
+use fool::BoolExt as _;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::{Integer, One, Signed, Unsigned, Zero};
 use smallvec::{smallvec, SmallVec};
 use std::convert::TryInto;
+use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use theon::adjunct::{Adjunct, Converged, Fold, FromItems, IntoItems, Map, Push, ZipMap};
 use theon::ops::Cross;
-use theon::query::{Intersection, Line, Plane, Unit};
+use theon::query::{Intersection, Line, LineLine, LinePlane, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
-use theon::{AsPosition, Position};
+use theon::{AsPosition, AsPositionMut, Position};
 use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
+use crate::geometry::partition::PointPartition;
 use crate::primitive::decompose::IntoVertices;
 use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 
@@ -228,7 +231,7 @@ pub trait Topological:
     /// normal of the plane.
     fn project_into_plane(mut self, plane: Plane<Position<Self::Vertex>>) -> Self
     where
-        Self::Vertex: AsPosition,
+        Self::Vertex: AsPositionMut,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional,
         <Position<Self::Vertex> as FiniteDimensional>::N: Cmp<U2, Output = Greater>,
     {
@@ -237,12 +240,26 @@ pub trait Topological:
                 origin: *vertex.as_position(),
                 direction: plane.normal,
             };
-            if let Some(distance) = plane.intersection(&line) {
+            // TODO: Assert that this case always occurs; the line lies along
+            //       the normal.
+            if let Some(LinePlane::TimeOfImpact(distance)) = line.intersection(&plane) {
                 let translation = *line.direction.get() * distance;
                 vertex.transform(|position| *position + translation);
             }
         }
         self
+    }
+
+    // TODO: Once GATs are stabilized, consider using a separate trait for this
+    //       to avoid using `Vec` and allocating. This may also require a
+    //       different name to avoid collisions with the `decompose` module. See
+    //       https://github.com/rust-lang/rust/issues/44265
+    fn edges(&self) -> Vec<Edge<&Self::Vertex>> {
+        self.as_ref()
+            .iter()
+            .perimeter()
+            .map(|(a, b)| Edge::new(a, b))
+            .collect()
     }
 }
 
@@ -394,7 +411,7 @@ where
 /// _digon_, as it represents a single undirected edge rather than two distinct
 /// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the `Edge`
 /// type definition.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NGon<A>(pub A)
 where
     A: Array;
@@ -545,17 +562,17 @@ macro_rules! impl_monomorphic_ngon {
 impl_monomorphic_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 macro_rules! impl_zip_ngon {
-    (composite => $c:ident, length => $n:expr) => (
-        impl_zip_ngon!(composite => $c, length => $n, items => (A, B));
-        impl_zip_ngon!(composite => $c, length => $n, items => (A, B, C));
-        impl_zip_ngon!(composite => $c, length => $n, items => (A, B, C, D));
-        impl_zip_ngon!(composite => $c, length => $n, items => (A, B, C, D, E));
-        impl_zip_ngon!(composite => $c, length => $n, items => (A, B, C, D, E, F));
+    (length => $n:expr) => (
+        impl_zip_ngon!(length => $n, items => (A, B));
+        impl_zip_ngon!(length => $n, items => (A, B, C));
+        impl_zip_ngon!(length => $n, items => (A, B, C, D));
+        impl_zip_ngon!(length => $n, items => (A, B, C, D, E));
+        impl_zip_ngon!(length => $n, items => (A, B, C, D, E, F));
     );
-    (composite => $c:ident, length => $n:expr, items => ($($i:ident),*)) => (
+    (length => $n:expr, items => ($($i:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($i),*> Zip for ($($c<[$i; $n]>),*) {
-            type Output = $c<[($($i),*); $n]>;
+        impl<$($i),*> Zip for ($(NGon<[$i; $n]>),*) {
+            type Output = NGon<[($($i),*); $n]>;
 
             fn zip(self) -> Self::Output {
                 let ($($i,)*) = self;
@@ -639,7 +656,7 @@ macro_rules! impl_ngon {
             }
         }
 
-        impl_zip_ngon!(composite => NGon, length => $n);
+        impl_zip_ngon!(length => $n);
 
         impl<T, U> ZipMap<U> for NGon<[T; $n]> {
             type Output = NGon<[U; $n]>;
@@ -663,6 +680,78 @@ pub type Edge<T> = NGon<[T; 2]>;
 impl<T> Edge<T> {
     pub fn new(a: T, b: T) -> Self {
         NGon([a, b])
+    }
+
+    pub fn line(&self) -> Option<Line<Position<T>>>
+    where
+        T: AsPosition,
+    {
+        let [origin, endpoint] = self.positions().cloned().into_array();
+        Unit::try_from_inner(endpoint - origin).map(|direction| Line { origin, direction })
+    }
+
+    pub fn is_bisected(&self, other: &Self) -> bool
+    where
+        T: AsPosition,
+        Position<T>: FiniteDimensional<N = U2>,
+    {
+        let is_disjoint = |line: Line<Position<T>>, [a, b]: [Position<T>; 2]| {
+            fool::zip((line.partition(a), line.partition(b)))
+                .map(|(pa, pb)| pa != pb)
+                .unwrap_or(false)
+        };
+        fool::zip((self.line(), other.line()))
+            .map(|(l1, l2)| {
+                let l1 = is_disjoint(l1, other.positions().cloned().into_array());
+                let l2 = is_disjoint(l2, self.positions().cloned().into_array());
+                l1 && l2
+            })
+            .unwrap_or(false)
+    }
+}
+
+/// Intersection of edges.
+#[derive(Clone, Copy, PartialEq)]
+pub enum EdgeEdge<S>
+where
+    S: EuclideanSpace,
+{
+    Point(S),
+    Edge(Edge<S>),
+}
+
+impl<S> Debug for EdgeEdge<S>
+where
+    S: Debug + EuclideanSpace,
+    Vector<S>: Debug,
+{
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            EdgeEdge::Point(point) => write!(formatter, "Point({:?})", point),
+            EdgeEdge::Edge(edge) => write!(formatter, "Edge({:?})", edge),
+        }
+    }
+}
+
+impl<T> Intersection<Edge<T>> for Edge<T>
+where
+    T: AsPosition,
+    Position<T>: FiniteDimensional<N = U2>,
+{
+    type Output = EdgeEdge<Position<T>>;
+
+    // TODO: This first computes a line intersection and then partitions each
+    //       edge's endpoints by the other edge's line. That's probably more
+    //       expensive than is necessary.
+    #[allow(unstable_name_collisions)]
+    fn intersection(&self, other: &Edge<T>) -> Option<Self::Output> {
+        fool::zip((self.line(), other.line())).and_then(|(l1, l2)| match l1.intersection(&l2) {
+            Some(LineLine::Point(point)) => {
+                self.is_bisected(other).then_some(EdgeEdge::Point(point))
+            }
+            Some(LineLine::Line(_)) => todo!(),
+            _ => None,
+        })
     }
 }
 
@@ -755,7 +844,7 @@ impl<T> Rotate for Tetragon<T> {
 /// enumerating `NGon`s. As such, $n$ is bounded, because the enumeration only
 /// supports a limited set of polygons. Only common arities used by generators
 /// are provided.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoundedPolygon<T> {
     N3(Trigon<T>),
     N4(Tetragon<T>),
@@ -926,7 +1015,7 @@ impl<T> Topological for BoundedPolygon<T> {
 ///
 /// It is not possible to trivially convert an `UnboundedPolygon` into another
 /// well-formed topological type such as `NGon`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UnboundedPolygon<T>(SmallVec<[T; 4]>);
 
 impl<T> UnboundedPolygon<T> {

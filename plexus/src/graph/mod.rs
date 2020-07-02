@@ -214,7 +214,7 @@ use std::vec;
 use theon::adjunct::{FromItems, Map};
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
-use theon::AsPosition;
+use theon::{AsPosition, AsPositionMut};
 use thiserror::Error;
 use typenum::{self, NonZero};
 
@@ -223,6 +223,7 @@ use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
 use crate::entity::view::{Bind, Orphan, View};
+use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
 use crate::graph::geometry::Geometric;
@@ -232,7 +233,7 @@ use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexV
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{IntoPolygons, Polygonal, UnboundedPolygon};
 use crate::transact::Transact;
-use crate::{DynamicArity, FromGeometry, IntoGeometry, MeshArity, StaticArity};
+use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::dijkstra::Metric;
 pub use crate::entity::view::{ClosedView, Rebind};
@@ -638,7 +639,7 @@ where
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: VertexCentroid,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         let factor = factor.into();
@@ -1109,10 +1110,10 @@ where
 
 impl<E, G> FromEncoding<E> for MeshGraph<G>
 where
-    G: GraphGeometry,
     E: FaceDecoder + VertexDecoder,
-    E::Face: IntoGeometry<G::Face>,
-    E::Vertex: IntoGeometry<G::Vertex>,
+    G: GraphGeometry,
+    G::Face: FromGeometry<E::Face>,
+    G::Vertex: FromGeometry<E::Vertex>,
 {
     type Error = GraphError;
 
@@ -1141,9 +1142,9 @@ where
 impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
     G: GraphGeometry,
+    G::Vertex: FromGeometry<P::Vertex>,
     P: Map<usize> + Polygonal,
     P::Output: Grouping<Group = P::Output> + IntoVertices + Polygonal<Vertex = usize>,
-    P::Vertex: IntoGeometry<G::Vertex>,
     Vec<P::Output>: IndexBuffer<P::Output, Index = usize>,
 {
     type Error = GraphError;
@@ -1175,8 +1176,9 @@ where
 impl<G, P> FromIterator<P> for MeshGraph<G>
 where
     G: GraphGeometry,
+    G::Vertex: FromGeometry<P::Vertex>,
     P: Polygonal,
-    P::Vertex: Clone + Eq + Hash + IntoGeometry<G::Vertex>,
+    P::Vertex: Clone + Eq + Hash,
     Self: FromIndexer<P, P>,
 {
     fn from_iter<I>(input: I) -> Self
@@ -1192,7 +1194,7 @@ where
     P: IntoVertices + Polygonal,
     P::Vertex: Integer + ToPrimitive + Unsigned,
     G: GraphGeometry,
-    H: IntoGeometry<G::Vertex>,
+    G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
 
@@ -1227,7 +1229,7 @@ impl<N, G, H> FromRawBuffersWithArity<N, H> for MeshGraph<G>
 where
     N: Integer + ToPrimitive + Unsigned,
     G: GraphGeometry,
-    H: IntoGeometry<G::Vertex>,
+    G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
 
@@ -1355,8 +1357,9 @@ impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
-    H: Clone + IntoGeometry<G::Vertex>,
+    H: Clone,
     G: GraphGeometry,
+    G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
 
@@ -1399,8 +1402,9 @@ impl<P, H, G> TryFrom<MeshBuffer<P, H>> for MeshGraph<G>
 where
     P: Grouping<Group = P> + IntoVertices + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
-    H: Clone + IntoGeometry<G::Vertex>,
+    H: Clone,
     G: GraphGeometry,
+    G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
 

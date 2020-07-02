@@ -1,4 +1,5 @@
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::face::FaceKey;
 use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::face::{self, FaceInsertCache};
@@ -7,7 +8,6 @@ use crate::graph::mutation::Mutation;
 use crate::graph::vertex::VertexKey;
 use crate::graph::{GraphError, MeshGraph};
 use crate::transact::{ClosedInput, Transact};
-use crate::IntoGeometry;
 
 pub struct GraphBuilder<G>
 where
@@ -85,7 +85,7 @@ where
 
     fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
     where
-        T: IntoGeometry<Self::Vertex>,
+        Self::Vertex: FromGeometry<T>,
     {
         Ok(vertex::insert(&mut self.mutation, geometry.into_geometry()))
     }
@@ -100,8 +100,8 @@ where
 
     fn insert_facet<T, U>(&mut self, keys: T, geometry: U) -> Result<Self::Key, Self::Error>
     where
+        Self::Facet: FromGeometry<U>,
         T: AsRef<[VertexKey]>,
-        U: IntoGeometry<Self::Facet>,
     {
         let cache = FaceInsertCache::from_storage(&self.mutation, keys.as_ref())?;
         let geometry = geometry.into_geometry();

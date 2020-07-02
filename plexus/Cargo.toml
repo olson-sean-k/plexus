@@ -40,11 +40,11 @@ geometry-mint = ["theon/geometry-mint"]
 geometry-nalgebra = ["theon/geometry-nalgebra"]
 
 [dependencies]
+approx = "^0.3.0"
 arrayvec = "^0.5.0"
 decorum = "^0.3.1"
 derivative = "^2.1.1"
 fnv = "^1.0.6"
-fool = "0.0.3" # Unstable.
 itertools = "^0.9.0"
 num = "^0.3.0"
 slotmap = "^0.4.0"
@@ -54,9 +54,15 @@ typenum = "^1.10.0"
 
 ply-rs = { version = "^0.1.2", optional = true }
 
+[dependencies.fool] # Unstable.
+git = "https://github.com/olson-sean-k/fool.git"
+rev = "d5a287c"
+default-features = false
+features = ["zip"]
+
 [dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "2b6d62477d084b349f302da53462667ebb7133a1"
+rev = "115e10b"
 default-features = false
 features = ["lapack"]
 
@@ -69,7 +75,7 @@ nalgebra = "^0.21.0"
 
 [dev-dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "2b6d62477d084b349f302da53462667ebb7133a1"
+rev = "115e10b"
 default-features = false
 features = [
     "geometry-nalgebra",

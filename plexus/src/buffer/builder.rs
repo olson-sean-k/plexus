@@ -4,10 +4,11 @@ use typenum::{self, NonZero};
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::index::{Flat, Grouping, IndexBuffer};
 use crate::primitive::Topological;
 use crate::transact::{ClosedInput, Transact};
-use crate::{Arity, IntoGeometry};
+use crate::Arity;
 
 // TODO: It should not be possible to manufacture keys without placing
 //       additional constraints on the type bounds of `FacetBuilder` (for
@@ -56,8 +57,8 @@ where
 
     fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
     where
+        Self::Facet: FromGeometry<U>,
         T: AsRef<[N]>,
-        U: IntoGeometry<Self::Facet>,
     {
         let keys = keys.as_ref();
         if keys.len() == A::USIZE {
@@ -84,8 +85,8 @@ where
 
     fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
     where
+        Self::Facet: FromGeometry<U>,
         T: AsRef<[P::Vertex]>,
-        U: IntoGeometry<Self::Facet>,
     {
         let arity = keys.as_ref().len();
         P::try_from_slice(keys)
@@ -142,7 +143,7 @@ where
 
     fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
     where
-        T: IntoGeometry<Self::Vertex>,
+        Self::Vertex: FromGeometry<T>,
     {
         let key = <VertexKey<R> as NumCast>::from(self.vertices.len())
             .ok_or_else(|| BufferError::IndexOverflow)?;

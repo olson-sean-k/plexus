@@ -5,7 +5,7 @@ use slotmap::DefaultKey;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
-use theon::AsPosition;
+use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
@@ -689,7 +689,7 @@ where
     pub fn split_at_midpoint(self) -> VertexView<&'a mut M>
     where
         G: EdgeMidpoint,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
     {
         let mut geometry = self.source_vertex().geometry;
         let midpoint = self.midpoint();
@@ -733,10 +733,10 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point2;
+    /// use plexus::geometry::IntoGeometry;
     /// use plexus::graph::{GraphGeometry, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::NGon;
-    /// use plexus::IntoGeometry;
     ///
     /// fn find<'a, I, T, G>(input: I, geometry: T) -> Option<VertexKey>
     /// where
@@ -840,7 +840,7 @@ where
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: ArcNormal,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal() * offset.into();
@@ -863,7 +863,7 @@ where
         translation: Vector<VertexPosition<G>>,
     ) -> Result<ArcView<&'a mut M>, GraphError>
     where
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
@@ -1629,13 +1629,13 @@ mod tests {
     use decorum::N64;
     use nalgebra::{Point2, Point3};
 
+    use crate::geometry::IntoGeometry;
     use crate::graph::{ArcKey, GraphGeometry, MeshGraph, VertexView};
     use crate::index::HashIndexer;
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::Tetragon;
-    use crate::IntoGeometry;
 
     fn find_arc_with_vertex_geometry<G, T>(graph: &MeshGraph<G>, geometry: (T, T)) -> Option<ArcKey>
     where

@@ -9,7 +9,10 @@ use std::iter::IntoIterator;
 use theon::adjunct::IntoItems;
 use theon::ops::Interpolate;
 
-use crate::primitive::{BoundedPolygon, Edge, Polygonal, Tetragon, Topological, Trigon};
+use crate::primitive::{
+    BoundedPolygon, Edge, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
+};
+use crate::IteratorExt as _;
 
 pub struct Decompose<I, P, Q, R>
 where
@@ -114,6 +117,7 @@ where
     }
 }
 
+// TODO: Use a macro to implement this for all `NGon`s.
 pub trait IntoEdges: Topological {
     type Output: IntoIterator<Item = Edge<Self::Vertex>>;
 
@@ -137,10 +141,10 @@ pub trait IntoTetrahedrons: Polygonal {
 }
 
 impl<T> IntoEdges for Edge<T> {
-    type Output = ArrayVec<[Edge<Self::Vertex>; 1]>;
+    type Output = Option<Edge<Self::Vertex>>;
 
     fn into_edges(self) -> Self::Output {
-        ArrayVec::from([self])
+        Some(self)
     }
 }
 
@@ -188,6 +192,20 @@ where
             BoundedPolygon::N3(trigon) => trigon.into_edges().into_iter().collect(),
             BoundedPolygon::N4(tetragon) => tetragon.into_edges().into_iter().collect(),
         }
+    }
+}
+
+impl<T> IntoEdges for UnboundedPolygon<T>
+where
+    T: Clone,
+{
+    type Output = Vec<Edge<Self::Vertex>>;
+
+    fn into_edges(self) -> Self::Output {
+        self.into_iter()
+            .perimeter()
+            .map(|(a, b)| Edge::new(a, b))
+            .collect()
     }
 }
 

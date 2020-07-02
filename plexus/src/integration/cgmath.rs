@@ -8,8 +8,8 @@ pub use self::cgmath::*;
 use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
+use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphGeometry;
-use crate::{FromGeometry, UnitGeometry};
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where

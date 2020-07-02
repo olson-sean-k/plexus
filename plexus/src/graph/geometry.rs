@@ -28,16 +28,16 @@
 //! # extern crate plexus;
 //! # extern crate smallvec;
 //! #
+//! use plexus::geometry::AsPositionMut;
 //! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph};
 //! use plexus::prelude::*;
-//! use plexus::AsPosition;
 //! use smallvec::SmallVec;
 //!
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
 //! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
 //! where
 //!     G: EdgeMidpoint + GraphGeometry,
-//!     G::Vertex: AsPosition,
+//!     G::Vertex: AsPositionMut,
 //! {
 //!     let arity = face.arity();
 //!     let mut arc = face.into_arc();
@@ -96,6 +96,12 @@ where
     type Geometry = <B::Target as Geometric>::Geometry;
 }
 
+// TODO: Consolidating immutable and mutable access in the `AsPosition` trait
+//       prevents the use of immutable references with geometric functions,
+//       because a type like `&'a Point3<f64>` cannot implement `AsPosition`.
+//       If these operations and reference-based graphs become useful (for
+//       certain computational geometry algorithms, for example), then consider
+//       separating the `as_position` and `as_position_mut` APIs in Theon.
 // TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
 //       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
 /// Graph geometry.
@@ -120,11 +126,11 @@ where
 /// use decorum::N64;
 /// use nalgebra::{Point3, Vector4};
 /// use num::Zero;
+/// use plexus::geometry::{AsPosition, IntoGeometry};
 /// use plexus::graph::{GraphGeometry, MeshGraph};
 /// use plexus::prelude::*;
 /// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
-/// use plexus::{AsPosition, IntoGeometry};
 ///
 /// // Vertex-only geometry with position and color data.
 /// #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -145,10 +151,6 @@ where
 ///
 ///     fn as_position(&self) -> &Self::Position {
 ///         &self.position
-///     }
-///
-///     fn as_position_mut(&mut self) -> &mut Self::Position {
-///         &mut self.position
 ///     }
 /// }
 ///

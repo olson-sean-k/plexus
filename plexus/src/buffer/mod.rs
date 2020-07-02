@@ -100,6 +100,7 @@ use typenum::{self, NonZero, Unsigned as _, U3, U4};
 use crate::buffer::builder::BufferBuilder;
 use crate::builder::{Buildable, MeshBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
+use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::index::{
     BufferOf, Flat, Flat3, Flat4, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexOf,
     IndexVertices, Indexer, Push,
@@ -109,7 +110,7 @@ use crate::primitive::{
     BoundedPolygon, IntoIndexed, IntoPolygons, Polygonal, Tetragon, Topological, Trigon,
     UnboundedPolygon,
 };
-use crate::{Arity, DynamicArity, FromGeometry, IntoGeometry, MeshArity, Monomorphic, StaticArity};
+use crate::{Arity, DynamicArity, MeshArity, Monomorphic, StaticArity};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
@@ -413,9 +414,9 @@ where
     /// Returns an error if an index overflows.
     pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>) -> Result<(), BufferError>
     where
+        G: FromGeometry<H>,
         R: Grouping,
         R::Group: Into<<Flat<A, N> as Grouping>::Group>,
-        H: IntoGeometry<G>,
     {
         let offset = N::from(self.vertices.len()).ok_or_else(|| BufferError::IndexOverflow)?;
         self.vertices.extend(
@@ -443,9 +444,9 @@ where
     /// Returns an error if an index overflows.
     pub fn append<R, H>(&mut self, buffer: &mut MeshBuffer<R, H>) -> Result<(), BufferError>
     where
+        G: FromGeometry<H>,
         R: Grouping,
         R::Group: Into<<P as Grouping>::Group>,
-        H: IntoGeometry<G>,
         <P as Grouping>::Group:
             Map<P::Vertex, Output = <P as Grouping>::Group> + Topological<Vertex = P::Vertex>,
     {
@@ -495,8 +496,8 @@ impl<E, P, G> FromEncoding<E> for MeshBuffer<P, G>
 where
     E: FaceDecoder<Face = ()> + VertexDecoder,
     E::Index: AsRef<[P::Vertex]>,
-    E::Vertex: IntoGeometry<G>,
     P: Polygonal<Vertex = usize>,
+    G: FromGeometry<E::Vertex>,
     Self: FromRawBuffers<P, G, Error = BufferError>,
 {
     type Error = <Self as FromRawBuffers<P, G>>::Error;

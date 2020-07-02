@@ -6,9 +6,9 @@ use std::cmp;
 use std::collections::HashSet;
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use theon::query::{Intersection, Line, Plane};
+use theon::query::{Intersection, Line, LinePlane, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
-use theon::AsPosition;
+use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
@@ -282,7 +282,7 @@ where
     pub fn flatten(&mut self) -> Result<(), GraphError>
     where
         G: FacePlane,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
     {
         if self.arity() == 3 {
@@ -298,11 +298,15 @@ where
             // TODO: If the intersection yields no result, then this may fail
             //       after mutating positions in the graph. Consider using
             //       read/write stages to avoid partial completion.
-            let distance = plane
-                .intersection(&line)
-                .ok_or_else(|| GraphError::Geometry)?;
-            let translation = *line.direction.get() * distance;
-            *vertex.geometry.as_position_mut() = position + translation;
+            // TODO: Assert that this case always occurs; the line lies along
+            //       the normal.
+            if let LinePlane::TimeOfImpact(distance) = line
+                .intersection(&plane)
+                .ok_or_else(|| GraphError::Geometry)?
+            {
+                let translation = *line.direction.get() * distance;
+                *vertex.geometry.as_position_mut() = position + translation;
+            }
         }
         Ok(())
     }
@@ -682,10 +686,10 @@ where
     /// # extern crate plexus;
     /// #
     /// use nalgebra::Point3;
+    /// use plexus::geometry::{AsPosition, AsPositionMut};
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::Trigon;
-    /// use plexus::AsPosition;
     ///
     /// let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(
     ///     vec![Trigon::new(0usize, 1, 2)],
@@ -723,7 +727,7 @@ where
     pub fn poke_at_centroid(self) -> VertexView<&'a mut M>
     where
         G: FaceCentroid,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
     {
         let mut geometry = self.arc().source_vertex().geometry;
         let centroid = self.centroid();
@@ -772,7 +776,7 @@ where
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceCentroid + FaceNormal,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         let mut geometry = self.arc().source_vertex().geometry;
@@ -794,7 +798,7 @@ where
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceNormal,
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         let translation = self.normal()? * offset.into();
@@ -813,7 +817,7 @@ where
         translation: Vector<VertexPosition<G>>,
     ) -> FaceView<&'a mut M>
     where
-        G::Vertex: AsPosition,
+        G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
         self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
