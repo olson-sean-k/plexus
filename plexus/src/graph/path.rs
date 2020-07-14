@@ -75,13 +75,24 @@ where
         Path::bind_unchecked(storage, keys)
     }
 
+    /// Converts the path into its opposite path.
+    pub fn into_opposite_path(self) -> Self {
+        let Path { keys, storage } = self;
+        Path::bind_unchecked(storage, keys.into_iter().rev().map(|ab| ab.into_opposite()))
+    }
+
+    /// Gets the opposite path.
+    pub fn opposite_path(&self) -> Path<&M> {
+        self.to_ref().into_opposite_path()
+    }
+
     /// Pushes a vertex onto the back of the path.
     ///
     /// The back of a path $\overrightarrow{(A,\cdots)}$ is the vertex $A$.
     /// This is the source vertex of the first arc that forms the path.
     ///
-    /// The given vertex must be a source vertex of an arc formed with the the
-    /// back of the path. That is, if the given vertex is $X$, then
+    /// The given vertex must be a source vertex of an arc formed with the back
+    /// of the path. That is, if the given vertex is $X$, then
     /// $\overrightarrow{XA}$ must exist.
     ///
     /// Returns the key of the arc $\overrightarrow{XA}$ inserted into the path
@@ -155,7 +166,7 @@ where
     /// This is the destination vertex of the last arc that forms the path.
     ///
     /// The given vertex must be a destination vertex of an arc formed with the
-    /// the front of the path. That is, if the given vertex is $X$, then
+    /// front of the path.  That is, if the given vertex is $X$, then
     /// $\overrightarrow{BX}$ must exist.
     ///
     /// Returns the key of the arc $\overrightarrow{BX}$ inserted into the path
