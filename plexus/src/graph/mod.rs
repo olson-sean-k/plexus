@@ -840,7 +840,7 @@ where
             builder.facets_with(|builder| {
                 for face in self.faces() {
                     let indices = face
-                        .vertices()
+                        .adjacent_vertices()
                         .map(|vertex| keys[&vertex.key()])
                         .collect::<SmallVec<[_; 8]>>();
                     builder.insert_facet(indices.as_slice(), ())?;
@@ -934,7 +934,7 @@ where
         builder.surface_with(|builder| {
             for face in self.faces() {
                 let indices = face
-                    .vertices()
+                    .adjacent_vertices()
                     .map(|vertex| builder.insert_vertex(f(face, vertex)))
                     .collect::<Result<SmallVec<[_; 8]>, _>>()?;
                 builder.facets_with(|builder| {
@@ -1334,7 +1334,7 @@ where
             .map(|face| {
                 // The arity of a face in a graph must be polygonal (three or
                 // higher) so this should never fail.
-                let vertices = face.vertices().map(|vertex| vertex.geometry);
+                let vertices = face.adjacent_vertices().map(|vertex| vertex.geometry);
                 UnboundedPolygon::from_items(vertices).expect_consistent()
             })
             .collect::<Vec<_>>()

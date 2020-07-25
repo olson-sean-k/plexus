@@ -443,7 +443,7 @@ where
     G: GraphGeometry,
 {
     fn from(ring: Ring<B>) -> Self {
-        let keys: VecDeque<_> = ring.interior_arcs().keys().collect();
+        let keys: VecDeque<_> = ring.arcs().keys().collect();
         let (storage, _) = ring.into_arc().unbind();
         Path { keys, storage }
     }
@@ -485,7 +485,7 @@ mod tests {
             .faces()
             .nth(0)
             .unwrap()
-            .interior_arcs()
+            .adjacent_arcs()
             .map(|arc| arc.into_source_vertex())
             .keys()
             .collect::<Vec<_>>();

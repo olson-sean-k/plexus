@@ -318,8 +318,9 @@ where
             + Consistent
             + Geometric<Geometry = Self>,
     {
-        let (a, b) = FromItems::from_items(arc.vertices().map(|vertex| *vertex.position()))
-            .expect_consistent();
+        let (a, b) =
+            FromItems::from_items(arc.adjacent_vertices().map(|vertex| *vertex.position()))
+                .expect_consistent();
         let c = *arc.next_arc().destination_vertex().position();
         let ab = a - b;
         let cb = c - b;
@@ -361,7 +362,8 @@ where
     {
         let arc = edge.into_arc();
         let (a, b) =
-            FromItems::from_items(arc.vertices().map(|vertex| *vertex.position())).unwrap();
+            FromItems::from_items(arc.adjacent_vertices().map(|vertex| *vertex.position()))
+                .unwrap();
         Ok(a.midpoint(b))
     }
 }

@@ -289,7 +289,7 @@ where
             return Ok(());
         }
         let plane = self.plane()?;
-        for mut vertex in self.vertex_orphans() {
+        for mut vertex in self.adjacent_vertex_orphans() {
             let position = *vertex.position();
             let line = Line::<VertexPosition<G>> {
                 origin: position,
@@ -314,8 +314,8 @@ where
     M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn into_interior_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
-        self.into_ref().into_ring().into_interior_arcs()
+    pub fn into_adjacent_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+        self.into_ref().into_ring().into_arcs()
     }
 
     pub fn into_adjacent_faces(self) -> impl Clone + Iterator<Item = FaceView<&'a M>> {
@@ -330,8 +330,8 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the arcs in the face's ring.
-    pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
-        self.to_ref().into_interior_arcs()
+    pub fn adjacent_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_adjacent_arcs()
     }
 
     /// Gets an iterator of views over adjacent faces.
@@ -351,7 +351,7 @@ where
         + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn into_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
+    pub fn into_adjacent_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
         self.into_ref().into_ring().into_vertices()
     }
 }
@@ -367,8 +367,8 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the vertices that form the face.
-    pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
-        self.to_ref().into_vertices()
+    pub fn adjacent_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
+        self.to_ref().into_adjacent_vertices()
     }
 }
 
@@ -377,8 +377,8 @@ where
     M: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    pub fn into_interior_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
-        self.into_ring().into_interior_arc_orphans()
+    pub fn into_adjacent_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
+        self.into_ring().into_arc_orphans()
     }
 }
 
@@ -389,8 +389,8 @@ where
         AsStorageMut<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
-    pub fn interior_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
-        self.to_mut().into_interior_arc_orphans()
+    pub fn adjacent_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_arc_orphans()
     }
 }
 
@@ -424,7 +424,9 @@ where
         + Consistent
         + Geometric,
 {
-    pub fn into_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, Geometry<M>>> {
+    pub fn into_adjacent_vertex_orphans(
+        self,
+    ) -> impl Iterator<Item = VertexOrphan<'a, Geometry<M>>> {
         VertexCirculator::from(ArcCirculator::from(self.into_ring()))
     }
 }
@@ -439,8 +441,8 @@ where
         + Geometric,
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
-    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>> {
-        self.to_mut().into_vertex_orphans()
+    pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_vertex_orphans()
     }
 }
 
@@ -531,7 +533,7 @@ where
         destination: Selector<VertexKey>,
     ) -> Result<ArcView<&'a mut M>, GraphError> {
         let key_at_index = |index| {
-            self.vertices()
+            self.adjacent_vertices()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
@@ -602,7 +604,7 @@ where
                 .map(|face| face.key())
         })?;
         let ab = self
-            .interior_arcs()
+            .adjacent_arcs()
             .find(|arc| match arc.opposite_arc().face() {
                 Some(face) => face.key() == destination,
                 _ => false,
@@ -938,7 +940,7 @@ where
     /// Gets the arity of the face. This is the number of arcs that form the
     /// face's ring.
     fn arity(&self) -> Self::Dynamic {
-        self.interior_arcs().count()
+        self.adjacent_arcs().count()
     }
 }
 
@@ -1131,12 +1133,12 @@ where
     M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    /// Converts the ring into its originating arc.
+    /// Converts the ring into its leading arc.
     pub fn into_arc(self) -> ArcView<B> {
         self.arc
     }
 
-    /// Gets the originating arc of the ring.
+    /// Gets the leading arc of the ring.
     pub fn arc(&self) -> ArcView<&M> {
         self.arc.to_ref()
     }
@@ -1216,7 +1218,7 @@ where
     M: 'a + AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn into_interior_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
+    pub fn into_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
         ArcCirculator::from(self.into_ref())
     }
 }
@@ -1228,8 +1230,8 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the arcs within the ring.
-    pub fn interior_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
-        self.to_ref().into_interior_arcs()
+    pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
+        self.to_ref().into_arcs()
     }
 }
 
@@ -1261,7 +1263,7 @@ where
     M: AsStorageMut<Arc<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    pub fn into_interior_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
+    pub fn into_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
         ArcCirculator::from(self)
     }
 }
@@ -1272,8 +1274,8 @@ where
     B::Target: AsStorageMut<Arc<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over the arcs in the ring.
-    pub fn interior_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
-        self.to_mut().into_interior_arc_orphans()
+    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
+        self.to_mut().into_arc_orphans()
     }
 }
 
@@ -1356,7 +1358,7 @@ where
     /// Gets the arity of the ring. This is the number of arcs that form the
     /// path.
     fn arity(&self) -> Self::Dynamic {
-        self.interior_arcs().count()
+        self.arcs().count()
     }
 }
 
@@ -1378,7 +1380,7 @@ where
     G: GraphGeometry,
 {
     fn eq(&self, other: &Self) -> bool {
-        let keys = |ring: &Self| ring.interior_arcs().keys().collect::<HashSet<_>>();
+        let keys = |ring: &Self| ring.arcs().keys().collect::<HashSet<_>>();
         keys(self) == keys(other)
     }
 }
@@ -1710,7 +1712,7 @@ mod tests {
         let face = graph.faces().nth(0).unwrap();
 
         // All faces should be triangles and should have three edges.
-        assert_eq!(3, face.interior_arcs().count());
+        assert_eq!(3, face.adjacent_arcs().count());
     }
 
     #[test]
@@ -1878,7 +1880,7 @@ mod tests {
         .unwrap();
         let face = graph.faces().nth(0).unwrap();
         let keys = face
-            .vertices()
+            .adjacent_vertices()
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
         let ring = face.into_ring();

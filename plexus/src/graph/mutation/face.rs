@@ -300,7 +300,7 @@ impl FaceRemoveCache {
             + Consistent
             + Geometric,
     {
-        let arcs = face.interior_arcs().keys().collect();
+        let arcs = face.adjacent_arcs().keys().collect();
         Ok(FaceRemoveCache {
             abc: face.key(),
             arcs,
@@ -329,7 +329,7 @@ impl FaceSplitCache {
             + Geometric,
     {
         let perimeter = |face: FaceView<_>| {
-            face.vertices()
+            face.adjacent_vertices()
                 .keys()
                 .collect::<Vec<_>>()
                 .into_iter()
@@ -401,7 +401,7 @@ impl FacePokeCache {
             + Consistent
             + Geometric,
     {
-        let vertices = face.vertices().map(|vertex| vertex.key()).collect();
+        let vertices = face.adjacent_vertices().keys().collect();
         Ok(FacePokeCache {
             vertices,
             cache: FaceRemoveCache::from_face(face)?,
@@ -438,8 +438,8 @@ impl FaceBridgeCache {
             return Err(GraphError::ArityNonUniform);
         }
         Ok(FaceBridgeCache {
-            source: face.interior_arcs().keys().collect(),
-            destination: destination.interior_arcs().keys().collect(),
+            source: face.adjacent_arcs().keys().collect(),
+            destination: destination.adjacent_arcs().keys().collect(),
             cache,
         })
     }
@@ -462,7 +462,7 @@ impl FaceExtrudeCache {
             + Consistent
             + Geometric,
     {
-        let sources = face.vertices().keys().collect();
+        let sources = face.adjacent_vertices().keys().collect();
         let cache = FaceRemoveCache::from_face(face)?;
         Ok(FaceExtrudeCache { sources, cache })
     }

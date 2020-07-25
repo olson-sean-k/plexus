@@ -495,7 +495,9 @@ where
     M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn into_vertices(self) -> impl Clone + ExactSizeIterator<Item = VertexView<&'a M>> {
+    pub fn into_adjacent_vertices(
+        self,
+    ) -> impl Clone + ExactSizeIterator<Item = VertexView<&'a M>> {
         VertexCirculator::from(self.into_ref())
     }
 }
@@ -507,8 +509,10 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the vertices connected by the arc.
-    pub fn vertices(&self) -> impl Clone + ExactSizeIterator<Item = VertexView<&B::Target>> {
-        self.to_ref().into_vertices()
+    pub fn adjacent_vertices(
+        &self,
+    ) -> impl Clone + ExactSizeIterator<Item = VertexView<&B::Target>> {
+        self.to_ref().into_adjacent_vertices()
     }
 }
 
@@ -518,7 +522,7 @@ where
     M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: GraphGeometry,
 {
-    pub fn into_faces(self) -> impl Clone + ExactSizeIterator<Item = FaceView<&'a M>> {
+    pub fn into_adjacent_faces(self) -> impl Clone + ExactSizeIterator<Item = FaceView<&'a M>> {
         FaceCirculator::from(self.into_ref())
     }
 }
@@ -530,8 +534,8 @@ where
     G: GraphGeometry,
 {
     /// Gets an iterator of views over the faces connected to the arc.
-    pub fn faces(&self) -> impl Clone + ExactSizeIterator<Item = FaceView<&B::Target>> {
-        self.to_ref().into_faces()
+    pub fn adjacent_faces(&self) -> impl Clone + ExactSizeIterator<Item = FaceView<&B::Target>> {
+        self.to_ref().into_adjacent_faces()
     }
 }
 
@@ -540,7 +544,9 @@ where
     M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    pub fn into_vertex_orphans(self) -> impl ExactSizeIterator<Item = VertexOrphan<'a, G>> {
+    pub fn into_adjacent_vertex_orphans(
+        self,
+    ) -> impl ExactSizeIterator<Item = VertexOrphan<'a, G>> {
         VertexCirculator::from(self)
     }
 }
@@ -552,8 +558,10 @@ where
         AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over the vertices connected by the arc.
-    pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<Geometry<B>>> {
-        self.to_mut().into_vertex_orphans()
+    pub fn adjacent_vertex_orphans(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = VertexOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_vertex_orphans()
     }
 }
 
@@ -562,7 +570,7 @@ where
     M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Geometric<Geometry = G>,
     G: 'a + GraphGeometry,
 {
-    pub fn into_face_orphans(self) -> impl ExactSizeIterator<Item = FaceOrphan<'a, G>> {
+    pub fn into_adjacent_face_orphans(self) -> impl ExactSizeIterator<Item = FaceOrphan<'a, G>> {
         FaceCirculator::from(self)
     }
 }
@@ -574,8 +582,10 @@ where
         AsStorage<Arc<Geometry<B>>> + AsStorageMut<Face<Geometry<B>>> + Consistent + Geometric,
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
-    pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<Geometry<B>>> {
-        self.to_mut().into_face_orphans()
+    pub fn adjacent_face_orphans(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = FaceOrphan<Geometry<B>>> {
+        self.to_mut().into_adjacent_face_orphans()
     }
 }
 
@@ -768,7 +778,7 @@ where
     pub fn bridge(self, destination: Selector<ArcKey>) -> Result<FaceView<&'a mut M>, GraphError> {
         let destination = destination.key_or_else(|index| {
             self.ring()
-                .interior_arcs()
+                .arcs()
                 .nth(index)
                 .ok_or_else(|| GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
