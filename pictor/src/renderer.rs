@@ -161,12 +161,12 @@ where
 
     pub fn flush(&mut self) -> Result<(), ()> {
         self.encoder.flush(&mut self.device);
-        match self.window.swap_buffers().and_then(|_| {
+        if self.window.swap_buffers().is_ok() {
             self.device.cleanup();
             Ok(())
-        }) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
+        }
+        else {
+            Err(())
         }
     }
 
