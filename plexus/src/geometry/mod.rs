@@ -12,6 +12,7 @@
 use num::{One, Zero};
 
 pub mod partition;
+pub mod sweep;
 
 pub use theon::query::*;
 pub use theon::space::{Scalar, Vector};
