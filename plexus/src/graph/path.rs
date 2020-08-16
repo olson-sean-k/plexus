@@ -285,9 +285,6 @@ where
     G: GraphData,
 {
     /// Converts a mutable view into an immutable view.
-    ///
-    /// This is useful when mutations are not (or no longer) needed and mutual
-    /// access is desired.
     pub fn into_ref(self) -> Path<&'a M> {
         let Path { keys, storage, .. } = self;
         Path {
@@ -303,8 +300,9 @@ where
     /// $\overrightarrow{(M,\cdots,B)}$.
     ///
     /// **Splitting a path does not mutate its graph in any way** (unlike
-    /// `ArcView::split` or `FaceView::split`, for example). To split a graph
-    /// along a path (and thus mutate the graph) use `MeshGraph::split_at_path`.
+    /// [`ArcView::split_with`] or [`FaceView::split`], for example). To split a
+    /// graph along a path (and thus mutate the graph) use
+    /// [`MeshGraph::split_at_path`].
     ///
     /// It is not possible to split a path at its back or front vertices.
     ///
@@ -312,6 +310,10 @@ where
     ///
     /// Returns an error if the given vertex cannot be found or the path cannot
     /// be split at that vertex.
+    ///
+    /// [`ArcView::split_with`]: crate::graph::ArcView::split_with
+    /// [`FaceView::split`]: crate::graph::FaceView::split
+    /// [`MeshGraph::split_at_path`]: crate::graph::MeshGraph::split_at_path
     pub fn split(self, at: Selector<VertexKey>) -> Result<(Path<&'a M>, Path<&'a M>), GraphError> {
         let index = at.index_or_else(|key| {
             self.vertices()

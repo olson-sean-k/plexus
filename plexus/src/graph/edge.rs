@@ -47,8 +47,6 @@ where
     G: GraphData,
 {
     /// User data.
-    ///
-    /// The type of this field is derived from `GraphData`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub data: G::Arc,
     /// Required key into the next arc.
@@ -119,29 +117,27 @@ impl OpaqueKey for ArcKey {
     }
 }
 
-/// View of an arc entity.
+/// View of an [`Arc`] entity.
 ///
-/// Exposes references to an arc entity and provides the primary arc API. An arc
-/// from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$. This is
-/// shorthand for the path notation $\overrightarrow{(A,B)}$.
+/// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
+/// This is shorthand for the path notation $\overrightarrow{(A,B)}$.
 ///
-/// Arcs provide the connectivity information within a `MeshGraph` and are the
+/// Arcs provide the connectivity information within a [`MeshGraph`] and are the
 /// primary mechanism for traversing its topology. Moreover, most edge-like
-/// operations are exposed by arcs, because they are directed and therefore emit
-/// deterministic results.
+/// operations are exposed by arcs.
 ///
-/// See the module documentation for more information about views.
+/// See the [`graph`] module documentation for more information about views.
 ///
 /// # Examples
 ///
-/// Traversing a graph of a cube via its arcs to find an opposing face:
+/// Traversing a [`MeshGraph`] of a cube via its arcs to find an opposing face:
 ///
 /// ```rust
 /// # extern crate decorum;
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::graph::MeshGraph;
 /// use plexus::index::HashIndexer;
@@ -149,9 +145,11 @@ impl OpaqueKey for ArcKey {
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
 ///
-/// let mut graph = Cube::new()
-///     .polygons::<Position<Point3<N64>>>()
-///     .collect_with_indexer::<MeshGraph<Point3<N64>>, _>(HashIndexer::default())
+/// type E3 = Point3<R64>;
+///
+/// let mut graph: MeshGraph<E3> = Cube::new()
+///     .polygons::<Position<E3>>()
+///     .collect_with_indexer(HashIndexer::default())
 ///     .unwrap();
 ///
 /// let face = graph.faces().nth(0).unwrap();
@@ -164,6 +162,10 @@ impl OpaqueKey for ArcKey {
 ///     .into_face()
 ///     .unwrap();
 /// ```
+///
+/// [`Arc`]: crate::graph::Arc
+/// [`MeshGraph`]: crate::graph::MeshGraph
+/// [`graph`]: crate::graph
 pub struct ArcView<B>
 where
     B: Reborrow,
@@ -597,9 +599,9 @@ where
     /// Splits the composite edge of the arc into two adjacent edges that share
     /// a vertex.
     ///
-    /// Splitting inserts a new vertex with the geometry provided by the given
-    /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
-    /// that subdivides the composite edge. The leading arc of $M$ is
+    /// Splitting inserts a new vertex with data provided by the given function.
+    /// Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$ that
+    /// subdivides the composite edge. The leading arc of $M$ is
     /// $\overrightarrow{MB}$ and is a part of the same ring as the initiating
     /// arc.
     ///
@@ -607,7 +609,7 @@ where
     ///
     /// # Examples
     ///
-    /// Split an edge in a graph with weighted vertices:
+    /// Splitting an edge in a [`MeshGraph`] with weighted vertices:
     ///
     /// ```rust
     /// use plexus::graph::{GraphData, MeshGraph};
@@ -629,6 +631,8 @@ where
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_with(|| 0.1);
     /// ```
+    ///
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     pub fn split_with<F>(self, f: F) -> VertexView<&'a mut M>
     where
         F: FnOnce() -> G::Vertex,
@@ -644,25 +648,25 @@ where
 
     /// Splits the composite edge of the arc at its midpoint.
     ///
-    /// Splitting inserts a new vertex with the geometry of the arc's source
-    /// vertex but modified such that the positional data of the vertex is the
-    /// computed midpoint of both of the arc's vertices.
+    /// Splitting inserts a new vertex with the data of the arc's source vertex
+    /// but modified such that the position of the vertex is the computed
+    /// midpoint of both of the arc's vertices.
     ///
-    /// Splitting inserts a new vertex with the geometry provided by the given
-    /// function. Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$
-    /// that subdivides the composite edge. The leading arc of $M$ is
+    /// Splitting inserts a new vertex with data provided by the given function.
+    /// Splitting an arc $\overrightarrow{AB}$ returns a vertex $M$ that
+    /// subdivides the composite edge. The leading arc of $M$ is
     /// $\overrightarrow{MB}$ and is a part of the same ring as the initiating
     /// arc.
     ///
-    /// This function is only available if a graph's geometry exposes positional
+    /// This function is only available if a [`MeshGraph`] exposes positional
     /// data in its vertices and that data supports interpolation. See the
-    /// `geometry` module.
+    /// [`EdgeMidpoint`] trait.
     ///
     /// Returns the inserted vertex.
     ///
     /// # Examples
     ///
-    /// Split an edge in a triangle at its midpoint:
+    /// Splitting an edge in a triangle at its midpoint:
     ///
     /// ```rust
     /// # extern crate nalgebra;
@@ -681,6 +685,9 @@ where
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint();
     /// ```
+    ///
+    /// [`EdgeMidpoint`]: crate::graph::EdgeMidpoint
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     pub fn split_at_midpoint(self) -> VertexView<&'a mut M>
     where
         G: EdgeMidpoint,
@@ -697,7 +704,7 @@ where
     // TODO: What if an edge in the bridging quadrilateral is collapsed, such as
     //       bridging arcs within a triangular ring? Document these edge cases
     //       (no pun intended).
-    /// Connects the arc to another arc by forming a new ring and face.
+    /// Connects the arc to another arc by inserting a face.
     ///
     /// Bridging arcs inserts a new face and, as needed, new arcs and edges.
     /// The inserted face is always a quadrilateral. The bridged arcs must be
@@ -711,7 +718,7 @@ where
     /// key or index, where an index selects the $n^\text{th}$ arc from the
     /// source arc within the ring.
     ///
-    /// Returns the inserted face if successful.
+    /// Returns the inserted face.
     ///
     /// # Errors
     ///
@@ -788,8 +795,8 @@ where
 
     /// Extrudes the arc along its normal.
     ///
-    /// The positional geometry of each extruded vertex is translated along the
-    /// arc's normal by the given offset.
+    /// The positions of each extruded vertex are translated along the arc's
+    /// normal by the given offset.
     ///
     /// An arc's normal is perpendicular to the arc and also coplanar with the
     /// arc and one of its adjacent arcs. This is computed via a projection and
@@ -844,8 +851,8 @@ where
 
     /// Extrudes the arc along a translation.
     ///
-    /// The positional geometry of each extruded vertex is translated by the
-    /// given translation (vector).
+    /// The positions of each extruded vertex are translated by the given
+    /// vector.
     ///
     /// Returns the extruded arc, which is in the same ring as the initiating
     /// arc.
@@ -864,11 +871,11 @@ where
         self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
     }
 
-    /// Extrudes the arc using the given vertex geometry.
+    /// Extrudes the arc using the given vertex data.
     ///
-    /// The geometry of each extruded vertex is determined by the given
-    /// function, which maps the geometry of each source vertex into the
-    /// geometry of the corresponding destination vertex.
+    /// The data of each extruded vertex is determined by the given function,
+    /// which maps the data of each source vertex into the data of the
+    /// corresponding destination vertex.
     ///
     /// Returns the extruded arc, which is in the same ring as the initiating
     /// arc.
@@ -890,8 +897,8 @@ where
 
     /// Removes the arc and its composite edge.
     ///
-    /// Any and all dependent topology is also removed, such as connected faces,
-    /// disjoint vertices, etc.
+    /// Any and all dependent entities are also removed, such as connected
+    /// faces, disjoint vertices, etc.
     ///
     /// Returns the source vertex of the initiating arc or `None` if that vertex
     /// becomes disjoint and is also removed. If an arc $\overrightarrow{AB}$ is
@@ -1030,10 +1037,9 @@ where
     }
 }
 
-/// Orphan view of an arc.
+/// Orphan view of an [`Arc`] entity.
 ///
-/// Provides mutable access to an arc's geometry. See the module documentation
-/// for more information about topological views.
+/// [`Arc`]: crate::graph::Arc
 pub struct ArcOrphan<'a, G>
 where
     G: GraphData,
@@ -1110,8 +1116,6 @@ where
     G: GraphData,
 {
     /// User data.
-    ///
-    /// The type of this field is derived from `GraphData`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub data: G::Edge,
     /// Required key into the leading arc.
@@ -1154,13 +1158,15 @@ impl OpaqueKey for EdgeKey {
     }
 }
 
-/// View of an edge entity.
+/// View of an [`Edge`] entity.
 ///
-/// Exposes references to an edge entity and provides the primary edge API. An
-/// edge connecting a vertex $A$ and a vertex $B$ is notated
+/// An edge connecting a vertex $A$ and a vertex $B$ is notated
 /// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
 ///
-/// See the module documentation for more information about views.
+/// See the [`graph`] module documentation for more information about views.
+///
+/// [`Edge`]: crate::graph::Edge
+/// [`graph`]: crate::graph
 pub struct EdgeView<B>
 where
     B: Reborrow,
@@ -1353,10 +1359,9 @@ where
     }
 }
 
-/// Orphan view of an edge.
+/// Orphan view of an [`Edge`] entity.
 ///
-/// Provides mutable access to an edge's geometry. See the module documentation
-/// for more information about topological views.
+/// [`Edge`]: crate::graph::Edge
 pub struct EdgeOrphan<'a, G>
 where
     G: GraphData,
@@ -1624,7 +1629,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::{Point2, Point3};
 
     use crate::geometry::FromGeometry;
@@ -1634,6 +1639,9 @@ mod tests {
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
     use crate::primitive::Tetragon;
+
+    type E2 = Point2<R64>;
+    type E3 = Point3<R64>;
 
     fn find_arc<G, T>(graph: &MeshGraph<G>, data: (T, T)) -> Option<ArcKey>
     where
@@ -1658,7 +1666,7 @@ mod tests {
 
     #[test]
     fn extrude_arc() {
-        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+        let mut graph = MeshGraph::<E2>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
@@ -1678,7 +1686,7 @@ mod tests {
     #[test]
     fn bridge_arcs() {
         // Construct a mesh with two disjoint quadrilaterals.
-        let mut graph = MeshGraph::<Point3<f32>>::from_raw_buffers_with_arity(
+        let mut graph = MeshGraph::<E3>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 4, 5, 6, 7],
             vec![
                 (-2.0, 0.0, 0.0),
@@ -1708,9 +1716,9 @@ mod tests {
     #[test]
     fn split_edge() {
         let (indices, vertices) = Cube::new()
-            .polygons::<Position<Point3<N64>>>() // 6 quadrilaterals, 24 vertices.
+            .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<f64>>::from_raw_buffers(indices, vertices).unwrap();
+        let mut graph = MeshGraph::<E3>::from_raw_buffers(indices, vertices).unwrap();
         let key = graph.arcs().nth(0).unwrap().key();
         let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
 
@@ -1729,7 +1737,7 @@ mod tests {
     #[test]
     fn remove_edge() {
         // Construct a graph with two connected quadrilaterals.
-        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+        let mut graph = MeshGraph::<E2>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 0, 3, 4, 5],
             vec![
                 (0.0, 0.0),  // 0

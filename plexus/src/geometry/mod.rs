@@ -1,3 +1,5 @@
+//! Geometric traits and computational geometry.
+
 pub mod partition;
 
 pub use theon::{AsPosition, AsPositionMut, Position};
@@ -51,10 +53,10 @@ where
 /// When geometry features are enabled, `UnitGeometry` is implemented for
 /// integrated foreign types.
 ///
-/// [`FromGeometry`]: trait.FromGeometry.html
-/// [`IntoGeometry`]: trait.IntoGeometry.html
-/// [`MeshBuffer`]: buffer/struct.MeshBuffer.html
-/// [`MeshGraph`]: graph/struct.MeshGraph.html
+/// [`FromGeometry`]: crate::geometry::FromGeometry
+/// [`IntoGeometry`]: crate::geometry::IntoGeometry
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`MeshGraph`]: crate::graph::MeshGraph
 pub trait UnitGeometry {}
 
 pub trait IntoGeometry<T> {

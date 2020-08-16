@@ -1,7 +1,71 @@
-//! Topological decomposition and tessellation.
+//! Decomposition and tessellation.
 //!
-//! The `Decompose` iterator uses various traits to decompose and tessellate
-//! streams of topological structures.
+//! The [`Decompose`] iterator uses various traits to decompose and tessellate
+//! iterators of topological structures.
+//!
+//! This module provides two kinds of decomposition traits: conversions and
+//! [`Iterator`] extensions. Conversion traits are implemented by topological
+//! types and decompose a single structure into any number of output structures.
+//! Extensions are implemented for iterators of topological structures and
+//! perform the corresponding conversion on the input items to produce flattened
+//! output. For example, [`IntoTrigons`] converts a [`Polygonal`] type into an
+//! iterator of [`Trigon`]s while [`Triangulate`] does the same to the items of
+//! an iterator.
+//!
+//! Many of these traits are re-exported in the [`prelude`] module.
+//!
+//! # Examples
+//!
+//! Tessellating a [`Tetragon`] into [`Trigon`]s:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! #
+//! use nalgebra::Point2;
+//! use plexus::prelude::*;
+//! use plexus::primitive::Tetragon;
+//!
+//! type E2 = Point2<f64>;
+//!
+//! let square = Tetragon::from([
+//!     E2::new(1.0, 1.0),
+//!     E2::new(-1.0, 1.0),
+//!     E2::new(-1.0, -1.0),
+//!     E2::new(1.0, -1.0),
+//! ]);
+//! let trigons = square.into_trigons();
+//! ```
+//!
+//! Tessellating an iterator of [`Tetragon`]s from a [generator][`generate`]:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! #
+//! use nalgebra::Point3;
+//! use plexus::prelude::*;
+//! use plexus::primitive::cube::Cube;
+//! use plexus::primitive::generate::Position;
+//!
+//! type E3 = Point3<f64>;
+//!
+//! let polygons: Vec<_> = Cube::new()
+//!     .polygons::<Position<E3>>()
+//!     .subdivide()
+//!     .triangulate()
+//!     .collect();
+//! ```
+//!
+//! [`Iterator`]: std::iter::Iterator
+//! [`prelude`]: crate::prelude
+//! [`Decompose`]: crate::primitive::decompose::Decompose
+//! [`IntoTrigons`]: crate::primitive::decompose::IntoTrigons
+//! [`Triangulate`]: crate::primitive::decompose::Triangulate
+//! [`generate`]: crate::primitive::generate
+//! [`Polygonal`]: crate::primitive::Polygonal
+//! [`Tetragon`]: crate::primitive::Tetragon
+//! [`Trigon`]: crate::primitive::Trigon
 
 use arrayvec::ArrayVec;
 use std::collections::VecDeque;
@@ -54,7 +118,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::index::{Flat4, HashIndexer};
     /// use plexus::prelude::*;
@@ -62,7 +126,7 @@ where
     /// use plexus::primitive::generate::Position;
     ///
     /// let (indices, positions) = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
+    ///     .polygons::<Position<Point3<R64>>>()
     ///     .subdivide()
     ///     .remap(7) // 8 subdivision operations are applied.
     ///     .index_vertices::<Flat4, _>(HashIndexer::default());

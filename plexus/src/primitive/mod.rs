@@ -1,17 +1,16 @@
 //! Primitive topological structures.
 //!
 //! This module provides composable primitives that describe polygonal
-//! structures. This includes simple _$n$-gons_ like triangles, _generators_
-//! that form polytopes like spheres, and _iterator expressions_ that compose
-//! and decompose streams of primitives.
+//! structures. This includes simple $n$-gons like triangles, polytope
+//! [generators][`generate`], and iterator expressions that compose and
+//! decompose iterators of primitives.
 //!
-//! Types in this module generally describe [_cycle
-//! graphs_](https://en.wikipedia.org/wiki/cycle_graph) and are not strictly
-//! geometric. For example, `Polygonal` types may be geometrically degenerate
-//! (e.g., collinear, converged, etc.) or used to approximate polygons from
-//! $\Reals^2$ embedded into higher-dimensional Euclidean spaces. These types
-//! are also used for indexing, in which case their representation and data are
-//! both entirely topological.
+//! Types in this module generally describe [cycle graphs][cycle-graph] and are
+//! not strictly geometric. For example, [`Polygonal`] types may be
+//! geometrically degenerate (e.g., collinear, converged, etc.) or used to
+//! approximate polygons from $\Reals^2$ embedded into higher-dimensional
+//! spaces. These types are also used for indexing, in which case their
+//! representation and data are both entirely topological.
 //!
 //! Plexus uses the terms _trigon_ and _tetragon_ for its polygon types, which
 //! mean _triangle_ and _quadrilateral_, respectively. This is done for
@@ -19,37 +18,37 @@
 //! contexts, the term _triangle_ is still used, such as in functions concerning
 //! _triangulation_.
 //!
+//! # Representations
+//!
+//! Plexus provides various topological types with different capabilities
+//! summarized below:
+//!
+//! | Type               | Morphism    | Arity        | Map | Zip | Tessellate |
+//! |--------------------|-------------|--------------|-----|-----|------------|
+//! | `NGon`             | Monomorphic | $[2,12]$     | Yes | Yes | Yes        |
+//! | `BoundedPolygon`   | Polymorphic | $[3,4]$      | Yes | No  | Yes        |
+//! | `UnboundedPolygon` | Polymorphic | $[3,\infin)$ | Yes | No  | No         |
+//!
+//! [`NGon`] is [monomorphic][`Monomorphic`] and supports the broadest set of
+//! traits and features. However, its [type-level][`StaticArity`] arity is
+//! somewhat limited and its [value-level][`DynamicArity`] arity is fixed. This
+//! means, for example, that it is not possible to have an iterator of [`NGon`]s
+//! represent both trigons and tetragons, because these polygons must be
+//! distinct [`NGon`] types.
+//!
+//! The polygon types [`BoundedPolygon`] and [`UnboundedPolygon`] are
+//! polymorphic and therefore support variable [value-level][`DynamicArity`]
+//! [arity][`Arity`]. [`BoundedPolygon`] only expresses a limited set of
+//! polygons by enumerating [`NGon`]s, but supports decomposition and other
+//! traits. [`UnboundedPolygon`] is most flexible and can represent any
+//! arbitrary polygon, but does not support any tessellation features.
+//!
+//! [`Edge`]s are always represented as `NGon<[_; 2]>`.
+//!
 //! # Examples
 //!
-//! Generating raw buffers with the positional data for a sphere approximation:
-//!
-//! ```rust
-//! # extern crate nalgebra;
-//! # extern crate plexus;
-//! #
-//! use nalgebra::Point3;
-//! use plexus::prelude::*;
-//! use plexus::primitive::generate::Position;
-//! use plexus::primitive::sphere::UvSphere;
-//!
-//! let sphere = UvSphere::new(16, 16);
-//!
-//! // Generate the unique set of positional vertices.
-//! let positions = sphere
-//!     .vertices::<Position<Point3<f64>>>()
-//!     .collect::<Vec<_>>();
-//!
-//! // Generate polygons that index the unique set of positional vertices. The
-//! // polygons are decomposed into triangles and then into vertices, where each
-//! // vertex is an index into the position data.
-//! let indices = sphere
-//!     .indexing_polygons::<Position>()
-//!     .triangulate()
-//!     .vertices()
-//!     .collect::<Vec<_>>();
-//! ```
-//!
-//! Generating raw buffers with positional data for a cube using an indexer:
+//! Generating [raw buffers][`buffer`] with positional data of a [cube][`Cube`]
+//! using an [`Indexer`]:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -68,6 +67,18 @@
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! ```
+//!
+//! [cycle-graph]: https://en.wikipedia.org/wiki/cycle_graph
+//!
+//! [`buffer`]: crate::buffer
+//! [`Indexer`]: crate::index::Indexer
+//! [`Cube`]: crate::primitive::cube::Cube
+//! [`BoundedPolygon`]: crate::primitive::BoundedPolygon
+//! [`NGon`]: crate::primitive::NGon
+//! [`UnboundedPolygon`]: crate::primitive::UnboundedPolygon
+//! [`Arity`]: crate::Arity
+//! [`DynamicArity`]: crate::DynamicArity
+//! [`StaticArity`]: crate::StaticArity
 
 pub mod cube;
 pub mod decompose;
@@ -97,7 +108,7 @@ use crate::geometry::partition::PointPartition;
 use crate::primitive::decompose::IntoVertices;
 use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
 
-/// Primitive topological structure.
+/// Topological structure.
 ///
 /// Types implementing `Topological` provide some notion of adjacency between
 /// vertices of their `Vertex` type. These types typically represent cycle
@@ -263,9 +274,9 @@ pub trait Topological:
     }
 }
 
-/// Primitive polygonal structure.
+/// Polygonal structure.
 ///
-/// `Polygonal` types form _cycle graphs_ and extend `Topological` types with
+/// `Polygonal` types form cycle graphs and extend [`Topological`] types with
 /// the additional constraint that all vertices have a degree and valence of
 /// two. This requires at least three edges and forbids degenerate structures
 /// like monogons.
@@ -275,12 +286,14 @@ pub trait Topological:
 /// in $\Reals^2$ and cannot have converged or collinear vertices, but
 /// `Polygonal` types support this kind of data. However, `Polygonal` types are
 /// often used as a geometric approximation of polygons. Moreover, `Polygonal`
-/// types often contain non-geometric data, especially index data.
+/// types often contain non-geometric data, particularly index data.
+///
+/// [`Topological`]: crate::primitive::Topological
 pub trait Polygonal: Topological {
-    /// Determines if a polygonal structure is convex.
+    /// Determines if the polygon is convex.
     ///
-    /// This function rejects degenerate polygons, such as polygons with
-    /// collinear or converged vertices.
+    /// This function rejects (returns `false`) degenerate polygons, such as
+    /// polygons with collinear or converged vertices.
     fn is_convex(&self) -> bool
     where
         Self::Vertex: AsPosition,
@@ -400,9 +413,9 @@ where
 /// Monomorphic $n$-gon.
 ///
 /// `NGon` represents a polygonal structure as an array. Each array element
-/// represents vertex data in order with adjacent elements being connected by
-/// an implicit undirected edge. For example, an `NGon` with three vertices
-/// (`NGon<[T; 3]>`) would represent a triangle (trigon). Generally these
+/// represents vertex data in order with adjacent elements being connected by an
+/// implicit undirected edge. For example, an `NGon` with three vertices
+/// (`NGon<[T; 3]>`) would represent a trigon (triangle). Generally these
 /// elements are labeled $A$, $B$, $C$, etc.
 ///
 /// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
@@ -411,6 +424,10 @@ where
 /// _digon_, as it represents a single undirected edge rather than two distinct
 /// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the `Edge`
 /// type definition.
+///
+/// See the [module][`primitive`] documentation for more information.
+///
+/// [`primitive`]: crate::primitive
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NGon<A>(pub A)
 where
@@ -841,9 +858,14 @@ impl<T> Rotate for Tetragon<T> {
 /// Bounded polymorphic $n$-gon.
 ///
 /// `BoundedPolygon` represents an $n$-gon with at least three edges by
-/// enumerating `NGon`s. As such, $n$ is bounded, because the enumeration only
+/// enumerating [`NGon`]s. As such, $n$ is bounded, because the enumeration only
 /// supports a limited set of polygons. Only common arities used by generators
 /// are provided.
+///
+/// See the [module][`primitive`] documentation for more information.
+///
+/// [`primitive`]: crate::primitive
+/// [`NGon`]: crate::primitive::NGon
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BoundedPolygon<T> {
     N3(Trigon<T>),
@@ -1010,11 +1032,16 @@ impl<T> Topological for BoundedPolygon<T> {
 /// Unbounded polymorphic $n$-gon.
 ///
 /// `UnboundedPolygon` represents an $n$-gon with three or more edges. Unlike
-/// `BoundedPolygon`, there is no limit to the arity of polygons that
+/// [`BoundedPolygon`], there is no limit to the arity of polygons that
 /// `UnboundedPolygon` may represent.
 ///
-/// It is not possible to trivially convert an `UnboundedPolygon` into another
-/// well-formed topological type such as `NGon`.
+/// It is not possible to trivially convert an [`UnboundedPolygon`] into other
+/// topological types like [`NGon`]. See the [module][`primitive`] documentation
+/// for more information.
+///
+/// [`primitive`]: crate::primitive
+/// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
+/// [`NGon`]: crate::primitive::NGon
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnboundedPolygon<T>(SmallVec<[T; 4]>);
 
@@ -1174,16 +1201,16 @@ macro_rules! impl_unbounded_polygon {
 }
 impl_unbounded_polygon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
-/// Zips the vertices and topologies from multiple iterators into a single
-/// iterator.
+/// Zips the vertices of [`Topological`] types from multiple iterators into a
+/// single iterator.
 ///
-/// This is useful for zipping different attributes of a primitive generator.
-/// For example, it can be used to combine position, plane, and normal data data
-/// of a cube into a single topology stream.
+/// This is useful for zipping different geometric attributes of a
+/// [generator][`generate`].  For example, it can be used to combine position,
+/// plane, and normal data data of a [`Cube`] into a single topology iterator.
 ///
 /// # Examples
 ///
-/// Zip position, normal, and plane data for a cube:
+/// Zip position, normal, and plane attributes of a [cube][`Cube`]:
 ///
 /// ```rust
 /// # extern crate decorum;
@@ -1211,6 +1238,10 @@ impl_unbounded_polygon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 /// .triangulate()
 /// .collect::<Vec<_>>();
 /// ```
+///
+/// [`Cube`]: crate::primitive::cube::Cube
+/// [`generate`]: crate::primitive::generate
+/// [`Topological`]: crate::primitive::Topological
 pub fn zip_vertices<T, U>(
     tuple: U,
 ) -> impl Iterator<Item = <<OuterZip<T> as Iterator>::Item as Zip>::Output>
@@ -1221,19 +1252,21 @@ where
     OuterZip::from(tuple).map(|item| item.zip())
 }
 
-/// Gets the relative angles between adjacent line segments in a `Polygonal`
-/// with positional data in $\Reals^2$.
+/// Gets the relative angles between adjacent edges in a [`Polygonal`] type with
+/// positional data in $\Reals^2$.
 ///
-/// Computes the angle between line segments at each vertex in order. The angles
-/// are wrapped into the interval $(-\pi,\pi]$. The sign of each angle specifies
-/// the orientation of adjacent line segments. Given a square, exactly four
-/// angles of $\plusmn\frac{\pi}{2}$ will be returned, with the sign depending
-/// on the winding of the square.
+/// Computes the angle between edges at each vertex in order. The angles are
+/// wrapped into the interval $(-\pi,\pi]$. The sign of each angle specifies the
+/// orientation of adjacent edges. Given a square, exactly four angles of
+/// $\plusmn\frac{\pi}{2}$ will be returned, with the sign depending on the
+/// winding of the square.
 ///
 /// Adjacent vertices with the same position are ignored, as there is no
-/// meaningful line segment between such vertices. Because of this, it is
-/// possible that the number of angles returned by this function disagrees with
-/// the arity of the polygon.
+/// meaningful edge between such vertices. Because of this, it is possible that
+/// the number of angles returned by this function disagrees with the arity of
+/// the polygon.
+///
+/// [`Polygonal`]: crate::primitive::Polygonal
 fn angles<'a, P>(polygon: &'a P) -> impl 'a + Clone + Iterator<Item = Scalar<Position<P::Vertex>>>
 where
     P: Polygonal,

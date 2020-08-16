@@ -7,13 +7,13 @@ pub type Data<M> = <M as Parametric>::Data;
 /// Graph data.
 ///
 /// Specifies the types used to represent data in vertices, arcs, edges, and
-/// faces in a graph. Arbitrary types can be used, including `()` for no data at
-/// all.
+/// faces in a [`MeshGraph`]. Arbitrary types can be used, including the unit
+/// type `()` for no data at all.
 ///
 /// Geometric operations depend on understanding the positional data in vertices
-/// exposed by the `AsPosition` trait. If the `Vertex` type implements
-/// `AsPosition`, then geometric operations supported by the `Position` type are
-/// exposed by graph APIs.
+/// exposed by the [`AsPosition`] trait. If the `Vertex` type implements
+/// [`AsPosition`], then geometric operations supported by the `Position` type
+/// are exposed by graph APIs.
 ///
 /// # Examples
 ///
@@ -23,7 +23,7 @@ pub type Data<M> = <M as Parametric>::Data;
 /// # extern crate num;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::{Point3, Vector4};
 /// use num::Zero;
 /// use plexus::geometry::{AsPosition, IntoGeometry};
@@ -32,11 +32,10 @@ pub type Data<M> = <M as Parametric>::Data;
 /// use plexus::primitive::generate::Position;
 /// use plexus::primitive::sphere::UvSphere;
 ///
-/// // Vertex-only geometry with position and color data.
 /// #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 /// pub struct Vertex {
-///     pub position: Point3<N64>,
-///     pub color: Vector4<N64>,
+///     pub position: Point3<R64>,
+///     pub color: Vector4<R64>,
 /// }
 ///
 /// impl GraphData for Vertex {
@@ -47,22 +46,25 @@ pub type Data<M> = <M as Parametric>::Data;
 /// }
 ///
 /// impl AsPosition for Vertex {
-///     type Position = Point3<N64>;
+///     type Position = Point3<R64>;
 ///
 ///     fn as_position(&self) -> &Self::Position {
 ///         &self.position
 ///     }
 /// }
 ///
-/// // Create a mesh from a sphere primitive and map the geometry data.
-/// let mut graph = UvSphere::new(8, 8)
-///     .polygons::<Position<Point3<N64>>>()
+/// // Create a mesh from a uv-sphere.
+/// let mut graph: MeshGraph<Vertex> = UvSphere::new(8, 8)
+///     .polygons::<Position<Point3<R64>>>()
 ///     .map_vertices(|position| Vertex {
 ///         position,
 ///         color: Zero::zero(),
 ///     })
-///     .collect::<MeshGraph<Vertex>>();
+///     .collect();
 /// ```
+///
+/// [`AsPosition`]: crate::geometry::AsPosition
+/// [`MeshGraph`]: crate::graph::MeshGraph
 pub trait GraphData: Sized {
     type Vertex: Copy;
     type Arc: Copy + Default;

@@ -33,14 +33,6 @@ use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
 
-// TODO: The API for faces and rings presents fuzzy distinctions; many
-//       operations supported by `FaceView` could be supported by `Ring` as
-//       well (specifically, all topological operations where a `Face` is
-//       unnecessary). In essence, a face is simply a ring with an associated
-//       payload that describes its path and geometry. The geometry is the most
-//       notable difference, keeping in mind that in a consistent graph all arcs
-//       are part of a ring.
-
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where
     B: Reborrow,
@@ -59,8 +51,6 @@ where
     G: GraphData,
 {
     /// User data.
-    ///
-    /// The type of this field is derived from `GraphData`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub data: G::Face,
     /// Required key into the leading arc.
@@ -103,16 +93,18 @@ impl OpaqueKey for FaceKey {
     }
 }
 
-/// View of a face entity.
+/// View of a [`Face`] entity.
 ///
-/// Exposes references to a face entity and provides the primary face API. Faces
-/// are notated by the path of their associated ring. A triangular face with a
-/// perimeter formed by vertices $A$, $B$, and $C$ is notated
+/// Faces are notated by the path of their associated ring. A triangular face
+/// with a perimeter formed by vertices $A$, $B$, and $C$ is notated
 /// $\overrightarrow{\\{A,B,C\\}}$. While the precise ordering of vertices is
 /// determined by a face's leading arc, the same face may be notated using
 /// rotations of this set, such as $\overrightarrow{\\{B,C,A\\}}$.
 ///
-/// See the module documentation for more information about views.
+/// See the [`graph`] module documentation for more information about views.
+///
+/// [`MeshGraph`]: crate::graph::MeshGraph
+/// [`graph`]: crate::graph
 pub struct FaceView<B>
 where
     B: Reborrow,
@@ -155,16 +147,16 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// let mut graph = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
-    ///     .collect::<MeshGraph<Point3<f64>>>();
+    /// type E3 = Point3<R64>;
+    ///
+    /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let key = graph.faces().nth(0).unwrap().key();
     /// let face = graph
     ///     .face_mut(key)
@@ -278,6 +270,8 @@ where
 {
     /// Flattens the face by translating the positions of all vertices into a
     /// best-fit plane.
+    ///
+    /// # Errors
     ///
     /// Returns an error if a best-fit plane could not be computed or positions
     /// could not be translated into the plane.
@@ -457,7 +451,7 @@ where
     /// Gets an iterator that traverses adjacent faces by breadth.
     ///
     /// The traversal moves from the face to its adjacent faces and so on. If
-    /// there are disjoint subgraphs in the graph, then a traversal will not
+    /// there are disjoint sub-graphs in the graph, then a traversal will not
     /// reach every face in the graph.
     pub fn traverse_by_breadth(&self) -> impl Clone + Iterator<Item = FaceView<&B::Target>> {
         Traversal::<_, _, Breadth>::from(self.to_ref())
@@ -466,7 +460,7 @@ where
     /// Gets an iterator that traverses adjacent faces by depth.
     ///
     /// The traversal moves from the face to its adjacent faces and so on. If
-    /// there are disjoint subgraphs in the graph, then a traversal will not
+    /// there are disjoint sub-graphs in the graph, then a traversal will not
     /// reach every face in the graph.
     pub fn traverse_by_depth(&self) -> impl Clone + Iterator<Item = FaceView<&B::Target>> {
         Traversal::<_, _, Depth>::from(self.to_ref())
@@ -489,13 +483,11 @@ where
     /// The vertices can be chosen by key or index, where index selects the
     /// $n^\text{th}$ vertex within the face's ring.
     ///
-    /// This can be thought of as the opposite of `merge`.
-    ///
     /// Returns the arc inserted from the source vertex to the destination
-    /// vertex if successful. If a face $\overrightarrow{\\{A,B, C,D\\}}$ is
-    /// split from $A$ to $C$, then it will be decomposed into faces in the
-    /// rings $\overrightarrow{\\{A,B,C\\}}$ and $\overrightarrow{\\{C,D,A\\}}$
-    /// and the arc $\overrightarrow{AC}$ will be returned.
+    /// vertex. If a face $\overrightarrow{\\{A,B, C,D\\}}$ is split from $A$ to
+    /// $C$, then it will be decomposed into faces in the rings
+    /// $\overrightarrow{\\{A,B,C\\}}$ and $\overrightarrow{\\{C,D,A\\}}$ and
+    /// the arc $\overrightarrow{AC}$ will be returned.
     ///
     /// # Errors
     ///
@@ -550,14 +542,12 @@ where
             .expect_consistent())
     }
 
-    /// Merges the face into an adjacent face over their shared composite edge.
+    /// Merges the face into an adjacent face over a shared edge.
     ///
     /// The adjacent face can be chosen by key or index, where index selects
     /// the $n^\text{th}$ adjacent face.
     ///
-    /// This can be thought of as the opposite of `split`.
-    ///
-    /// Returns the merged face if successful.
+    /// Returns the merged face.
     ///
     /// # Errors
     ///
@@ -670,8 +660,7 @@ where
     /// Subdivides the face about a vertex. A triangle fan is formed from each
     /// arc in the face's perimeter and the vertex.
     ///
-    /// Poking inserts a new vertex with geometry provided by the given
-    /// function.
+    /// Poking inserts a new vertex with data provided by the given function.
     ///
     /// Returns the inserted vertex.
     ///
@@ -740,7 +729,7 @@ where
     /// The inserted vertex is then translated along the initiating face's
     /// normal by the given offset.
     ///
-    /// Returns the inserted vertex if successful.
+    /// Returns the inserted vertex.
     ///
     /// # Errors
     ///
@@ -755,16 +744,16 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
-    /// let mut graph = UvSphere::new(16, 8)
-    ///     .polygons::<Position<Point3<N64>>>()
-    ///     .collect::<MeshGraph<Point3<f64>>>();
+    /// type E3 = Point3<R64>;
+    ///
+    /// let mut graph: MeshGraph<E3> = UvSphere::new(16, 8).polygons::<Position<E3>>().collect();
     /// let keys = graph.faces().map(|face| face.key()).collect::<Vec<_>>();
     /// for key in keys {
     ///     graph.face_mut(key).unwrap().poke_with_offset(0.5).unwrap();
@@ -821,13 +810,9 @@ where
         self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
     }
 
-    /// Extrudes a face using the given vertex geometry.
+    /// Extrudes a face using the given vertex data.
     ///
     /// Returns the extruded face.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the geometry could not be computed.
     pub fn extrude_with<F>(self, f: F) -> FaceView<&'a mut M>
     where
         F: Fn(G::Vertex) -> G::Vertex,
@@ -843,7 +828,7 @@ where
 
     /// Removes the face.
     ///
-    /// Returns the remaining ring of the face if it is not entirely disjoint.
+    /// Returns the remaining ring of the face if it is not entirely disjoint, otherwise `None`.
     pub fn remove(self) -> Option<Ring<&'a mut M>> {
         // This should never fail here.
         let cache = FaceRemoveCache::from_face(self.to_ref()).expect_consistent();
@@ -1006,10 +991,9 @@ where
     }
 }
 
-/// Orphan view of a face.
+/// Orphan view of a [`Face`] entity.
 ///
-/// Provides mutable access to a face's geometry. See the module documentation
-/// for more information about topological views.
+/// [`Face`]: crate::graph::Face
 pub struct FaceOrphan<'a, G>
 where
     G: GraphData,
@@ -1078,11 +1062,11 @@ where
     }
 }
 
-/// Ring.
+/// Closed path formed by adjacent arcs.
 ///
-/// Rings are closed paths formed by arcs and their immediate adjacent arcs. In
-/// a consistent graph, every arc forms such a path. Such paths may or may not
-/// be occupied by faces.
+/// Rings are closed paths formed by arcs and their immediately adjacent arcs.
+/// In a consistent graph, every arc forms such a path. Such paths may or may
+/// not be occupied by faces.
 ///
 /// Rings are notated by their path. A ring with a perimeter formed by vertices
 /// $A$, $B$, and $C$ is notated $\overrightarrow{\\{A,B,C\\}}$. Note that
@@ -1310,7 +1294,7 @@ where
     /// Gets the face of the ring or inserts a face if one does not already
     /// exist.
     ///
-    /// Returns the inserted face.
+    /// Returns the existing or inserted face.
     pub fn get_or_insert_face(self) -> FaceView<&'a mut M> {
         self.get_or_insert_face_with(Default::default)
     }
@@ -1318,10 +1302,10 @@ where
     /// Gets the face of the ring or inserts a face if one does not already
     /// exist.
     ///
-    /// If a face is inserted, then the given function is used to get the
-    /// geometry for the face.
+    /// If a face is inserted, then the given function is used to get the data
+    /// for the face.
     ///
-    /// Returns the inserted face.
+    /// Returns the existing or inserted face.
     pub fn get_or_insert_face_with<F>(self, f: F) -> FaceView<&'a mut M>
     where
         F: FnOnce() -> G::Face,
@@ -1688,7 +1672,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::{Point2, Point3};
 
     use crate::graph::MeshGraph;
@@ -1699,13 +1683,14 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
     use crate::primitive::Tetragon;
 
-    type E3 = Point3<N64>;
+    type E2 = Point2<R64>;
+    type E3 = Point3<R64>;
 
     #[test]
     fn circulate_over_arcs() {
-        let graph = UvSphere::new(3, 2)
+        let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
         let face = graph.faces().nth(0).unwrap();
 
         // All faces should be triangles and should have three edges.
@@ -1714,9 +1699,9 @@ mod tests {
 
     #[test]
     fn circulate_over_faces() {
-        let graph = UvSphere::new(3, 2)
+        let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
         let face = graph.faces().nth(0).unwrap();
 
         // No matter which face is selected, it should have three adjacent
@@ -1726,9 +1711,9 @@ mod tests {
 
     #[test]
     fn remove_face() {
-        let mut graph = UvSphere::new(3, 2)
+        let mut graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
 
         // The graph should begin with 6 faces.
         assert_eq!(6, graph.face_count());
@@ -1749,7 +1734,7 @@ mod tests {
 
     #[test]
     fn split_face() {
-        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+        let mut graph = MeshGraph::<E2>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             4,
@@ -1772,9 +1757,9 @@ mod tests {
 
     #[test]
     fn extrude_face() {
-        let mut graph = UvSphere::new(3, 2)
+        let mut graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
         {
             let key = graph.faces().nth(0).unwrap().key();
             let face = graph
@@ -1802,7 +1787,7 @@ mod tests {
     #[test]
     fn merge_faces() {
         // Construct a graph with two connected quadrilaterals.
-        let mut graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
+        let mut graph = MeshGraph::<E2>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3, 0, 3, 4, 5],
             vec![
                 (0.0, 0.0),  // 0
@@ -1831,9 +1816,9 @@ mod tests {
 
     #[test]
     fn poke_face() {
-        let mut graph = Cube::new()
+        let mut graph: MeshGraph<E3> = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
         let key = graph.faces().nth(0).unwrap().key();
         let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
 
@@ -1856,7 +1841,7 @@ mod tests {
         let (indices, vertices) = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
-        let mut graph = MeshGraph::<Point3<N64>>::from_raw_buffers(indices, vertices).unwrap();
+        let mut graph = MeshGraph::<E3>::from_raw_buffers(indices, vertices).unwrap();
         graph.triangulate();
 
         assert_eq!(8, graph.vertex_count());

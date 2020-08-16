@@ -33,8 +33,6 @@ where
     G: GraphData,
 {
     /// User data.
-    ///
-    /// The type of this field is derived from `GraphData`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
     pub data: G::Vertex,
     /// Required key into the leading arc.
@@ -77,11 +75,12 @@ impl OpaqueKey for VertexKey {
     }
 }
 
-/// View of a vertex entity.
+/// View of a [`Vertex`] entity.
 ///
-/// Exposes references to a vertex entity and provides the primary vertex API.
+/// See the [`graph`] module documentation for more information about views.
 ///
-/// See the module documentation for more information about views.
+/// [`Vertex`]: crate::graph::Vertex
+/// [`graph`]: crate::graph
 pub struct VertexView<B>
 where
     B: Reborrow,
@@ -132,16 +131,16 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// let mut graph = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
-    ///     .collect::<MeshGraph<Point3<N64>>>();
+    /// type E3 = Point3<R64>;
+    ///
+    /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let key = graph.arcs().nth(0).unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
     ///
@@ -177,12 +176,12 @@ where
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    /// Converts the vertex into its leading (outgoing) arc.
+    /// Converts the vertex into its outgoing (leading) arc.
     pub fn into_outgoing_arc(self) -> ArcView<B> {
         self.into_reachable_outgoing_arc().expect_consistent()
     }
 
-    /// Gets the leading (outgoing) arc of the vertex.
+    /// Gets the outgoing (leading) arc of the vertex.
     pub fn outgoing_arc(&self) -> ArcView<&M> {
         self.to_ref().into_outgoing_arc()
     }
@@ -495,12 +494,12 @@ where
     //       examples in doc tests once this no longer intentionally panics.
     /// Removes the vertex.
     ///
-    /// Any and all dependent topology is also removed, such as arcs and edges
+    /// Any and all dependent entities are also removed, such as arcs and edges
     /// connected to the vertex, faces connected to such arcs, vertices with no
     /// remaining leading arc, etc.
     ///
     /// Vertex removal is the most destructive removal, because vertices are a
-    /// dependency of all other topological structures.
+    /// dependency of all other entities.
     ///
     /// # Examples
     ///
@@ -511,16 +510,18 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// let mut graph = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
-    ///     .collect::<MeshGraph<Point3<f64>>>();
+    /// type E3 = Point3<R64>;
+    ///
+    /// let mut graph: MeshGraph<E3> = Cube::new()
+    ///     .polygons::<Position<E3>>()
+    ///     .collect();
     /// let key = graph.vertices().nth(0).unwrap().key();
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
@@ -644,10 +645,9 @@ where
     }
 }
 
-/// Orphan view of a vertex.
+/// Orphan view of a [`Vertex`] entity.
 ///
-/// Provides mutable access to vertex's geometry. See the module documentation
-/// for more information about topological views.
+/// [`Vertex`]: crate::graph::Vertex
 pub struct VertexOrphan<'a, G>
 where
     G: GraphData,
@@ -1006,7 +1006,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::{Point2, Point3};
 
     use crate::graph::MeshGraph;
@@ -1016,13 +1016,13 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
     use crate::primitive::Trigon;
 
-    type E3 = Point3<N64>;
+    type E3 = Point3<R64>;
 
     #[test]
     fn circulate_over_arcs() {
-        let graph = UvSphere::new(4, 2)
+        let graph: MeshGraph<E3> = UvSphere::new(4, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<E3>>();
+            .collect();
 
         // All faces should be triangles and all vertices should have 4
         // (incoming) arcs.
@@ -1049,9 +1049,9 @@ mod tests {
 
     #[test]
     fn traverse_by_breadth() {
-        let graph = Cube::new()
+        let graph: MeshGraph<E3> = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-            .collect::<MeshGraph<E3>>();
+            .collect();
 
         let vertex = graph.vertices().nth(0).unwrap();
         assert_eq!(graph.vertex_count(), vertex.traverse_by_breadth().count());
@@ -1059,9 +1059,9 @@ mod tests {
 
     #[test]
     fn traverse_by_depth() {
-        let graph = Cube::new()
+        let graph: MeshGraph<E3> = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
-            .collect::<MeshGraph<E3>>();
+            .collect();
 
         let vertex = graph.vertices().nth(0).unwrap();
         assert_eq!(graph.vertex_count(), vertex.traverse_by_depth().count());

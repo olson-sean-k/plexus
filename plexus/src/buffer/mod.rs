@@ -1,36 +1,28 @@
-//! Linear representation of meshes.
+//! Linear representations of polygonal meshes.
 //!
-//! This module provides a `MeshBuffer` that represents a mesh as a linear
-//! collection of vertex geometry and an ordered collection of indices into that
-//! vertex geometry. These two buffers are called the _vertex buffer_ and _index
-//! buffer_, respectively. `MeshBuffer` combines these buffers and exposes them
-//! as slices. This layout is well-suited for graphics pipelines.
+//! This module provides types and traits that describe polygonal meshes as
+//! buffers of vertex data and buffers of indices into that vertex data. These
+//! buffers are called the _vertex buffer_ and _index buffer_, respectively, and
+//! are typically used for indexed drawing. The [`MeshBuffer`] type unifies
+//! vertex and index buffers and maintains their consistency.
 //!
-//! # Vertex Buffers
+//! Note that only _composite_ vertex buffers are supported, in which each
+//! element of a vertex buffer completely describes all attributes of a vertex.
+//! Plexus does not support _component_ buffers, in which each attribute of a
+//! vertex is stored in a dedicated buffer.
 //!
-//! Vertex buffers describe the geometry of a `MeshBuffer`. Only vertex geometry
-//! is supported; there is no way to associate geometry with an edge nor face,
-//! for example.
+//! Plexus refers to independent vertex and index buffers as _raw buffers_. For
+//! example, a [`Vec`] of index data is a raw buffer and can be modified without
+//! regard to consistency with any particular vertex buffer. The
+//! [`FromRawBuffers`] trait provides a way to construct mesh data structures
+//! from such raw buffers.
 //!
-//! `MeshBuffer`s use _composite_ vertex buffers. Each element of the vertex
-//! buffer completely describes the geometry of that vertex. For example, if
-//! each vertex is described by a position and color attribute, then each
-//! element in the vertex buffer contains both attributes within a single
-//! structure. _Component_ buffers, which store attributes in separate buffers,
-//! are not supported.
-//!
-//! # Index Buffers
-//!
-//! Index buffers describe the topology of a `MeshBuffer`. Both _structured_ and
-//! _flat_ index buffers are supported. See the `index` module for more
-//! information about index buffer formats.
-//!
-//! The `MeshBuffer3` and `MeshBufferN` type definitions avoid verbose type
-//! parameters and provide the most common index buffer configurations.
+//! Index buffers may contain either _flat_ or _structured_ data. See the
+//! [`index`] module for more about these buffers and how they are defined.
 //!
 //! # Examples
 //!
-//! Generating a flat `MeshBuffer` from a $uv$-sphere:
+//! Generating a flat [`MeshBuffer`] from a [$uv$-sphere][`UvSphere`]:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -52,7 +44,7 @@
 //! let positions = buffer.as_vertex_slice();
 //! ```
 //!
-//! Converting a `MeshGraph` to a flat `MeshBuffer`:
+//! Converting a [`MeshGraph`] to a structured [`MeshBuffer`]:
 //!
 //! ```rust
 //! # extern crate decorum;
@@ -61,7 +53,7 @@
 //! #
 //! use decorum::R64;
 //! use nalgebra::Point3;
-//! use plexus::buffer::MeshBuffer4;
+//! use plexus::buffer::MeshBufferN;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::cube::Cube;
@@ -70,8 +62,15 @@
 //! type E3 = Point3<R64>;
 //!
 //! let graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-//! let buffer: MeshBuffer4<usize, E3> = graph.to_mesh_by_vertex().unwrap();
+//! let buffer: MeshBufferN<usize, E3> = graph.to_mesh_by_vertex().unwrap();
 //! ```
+//!
+//! [`Vec`]: std::vec::Vec
+//! [`FromRawBuffers`]: crate::buffer::FromRawBuffers
+//! [`MeshBuffer`]: crate::buffer::MeshBuffer
+//! [`MeshGraph`]: crate::graph::MeshGraph
+//! [`index`]: crate::index
+//! [`UvSphere`]: crate::primitive::sphere::UvSphere
 
 // `MeshBuffer`s must convert and sum indices into their vertex data. Some of
 // these conversions may fail, but others are never expected to fail, because of
@@ -112,47 +111,106 @@ use crate::primitive::{
 };
 use crate::{Arity, DynamicArity, MeshArity, Monomorphic, StaticArity};
 
+/// Errors concerning raw buffers and [`MeshBuffer`]s.
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
 #[derive(Debug, Error, PartialEq)]
 pub enum BufferError {
+    /// An index into vertex data is out of bounds.
+    ///
+    /// This error occurs when an index read from an index buffer is out of
+    /// bounds of the vertex buffer it indexes.
     #[error("index into vertex data out of bounds")]
     IndexOutOfBounds,
+    /// The computation of an index causes an overflow.
+    ///
+    /// This error occurs if the result of computing an index overflows the type
+    /// used to represent indices. For example, if the elements of an index
+    /// buffer are `u8`s and an operation results in indices greater than
+    /// [`u8::MAX`], then this error will occur.
+    ///
+    /// [`u8::MAX`]: std::u8::MAX
     #[error("index overflow")]
     IndexOverflow,
     #[error("index buffer conflicts with arity")]
+    /// The number of indices in a flat index buffer is incompatible with the
+    /// arity of the buffer.
+    ///
+    /// This error may occur if a flat index buffer contains a number of indices
+    /// that is indivisible by the arity of the topology it represents. For
+    /// example, this may error occur if a triangular index buffer contains a
+    /// number of indices that is not divisible by three.
     IndexUnaligned,
+    /// The arity of a buffer or other data structure is not compatible with an
+    /// operation.
     #[error("conflicting arity; expected {expected}, but got {actual}")]
-    ArityConflict { expected: usize, actual: usize },
+    ArityConflict {
+        /// The expected arity.
+        expected: usize,
+        /// The incompatible arity that was encountered.
+        actual: usize,
+    },
 }
 
-/// Alias for a triangular `MeshBuffer`.
+/// Triangular [`MeshBuffer`].
 ///
-/// The index buffer for this type contains `Trigon`s. This should be preferred
-/// over flat index buffers, which are more prone to error. For applications
-/// where a flat index buffer is necessary, consider `IntoFlatIndex` or the
-/// `Flat3` meta-grouping.
+/// The index buffer for this type contains [`Trigon`]s. For applications where
+/// a flat index buffer is necessary, consider [`IntoFlatIndex`] or the
+/// [`Flat3`] meta-grouping.
+///
+/// [`IntoFlatIndex`]: crate::buffer::IntoFlatIndex
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`Flat3`]: crate::index::Flat3
+/// [`Trigon`]: crate::primitive::Trigon
 pub type MeshBuffer3<N, G> = MeshBuffer<Trigon<N>, G>;
 
-/// Alias for a quadrilateral `MeshBuffer`.
+/// Quadrilateral [`MeshBuffer`].
 ///
-/// The index buffer for this type contains `Tetragon`s. This should be
-/// preferred over flat index buffers, which are more prone to error.
+/// The index buffer for this type contains [`Tetragon`]s. For applications
+/// where a flat index buffer is necessary, consider [`IntoFlatIndex`] or the
+/// [`Flat4`] meta-grouping.
+///
+/// [`IntoFlatIndex`]: crate::buffer::IntoFlatIndex
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`Flat4`]: crate::index::Flat4
+/// [`Tetragon`]: crate::primitive::Tetragon
 pub type MeshBuffer4<N, G> = MeshBuffer<Tetragon<N>, G>;
 
-/// Alias for a `MeshBuffer` that supports arbitrary polygons.
+/// [`MeshBuffer`] that supports polygons with arbitrary [arity][`Arity`].
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`Arity`]: crate::Arity
 pub type MeshBufferN<N, G> = MeshBuffer<UnboundedPolygon<N>, G>;
 
+/// Conversion from raw buffers.
 pub trait FromRawBuffers<N, G>: Sized {
     type Error: Debug;
 
+    /// Creates a type from raw buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the raw buffers are inconsistent or the implementor
+    /// cannot be constructed from the buffers. The latter typically occurs if
+    /// the given topology is unsupported.
     fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = G>;
 }
 
+/// Conversion from raw buffers that do not encode their arity.
 pub trait FromRawBuffersWithArity<N, G>: Sized {
     type Error: Debug;
 
+    /// Creates a type from raw buffers with the given arity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the raw buffers are inconsistent, the raw buffers
+    /// are incompatible with the given arity, or the implementor cannot be
+    /// constructed from the buffers. The latter typically occurs if the given
+    /// topology is unsupported.
     fn from_raw_buffers_with_arity<I, J>(
         indices: I,
         vertices: J,
@@ -163,6 +221,8 @@ pub trait FromRawBuffersWithArity<N, G>: Sized {
         J: IntoIterator<Item = G>;
 }
 
+// TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
+//       use such a trait to provide this API.
 pub trait IntoFlatIndex<A, G>
 where
     A: NonZero + typenum::Unsigned,
@@ -172,6 +232,8 @@ where
     fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G>;
 }
 
+// TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
+//       use such a trait to provide this API.
 pub trait IntoStructuredIndex<G>
 where
     <Self::Item as Topological>::Vertex: Copy + Integer + Unsigned,
@@ -181,15 +243,23 @@ where
     fn into_structured_index(self) -> MeshBuffer<Self::Item, G>;
 }
 
-/// Linear representation of a mesh.
+/// Polygonal mesh composed of vertex and index buffers.
 ///
-/// A `MeshBuffer` is a linear representation of a mesh that is composed of two
-/// separate buffers: an _index buffer_ and a _vertex buffer_. The index buffer
-/// contains ordered indices into the data in the vertex buffer and describes
-/// the topology of the mesh. The vertex buffer contains arbitrary geometric
-/// data.
+/// A `MeshBuffer` is a linear representation of a polygonal mesh that is
+/// composed of two separate but related linear buffers: an _index buffer_ and a
+/// _vertex buffer_. The index buffer contains ordered indices into the data in
+/// the vertex buffer and describes the topology of the mesh. The vertex buffer
+/// contains arbitrary data that describes each vertex.
 ///
-/// See the module documention for more information.
+/// `MeshBuffer` only explicitly respresents vertices via the vertex buffer and
+/// surfaces via the index buffer. There is no explicit representation of
+/// structures like edges and faces.
+///
+/// The `R` type parameter specifies the [`Grouping`] of the index buffer. See
+/// the [`index`] module documention for more information.
+///
+/// [`Grouping`]: crate::buffer::Grouping
+/// [`index`]: crate::index
 #[derive(Debug)]
 pub struct MeshBuffer<R, G>
 where
@@ -230,6 +300,7 @@ impl<R, G> MeshBuffer<R, G>
 where
     R: Grouping,
 {
+    /// Converts a `MeshBuffer` into its index and vertex buffers.
     pub fn into_raw_buffers(self) -> (Vec<R::Group>, Vec<G>) {
         let MeshBuffer { indices, vertices } = self;
         (indices, vertices)
@@ -272,27 +343,27 @@ where
         }
     }
 
-    /// Gets a slice of the index data.
+    /// Gets a slice over the index data.
     pub fn as_index_slice(&self) -> &[R::Group] {
         self.indices.as_slice()
     }
 
-    /// Gets a slice of the vertex data.
+    /// Gets a slice over the vertex data.
     pub fn as_vertex_slice(&self) -> &[G] {
         self.vertices.as_slice()
     }
 }
 
-/// Exposes a `MeshBuilder` that can be used to construct a `MeshBuffer`
+/// Exposes a [`MeshBuilder`] that can be used to construct a [`MeshBuffer`]
 /// incrementally from _surfaces_ and _facets_.
 ///
-/// Note that the facet geometry for `MeshBuffer` is always the unit type `()`.
+/// Note that the facet data for [`MeshBuffer`] is always the unit type `()`.
 ///
-/// See the documentation for the `builder` module for more.
+/// See the documentation for the [`builder`] module.
 ///
 /// # Examples
 ///
-/// Creating a buffer from a triangle:
+/// Creating a [`MeshBuffer`] from a triangle:
 ///
 /// ```rust
 /// # extern crate nalgebra;
@@ -314,6 +385,10 @@ where
 ///     .and_then(|_| builder.build())
 ///     .unwrap();
 /// ```
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`MeshBuilder`]: crate::builder::MeshBuilder
+/// [`builder`]: crate::builder
 impl<R, G> Buildable for MeshBuffer<R, G>
 where
     R: Grouping,
@@ -406,8 +481,8 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
 {
-    /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
-    /// source buffer is drained.
+    /// Appends the contents of a flat `MeshBuffer` into another `MeshBuffer`.
+    /// The source buffer is drained.
     ///
     /// # Errors
     ///
@@ -436,8 +511,8 @@ where
     P: Grouping + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
 {
-    /// Appends the contents of a `MeshBuffer` into another `MeshBuffer`. The
-    /// source buffer is drained.
+    /// Appends the contents of a structured `MeshBuffer` into another
+    /// `MeshBuffer`. The source buffer is drained.
     ///
     /// # Errors
     ///
@@ -562,11 +637,12 @@ where
     }
 }
 
-impl<A, N, M, G> FromRawBuffers<M, G> for MeshBuffer<Flat<A, N>, G>
+impl<A, N, M, G, H> FromRawBuffers<M, H> for MeshBuffer<Flat<A, N>, G>
 where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     M: Copy + Integer + NumCast + Unsigned,
+    G: FromGeometry<H>,
 {
     type Error = BufferError;
 
@@ -584,8 +660,9 @@ where
     /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
+    /// # extern crate theon;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
     /// use plexus::index::{Flat3, HashIndexer};
@@ -593,8 +670,10 @@ where
     /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::{Normal, Position};
+    /// use theon::space::Vector;
     ///
-    /// type E3 = Point3<N64>;
+    /// type E3 = Point3<R64>;
+    /// type Vertex = (E3, Vector<E3>); // Position and normal.
     ///
     /// let cube = Cube::new();
     /// let (indices, vertices) = primitive::zip_vertices((
@@ -604,12 +683,12 @@ where
     /// ))
     /// .triangulate()
     /// .index_vertices::<Flat3, _>(HashIndexer::default());
-    /// let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, vertices).unwrap();
+    /// let buffer = MeshBuffer::<Flat3, Vertex>::from_raw_buffers(indices, vertices).unwrap();
     /// ```
     fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator<Item = M>,
-        J: IntoIterator<Item = G>,
+        J: IntoIterator<Item = H>,
     {
         let indices = indices
             .into_iter()
@@ -619,7 +698,10 @@ where
             Err(BufferError::IndexUnaligned)
         }
         else {
-            let vertices: Vec<_> = vertices.into_iter().collect();
+            let vertices: Vec<_> = vertices
+                .into_iter()
+                .map(|vertex| vertex.into_geometry())
+                .collect();
             let len = N::from(vertices.len()).unwrap();
             if indices.iter().any(|index| *index >= len) {
                 Err(BufferError::IndexOutOfBounds)
@@ -631,10 +713,11 @@ where
     }
 }
 
-impl<P, Q, G> FromRawBuffers<Q, G> for MeshBuffer<P, G>
+impl<P, Q, G, H> FromRawBuffers<Q, H> for MeshBuffer<P, G>
 where
     P: From<Q> + Grouping<Group = P> + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
+    G: FromGeometry<H>,
 {
     type Error = BufferError;
 
@@ -657,20 +740,25 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let sphere = UvSphere::new(8, 8);
-    /// let buffer = MeshBufferN::<usize, _>::from_raw_buffers(
+    /// let buffer = MeshBufferN::<usize, E3>::from_raw_buffers(
     ///     sphere.indexing_polygons::<Position>(),
-    ///     sphere.vertices::<Position<Point3<f64>>>(),
+    ///     sphere.vertices::<Position<E3>>(),
     /// )
     /// .unwrap();
     /// ```
     fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
         I: IntoIterator<Item = Q>,
-        J: IntoIterator<Item = G>,
+        J: IntoIterator<Item = H>,
     {
         let indices: Vec<_> = indices.into_iter().map(P::from).collect();
-        let vertices: Vec<_> = vertices.into_iter().map(|geometry| geometry).collect();
+        let vertices: Vec<_> = vertices
+            .into_iter()
+            .map(|vertex| vertex.into_geometry())
+            .collect();
         let is_out_of_bounds = {
             let len = <P::Vertex as NumCast>::from(vertices.len())
                 .ok_or_else(|| BufferError::IndexOverflow)?;
@@ -705,7 +793,8 @@ where
 {
     type Item = N;
 
-    /// Converts a structured index buffer into a flat index buffer.
+    /// Converts the index buffer of a `MeshBuffer` from structured data into
+    /// flat data.
     ///
     /// # Examples
     ///
@@ -720,10 +809,12 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::Trigon;
     ///
+    /// type E3 = Point3<f32>;
+    ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Trigon<usize>, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Trigon<usize>, E3>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>().triangulate(),
-    ///     cube.vertices::<Position<Point3<f32>>>(),
+    ///     cube.vertices::<Position<E3>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_flat_index();
@@ -749,7 +840,8 @@ where
 {
     type Item = N;
 
-    /// Converts a structured index buffer into a flat index buffer.
+    /// Converts the index buffer of a `MeshBuffer` from flat data into
+    /// structured data.
     ///
     /// # Examples
     ///
@@ -764,10 +856,12 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::Tetragon;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Tetragon<usize>, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Tetragon<usize>, E3>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>(),
-    ///     cube.vertices::<Position<Point3<f64>>>(),
+    ///     cube.vertices::<Position<E3>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_flat_index();
@@ -796,8 +890,10 @@ where
     type Output = vec::IntoIter<Self::Polygon>;
     type Polygon = Trigon<G>;
 
-    /// Converts a triangular flat `MeshBuffer` into an iterator of `Trigon`s
+    /// Converts a triangular flat `MeshBuffer` into an iterator of [`Trigon`]s
     /// containing vertex data.
+    ///
+    /// [`Trigon`]: crate::primitive::Trigon
     fn into_polygons(self) -> Self::Output {
         let (indices, vertices) = self.into_raw_buffers();
         indices
@@ -827,7 +923,7 @@ where
     type Polygon = Tetragon<G>;
 
     /// Converts a quadrilateral flat `MeshBuffer` into an iterator of
-    /// `Tetragon`s containing vertex data.
+    /// [`Tetragon`]s containing vertex data.
     ///
     /// # Examples
     ///
@@ -855,6 +951,8 @@ where
     ///     .map_vertices(|position| position * 2.0.into())
     ///     .collect();
     /// ```
+    ///
+    /// [`Tetragon`]: crate::primitive::Tetragon
     fn into_polygons(self) -> Self::Output {
         let (indices, vertices) = self.into_raw_buffers();
         indices
@@ -952,7 +1050,8 @@ where
 {
     type Item = Trigon<N>;
 
-    /// Converts a flat index buffer into a structured index buffer.
+    /// Converts the index buffer of a `MeshBuffer` from flat data into
+    /// structured data.
     ///
     /// # Examples
     ///
@@ -967,12 +1066,14 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer::<Flat3, E3>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>()
     ///         .triangulate()
     ///         .vertices(),
-    ///     cube.vertices::<Position<Point3<f64>>>(),
+    ///     cube.vertices::<Position<E3>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();
@@ -1000,7 +1101,8 @@ where
 {
     type Item = Tetragon<N>;
 
-    /// Converts a flat index buffer into a structured index buffer.
+    /// Converts the index buffer of a `MeshBuffer` from flat data into
+    /// structured data.
     ///
     /// # Examples
     ///
@@ -1014,10 +1116,12 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer4::<usize, E3>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>(),
-    ///     cube.vertices::<Position<Point3<f64>>>(),
+    ///     cube.vertices::<Position<E3>>(),
     /// )
     /// .unwrap();
     /// let buffer = buffer.into_structured_index();

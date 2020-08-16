@@ -1,14 +1,15 @@
-//! [PLY][1] encoding.
+//! [PLY] encoding.
 //!
-//! This module provides support for the PLY format via the `FromPly` and
-//! `ToPly` traits. These traits can be used with a decoder and encoder to read
-//! and write mesh data structures to and from the PLY format.
+//! This module provides support for the [PLY] format via the [`FromPly`] and
+//! [`ToPly`] traits. These traits can be used with a decoder and encoder to
+//! read and write mesh data structures to and from the [PLY] format.
 //!
-//! PLY support is implemented using the [`ply-rs`][2] crate.
+//! [PLY] support is implemented using the [`ply-rs`] crate and some of its
+//! types are re-exported here.
 //!
 //! # Examples
 //!
-//! Reading a PLY file into a `MeshGraph`:
+//! Reading a [PLY] file into a [`MeshGraph`]:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -32,8 +33,13 @@
 //! let (graph, _) = MeshGraph::<E3>::from_ply(encoding, read()).unwrap();
 //! ```
 //!
-//! [1]: https://en.wikipedia.org/wiki/PLY_(file_format)
-//! [2]: https://crates.io/crates/ply-rs
+//! [ply]: https://en.wikipedia.org/wiki/PLY_(file_format)
+//!
+//! [`ply-rs`]: https://crates.io/crates/ply-rs
+//!
+//! [`FromPly`]: crate::encoding::ply::FromPly
+//! [`ToPly`]: crate::encoding::ply::ToPly
+//! [`MeshGraph`]: crate::graph::MeshGraph
 
 #![cfg(feature = "encoding-ply")]
 

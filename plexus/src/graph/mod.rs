@@ -1,20 +1,20 @@
-//! Half-edge graph representation of meshes.
+//! Half-edge graph representation of polygonal meshes.
 //!
-//! This module provides a flexible representation of meshes as a [half-edge
-//! graph][1]. _Half-edges_ and _edges_ are referred to as _arcs_ and _edges_,
-//! respectively. Meshes can store arbitrary geometric data associated with any
-//! topological structure (vertices, arcs, edges, and faces).
+//! This module provides a flexible representation of polygonal meshes as a
+//! [half-edge graph][dcel]. Plexus refers to _Half-edges_ and _edges_ as _arcs_
+//! and _edges_, respectively. Graphs can store arbitrary data associated with
+//! any topological entity (vertices, arcs, edges, and faces).
 //!
-//! Graph APIs expose geometric operations if vertex geometry exposes positional
-//! data via the `AsPosition` trait.
+//! Graph APIs support geometric operations if vertex data implements the
+//! [`AsPosition`] trait.
 //!
-//! See the [user guide][2] for more details and examples.
+//! See the [user guide][guide-graphs] for more details and examples.
 //!
 //! # Representation
 //!
-//! A `MeshGraph` is composed of four primary entities: _vertices_, _arcs_,
-//! _edges_, and _faces_. The figure below summarizes the connectivity in a
-//! `MeshGraph`.
+//! A [`MeshGraph`] is fundamentally composed of four entities: _vertices_,
+//! _arcs_, _edges_, and _faces_. The figure below summarizes the connectivity
+//! of these entities.
 //!
 //! ![Half-Edge Graph Figure](https://plexus.rs/img/heg.svg)
 //!
@@ -55,47 +55,44 @@
 //! $\overrightarrow{\\{A,B,C\\}}$.
 //!
 //! Together with vertices and faces, the connectivity of arcs allows for
-//! effecient traversals of topology. For example, it becomes trivial to find
-//! adjacent topologies, such as the faces that share a given vertex or the
-//! adjacent faces of a given face.
+//! effecient traversals. For example, it becomes trivial to find adjacent
+//! entities, such as the faces that share a given vertex or the adjacent faces
+//! of a given face.
 //!
-//! `MeshGraph`s store entities using associative storage and keys that are
-//! exposed as strongly typed and opaque values. These keys are used to refer to
-//! any and all entities in a graph.
+//! [`MeshGraph`]s store entities using associative data structures with
+//! strongly typed and opaque keys. These keys are used to refer entities in a
+//! graph. Note that paths and rings are **not** entities and are not explicitly
+//! stored in graphs.
 //!
-//! Note that paths and rings are **not** entities and are not explicitly stored
-//! in graphs.
+//! # Views
 //!
-//! # Topological Views
+//! [`MeshGraph`]s expose _views_ over their entities (vertices, arcs, edges,
+//! and faces). Views are a type of _smart pointer_ and bind entity storage with
+//! a key for a specific entity. They implement [`Deref`] for their associated
+//! entity type.
 //!
-//! `MeshGraph`s expose _views_ over their entities (vertices, arcs, edges, and
-//! faces). Views bind a reference to storage with a key into that storage for
-//! an entity. They behave similarly to references and expose their underlying
-//! entities via `Deref`.
+//! Views provide the primary API for interacting with a [`MeshGraph`]'s
+//! topology and data. There are three types of views summarized below:
 //!
-//! Views provide the primary API for interacting with a `MeshGraph`'s topology
-//! and geometry. There are three types of views summarized below:
-//!
-//! | Type      | Traversal | Exclusive | Geometry  | Topology  |
+//! | Type      | Traversal | Exclusive | Data      | Topology  |
 //! |-----------|-----------|-----------|-----------|-----------|
 //! | Immutable | Yes       | No        | Immutable | Immutable |
 //! | Mutable   | Yes       | Yes       | Mutable   | Mutable   |
 //! | Orphan    | No        | No        | Mutable   | N/A       |
 //!
-//! _Immutable_ and _mutable views_ behave similarly to references: immutable
-//! views cannot mutate a graph and are not exclusive while mutable views may
-//! mutate both the geometry and topology of a graph but are exclusive.
+//! _Immutable_ and _mutable views_ behave similarly to Rust's `&` and `&mut`
+//! references: immutable views cannot mutate a graph and are not exclusive
+//! while mutable views may mutate both the data and topology of a graph but are
+//! exclusive.
 //!
-//! _Orphan views_ (simply referred to as _orphans_ in APIs) are similar to
-//! mutable views in that they may mutate the geometry of a graph, but they
-//! cannot access storage for other entities (the topology of a graph). Because
-//! they cannot access other vertices, arcs, etc., orphan views cannot traverse
-//! a graph in any way. These views are most useful for modifying the geometry
-//! of a graph and, unlike mutable views, they are not exclusive.
+//! _Orphan views_ (simply referred to as _orphans_ in APIs) may mutate the data
+//! of a graph, but they cannot access the topology of a graph and cannot
+//! traverse a graph in any way. This is only useful for modifying the data in a
+//! graph, but unlike mutable views, orphan views are not exclusive.
 //!
 //! Views perform _interior reborrows_, which reborrow the reference to storage
-//! to construct other views. Immutable reborrows can be performed explicitly using
-//! the conversions described below:
+//! to construct other views. Immutable reborrows can be performed explicitly
+//! using the conversions described below:
 //!
 //! | Function   | Receiver    | Borrow | Output    |
 //! |------------|-------------|--------|-----------|
@@ -107,55 +104,102 @@
 //! mutation. Mutable reborrows are performed beneath safe APIs, such as those
 //! exposing iterators over orphan views.
 //!
-//! Note that `into_ref` is analogous to an immutable reborrow of a mutable
-//! `&mut` Rust reference. Despite the downgraded reference, the mutable source
-//! reference remains and so it is not possible to obtain an additional mutable
-//! view after using `into_ref` until the originating view is dropped.
+//! # Geometric Traits
+//!
+//! The [`GraphData`] trait is used to specify the types of data stored in
+//! entities in a [`MeshGraph`]. If the `Vertex` data implements the
+//! [`AsPosition`] trait and the positional data implements the appropriate
+//! geometric traits, then geometric APIs like
+//! [`split_at_midpoint`][`ArcView::split_at_midpoint`] and
+//! [`poke_with_offset`][`FaceView::poke_with_offset`] can be used. Abstracting
+//! this in generic code involves various traits from [`theon`].
+//!
+//! This module provides geometric traits that describe supported geometric
+//! operations without the need to express complicated relationships between
+//! types representing a [Euclidean space][`EuclideanSpace`]. These traits
+//! express the geometric capabilites of [`GraphData`]. For example, the
+//! following generic function requires [`EdgeMidpoint`] and subdivides faces in
+//! a graph by splitting edges at their midpoints:
+//!
+//! ```rust
+//! # extern crate plexus;
+//! # extern crate smallvec;
+//! #
+//! use plexus::geometry::AsPositionMut;
+//! use plexus::graph::{EdgeMidpoint, FaceView, GraphData, MeshGraph};
+//! use plexus::prelude::*;
+//! use smallvec::SmallVec;
+//!
+//! // Requires `EdgeMidpoint` for `split_at_midpoint`.
+//! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
+//! where
+//!     G: EdgeMidpoint + GraphData,
+//!     G::Vertex: AsPositionMut,
+//! {
+//!     let arity = face.arity();
+//!     let mut arc = face.into_arc();
+//!     let mut splits = SmallVec::<[_; 4]>::with_capacity(arity);
+//!     for _ in 0..arity {
+//!         let vertex = arc.split_at_midpoint();
+//!         splits.push(vertex.key());
+//!         arc = vertex.into_outgoing_arc().into_next_arc();
+//!     }
+//!     let mut face = arc.into_face().unwrap();
+//!     for (a, b) in splits.into_iter().perimeter() {
+//!         face = face.split(ByKey(a), ByKey(b)).unwrap().into_face().unwrap();
+//!     }
+//!     face
+//! }
+//! ```
 //!
 //! # Examples
 //!
-//! Generating a graph from a $uv$-sphere:
+//! Generating a [`MeshGraph`] from a [$uv$-sphere][`UvSphere`]:
 //!
 //! ```rust
 //! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! let mut graph = UvSphere::default()
-//!     .polygons::<Position<Point3<N64>>>()
-//!     .collect::<MeshGraph<Point3<N64>>>();
+//! type E3 = Point3<R64>;
+//!
+//! let mut graph: MeshGraph<E3> = UvSphere::default().polygons::<Position<E3>>().collect();
 //! ```
 //!
-//! Extruding a face in a graph:
+//! Extruding a face in a [`MeshGraph`]:
 //!
 //! ```rust
 //! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! let mut graph = UvSphere::new(8, 8)
-//!     .polygons::<Position<Point3<N64>>>()
-//!     .collect::<MeshGraph<Point3<N64>>>();
+//! type E3 = Point3<R64>;
+//!
+//! let mut graph: MeshGraph<E3> = UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
 //! // Get the key of the first face and then extrude it.
 //! let key = graph.faces().nth(0).unwrap().key();
-//! let face = graph.face_mut(key).unwrap().extrude_with_offset(1.0);
+//! let face = graph
+//!     .face_mut(key)
+//!     .unwrap()
+//!     .extrude_with_offset(1.0)
+//!     .unwrap();
 //! ```
 //!
-//! Traversing and circulating over a graph:
+//! Traversing and circulating over a [`MeshGraph`]:
 //!
 //! ```rust
 //! # extern crate nalgebra;
@@ -186,8 +230,20 @@
 //! }
 //! ```
 //!
-//! [1]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
-//! [2]: https://plexus.rs/user-guide/graphs
+//! [dcel]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
+//! [guide-graphs]: https://plexus.rs/user-guide/graphs
+//!
+//! [`theon`]: https://crates.io/crates/theon
+//!
+//! [`Deref`]: std::ops::Deref
+//! [`EuclideanSpace`]: theon::space::EuclideanSpace
+//! [`AsPosition`]: crate::geometry::AsPosition
+//! [`ArcView::split_at_midpoint`]: crate::graph::ArcView::split_at_midpoint
+//! [`EdgeMidpoint`]: crate::graph::EdgeMidpoint
+//! [`FaceView::poke_with_offset`]: crate::graph::FaceView::poke_with_offset
+//! [`GraphData`]: crate::graph::GraphData
+//! [`MeshGraph`]: crate::graph::MeshGraph
+//! [`UvSphere`]: crate::primitive::sphere::UvSphere
 
 mod builder;
 mod core;
@@ -253,6 +309,9 @@ pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
 
+/// Errors concerning [`MeshGraph`]s.
+///
+/// [`MeshGraph`]: crate::graph::MeshGraph
 #[derive(Debug, Error, PartialEq)]
 pub enum GraphError {
     #[error("required topology not found")]
@@ -263,12 +322,28 @@ pub enum GraphError {
     TopologyMalformed,
     #[error("arity is non-polygonal")]
     ArityNonPolygonal,
+    /// The arity of a [`MeshGraph`] or other data structure is not compatible
+    /// with an operation.
     #[error("conflicting arity; expected {expected}, but got {actual}")]
-    ArityConflict { expected: usize, actual: usize },
+    ArityConflict {
+        /// The expected arity.
+        expected: usize,
+        /// The incompatible arity that was encountered.
+        actual: usize,
+    },
+    /// The compound arity of a [`MeshGraph`] or other data structure is not
+    /// uniform.
+    ///
+    /// This error occurs when an operation requires a uniform arity but a graph
+    /// or other data structure is non-uniform. See [`MeshArity`].
+    ///
+    /// [`MeshArity`]: crate::MeshArity
     #[error("arity is non-uniform")]
     ArityNonUniform,
+    /// Geometry is incompatible or cannot be computed.
     #[error("geometric operation failed")]
     Geometry,
+    /// A graph or other data structure is not compatible with an encoding.
     #[error("encoding operation failed")]
     Encoding,
 }
@@ -313,8 +388,8 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// Entity selector.
 ///
 /// Identifies an entity by key or index. Keys behave as an absolute selector
-/// and uniquely identify a single entity within a graph. Indices behave as a
-/// relative selector and identify an entity relative to some other entity.
+/// and uniquely identify a single entity within a [`MeshGraph`]. Indices behave
+/// as a relative selector and identify an entity relative to some other entity.
 /// `Selector` is used by operations that support both of these selection
 /// mechanisms.
 ///
@@ -330,16 +405,16 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::graph::MeshGraph;
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
 ///
-/// let mut graph = Cube::new()
-///     .polygons::<Position<Point3<N64>>>()
-///     .collect::<MeshGraph<Point3<N64>>>();
+/// type E3 = Point3<R64>;
+///
+/// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
 /// let key = graph.faces().nth(0).unwrap().key();
 /// graph
 ///     .face_mut(key)
@@ -347,6 +422,8 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
 ///     .split(ByIndex(0), ByIndex(2))
 ///     .unwrap();
 /// ```
+///
+/// [`MeshGraph`]: crate::graph::MeshGraph
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Selector<K> {
     ByKey(K),
@@ -396,16 +473,25 @@ impl<K> From<usize> for Selector<K> {
     }
 }
 
-/// Half-edge graph representation of a mesh.
+/// [Half-edge graph][dcel] representation of a polygonal mesh.
 ///
-/// Provides topological information using four entities: vertices, arcs, edges,
-/// and faces.  An arc is directed from one vertex to another, with an opposing
-/// arc joining the vertices in the other direction.
+/// `MeshGraph`s form a polygonal mesh from four interconnected entities:
+/// vertices, arcs, edges, and faces. These entities are exposed by view and
+/// orphan types as well as types that represent rings and paths in a graph.
+/// Entities can be associated with arbitrary data, including no data at all.
+/// See the [`GraphData`] trait.
 ///
-/// `MeshGraph`s expose topological views, which can be used to traverse and
-/// manipulate topology and geometry in the graph.
+/// This flexible representation supports fast traversals and searches and can
+/// be used to manipulate both the data and topology of a mesh.
 ///
-/// See the module documentation for more details.
+/// See the [`graph`] module documentation and [user guide][guide-graphs] for
+/// more details.
+///
+/// [dcel]: https://en.wikipedia.org/wiki/doubly_connected_edge_list
+/// [guide-graphs]: https://plexus.rs/user-guide/graphs
+///
+/// [`GraphData`]: crate::graph::GraphData
+/// [`graph`]: crate::graph
 pub struct MeshGraph<G = (R64, R64, R64)>
 where
     G: GraphData,
@@ -564,6 +650,11 @@ where
             .map(From::from)
     }
 
+    /// Gets an immutable path over the given sequence of vertex keys.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a vertex is not found or the path is malformed.
     pub fn path<I>(&self, keys: I) -> Result<Path<&Self>, GraphError>
     where
         I: IntoIterator,
@@ -572,6 +663,11 @@ where
         Path::bind(self, keys)
     }
 
+    /// Gets a mutable path over the given sequence of vertex keys.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a vertex is not found or the path is malformed.
     pub fn path_mut<I>(&mut self, keys: I) -> Result<Path<&mut Self>, GraphError>
     where
         I: IntoIterator,
@@ -658,14 +754,6 @@ where
         }
     }
 
-    // This API is a bit unusual, but allows a view-like path to borrow a graph
-    // and remain consistent. It also (hopefully) makes it more clear that the
-    // _graph_ is split, not the path.
-    //
-    //   let mut path = graph.arc_mut(...).unwrap().into_path();
-    //   path.push(...).unwrap();
-    //   ...
-    //   let (a, b) = MeshGraph::split_at_path(path).unwrap();
     /// Splits the graph along a path.
     ///
     /// Splitting a graph creates boundaries along the given path and copies any
@@ -714,10 +802,10 @@ where
         unimplemented!()
     }
 
-    /// Gets an iterator over a vertex within each disjoint subgraph.
+    /// Gets an iterator over a vertex within each disjoint sub-graph.
     ///
     /// Traverses the graph and returns an arbitrary vertex within each
-    /// _disjoint subgraph_. A subgraph is _disjoint_ if it cannot be reached
+    /// _disjoint sub-graph_. A sub-graph is _disjoint_ if it cannot be reached
     /// from all other topology in the graph.
     ///
     /// # Examples
@@ -772,14 +860,14 @@ where
         unimplemented!()
     }
 
-    /// Creates a `Buildable` mesh data structure from the graph.
+    /// Creates a [`Buildable`] mesh data structure from the graph.
     ///
-    /// The output is created from each unique vertex in the graph. No face
-    /// geometry is used, and the `Facet` type is always `()`.
+    /// The output is created from each unique vertex in the graph. No face data
+    /// is used, and the `Facet` type is always the unit type `()`.
     ///
     /// # Examples
     ///
-    /// Creating a `MeshBuffer` from a graph used to modify a cube:
+    /// Creating a [`MeshBuffer`] from a [`MeshGraph`] used to modify a cube:
     ///
     /// ```rust
     /// # extern crate decorum;
@@ -796,13 +884,15 @@ where
     ///
     /// type E3 = Point3<N64>;
     ///
-    /// let mut graph = Cube::new()
-    ///     .polygons::<Position<E3>>()
-    ///     .collect::<MeshGraph<E3>>();
+    /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let key = graph.faces().nth(0).unwrap().key();
-    /// graph.face_mut(key).unwrap().extrude_with_offset(1.0);
+    /// graph
+    ///     .face_mut(key)
+    ///     .unwrap()
+    ///     .extrude_with_offset(1.0)
+    ///     .unwrap();
     ///
-    /// let buffer = graph.to_mesh_by_vertex::<MeshBufferN<usize, E3>>().unwrap();
+    /// let buffer: MeshBufferN<usize, E3> = graph.to_mesh_by_vertex().unwrap();
     /// ```
     ///
     /// # Errors
@@ -810,6 +900,10 @@ where
     /// Returns an error if the graph does not have constant arity that is
     /// compatible with the index buffer. Typically, a graph is triangulated
     /// before being converted to a buffer.
+    ///
+    /// [`MeshBuffer`]: crate::buffer::MeshBuffer
+    /// [`Buildable`]: crate::builder::Buildable
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     pub fn to_mesh_by_vertex<B>(&self) -> Result<B, B::Error>
     where
         B: Buildable<Facet = ()>,
@@ -818,17 +912,19 @@ where
         self.to_mesh_by_vertex_with(|vertex| vertex.data.into_geometry())
     }
 
-    /// Creates a `Buildable` mesh data structure from the graph.
+    /// Creates a [`Buildable`] mesh data structure from the graph.
     ///
     /// The output is created from each unique vertex in the graph, which is
-    /// converted into the output geometry by the given function. No face
-    /// geometry is used, and the `Facet` type is always `()`.
+    /// converted by the given function. No face data is used, and the `Facet`
+    /// type is always the unit type `()`.
     ///
     /// # Errors
     ///
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
+    ///
+    /// [`Buildable`]: crate::builder::Buildable
     pub fn to_mesh_by_vertex_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
     where
         B: Buildable<Vertex = T, Facet = ()>,
@@ -854,18 +950,21 @@ where
         builder.build()
     }
 
-    /// Creates a `Buildable` mesh data structure from the graph.
+    /// Creates a [`Buildable`] mesh data structure from the graph.
     ///
     /// The output is created from each face in the graph. For each face, the
-    /// face geometry and associated vertex geometry is inserted into the buffer
-    /// via `FromGeometry`. This means that a vertex is inserted for each of its
-    /// adjacent faces.
+    /// face data and data for each of its vertices is inserted into the mesh
+    /// via [`FromGeometry`]. This means that a vertex is inserted for each of
+    /// its adjacent faces.
     ///
     /// # Errors
     ///
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
+    ///
+    /// [`Buildable`]: crate::builder::Buildable
+    /// [`FromGeometry`]: crate::geometry::FromGeometry
     pub fn to_mesh_by_face<B>(&self) -> Result<B, B::Error>
     where
         B: Buildable,
@@ -875,17 +974,17 @@ where
         self.to_mesh_by_face_with(|_, vertex| vertex.data.into_geometry())
     }
 
-    /// Creates a `Buildable` mesh data structure from the graph.
+    /// Creates a [`Buildable`] mesh data structure from the graph.
     ///
-    /// The output is created from each face in the graph. The given function is
-    /// called for each vertex of each face and converts the vertex geometry
-    /// into the output geometry. This means that a vertex is inserted for each
-    /// of its adjacent faces. The face geometry is inserted into the output via
-    /// `FromGeometry`.
+    /// The output is created from each face in the graph. For each face, the
+    /// face data and data for each of its vertices is converted into the output
+    /// vertex data by the given function. This means that a vertex is inserted
+    /// for each of its adjacent faces. The data of each face is is inserted
+    /// into the output via [`FromGeometry`].
     ///
     /// # Examples
     ///
-    /// Creating a `MeshBuffer` from a graph used to compute normals:
+    /// Creating a [`MeshBuffer`] from a [`MeshGraph`] used to compute normals:
     ///
     /// ```rust
     /// # extern crate decorum;
@@ -910,9 +1009,7 @@ where
     ///     pub normal: Vector<E3>,
     /// }
     ///
-    /// let graph = Cube::new()
-    ///     .polygons::<Position<E3>>()
-    ///     .collect::<MeshGraph<E3>>();
+    /// let graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     ///
     /// let buffer: MeshBuffer<BoundedPolygon<usize>, _> = graph
     ///     .to_mesh_by_face_with(|face, vertex| Vertex {
@@ -927,6 +1024,11 @@ where
     /// Returns an error if the vertex geometry cannot be inserted into the
     /// output, there are arity conflicts, or the output does not support
     /// topology found in the graph.
+    ///
+    /// [`MeshBuffer`]: crate::buffer::MeshBuffer
+    /// [`Buildable`]: crate::builder::Buildable
+    /// [`FromGeometry`]: crate::geometry::FromGeometry
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     pub fn to_mesh_by_face_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
     where
         B: Buildable<Vertex = T>,
@@ -1021,14 +1123,14 @@ where
     }
 }
 
-/// Exposes a `MeshBuilder` that can be used to construct a `MeshGraph`
+/// Exposes a [`MeshBuilder`] that can be used to construct a [`MeshGraph`]
 /// incrementally from _surfaces_ and _facets_.
 ///
-/// See the documentation for the `builder` module for more.
+/// See the [`builder`] module documentation for more.
 ///
 /// # Examples
 ///
-/// Creating a graph from a triangle:
+/// Creating a [`MeshGraph`] from a triangle:
 ///
 /// ```rust
 /// # extern crate nalgebra;
@@ -1050,6 +1152,10 @@ where
 ///     .and_then(|_| builder.build())
 ///     .unwrap();
 /// ```
+///
+/// [`MeshBuilder`]: crate::builder::MeshBuilder
+/// [`builder`]: crate::builder
+/// [`MeshGraph`]: crate::graph::MeshGraph
 impl<G> Buildable for MeshGraph<G>
 where
     G: GraphData,
@@ -1234,8 +1340,8 @@ where
 {
     type Error = GraphError;
 
-    /// Creates a `MeshGraph` from raw index and vertex buffers. The arity of
-    /// the polygons in the index buffer must be known and constant.
+    /// Creates a [`MeshGraph`] from [raw buffers][`buffer`]. The arity of the
+    /// polygons in the index buffer must be given and constant.
     ///
     /// # Errors
     ///
@@ -1256,13 +1362,17 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let (indices, positions) = UvSphere::new(16, 16)
-    ///     .polygons::<Position<Point3<f64>>>()
+    ///     .polygons::<Position<E3>>()
     ///     .triangulate()
     ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(256));
-    /// let mut graph =
-    ///     MeshGraph::<Point3<f64>>::from_raw_buffers_with_arity(indices, positions, 3).unwrap();
+    /// let mut graph = MeshGraph::<E3>::from_raw_buffers_with_arity(indices, positions, 3).unwrap();
     /// ```
+    ///
+    /// [`buffer`]: crate::buffer
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     fn from_raw_buffers_with_arity<I, J>(
         indices: I,
         vertices: J,
@@ -1364,13 +1474,13 @@ where
 {
     type Error = GraphError;
 
-    /// Creates a `MeshGraph` from a flat `MeshBuffer`. The arity of the
+    /// Creates a [`MeshGraph`] from a flat [`MeshBuffer`]. The arity of the
     /// polygons in the index buffer must be known and constant.
     ///
     /// # Errors
     ///
-    /// Returns an error if a `MeshGraph` cannot represent the topology in the
-    /// `MeshBuffer`.
+    /// Returns an error if a [`MeshGraph`] cannot represent the topology in the
+    /// [`MeshBuffer`].
     ///
     /// # Examples
     ///
@@ -1385,13 +1495,18 @@ where
     /// use plexus::prelude::*;
     /// use std::convert::TryFrom;
     ///
-    /// let buffer = MeshBuffer::<Flat4, _>::from_raw_buffers(
+    /// type E2 = Point2<f64>;
+    ///
+    /// let buffer = MeshBuffer::<Flat4, E2>::from_raw_buffers(
     ///     vec![0u64, 1, 2, 3],
     ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
+    /// let mut graph = MeshGraph::<E2>::try_from(buffer).unwrap();
     /// ```
+    ///
+    /// [`MeshBuffer`]: crate::buffer::MeshBuffer
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
         let arity = buffer.arity();
         let (indices, vertices) = buffer.into_raw_buffers();
@@ -1409,12 +1524,12 @@ where
 {
     type Error = GraphError;
 
-    /// Creates a `MeshGraph` from a structured `MeshBuffer`.
+    /// Creates a [`MeshGraph`] from a structured [`MeshBuffer`].
     ///
     /// # Errors
     ///
-    /// Returns an error if a `MeshGraph` cannot represent the topology in the
-    /// `MeshBuffer`.
+    /// Returns an error if a [`MeshGraph`] cannot represent the topology in the
+    /// [`MeshBuffer`].
     ///
     /// # Examples
     ///
@@ -1429,13 +1544,18 @@ where
     /// use plexus::primitive::Tetragon;
     /// use std::convert::TryFrom;
     ///
-    /// let buffer = MeshBuffer::<Tetragon<u64>, _>::from_raw_buffers(
+    /// type E2 = Point2<f64>;
+    ///
+    /// let buffer = MeshBuffer::<Tetragon<u64>, E2>::from_raw_buffers(
     ///     vec![Tetragon::new(0u64, 1, 2, 3)],
     ///     vec![(0.0f64, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let mut graph = MeshGraph::<Point2<f64>>::try_from(buffer).unwrap();
+    /// let mut graph = MeshGraph::<E2>::try_from(buffer).unwrap();
     /// ```
+    ///
+    /// [`MeshBuffer`]: crate::buffer::MeshBuffer
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     fn try_from(buffer: MeshBuffer<P, H>) -> Result<Self, Self::Error> {
         let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers(indices, vertices)
@@ -1444,7 +1564,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::{Point2, Point3, Vector3};
     use num::Zero;
 
@@ -1455,14 +1575,14 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
     use crate::primitive::NGon;
 
-    type E2 = Point2<N64>;
-    type E3 = Point3<N64>;
+    type E2 = Point2<R64>;
+    type E3 = Point3<R64>;
 
     #[test]
     fn collect() {
-        let graph = UvSphere::new(3, 2)
+        let graph: MeshGraph<Point3<f64>> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
 
         assert_eq!(5, graph.vertex_count());
         assert_eq!(18, graph.arc_count());
@@ -1471,9 +1591,9 @@ mod tests {
 
     #[test]
     fn iterate() {
-        let mut graph = UvSphere::new(4, 2)
+        let mut graph: MeshGraph<Point3<f64>> = UvSphere::new(4, 2)
             .polygons::<Position<E3>>() // 8 triangles, 24 vertices.
-            .collect::<MeshGraph<Point3<f64>>>();
+            .collect();
 
         assert_eq!(6, graph.vertices().count());
         assert_eq!(24, graph.arcs().count());
@@ -1521,10 +1641,10 @@ mod tests {
 
     #[test]
     fn non_manifold_error_deferred() {
-        let graph = UvSphere::new(32, 32)
+        let graph: MeshGraph<E3> = UvSphere::new(32, 32)
             .polygons::<Position<E3>>()
             .triangulate()
-            .collect::<MeshGraph<E3>>();
+            .collect();
         // This conversion will join faces by a single vertex, but ultimately
         // creates a manifold.
         let _: MeshBuffer3<usize, E3> = graph.to_mesh_by_face().unwrap();
@@ -1533,7 +1653,7 @@ mod tests {
     #[test]
     fn error_on_non_manifold() {
         // Construct a graph with a "fan" of three triangles sharing the same
-        // arc along the Z-axis. The edge would have three associated faces,
+        // edge along the Z-axis. The edge would have three associated faces,
         // which should not be possible.
         let graph = MeshGraph::<Point3<i32>>::from_raw_buffers(
             vec![NGon([0u32, 1, 2]), NGon([0, 1, 3]), NGon([0, 1, 4])],
@@ -1543,31 +1663,28 @@ mod tests {
         assert_eq!(graph.err().unwrap(), GraphError::TopologyConflict);
     }
 
-    // This test is a sanity check for graph iterators, topological views, and
-    // the unsafe transmutations used to coerce lifetimes.
+    // This test is a sanity check for iterators over orphan views and the
+    // unsafe transmutations used to coerce lifetimes.
     #[test]
     fn read_write_geometry_ref() {
-        struct ValueGeometry;
+        struct Weight;
 
-        impl GraphData for ValueGeometry {
+        impl GraphData for Weight {
             type Vertex = Point3<f64>;
             type Arc = ();
             type Edge = ();
             type Face = u64;
         }
 
-        // Create a graph with a floating point value associated with each face.
-        // Use a mutable iterator to write to the geometry of each face.
-        let mut graph = UvSphere::new(4, 4)
-            .polygons::<Position<E3>>()
-            .collect::<MeshGraph<ValueGeometry>>();
+        // Create a graph with a floating-point weight in each face. Use an
+        // iterator over orphan views to write to the geometry of each face.
+        let mut graph: MeshGraph<Weight> = UvSphere::new(4, 4).polygons::<Position<E3>>().collect();
         let value = 123_456_789;
         for mut face in graph.face_orphans() {
             face.data = value;
         }
 
-        // Read the geometry of each face using an immutable iterator to ensure
-        // it is what we expect.
+        // Read the geometry of each face to ensure it is what we expect.
         for face in graph.faces() {
             assert_eq!(value, face.data);
         }

@@ -1,7 +1,10 @@
-//! **Plexus** is a library for polygonal mesh processing.
+//! **Plexus** is a highly composable library for polygonal mesh processing.
 //!
-//! Please note that versions in the `0.0.*` series are experimental and
-//! unstable.
+//! Versions of Plexus in the `0.0.*` series are experimental and unstable.
+//! Consider depending on the development branch of the repository. See [the
+//! website][website] for the latest information and documentation.
+//!
+//! [website]: https://plexus.rs
 
 // TODO: Functions of the `fool::BoolExt` trait may collide with planned
 //       inherent functions for `bool`. Most uses of these functions would cause
@@ -36,7 +39,7 @@ use crate::entity::view::ClosedView;
 pub use typenum::{U2, U3, U4};
 
 pub mod prelude {
-    //! Re-exports commonly used types and traits.
+    //! Re-exports of commonly used types and traits.
     //!
     //! Importing the contents of this module is recommended, especially when
     //! working with generators and iterator expressions, as those operations
@@ -44,26 +47,28 @@ pub mod prelude {
     //!
     //! # Traits
     //!
-    //! This module re-exports numerous traits. Traits from the [`primitive`]
-    //! module for generating and decomposing iterators over topological data
-    //! (e.g., [`Trigon`], [`Tetragon`], etc.) are re-exported so that functions
-    //! in iterator expressions can be used without lengthy imports.
+    //! Traits from the [`primitive`] module for generating and decomposing
+    //! iterators of topological data (e.g., [`Trigon`], [`Tetragon`], etc.) are
+    //! re-exported so that functions in iterator expressions can be used more
+    //! easily.
     //!
-    //! Basic traits for (de)constructing [`MeshBuffer`]s and [`MeshGraph`]s are
-    //! also re-exported. These traits allow mesh types to be constructed from
-    //! raw buffers and buffers to be re-indexed.
+    //! Traits for (de)constructing [`MeshBuffer`]s and [`MeshGraph`]s are
+    //! re-exported. These traits allow mesh types to be constructed from raw
+    //! buffers and buffers to be re-indexed.
+    //!
+    //! Extension traits are also re-exported.
     //!
     //! # Types
     //!
     //! The [`Selector`] `enum` and its variants are re-exported for
-    //! convenience. [`Selector`] is often used when mutating [`MeshGraph`]s.
+    //! convenience.
     //!
-    //! [`MeshBuffer`]: ../buffer/struct.MeshBuffer.html
-    //! [`MeshGraph`]: ../graph/struct.MeshGraph.html
-    //! [`primitive`]: ../primitive/index.html
-    //! [`Selector`]: ../graph/enum.Selector.html
-    //! [`Tetragon`]: ../primitive/type.Tetragon.html
-    //! [`Trigon`]: ../primitive/type.Trigon.html
+    //! [`MeshBuffer`]: crate::buffer::MeshBuffer
+    //! [`MeshGraph`]: crate::graph::MeshGraph
+    //! [`Selector`]: crate::graph::Selector
+    //! [`Tetragon`]: crate::primitive::Tetragon
+    //! [`Trigon`]: crate::primitive::Trigon
+    //! [`primitive`]: crate::primitive
 
     pub use crate::buffer::{
         FromRawBuffers as _, FromRawBuffersWithArity as _, IntoFlatIndex as _,
@@ -88,6 +93,24 @@ pub mod prelude {
     pub use Selector::ByKey;
 }
 
+/// Arity of primitives and polygonal meshes.
+///
+/// The _arity_ of a primitive topological structure (e.g., an edge, trigon,
+/// pentagon, etc.) is the number of edges that comprise the structure. For
+/// compound structures like polygonal meshes, arity describes the individual
+/// polygons that form the structure and may not be representable as a singular
+/// value.
+///
+/// Arity is most generally described as an _open interval_ with a minimum and
+/// optional maximum inclusive range. This trait provides a conversion into this
+/// general form for all types that represent arity. See the implementations of
+/// this trait for more information.
+///
+/// Types with arity implement the [`StaticArity`] and [`DynamicArity`] traits,
+/// which describe their type-level and value-level arity, respectively.
+///
+/// [`DynamicArity`]: crate::DynamicArity
+/// [`StaticArity`]: crate::StaticArity
 pub trait Arity: Copy {
     fn into_interval(self) -> (usize, Option<usize>);
 }
@@ -128,7 +151,7 @@ impl Arity for (usize, Option<usize>) {
 /// `StaticArity` type have an arity that reflects this constant, which may be
 /// any type or form implementing the [`Arity`] trait.
 ///
-/// [`Arity`]: trait.Arity.html
+/// [`Arity`]: crate::Arity
 pub trait StaticArity {
     type Static: Arity;
 
@@ -141,7 +164,7 @@ pub trait StaticArity {
 /// distinct from the type-level arity of the [`StaticArity`] trait, which
 /// expresses the capabilities of a type.
 ///
-/// [`StaticArity`]: trait.StaticArity.html
+/// [`StaticArity`]: crate::StaticArity
 pub trait DynamicArity: StaticArity {
     type Dynamic: Arity;
 
@@ -159,8 +182,8 @@ pub trait DynamicArity: StaticArity {
 /// interval arity at the type-level and a singular but varying arity for values
 /// (because a [`BoundedPolygon`] value may be either a trigon or tertragon).
 ///
-/// [`BoundedPolygon`]: primitive/enum.BoundedPolygon.html
-/// [`Trigon`]: primitive/type.Trigon.html
+/// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
+/// [`Trigon`]: crate::primitive::Trigon
 pub trait Monomorphic: StaticArity<Static = usize> {}
 
 /// Arity of a compound structure.
@@ -169,20 +192,24 @@ pub trait Monomorphic: StaticArity<Static = usize> {}
 /// _uniform_ or _non-uniform_. This is typically the value-level arity for
 /// mesh data structures like [`MeshGraph`] and [`MeshBuffer`].
 ///
-/// [`MeshBuffer`]: buffer/struct.MeshBuffer.html
-/// [`MeshGraph`]: graph/struct.MeshGraph.html
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`MeshGraph`]: crate::graph::MeshGraph
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MeshArity {
     /// A compound structure has _uniform_ arity if all of its components have
-    /// the same arity, such as a `MeshBuffer` composed entirely of trigons.
+    /// the same arity, such as a [`MeshBuffer`] composed entirely of trigons.
+    ///
+    /// [`MeshBuffer`]: crate::buffer::MeshBuffer
     Uniform(usize),
     /// A compound structure has _non-uniform_ arity if the arity of its
-    /// components differ, such as a `MeshGraph` composed of trigons and
+    /// components differ, such as a [`MeshGraph`] composed of trigons and
     /// tetragons.
     ///
     /// Non-uniform arity is represented as an inclusive range known as an
     /// _interval_. This is the minimum and maximum arity of the components, in
     /// that order.
+    ///
+    /// [`MeshGraph`]: crate::graph::MeshGraph
     NonUniform(usize, usize),
 }
 
@@ -214,13 +241,15 @@ impl Arity for MeshArity {
     }
 }
 
-/// Extension methods for types implementing `Iterator`.
+/// Extension methods for types implementing [`Iterator`].
+///
+/// [`Iterator`]: std::iter::Iterator
 pub trait IteratorExt: Iterator + Sized {
     /// Provides an iterator over a window of duplets that includes the first
-    /// value in the sequence at the beginning and end of the iteration.
+    /// item in the sequence at both the beginning and end of the iteration.
     ///
-    /// Given a collection of ordered elements $\\{a, b, c\\}$, this iterator
-    /// yeilds the ordered items $\\{(a, b), (b, c), (c, a)\\}$.
+    /// Given a collection of ordered items $(a,b,c)$, this iterator yeilds the
+    /// ordered items $((a,b),(b,c),(c,a))$.
     fn perimeter(self) -> Perimeter<Self>
     where
         Self::Item: Clone,
@@ -228,15 +257,16 @@ pub trait IteratorExt: Iterator + Sized {
         Perimeter::new(self)
     }
 
-    /// Maps an iterator over topological views to the keys of those views.
+    /// Maps an iterator over [`graph`] views to the keys of those views.
     ///
     /// It is often useful to examine or collect the keys of views over a
-    /// [`MeshGraph`]. This iterator avoids redundant use of `map` to extract
-    /// keys.
+    /// [`MeshGraph`]. This iterator avoids redundant use of
+    /// [`map`][`Iterator::map`] to extract keys.
     ///
     /// # Examples
     ///
-    /// Collecting keys of faces before a topological mutation:
+    /// Collecting keys of faces before a topological mutation in a
+    /// [`MeshGraph`]:
     ///
     /// ```rust
     /// # extern crate decorum;
@@ -266,7 +296,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// }
     /// ```
     ///
-    /// [`MeshGraph`]: graph/struct.MeshGraph.html
+    /// [`Iterator::map`]: std::iter::Iterator::map
+    /// [`MeshGraph`]: crate::graph::MeshGraph
+    /// [`graph`]: crate::graph
     fn keys(self) -> Keys<Self>
     where
         Self::Item: ClosedView,
@@ -274,10 +306,10 @@ pub trait IteratorExt: Iterator + Sized {
         Keys::new(self)
     }
 
-    /// Determines if an iterator provides `n` or more elements.
+    /// Determines if an iterator provides `n` or more items.
     ///
     /// Returns a peekable iterator if the source iterator provides at least `n`
-    /// elements, otherwise `None`.
+    /// items, otherwise `None`.
     ///
     /// # Examples
     ///
@@ -313,10 +345,14 @@ impl<I> IteratorExt for I where I: Iterator {}
 
 /// Iterator that produces a window of duplets over its input.
 ///
-/// The duplets produced include the first value in the input sequence at both
-/// the beginning and end of the iteration, forming a perimeter. Given a
-/// collection of ordered elements $\\{a, b, c\\}$, this iterator yields the
-/// ordered items $\\{(a, b), (b, c), (c, a)\\}$.
+/// The duplets produced include the first item in the input at both the
+/// beginning and end of the iteration, forming a perimeter. Given a collection
+/// of ordered items $(a,b,c)$, this iterator yields the ordered items
+/// $((a,b),(b,c),(c,a))$.
+///
+/// See [`IteratorExt::perimeter`].
+///
+/// [`IteratorExt::perimeter`]: crate::IteratorExt::perimeter
 #[derive(Clone)]
 pub struct Perimeter<I>
 where
@@ -367,6 +403,12 @@ where
     }
 }
 
+/// Iterator that maps [`graph`] views to their keys.
+///
+/// See [`IteratorExt::keys`].
+///
+/// [`graph`]: crate::graph
+/// [`IteratorExt::keys`]: crate::IteratorExt::keys
 #[derive(Clone)]
 pub struct Keys<I>
 where

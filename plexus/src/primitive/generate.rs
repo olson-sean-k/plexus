@@ -1,9 +1,48 @@
 //! Polytope generation.
 //!
-//! This module provides a generic iterator and traits for generating streams of
-//! geometric and topological data for polytopes like cubes and spheres.
+//! This module provides a generic iterator and traits for generating polygons
+//! and vertices containing geometric attributes of polytopes like cubes and
+//! spheres. The [`Generate`] iterator can be used in iterator expressions.
 //!
-//! The primary API of this module is exposed by the `Generator` trait.
+//! The primary API of this module is provided by the [`Generator`] trait, which
+//! is implemented by polytope types like [`Cube`] and [`UvSphere`].
+//!
+//! # Examples
+//!
+//! Generating [raw buffers][`buffer`] from the positional data of a
+//! [$uv$-sphere][`UvSphere`]:
+//!
+//! ```rust
+//! # extern crate nalgebra;
+//! # extern crate plexus;
+//! #
+//! use nalgebra::Point3;
+//! use plexus::prelude::*;
+//! use plexus::primitive::generate::Position;
+//! use plexus::primitive::sphere::UvSphere;
+//!
+//! let sphere = UvSphere::new(16, 16);
+//!
+//! // Generate the unique set of positional vertices.
+//! let positions = sphere
+//!     .vertices::<Position<Point3<f64>>>()
+//!     .collect::<Vec<_>>();
+//!
+//! // Generate polygons that index the unique set of positional vertices. The
+//! // polygons are decomposed into triangles and then into vertices, where each
+//! // vertex is an index into the position data.
+//! let indices = sphere
+//!     .indexing_polygons::<Position>()
+//!     .triangulate()
+//!     .vertices()
+//!     .collect::<Vec<_>>();
+//! ```
+//!
+//! [`buffer`]: crate::buffer
+//! [`Cube`]: crate::primitive::cube::Cube
+//! [`Generate`]: crate::primitive::generate::Generate
+//! [`Generator`]: crate::primitive::generate::Generator
+//! [`UvSphere`]: crate::primitive::sphere::UvSphere
 
 use std::marker::PhantomData;
 use std::ops::Range;
@@ -12,26 +51,31 @@ use crate::primitive::Polygonal;
 
 /// Geometric attribute.
 ///
-/// Types implementing this trait can be used with `Generator` to query
-/// geometric attributes. For example, the `Position` type can be used to get
-/// positional data for cubes or spheres via `Cube` and `UvSphere`.
+/// Types implementing this trait can be used with [`Generator`] to query
+/// geometric attributes. For example, the [`Position`] type can be used to get
+/// positional data for cubes or spheres via [`Cube`] and [`UvSphere`].
+///
+/// [`Cube`]: crate::primitive::cube::Cube
+/// [`Generator`]: crate::primitive::generate::Generator
+/// [`Position`]: crate::primitive::generate::Position
+/// [`UvSphere`]: crate::primitive::sphere::UvSphere
 pub trait Attribute {}
 
 /// Meta-attribute for surface normals.
 ///
 /// Describes the surface normals of a polytope. The generated data is derived
-/// from the type parameter `S`, which typically requires `EuclideanSpace`.
+/// from the type parameter `S`, which typically requires [`EuclideanSpace`].
 ///
 /// # Examples
 ///
-/// Generating raw buffers with normal data for a sphere:
+/// Generating raw buffers with normal data of a [$uv$-sphere][`UvSphere`]:
 ///
 /// ```rust
 /// # extern crate decorum;
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
@@ -39,11 +83,13 @@ pub trait Attribute {}
 /// use plexus::primitive::sphere::UvSphere;
 ///
 /// let (indices, normals) = UvSphere::new(8, 8)
-///     .polygons::<Normal<Point3<N64>>>()
-///     .map_vertices(|normal| normal.into_inner())
+///     .polygons::<Normal<Point3<R64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
+///
+/// [`EuclideanSpace`]: theon::space::EuclideanSpace
+/// [`UvSphere`]: crate::primitive::sphere::UvSphere
 pub struct Normal<S = ()> {
     phantom: PhantomData<S>,
 }
@@ -54,36 +100,41 @@ impl<S> Attribute for Normal<S> {}
 ///
 /// Describes the position of vertices in a polytope. The generated data is
 /// derived from the type parameter `S`, which typically requires
-/// `EuclideanSpace`.
+/// [`EuclideanSpace`].
 ///
 /// # Examples
 ///
-/// Generating raw buffers with positional data for a cube:
+/// Generating raw buffers with positional data of a [cube][`Cube`]:
 ///
 /// ```rust
 /// # extern crate decorum;
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
 /// use plexus::primitive::cube::Cube;
 /// use plexus::primitive::generate::Position;
-/// use plexus::primitive::BoundedPolygon;
+/// use plexus::primitive::UnboundedPolygon;
 ///
 /// let (indices, positions) = Cube::new()
-///     .polygons::<Position<Point3<N64>>>()
+///     .polygons::<Position<Point3<R64>>>()
 ///     .triangulate()
-///     .index_vertices::<BoundedPolygon<usize>, _>(HashIndexer::default());
+///     .index_vertices::<UnboundedPolygon<usize>, _>(HashIndexer::default());
 /// ```
+///
+/// [`EuclideanSpace`]: theon::space::EuclideanSpace
+/// [`Cube`]: crate::primitive::cube::Cube
+/// [`UvSphere`]: crate::primitive::sphere::UvSphere
 pub struct Position<S = ()> {
     phantom: PhantomData<S>,
 }
 
 impl<S> Attribute for Position<S> {}
 
+/// Iterator that generates topology and geometric attributes.
 pub struct Generate<'a, G, S, P>
 where
     G: 'a,
@@ -165,17 +216,18 @@ where
     fn indexing_polygon(&self, index: usize) -> Self::Output;
 }
 
-/// Functions for iterating over the topological structures of generators.
+/// Functions for iterating over the topology and geometry of polytopes.
 pub trait Generator: Sized {
-    /// Provides an iterator over the set of **unique** vertices with the given
+    /// Gets an iterator over the set of **unique** vertices with the given
     /// attribute data.
     ///
     /// Each geometric attribute has an independent set of unique values. For
-    /// example, `Cube` generates six unique surface normals and eight unique
+    /// example, [`Cube`] generates six unique surface normals and eight unique
     /// positions.
     ///
-    /// This can be paired with the `indexing_polygons` function to index the
-    /// set of vertices.
+    /// This can be paired with the
+    /// [`indexing_polygons`][`Generator::indexing_polygons`] function to index
+    /// the set of vertices.
     ///
     /// # Examples
     ///
@@ -199,6 +251,9 @@ pub trait Generator: Sized {
     ///     .vertices()
     ///     .collect::<Vec<_>>();
     /// ```
+    ///
+    /// [`Cube`]: crate::primitive::cube::Cube
+    /// [`Generator::indexing_polygons`]: crate::primitive::generate::Generator::indexing_polygons
     fn vertices<A>(
         &self,
     ) -> Generate<Self, Self::State, <Self as AttributeVertexGenerator<A>>::Output>
@@ -220,8 +275,7 @@ pub trait Generator: Sized {
         Generate::new(self, state, self.vertex_count(), Self::vertex_from)
     }
 
-    /// Provides an iterator over the set of polygons with the given attribute
-    /// data.
+    /// Gets an iterator over the set of polygons with the given attribute data.
     ///
     /// # Examples
     ///
@@ -230,7 +284,7 @@ pub trait Generator: Sized {
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::index::HashIndexer;
     /// use plexus::prelude::*;
@@ -239,7 +293,7 @@ pub trait Generator: Sized {
     /// use plexus::primitive::Tetragon;
     ///
     /// let (indices, positions) = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
+    ///     .polygons::<Position<Point3<R64>>>()
     ///     .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
     /// ```
     fn polygons<A>(
@@ -263,17 +317,18 @@ pub trait Generator: Sized {
         Generate::new(self, state, self.polygon_count(), Self::polygon_from)
     }
 
-    /// Provides an iterator over a set of polygons that index the unique set of
+    /// Gets an iterator over a set of polygons that index the unique set of
     /// vertices with the given attribute.
     ///
     /// Indexing differs per geometric attribute, because each attribute has an
-    /// independent set of unique values. For example, `Cube` generates six
+    /// independent set of unique values. For example, [`Cube`] generates six
     /// unique surface normals and eight unique positions.
     ///
-    /// When used with meta-attribute types like `Position`, input types are not
-    /// needed and default type parameters can be used instead. For example, if
-    /// `Position<Point3<f64>>` is used to generate positional data, then
-    /// `Position<()>` or `Position` can be used to generate indexing polygons.
+    /// When used with meta-attribute types like [`Position`], input types are
+    /// not needed and default type parameters can be used instead. For example,
+    /// if `Position<Point3<f64>>` is used to generate positional data, then
+    /// `Position<()>` (or `Position`) can be used to generate indexing
+    /// polygons.
     ///
     /// # Examples
     ///
@@ -287,12 +342,17 @@ pub trait Generator: Sized {
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
+    /// type E3 = Point3<f64>;
+    ///
     /// let cube = Cube::new();
-    /// let buffer = MeshBuffer4::<usize, _>::from_raw_buffers(
+    /// let buffer = MeshBuffer4::<usize, E3>::from_raw_buffers(
     ///     cube.indexing_polygons::<Position>(),
-    ///     cube.vertices::<Position<Point3<f64>>>(),
+    ///     cube.vertices::<Position<E3>>(),
     /// );
     /// ```
+    ///
+    /// [`Cube`]: crate::primitive::cube::Cube
+    /// [`Position`]: crate::primitive::generate::Position
     fn indexing_polygons<A>(&self) -> Generate<Self, (), Self::Output>
     where
         Self: IndexingPolygonGenerator<A>,

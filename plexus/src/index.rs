@@ -1,44 +1,51 @@
 //! Indexing and aggregation.
 //!
-//! This module provides _indexers_, which disambiguate geometry and produce the
-//! minimal set of topological and geometric data. This is primarily used to
-//! index streams of $n$-gons (`NGon`, `Trigon`, etc.) into raw buffers or
-//! polygonal mesh data structures like `MeshBuffer`.
+//! This module provides types and traits that describe _index buffers_ and
+//! _indexers_ that disambiguate vertex data to construct minimal _index_ and
+//! _vertex buffers_. Plexus refers to independent vertex and index buffers as
+//! _raw buffers_. See the [`buffer`] module and [`MeshBuffer`] type for tools
+//! for working with these buffers.
 //!
-//! Indexing produces an _index buffer_ and _vertex buffer_. The index buffer
-//! describes the topology of a mesh by providing ordered groups of indices into
-//! the vertex buffer. Each group of indices represents a polygon. The vertex
-//! buffer contains geometric data associated with a vertex, such as positions
-//! or surface normals. Plexus supports both _structured_ and _flat index
-//! buffers_.
+//! # Index Buffers
 //!
-//! Flat index buffers directly store individual indices, such as `Vec<usize>`.
-//! Because there is no explicit structure, arity must by constant, but
-//! arbitrarily sized $n$-gons are trivially supported. Flat index buffers tend
-//! to be more useful for rendering pipelines, especially triangular buffers,
-//! because rendering pipelines typically expect a simple contiguous buffer of
-//! index data. See `MeshBuffer3` and `Flat`.
+//! Index buffers describe the topology of a polygonal mesh as ordered groups of
+//! indices into a vertex buffer. Each group of indices represents a polygon.
+//! The vertex buffer contains data that describes each vertex, such as
+//! positions or surface normals. Plexus supports _structured_ and _flat_ index
+//! buffers via the [`Grouping`] and [`IndexBuffer`] traits. These traits are
+//! implemented for [`Vec`].
 //!
-//! Structured index buffers contain sub-structures that explicitly group
-//! indices, such as `Vec<Trigon<usize>>`. Structured index buffers typically
-//! contain `Trigon`s, `Tetragon`s, or `BoundedPolygon`s. Notably,
-//! `BoundedPolygon` can describe the topology of a mesh even if its arity is
-//! non-constant.
+//! Flat index buffers contain unstructured indices with an implicit grouping,
+//! such as `Vec<usize>`. Arity of these buffers is constant and is described by
+//! the [`Flat`] meta-grouping. Rendering pipelines typically expect this
+//! format.
 //!
-//! The primary interface of this module is the `IndexVertices` and
-//! `CollectWithIndexer` traits along with the `HashIndexer` and `LruIndexer`
-//! types.
+//! Structured index buffers contain elements that explicitly group indices,
+//! such as `Vec<Trigon<usize>>`. These buffers can be formed from polygonal
+//! types in the [`primitive`] module.
+//!
+//! # Indexers
+//!
+//! [`Indexer`]s construct index and vertex buffers from iterators of polygonal
+//! types in the [`primitive`] module, such as [`NGon`] and
+//! [`UnboundedPolygon`]. The [`IndexVertices`] trait provides functions for
+//! collecting an iterator of $n$-gons into these buffers.
+//!
+//! Mesh data structures also implement the [`FromIndexer`] and [`FromIterator`]
+//! traits so that iterators of $n$-gons can be collected into these types
+//! (using a [`HashIndexer`] by default). A specific [`Indexer`] can be
+//! configured using the [`CollectWithIndexer`] trait.
 //!
 //! # Examples
 //!
-//! Indexing data for a cube to create raw buffers and a `MeshBuffer`:
+//! Indexing data for a cube to create raw buffers and a [`MeshBuffer`]:
 //!
 //! ```rust
 //! # extern crate decorum;
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R64;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer;
 //! use plexus::index::{Flat3, HashIndexer};
@@ -46,12 +53,29 @@
 //! use plexus::primitive::cube::Cube;
 //! use plexus::primitive::generate::Position;
 //!
+//! type E3 = Point3<R64>;
+//!
 //! let (indices, positions) = Cube::new()
-//!     .polygons::<Position<Point3<N64>>>()
+//!     .polygons::<Position<E3>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
-//! let buffer = MeshBuffer::<Flat3, _>::from_raw_buffers(indices, positions).unwrap();
+//! let buffer = MeshBuffer::<Flat3, E3>::from_raw_buffers(indices, positions).unwrap();
 //! ```
+//!
+//! [`FromIterator`]: std::iter::FromIterator
+//! [`Vec`]: std::vec::Vec
+//! [`MeshBuffer`]: crate::buffer::MeshBuffer
+//! [`buffer`]: crate::buffer
+//! [`MeshGraph`]: crate::graph::MeshGraph
+//! [`CollectWithIndexer`]: crate::index::CollectWithIndexer
+//! [`Flat`]: crate::index::Flat
+//! [`FromIndexer`]: crate::index::FromIndexer
+//! [`HashIndexer`]: crate::index::HashIndexer
+//! [`Indexer`]: crate::index::Indexer
+//! [`IndexVertices`]: crate::index::IndexVertices
+//! [`NGon`]: crate::primitive::NGon
+//! [`UnboundedPolygon`]: crate::primitive::UnboundedPolygon
+//! [`primitive`]: crate::primitive
 
 use num::{Integer, NumCast, Unsigned};
 use std::cmp;
@@ -86,6 +110,11 @@ where
     R: Grouping,
 {
     /// The type of individual indices in the buffer.
+    ///
+    /// This type is distinct from the grouping. For example, if an index buffer
+    /// contains [`Trigon<usize>`][`Trigon`] elements, then this type is `usize`.
+    ///
+    /// [`Trigon`]: crate::primitive::Trigon
     type Index: Copy + Integer + Unsigned;
 }
 
@@ -146,18 +175,19 @@ pub trait Grouping: StaticArity {
 /// Flat index buffer meta-grouping.
 ///
 /// Describes a flat index buffer with a constant arity. Arity is specified
-/// using a type constant from the [`typenum`][1] crate.
+/// using a type constant from the [`typenum`] crate.
 ///
 /// Unlike structured groupings, this meta-grouping is needed to associate an
 /// index type with an arity. For example, `Vec<usize>` implements both
 /// `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
-/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer). Care must be taken
-/// when using flat index buffers, because they are more prone to mismatched
-/// arity than structured buffers.
+/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer).
+///
+/// See the [`index`] module documention for more information about index
+/// buffers.
 ///
 /// # Examples
 ///
-/// Creating a `MeshBuffer` with a flat and triangular index buffer:
+/// Creating a [`MeshBuffer`] with a flat and triangular index buffer:
 ///
 /// ```rust
 /// use plexus::buffer::MeshBuffer;
@@ -168,7 +198,10 @@ pub trait Grouping: StaticArity {
 /// let mut buffer = MeshBuffer::<Flat<U3, usize>, (f64, f64, f64)>::default();
 /// ```
 ///
-/// [1]: https://crates.io/crates/typenum
+/// [`typenum`]: https://crates.io/crates/typenum
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`index`]: crate::index
 #[derive(Debug)]
 pub struct Flat<A = U3, N = usize>
 where
@@ -183,8 +216,8 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + Unsigned,
 {
-    /// Flat index buffers directly contain indices. These indices are
-    /// implicitly grouped by the arity of the buffer.
+    /// The elements of flat index buffers are indices. These indices are
+    /// implicitly grouped by the arity of the buffer (`A`).
     type Group = N;
 }
 
@@ -212,16 +245,12 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 
 /// Structured index buffer grouping.
 ///
-/// Describes a structured index buffer of triangles, quadrilaterals, etc.
-/// Useful if a buffer representing a mesh comprised of both triangles and
-/// quadrilaterals is needed.
-///
-/// Unlike flat groupings, structured groupings can be specified directly using
-/// a topological type like `Trigon<usize>` or `BoundedPolygon<usize>`.
+/// Describes a structured index buffer containing [`Topological`] types with
+/// index data in their vertices.
 ///
 /// # Examples
 ///
-/// Creating a `MeshBuffer` with a structured index buffer:
+/// Creating a [`MeshBuffer`] with a structured index buffer:
 ///
 /// ```rust
 /// use plexus::buffer::MeshBuffer;
@@ -230,13 +259,18 @@ pub type Flat4<N = usize> = Flat<U4, N>;
 ///
 /// let mut buffer = MeshBuffer::<BoundedPolygon<usize>, (f64, f64, f64)>::default();
 /// ```
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`Topological`]: crate::primitive::Topological
 impl<P> Grouping for P
 where
     P: Topological,
     P::Vertex: Copy + Integer + Unsigned,
 {
-    /// `Topological` index buffers contain $n$-gons that explicitly group their
-    /// indices.
+    /// [`Topological`] index buffers contain $n$-gons that explicitly group
+    /// their indices.
+    ///
+    /// [`Topological`]: crate::primitive::Topological
     type Group = P;
 }
 
@@ -263,11 +297,10 @@ where
 /// This indexer hashes key data for vertices to form an index. This is fast,
 /// reliable, and requires no configuration. Prefer this indexer when possible.
 ///
-/// The vertex key data must be hashable (implement `Hash`). Most vertex data
-/// includes floating-point values (i.e., `f32` or `f64`), which do not
-/// implement `Hash`. To avoid problems with hashing, the [`decorum`][1] crate
-/// can be used. The `Finite` and `NotNan` types are particularly useful for
-/// this and will panic if illegal values result from a computation.
+/// The vertex key data must implement [`Hash`]. Vertex data often includes
+/// floating-point values (i.e., `f32` or `f64`), which do not implement
+/// [`Hash`]. Types from the [`decorum`] crate can be used to allow
+/// floating-point data to be hashed.
 ///
 /// # Examples
 ///
@@ -276,7 +309,7 @@ where
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
@@ -284,12 +317,14 @@ where
 /// use plexus::primitive::generate::Position;
 ///
 /// let (indices, positions) = Cube::new()
-///     .polygons::<Position<Point3<N64>>>()
+///     .polygons::<Position<Point3<R64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
 ///
-/// [1]: https://crates.io/crates/decorum
+/// [`decorum`]: https://crates.io/crates/decorum
+///
+/// [`Hash`]: std::hash::Hash
 pub struct HashIndexer<T, K>
 where
     T: Topological,
@@ -352,11 +387,10 @@ where
 /// This indexer uses a _least recently used_ (LRU) cache to form an index. To
 /// function correctly, an adequate cache capacity is necessary. If the capacity
 /// is insufficient, then redundant vertex data may be emitted. See
-/// `with_capacity`.
+/// [`LruIndexer::with_capacity`].
 ///
-/// This indexer is useful if the vertex key data cannot be hashed (does not
-/// implement `Hash`). If the key data can be hashed, prefer `HashIndexer`
-/// instead.
+/// This indexer is useful if the vertex key data does not implement [`Hash`].
+/// If the key data can be hashed, prefer `HashIndexer` instead.
 ///
 /// # Examples
 ///
@@ -375,6 +409,9 @@ where
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(LruIndexer::with_capacity(64));
 /// ```
+///
+/// [`Hash`]: std::hash::Hash
+/// [`LruIndexer::with_capacity`]: crate::index::LruIndexer::with_capacity
 pub struct LruIndexer<T, K>
 where
     T: Topological,
@@ -459,13 +496,16 @@ where
     }
 }
 
-/// Functions for collecting a stream of $n$-gons into raw index and vertex
+/// Functions for collecting an iterator of $n$-gons into raw index and vertex
 /// buffers.
 ///
-/// Unlike `IndexVertices`, this trait provides functions that are closed (not
-/// parameterized) with respect to grouping. Instead, the trait is implemented
-/// for a particular grouping. These functions cannot be used fluently as part
-/// of an iterator expression. Generally, `IndexVertices` should be preferred.
+/// Unlike [`IndexVertices`], this trait provides functions that are closed (not
+/// parameterized) with respect to [`Grouping`]. Instead, the trait is
+/// implemented for a particular [`Grouping`]. These functions cannot be used
+/// fluently as part of an iterator expression.
+///
+/// [`Grouping`]: crate::index::Grouping
+/// [`IndexVertices`]: crate::index::IndexVertices
 pub trait GroupedIndexVertices<R, P>: Sized
 where
     R: Grouping,
@@ -516,19 +556,13 @@ where
     }
 }
 
-/// Functions for collecting a stream of $n$-gons into raw index and vertex
+/// Functions for collecting an iterator of $n$-gons into raw index and vertex
 /// buffers.
 ///
-/// Unlike `GroupedIndexVertices`, this trait provides functions that are
-/// parameterized with respect to grouping. See the `Grouping` trait.
+/// Unlike [`GroupedIndexVertices`], this trait provides functions that are
+/// parameterized with respect to [`Grouping`].
 ///
-/// Using an indexer is not always the most effecient method to create a mesh
-/// data structure from a generator. Generators provide per-attribute indices
-/// that may be less expensive than an indexer when only a single attribute is
-/// needed. For example, see also `vertices_with_position` and
-/// `indices_for_position`.
-///
-/// See `HashIndexer` and `LruIndexer`.
+/// See [`HashIndexer`] and [`LruIndexer`].
 ///
 /// # Examples
 ///
@@ -538,7 +572,7 @@ where
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R64;
 /// use nalgebra::Point3;
 /// use plexus::index::{Flat3, HashIndexer};
 /// use plexus::prelude::*;
@@ -547,16 +581,21 @@ where
 ///
 /// let sphere = UvSphere::new(32, 32);
 /// let (indices, positions) = sphere
-///     .polygons::<Position<Point3<N64>>>()
+///     .polygons::<Position<Point3<R64>>>()
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
+///
+/// [`GroupedIndexVertices`]: crate::index::GroupedIndexVertices
+/// [`Grouping`]: crate::index::Grouping
+/// [`HashIndexer`]: crate::index::HashIndexer
+/// [`LruIndexer`]: crate::index::LruIndexer
 pub trait IndexVertices<P>
 where
     P: Topological,
 {
-    /// Indexes a stream of $n$-gons into raw index and vertex buffers using the
-    /// given grouping, indexer, and keying function.
+    /// Indexes an iterator of $n$-gons into raw index and vertex buffers using
+    /// the given grouping, indexer, and keying function.
     fn index_vertices_with<R, N, K, F>(self, indexer: N, f: F) -> (Vec<R::Group>, Vec<P::Vertex>)
     where
         Self: GroupedIndexVertices<R, P>,
@@ -567,8 +606,8 @@ where
         GroupedIndexVertices::<R, P>::index_vertices_with(self, indexer, f)
     }
 
-    /// Indexes a stream of $n$-gons into raw index and vertex buffers using the
-    /// given grouping and indexer.
+    /// Indexes an iterator of $n$-gons into raw index and vertex buffers using
+    /// the given grouping and indexer.
     ///
     /// # Examples
     ///
@@ -577,7 +616,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::index::HashIndexer;
     /// use plexus::prelude::*;
@@ -587,7 +626,7 @@ where
     ///
     /// // `indices` contains `Trigon`s with index data.
     /// let (indices, positions) = Cube::new()
-    ///     .polygons::<Position<Point3<N64>>>()
+    ///     .polygons::<Position<Point3<R64>>>()
     ///     .subdivide()
     ///     .triangulate()
     ///     .index_vertices::<Trigon<usize>, _>(HashIndexer::default());
@@ -622,26 +661,31 @@ where
         N: Indexer<Q, P::Vertex>;
 }
 
-/// Functions for collecting a stream of $n$-gons into a mesh data structure.
+/// Functions for collecting an iterator of $n$-gons into a mesh data structure.
 ///
-/// These functions can be used to collect data from a generator into a
-/// `MeshBuffer` or `MeshGraph`.
+/// These functions can be used to collect data from an iterator into mesh data
+/// structures like [`MeshBuffer`] or [`MeshGraph`].
 ///
-/// See `HashIndexer` and `LruIndexer`.
+/// See [`HashIndexer`] and [`LruIndexer`].
+///
+/// [`MeshBuffer`]: crate::buffer::MeshBuffer
+/// [`MeshGraph`]: crate::graph::MeshGraph
+/// [`HashIndexer`]: crate::index::HashIndexer
+/// [`LruIndexer`]: crate::index::LruIndexer
 pub trait CollectWithIndexer<P, Q>
 where
     P: Topological,
     Q: Topological<Vertex = P::Vertex>,
 {
-    /// Collects a stream of $n$-gons into a mesh data structure using the given
-    /// indexer.
+    /// Collects an iterator of $n$-gons into a mesh data structure using the
+    /// given indexer.
     ///
     /// Unlike `collect`, this function allows the indexer to be specified.
     ///
     /// # Errors
     ///
     /// Returns an error defined by the implementer if the target type cannot be
-    /// constructed from the indexed vertices.
+    /// constructed from the indexed vertex data.
     ///
     /// # Examples
     ///
@@ -650,7 +694,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N32;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
@@ -658,9 +702,9 @@ where
     /// use plexus::primitive::generate::Position;
     /// use plexus::index::HashIndexer;
     ///
-    /// let graph = Cube::new()
-    ///     .polygons::<Position<Point3<N32>>>()
-    ///     .collect_with_indexer::<MeshGraph<Point3<f32>>, _>(HashIndexer::default())
+    /// let graph: MeshGraph<Point3<f64>> = Cube::new()
+    ///     .polygons::<Position<Point3<R64>>>()
+    ///     .collect_with_indexer(HashIndexer::default())
     ///     .unwrap();
     fn collect_with_indexer<T, N>(self, indexer: N) -> Result<T, T::Error>
     where
