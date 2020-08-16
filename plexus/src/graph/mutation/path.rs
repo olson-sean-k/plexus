@@ -3,9 +3,9 @@ use smallvec::SmallVec;
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::AsStorage;
 use crate::entity::view::Bind;
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::Arc;
 use crate::graph::face::{Face, FaceKey};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::face::{self, FaceInsertCache};
 use crate::graph::mutation::vertex;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -23,11 +23,11 @@ impl PathExtrudeCache {
     pub fn from_path<B>(path: Path<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         if path.arcs().any(|arc| !arc.is_boundary_arc()) {
             Err(GraphError::TopologyMalformed)
@@ -48,7 +48,7 @@ pub fn extrude_contour_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: Fn(<Geometry<M> as GraphGeometry>::Vertex) -> <Geometry<M> as GraphGeometry>::Vertex,
+    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
 {
     let PathExtrudeCache { sources } = cache;
     let destinations: SmallVec<[_; 2]> = sources
@@ -58,7 +58,7 @@ where
         .map(|source| -> Result<_, GraphError> {
             let geometry = VertexView::bind(mutation.as_mut(), source)
                 .ok_or_else(|| GraphError::TopologyNotFound)?
-                .geometry;
+                .data;
             Ok(vertex::insert(mutation.as_mut(), f(geometry)))
         })
         .collect::<Result<_, _>>()?;

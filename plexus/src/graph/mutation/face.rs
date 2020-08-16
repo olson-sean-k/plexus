@@ -7,9 +7,9 @@ use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, Fuse, Storage};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
 use crate::graph::core::{Core, OwnedCore, RefCore};
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
 use crate::graph::face::{Face, FaceKey, FaceView, ToRing};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
 use crate::graph::mutation::vertex;
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -20,16 +20,16 @@ use crate::{DynamicArity, IteratorExt as _};
 
 pub struct FaceMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     inner: EdgeMutation<M>,
-    storage: Storage<Face<Geometry<M>>>,
+    storage: Storage<Face<Data<M>>>,
 }
 
 impl<M, G> FaceMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner.to_ref_core().fuse(&self.storage)
@@ -128,8 +128,8 @@ where
 
 impl<M, G> AsStorage<Face<G>> for FaceMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
         &self.storage
@@ -139,7 +139,7 @@ where
 // TODO: This is a hack. Replace this with delegation.
 impl<M> Deref for FaceMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     type Target = EdgeMutation<M>;
 
@@ -150,7 +150,7 @@ where
 
 impl<M> DerefMut for FaceMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
@@ -159,8 +159,8 @@ where
 
 impl<M, G> From<OwnedCore<G>> for FaceMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(core: OwnedCore<G>) -> Self {
         let (vertices, arcs, edges, faces) = core.unfuse();
@@ -173,8 +173,8 @@ where
 
 impl<M, G> Transact<OwnedCore<G>> for FaceMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     type Output = OwnedCore<G>;
     type Error = GraphError;
@@ -201,11 +201,11 @@ impl FaceInsertCache {
     pub fn from_ring<B, T>(ring: T) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
         T: ToRing<B>,
     {
         let ring = ring.into_ring();
@@ -216,10 +216,10 @@ impl FaceInsertCache {
     pub fn from_storage<B, K>(storage: B, perimeter: K) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
-            + Geometric,
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
+            + Parametric,
         K: IntoIterator,
         K::Item: Borrow<VertexKey>,
     {
@@ -294,11 +294,11 @@ impl FaceRemoveCache {
     pub fn from_face<B>(face: FaceView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let arcs = face.adjacent_arcs().keys().collect();
         Ok(FaceRemoveCache {
@@ -322,11 +322,11 @@ impl FaceSplitCache {
     ) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let perimeter = |face: FaceView<_>| {
             face.adjacent_vertices()
@@ -395,11 +395,11 @@ impl FacePokeCache {
     pub fn from_face<B>(face: FaceView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let vertices = face.adjacent_vertices().keys().collect();
         Ok(FacePokeCache {
@@ -419,11 +419,11 @@ impl FaceBridgeCache {
     pub fn from_face<B>(face: FaceView<B>, destination: FaceKey) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let destination: FaceView<_> = face
             .to_ref()
@@ -456,11 +456,11 @@ impl FaceExtrudeCache {
     pub fn from_face<B>(face: FaceView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let sources = face.adjacent_vertices().keys().collect();
         let cache = FaceRemoveCache::from_face(face)?;
@@ -477,10 +477,7 @@ pub fn insert_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> (
-        <Geometry<M> as GraphGeometry>::Arc,
-        <Geometry<M> as GraphGeometry>::Face,
-    ),
+    F: FnOnce() -> (<Data<M> as GraphData>::Arc, <Data<M> as GraphData>::Face),
 {
     let FaceInsertCache {
         perimeter,
@@ -514,10 +511,7 @@ where
 // TODO: Does this require a cache (or consistency)?
 // TODO: This may need to be more destructive to maintain consistency. Edges,
 //       arcs, and vertices may also need to be removed.
-pub fn remove<M, N>(
-    mut mutation: N,
-    cache: FaceRemoveCache,
-) -> Result<Face<Geometry<M>>, GraphError>
+pub fn remove<M, N>(mut mutation: N, cache: FaceRemoveCache) -> Result<Face<Data<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
@@ -555,16 +549,14 @@ pub fn poke_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> <Geometry<M> as GraphGeometry>::Vertex,
+    F: FnOnce() -> <Data<M> as GraphData>::Vertex,
 {
     let FacePokeCache { vertices, cache } = cache;
     let face = remove(mutation.as_mut(), cache)?;
     let c = vertex::insert(mutation.as_mut(), f());
     for (a, b) in vertices.into_iter().perimeter() {
         let cache = FaceInsertCache::from_storage(mutation.as_mut(), &[a, b, c])?;
-        insert_with(mutation.as_mut(), cache, || {
-            (Default::default(), face.geometry)
-        })?;
+        insert_with(mutation.as_mut(), cache, || (Default::default(), face.data))?;
     }
     Ok(c)
 }
@@ -602,7 +594,7 @@ pub fn extrude_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: Fn(<Geometry<M> as GraphGeometry>::Vertex) -> <Geometry<M> as GraphGeometry>::Vertex,
+    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
 {
     let FaceExtrudeCache { sources, cache } = cache;
     remove(mutation.as_mut(), cache)?;
@@ -612,7 +604,7 @@ where
             .iter()
             .cloned()
             .flat_map(|a| VertexView::bind(mutation, a))
-            .map(|source| f(source.geometry))
+            .map(|source| f(source.data))
             .collect::<Vec<_>>()
     };
     if sources.len() != destinations.len() {

@@ -7,9 +7,9 @@ use std::ops::{Deref, DerefMut};
 
 use crate::entity::storage::{AsStorage, Storage};
 use crate::graph::core::OwnedCore;
+use crate::graph::data::{Data, Parametric};
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
-use crate::graph::geometry::{Geometric, Geometry};
 use crate::graph::mutation::face::FaceMutation;
 use crate::graph::vertex::Vertex;
 use crate::graph::GraphError;
@@ -35,14 +35,14 @@ impl<'a, T> Consistent for &'a mut T where T: Consistent {}
 /// Graph mutation.
 pub struct Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     inner: FaceMutation<M>,
 }
 
 impl<M> AsRef<Self> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     fn as_ref(&self) -> &Self {
         self
@@ -51,45 +51,45 @@ where
 
 impl<M> AsMut<Self> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     fn as_mut(&mut self) -> &mut Self {
         self
     }
 }
 
-impl<M> AsStorage<Arc<Geometry<M>>> for Mutation<M>
+impl<M> AsStorage<Arc<Data<M>>> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    fn as_storage(&self) -> &Storage<Arc<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Arc<Data<M>>> {
         self.inner.to_ref_core().unfuse().1
     }
 }
 
-impl<M> AsStorage<Edge<Geometry<M>>> for Mutation<M>
+impl<M> AsStorage<Edge<Data<M>>> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    fn as_storage(&self) -> &Storage<Edge<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Edge<Data<M>>> {
         self.inner.to_ref_core().unfuse().2
     }
 }
 
-impl<M> AsStorage<Face<Geometry<M>>> for Mutation<M>
+impl<M> AsStorage<Face<Data<M>>> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    fn as_storage(&self) -> &Storage<Face<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Face<Data<M>>> {
         self.inner.to_ref_core().unfuse().3
     }
 }
 
-impl<M> AsStorage<Vertex<Geometry<M>>> for Mutation<M>
+impl<M> AsStorage<Vertex<Data<M>>> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    fn as_storage(&self) -> &Storage<Vertex<Geometry<M>>> {
+    fn as_storage(&self) -> &Storage<Vertex<Data<M>>> {
         self.inner.to_ref_core().unfuse().0
     }
 }
@@ -97,7 +97,7 @@ where
 // TODO: This is a hack. Replace this with delegation.
 impl<M> Deref for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     type Target = FaceMutation<M>;
 
@@ -108,7 +108,7 @@ where
 
 impl<M> DerefMut for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
@@ -117,7 +117,7 @@ where
 
 impl<M> From<M> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     fn from(graph: M) -> Self {
         Mutation {
@@ -126,16 +126,16 @@ where
     }
 }
 
-impl<M> Geometric for Mutation<M>
+impl<M> Parametric for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
-    type Geometry = Geometry<M>;
+    type Data = Data<M>;
 }
 
 impl<M> Transact<M> for Mutation<M>
 where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>,
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
 {
     type Output = M;
     type Error = GraphError;
@@ -146,11 +146,11 @@ where
 }
 
 pub trait Mutable:
-    Consistent + From<OwnedCore<Geometry<Self>>> + Geometric + Into<OwnedCore<Geometry<Self>>>
+    Consistent + From<OwnedCore<Data<Self>>> + Parametric + Into<OwnedCore<Data<Self>>>
 {
 }
 
 impl<M> Mutable for M where
-    M: Consistent + From<OwnedCore<Geometry<M>>> + Geometric + Into<OwnedCore<Geometry<M>>>
+    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>
 {
 }

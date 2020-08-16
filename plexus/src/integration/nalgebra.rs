@@ -12,7 +12,7 @@ use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
-use crate::graph::GraphGeometry;
+use crate::graph::GraphData;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -114,7 +114,7 @@ where
     }
 }
 
-impl<T, D> GraphGeometry for Point<T, D>
+impl<T, D> GraphData for Point<T, D>
 where
     T: Scalar,
     D: DimName,

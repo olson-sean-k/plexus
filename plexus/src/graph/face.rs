@@ -16,10 +16,9 @@ use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
-use crate::graph::geometry::{
-    FaceCentroid, FaceNormal, FacePlane, Geometric, Geometry, GraphGeometry, VertexPosition,
-};
+use crate::graph::geometry::{FaceCentroid, FaceNormal, FacePlane, VertexPosition};
 use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
@@ -45,7 +44,7 @@ use Selector::ByIndex;
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + Consistent + Parametric,
 {
     fn into_ring(self) -> Ring<B>;
 
@@ -57,29 +56,32 @@ where
 #[derive(Derivative)]
 pub struct Face<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
-    /// Geometry.
+    /// User data.
     ///
-    /// The type of this field is derived from `GraphGeometry`.
+    /// The type of this field is derived from `GraphData`.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub geometry: G::Face,
+    pub data: G::Face,
     /// Required key into the leading arc.
     pub(in crate::graph) arc: ArcKey,
 }
 
 impl<G> Face<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
-        Face { geometry, arc }
+        Face {
+            data: geometry,
+            arc,
+        }
     }
 }
 
 impl<G> Entity for Face<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Key = FaceKey;
     type Storage = SlotStorage<Self>;
@@ -114,15 +116,15 @@ impl OpaqueKey for FaceKey {
 pub struct FaceView<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Face<Geometry<B>>> + Geometric,
+    B::Target: AsStorage<Face<Data<B>>> + Parametric,
 {
-    inner: View<B, Face<Geometry<B>>>,
+    inner: View<B, Face<Data<B>>>,
 }
 
 impl<B, M> FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<Geometry<B>>> + Geometric,
+    M: AsStorage<Face<Data<B>>> + Parametric,
 {
     pub fn to_ref(&self) -> FaceView<&M> {
         self.inner.to_ref().into()
@@ -132,7 +134,7 @@ where
 impl<B, M> FaceView<B>
 where
     B: ReborrowMut<Target = M>,
-    M: AsStorage<Face<Geometry<B>>> + Geometric,
+    M: AsStorage<Face<Data<B>>> + Parametric,
 {
     fn to_mut(&mut self) -> FaceView<&mut M> {
         self.inner.to_mut().into()
@@ -142,8 +144,8 @@ where
 impl<'a, B, M, G> FaceView<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     // TODO: Relocate this documentation of `into_ref`.
     /// # Examples
@@ -184,8 +186,8 @@ where
 impl<B, M, G> FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     pub(in crate::graph) fn into_reachable_arc(self) -> Option<ArcView<B>> {
         let key = self.arc;
@@ -196,8 +198,8 @@ where
 impl<B, M, G> FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Converts the face into its ring.
     pub fn into_ring(self) -> Ring<B> {
@@ -227,8 +229,8 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Consistent
-        + Geometric<Geometry = G>,
-    G: GraphGeometry,
+        + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn distance(
         &self,
@@ -271,8 +273,8 @@ where
         + AsStorage<Face<G>>
         + AsStorageMut<Vertex<G>>
         + Consistent
-        + Geometric<Geometry = G>,
-    G: GraphGeometry,
+        + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Flattens the face by translating the positions of all vertices into a
     /// best-fit plane.
@@ -305,7 +307,7 @@ where
                 .ok_or_else(|| GraphError::Geometry)?
             {
                 let translation = *line.direction.get() * distance;
-                *vertex.geometry.as_position_mut() = position + translation;
+                *vertex.data.as_position_mut() = position + translation;
             }
         }
         Ok(())
@@ -315,8 +317,8 @@ where
 impl<'a, B, M, G> FaceView<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_adjacent_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
         self.into_ref().into_ring().into_arcs()
@@ -330,8 +332,8 @@ where
 impl<B, G> FaceView<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator of views over the arcs in the face's ring.
     pub fn adjacent_arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
@@ -352,8 +354,8 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Consistent
-        + Geometric<Geometry = G>,
-    G: GraphGeometry,
+        + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_adjacent_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
         self.into_ref().into_ring().into_vertices()
@@ -367,8 +369,8 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Consistent
-        + Geometric<Geometry = G>,
-    G: GraphGeometry,
+        + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator of views over the vertices that form the face.
     pub fn adjacent_vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
@@ -378,8 +380,8 @@ where
 
 impl<'a, M, G> FaceView<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     pub fn into_adjacent_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
         self.into_ring().into_arc_orphans()
@@ -389,19 +391,18 @@ where
 impl<B> FaceView<B>
 where
     B: ReborrowMut,
-    B::Target:
-        AsStorageMut<Arc<Geometry<B>>> + AsStorage<Face<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorageMut<Arc<Data<B>>> + AsStorage<Face<Data<B>>> + Consistent + Parametric,
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
-    pub fn adjacent_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
+    pub fn adjacent_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Data<B>>> {
         self.to_mut().into_adjacent_arc_orphans()
     }
 }
 
 impl<'a, M, G> FaceView<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     pub fn into_adjacent_face_orphans(self) -> impl Iterator<Item = FaceOrphan<'a, G>> {
         FaceCirculator::from(ArcCirculator::from(self.into_ring()))
@@ -411,26 +412,23 @@ where
 impl<B> FaceView<B>
 where
     B: ReborrowMut,
-    B::Target:
-        AsStorage<Arc<Geometry<B>>> + AsStorageMut<Face<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + AsStorageMut<Face<Data<B>>> + Consistent + Parametric,
 {
     /// Gets an iterator of orphan views over adjacent faces.
-    pub fn adjacent_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<Geometry<B>>> {
+    pub fn adjacent_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<Data<B>>> {
         self.to_mut().into_adjacent_face_orphans()
     }
 }
 
 impl<'a, M> FaceView<&'a mut M>
 where
-    M: AsStorage<Arc<Geometry<M>>>
-        + AsStorage<Face<Geometry<M>>>
-        + AsStorageMut<Vertex<Geometry<M>>>
+    M: AsStorage<Arc<Data<M>>>
+        + AsStorage<Face<Data<M>>>
+        + AsStorageMut<Vertex<Data<M>>>
         + Consistent
-        + Geometric,
+        + Parametric,
 {
-    pub fn into_adjacent_vertex_orphans(
-        self,
-    ) -> impl Iterator<Item = VertexOrphan<'a, Geometry<M>>> {
+    pub fn into_adjacent_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, Data<M>>> {
         VertexCirculator::from(ArcCirculator::from(self.into_ring()))
     }
 }
@@ -438,14 +436,14 @@ where
 impl<B> FaceView<B>
 where
     B: ReborrowMut,
-    B::Target: AsStorage<Arc<Geometry<B>>>
-        + AsStorage<Face<Geometry<B>>>
-        + AsStorageMut<Vertex<Geometry<B>>>
+    B::Target: AsStorage<Arc<Data<B>>>
+        + AsStorage<Face<Data<B>>>
+        + AsStorageMut<Vertex<Data<B>>>
         + Consistent
-        + Geometric,
+        + Parametric,
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
-    pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>> {
+    pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Data<B>>> {
         self.to_mut().into_adjacent_vertex_orphans()
     }
 }
@@ -453,8 +451,8 @@ where
 impl<B, G> FaceView<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator that traverses adjacent faces by breadth.
     ///
@@ -482,8 +480,8 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Default
-        + Mutable<Geometry = G>,
-    G: GraphGeometry,
+        + Mutable<Data = G>,
+    G: GraphData,
 {
     /// Splits the face by bisecting it with a composite edge inserted between
     /// two non-adjacent vertices within the face's perimeter.
@@ -615,7 +613,7 @@ where
             })
             .map(|arc| arc.key())
             .ok_or_else(|| GraphError::TopologyNotFound)?;
-        let geometry = self.geometry;
+        let geometry = self.data;
         // TODO: Batch this operation by using the mutation API instead.
         let arc: ArcView<_> = self.rebind(ab).expect_consistent();
         Ok(arc
@@ -729,7 +727,7 @@ where
         G: FaceCentroid,
         G::Vertex: AsPositionMut,
     {
-        let mut geometry = self.arc().source_vertex().geometry;
+        let mut geometry = self.arc().source_vertex().data;
         let centroid = self.centroid();
         self.poke_with(move || {
             *geometry.as_position_mut() = centroid;
@@ -779,7 +777,7 @@ where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
-        let mut geometry = self.arc().source_vertex().geometry;
+        let mut geometry = self.arc().source_vertex().data;
         let position = self.centroid() + (self.normal()? * offset.into());
         Ok(self.poke_with(move || {
             *geometry.as_position_mut() = position;
@@ -861,8 +859,8 @@ where
 impl<B, M, G> Adjacency for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Output = SmallVec<[Self::Key; 8]>;
 
@@ -874,8 +872,8 @@ where
 impl<B, M, G> ClosedView for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     type Key = FaceKey;
     type Entity = Face<G>;
@@ -889,8 +887,8 @@ where
 impl<B, M, G> Clone for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
     View<B, Face<G>>: Clone,
 {
     fn clone(&self) -> Self {
@@ -903,8 +901,8 @@ where
 impl<B, M, G> Copy for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
     View<B, Face<G>>: Copy,
 {
 }
@@ -912,8 +910,8 @@ where
 impl<B, M, G> Deref for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     type Target = Face<G>;
 
@@ -925,8 +923,8 @@ where
 impl<B, M, G> DerefMut for FaceView<B>
 where
     B: ReborrowMut<Target = M>,
-    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -936,8 +934,8 @@ where
 impl<B, M, G> DynamicArity for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Dynamic = usize;
 
@@ -951,8 +949,8 @@ where
 impl<B, M, G> From<View<B, Face<G>>> for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(view: View<B, Face<G>>) -> Self {
         FaceView { inner: view }
@@ -962,8 +960,8 @@ where
 impl<B, M, G> Into<View<B, Face<G>>> for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     fn into(self) -> View<B, Face<G>> {
         let FaceView { inner, .. } = self;
@@ -974,8 +972,8 @@ where
 impl<B, M, G> PartialEq for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
@@ -985,8 +983,8 @@ where
 impl<B, M, G> StaticArity for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     type Static = <MeshGraph<G> as StaticArity>::Static;
 
@@ -996,8 +994,8 @@ where
 impl<B, M, G> ToRing<B> for FaceView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn into_ring(self) -> Ring<B> {
         FaceView::into_ring(self)
@@ -1014,14 +1012,14 @@ where
 /// for more information about topological views.
 pub struct FaceOrphan<'a, G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     inner: Orphan<'a, Face<G>>,
 }
 
 impl<'a, G> ClosedView for FaceOrphan<'a, G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Key = FaceKey;
     type Entity = Face<G>;
@@ -1033,7 +1031,7 @@ where
 
 impl<'a, G> Deref for FaceOrphan<'a, G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Target = Face<G>;
 
@@ -1044,7 +1042,7 @@ where
 
 impl<'a, G> DerefMut for FaceOrphan<'a, G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
@@ -1053,8 +1051,8 @@ where
 
 impl<'a, M, G> From<FaceView<&'a mut M>> for FaceOrphan<'a, G>
 where
-    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(face: FaceView<&'a mut M>) -> Self {
         Orphan::from(face.inner).into()
@@ -1063,7 +1061,7 @@ where
 
 impl<'a, G> From<Orphan<'a, Face<G>>> for FaceOrphan<'a, G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn from(inner: Orphan<'a, Face<G>>) -> Self {
         FaceOrphan { inner }
@@ -1072,8 +1070,8 @@ where
 
 impl<'a, M, G> From<View<&'a mut M, Face<G>>> for FaceOrphan<'a, G>
 where
-    M: AsStorageMut<Face<G>> + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(view: View<&'a mut M, Face<G>>) -> Self {
         FaceOrphan { inner: view.into() }
@@ -1093,7 +1091,7 @@ where
 pub struct Ring<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + Consistent + Parametric,
 {
     arc: ArcView<B>,
 }
@@ -1101,8 +1099,8 @@ where
 impl<B, M, G> Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn to_ref(&self) -> Ring<&M> {
         self.arc.to_ref().into_ring()
@@ -1112,8 +1110,8 @@ where
 impl<B, M, G> Ring<B>
 where
     B: ReborrowMut<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn to_mut(&mut self) -> Ring<&mut M> {
         self.arc.to_mut().into_ring()
@@ -1123,8 +1121,8 @@ where
 impl<'a, B, M, G> Ring<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_ref(self) -> Ring<&'a M> {
         self.arc.into_ref().into_ring()
@@ -1134,8 +1132,8 @@ where
 impl<B, M, G> Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Converts the ring into its leading arc.
     pub fn into_arc(self) -> ArcView<B> {
@@ -1151,8 +1149,8 @@ where
 impl<B, M, G> Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_path(self) -> Path<B> {
         self.into()
@@ -1196,8 +1194,8 @@ where
 impl<B, M, G> Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Converts the ring into its face.
     ///
@@ -1219,8 +1217,8 @@ where
 impl<'a, B, M, G> Ring<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: 'a + AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: 'a + AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_arcs(self) -> impl Clone + Iterator<Item = ArcView<&'a M>> {
         ArcCirculator::from(self.into_ref())
@@ -1230,8 +1228,8 @@ where
 impl<B, G> Ring<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    B::Target: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator of views over the arcs within the ring.
     pub fn arcs(&self) -> impl Clone + Iterator<Item = ArcView<&B::Target>> {
@@ -1242,8 +1240,8 @@ where
 impl<'a, B, M, G> Ring<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
         VertexCirculator::from(ArcCirculator::from(self.into_ref()))
@@ -1253,8 +1251,8 @@ where
 impl<B, G> Ring<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator of views over the vertices within the ring.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
@@ -1264,8 +1262,8 @@ where
 
 impl<'a, M, G> Ring<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     pub fn into_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
         ArcCirculator::from(self)
@@ -1275,18 +1273,18 @@ where
 impl<B> Ring<B>
 where
     B: ReborrowMut,
-    B::Target: AsStorageMut<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorageMut<Arc<Data<B>>> + Consistent + Parametric,
 {
     /// Gets an iterator of orphan views over the arcs in the ring.
-    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Geometry<B>>> {
+    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Data<B>>> {
         self.to_mut().into_arc_orphans()
     }
 }
 
 impl<'a, M, G> Ring<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     pub fn into_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, G>> {
         VertexCirculator::from(ArcCirculator::from(self))
@@ -1296,23 +1294,18 @@ where
 impl<B> Ring<B>
 where
     B: ReborrowMut,
-    B::Target:
-        AsStorage<Arc<Geometry<B>>> + AsStorageMut<Vertex<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + AsStorageMut<Vertex<Data<B>>> + Consistent + Parametric,
 {
     /// Gets an iterator of views over the vertices within the ring.
-    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Geometry<B>>> {
+    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Data<B>>> {
         self.to_mut().into_vertex_orphans()
     }
 }
 
 impl<'a, M, G> Ring<&'a mut M>
 where
-    M: AsStorage<Vertex<G>>
-        + AsStorage<Arc<G>>
-        + AsStorage<Face<G>>
-        + Default
-        + Mutable<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Vertex<G>> + AsStorage<Arc<G>> + AsStorage<Face<G>> + Default + Mutable<Data = G>,
+    G: GraphData,
 {
     /// Gets the face of the ring or inserts a face if one does not already
     /// exist.
@@ -1354,8 +1347,8 @@ where
 impl<B, M, G> DynamicArity for Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Dynamic = usize;
 
@@ -1369,8 +1362,8 @@ where
 impl<B, M, G> From<ArcView<B>> for Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(arc: ArcView<B>) -> Self {
         Ring { arc }
@@ -1380,8 +1373,8 @@ where
 impl<B, M, G> PartialEq for Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
         let keys = |ring: &Self| ring.arcs().keys().collect::<HashSet<_>>();
@@ -1392,8 +1385,8 @@ where
 impl<B, M, G> StaticArity for Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Static = <MeshGraph<G> as StaticArity>::Static;
 
@@ -1403,8 +1396,8 @@ where
 impl<B, M, G> ToRing<B> for Ring<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn into_ring(self) -> Ring<B> {
         self
@@ -1418,7 +1411,7 @@ where
 pub struct VertexCirculator<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + Consistent + Parametric,
 {
     inner: ArcCirculator<B>,
 }
@@ -1426,8 +1419,8 @@ where
 impl<B, M, G> VertexCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn next(&mut self) -> Option<VertexKey> {
         let ab = self.inner.next();
@@ -1441,8 +1434,8 @@ where
 impl<B, M, G> Clone for VertexCirculator<B>
 where
     B: Clone + Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn clone(&self) -> Self {
         VertexCirculator {
@@ -1454,8 +1447,8 @@ where
 impl<B, M, G> From<ArcCirculator<B>> for VertexCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(inner: ArcCirculator<B>) -> Self {
         VertexCirculator { inner }
@@ -1464,8 +1457,8 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a M>
 where
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Item = VertexView<&'a M>;
 
@@ -1482,8 +1475,8 @@ where
 
 impl<'a, M, G> Iterator for VertexCirculator<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     type Item = VertexOrphan<'a, G>;
 
@@ -1505,7 +1498,7 @@ where
 pub struct ArcCirculator<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + Consistent + Parametric,
 {
     storage: B,
     arc: Option<ArcKey>,
@@ -1515,8 +1508,8 @@ where
 impl<B, M, G> ArcCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     #[allow(unstable_name_collisions)]
     fn next(&mut self) -> Option<ArcKey> {
@@ -1537,8 +1530,8 @@ where
 impl<B, M, G> Clone for ArcCirculator<B>
 where
     B: Clone + Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn clone(&self) -> Self {
         ArcCirculator {
@@ -1552,8 +1545,8 @@ where
 impl<B, M, G> From<Ring<B>> for ArcCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(ring: Ring<B>) -> Self {
         let (storage, key) = ring.into_arc().unbind();
@@ -1567,8 +1560,8 @@ where
 
 impl<'a, M, G> Iterator for ArcCirculator<&'a M>
 where
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Item = ArcView<&'a M>;
 
@@ -1585,8 +1578,8 @@ where
 
 impl<'a, M, G> Iterator for ArcCirculator<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorageMut<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     type Item = ArcOrphan<'a, G>;
 
@@ -1608,7 +1601,7 @@ where
 pub struct FaceCirculator<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + Consistent + Parametric,
 {
     inner: ArcCirculator<B>,
 }
@@ -1616,8 +1609,8 @@ where
 impl<B, M, G> FaceCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn next(&mut self) -> Option<FaceKey> {
         while let Some(ba) = self.inner.next().map(|ab| ab.into_opposite()) {
@@ -1644,8 +1637,8 @@ where
 impl<B, M, G> Clone for FaceCirculator<B>
 where
     B: Clone + Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn clone(&self) -> Self {
         FaceCirculator {
@@ -1657,8 +1650,8 @@ where
 impl<B, M, G> From<ArcCirculator<B>> for FaceCirculator<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(inner: ArcCirculator<B>) -> Self {
         FaceCirculator { inner }
@@ -1667,8 +1660,8 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a M>
 where
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     type Item = FaceView<&'a M>;
 
@@ -1679,8 +1672,8 @@ where
 
 impl<'a, M, G> Iterator for FaceCirculator<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Geometric<Geometry = G>,
-    G: 'a + GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
 {
     type Item = FaceOrphan<'a, G>;
 

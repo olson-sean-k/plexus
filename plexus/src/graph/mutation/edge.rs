@@ -5,9 +5,9 @@ use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, Fuse, Storage};
 use crate::entity::view::{Bind, ClosedView, Rebind};
 use crate::graph::core::Core;
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::{self, VertexMutation};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
@@ -25,18 +25,18 @@ type RefCore<'a, G> =
 
 pub struct EdgeMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     inner: VertexMutation<M>,
     // TODO: Split this into two fields.
     #[allow(clippy::type_complexity)]
-    storage: (Storage<Arc<Geometry<M>>>, Storage<Edge<Geometry<M>>>),
+    storage: (Storage<Arc<Data<M>>>, Storage<Edge<Data<M>>>),
 }
 
 impl<M, G> EdgeMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner
@@ -96,8 +96,8 @@ where
 
 impl<M, G> AsStorage<Arc<G>> for EdgeMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Arc<G>> {
         &self.storage.0
@@ -106,8 +106,8 @@ where
 
 impl<M, G> AsStorage<Edge<G>> for EdgeMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
         &self.storage.1
@@ -117,7 +117,7 @@ where
 // TODO: This is a hack. Replace this with delegation.
 impl<M> Deref for EdgeMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     type Target = VertexMutation<M>;
 
@@ -128,7 +128,7 @@ where
 
 impl<M> DerefMut for EdgeMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
@@ -137,8 +137,8 @@ where
 
 impl<M, G> From<OwnedCore<G>> for EdgeMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(core: OwnedCore<G>) -> Self {
         let (vertices, arcs, edges, ..) = core.unfuse();
@@ -151,8 +151,8 @@ where
 
 impl<M, G> Transact<OwnedCore<G>> for EdgeMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     type Output = OwnedCore<G>;
     type Error = GraphError;
@@ -185,11 +185,11 @@ impl ArcRemoveCache {
     pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         // If the edge has no neighbors, then `xa` and `bx` will refer to the
         // opposite arc of `ab`. In this case, the vertices `a` and `b` should
@@ -226,12 +226,12 @@ impl EdgeRemoveCache {
     pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Edge<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Edge<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         let a = arc.source_vertex().key();
         let b = arc.destination_vertex().key();
@@ -258,10 +258,10 @@ impl EdgeSplitCache {
     pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Edge<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
-            + Geometric,
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Edge<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
+            + Parametric,
     {
         let opposite = arc
             .to_ref()
@@ -300,7 +300,7 @@ impl ArcBridgeCache {
     pub fn from_arc<B>(arc: ArcView<B>, destination: ArcKey) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
+        B::Target: AsStorage<Arc<Data<B>>> + AsStorage<Vertex<Data<B>>> + Parametric,
     {
         let destination: ArcView<_> = arc
             .to_ref()
@@ -347,7 +347,7 @@ impl ArcBridgeCache {
     ) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Geometric,
+        B::Target: AsStorage<Arc<Data<B>>> + AsStorage<Vertex<Data<B>>> + Parametric,
     {
         ArcBridgeCache::from_arc(
             ArcView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?,
@@ -364,11 +364,11 @@ impl ArcExtrudeCache {
     pub fn from_arc<B>(arc: ArcView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Geometry<B>>>
-            + AsStorage<Face<Geometry<B>>>
-            + AsStorage<Vertex<Geometry<B>>>
+        B::Target: AsStorage<Arc<Data<B>>>
+            + AsStorage<Face<Data<B>>>
+            + AsStorage<Vertex<Data<B>>>
             + Consistent
-            + Geometric,
+            + Parametric,
     {
         if !arc.is_boundary_arc() {
             Err(GraphError::TopologyConflict)
@@ -387,15 +387,12 @@ pub fn get_or_insert_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> (
-        <Geometry<M> as GraphGeometry>::Edge,
-        <Geometry<M> as GraphGeometry>::Arc,
-    ),
+    F: FnOnce() -> (<Data<M> as GraphData>::Edge, <Data<M> as GraphData>::Arc),
 {
     fn get_or_insert_arc<M, N>(
         mut mutation: N,
         endpoints: (VertexKey, VertexKey),
-        geometry: <Geometry<M> as GraphGeometry>::Arc,
+        geometry: <Data<M> as GraphData>::Arc,
     ) -> (Option<EdgeKey>, ArcKey)
     where
         N: AsMut<Mutation<M>>,
@@ -447,15 +444,12 @@ where
 pub fn remove<M, N>(
     mut mutation: N,
     cache: EdgeRemoveCache,
-) -> Result<CompositeEdge<Geometry<M>>, GraphError>
+) -> Result<CompositeEdge<Data<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
 {
-    fn remove_arc<M, N>(
-        mut mutation: N,
-        cache: ArcRemoveCache,
-    ) -> Result<Arc<Geometry<M>>, GraphError>
+    fn remove_arc<M, N>(mut mutation: N, cache: ArcRemoveCache) -> Result<Arc<Data<M>>, GraphError>
     where
         N: AsMut<Mutation<M>>,
         M: Mutable,
@@ -516,9 +510,9 @@ pub fn split_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: FnOnce() -> <Geometry<M> as GraphGeometry>::Vertex,
+    F: FnOnce() -> <Data<M> as GraphData>::Vertex,
 {
-    fn remove<M, N>(mut mutation: N, ab: ArcKey) -> Result<Arc<Geometry<M>>, GraphError>
+    fn remove<M, N>(mut mutation: N, ab: ArcKey) -> Result<Arc<Data<M>>, GraphError>
     where
         N: AsMut<Mutation<M>>,
         M: Mutable,
@@ -556,7 +550,7 @@ where
             next,
             previous,
             face,
-            geometry,
+            data: geometry,
             ..
         } = remove(mutation.as_mut(), ab)?;
         let am = get_or_insert_with(mutation.as_mut(), (a, m), || (Default::default(), geometry))
@@ -624,17 +618,17 @@ pub fn extrude_with<M, N, F>(
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
-    F: Fn(<Geometry<M> as GraphGeometry>::Vertex) -> <Geometry<M> as GraphGeometry>::Vertex,
+    F: Fn(<Data<M> as GraphData>::Vertex) -> <Data<M> as GraphData>::Vertex,
 {
     let ArcExtrudeCache { ab } = cache;
     let (c, d) = {
         let (a, b) = ab.into();
         let c = VertexView::bind(mutation.as_mut(), b)
             .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry;
+            .data;
         let d = VertexView::bind(mutation.as_mut(), a)
             .ok_or_else(|| GraphError::TopologyNotFound)?
-            .geometry;
+            .data;
         (f(c), f(d))
     };
     let c = vertex::insert(mutation.as_mut(), c);

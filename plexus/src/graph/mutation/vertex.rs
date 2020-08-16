@@ -1,8 +1,8 @@
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, Fuse, Storage};
 use crate::graph::core::Core;
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
@@ -14,15 +14,15 @@ type RefCore<'a, G> = Core<G, &'a Storage<Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
-    M: Geometric,
+    M: Parametric,
 {
-    storage: Storage<Vertex<Geometry<M>>>,
+    storage: Storage<Vertex<Data<M>>>,
 }
 
 impl<M, G> VertexMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
         Core::empty().fuse(&self.storage)
@@ -52,8 +52,8 @@ where
 
 impl<M, G> AsStorage<Vertex<G>> for VertexMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
         &self.storage
@@ -62,8 +62,8 @@ where
 
 impl<M, G> From<OwnedCore<G>> for VertexMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(core: OwnedCore<G>) -> Self {
         let (vertices, ..) = core.unfuse();
@@ -73,8 +73,8 @@ where
 
 impl<M, G> Transact<OwnedCore<G>> for VertexMutation<M>
 where
-    M: Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: Parametric<Data = G>,
+    G: GraphData,
 {
     type Output = OwnedCore<G>;
     type Error = GraphError;
@@ -101,14 +101,14 @@ impl VertexRemoveCache {
     pub fn from_vertex<B>(vertex: VertexView<B>) -> Result<Self, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
+        B::Target: AsStorage<Vertex<Data<B>>> + Consistent + Parametric,
     {
         let _ = vertex;
         unimplemented!()
     }
 }
 
-pub fn insert<M, N>(mut mutation: N, geometry: <Geometry<M> as GraphGeometry>::Vertex) -> VertexKey
+pub fn insert<M, N>(mut mutation: N, geometry: <Data<M> as GraphData>::Vertex) -> VertexKey
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,
@@ -119,7 +119,7 @@ where
 pub fn remove<M, N>(
     mut mutation: N,
     cache: VertexRemoveCache,
-) -> Result<Vertex<Geometry<M>>, GraphError>
+) -> Result<Vertex<Data<M>>, GraphError>
 where
     N: AsMut<Mutation<M>>,
     M: Mutable,

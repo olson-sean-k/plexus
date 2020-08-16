@@ -56,9 +56,9 @@ examples for demonstrations of rendering.
 
 The `MeshGraph` type represents meshes as a [half-edge
 graph](https://en.wikipedia.org/wiki/doubly_connected_edge_list) and supports
-arbitrary geometry for vertices, arcs (half-edges), edges, and faces. Graphs can
-be traversed and manipulated in ways that iterator expressions and linear
-buffers cannot, such as circulation, extrusion, merging, splitting, etc.
+arbitrary data in vertices, arcs (half-edges), edges, and faces. Graphs can be
+traversed and manipulated in ways that iterator expressions and linear buffers
+cannot, such as circulation, extrusion, merging, splitting, etc.
 
 ```rust
 use decorum::N64;
@@ -98,7 +98,7 @@ become available.
 ```rust
 use decorum::N64;
 use nalgebra::{Point3, Vector3};
-use plexus::graph::GraphGeometry;
+use plexus::graph::GraphData;
 use plexus::prelude::*;
 use plexus::AsPosition;
 
@@ -108,7 +108,7 @@ pub struct Vertex {
     pub normal: Vector3<N64>,
 }
 
-impl GraphGeometry for Vertex {
+impl GraphData for Vertex {
     type Vertex = Self;
     type Arc = ();
     type Edge = ();
@@ -120,10 +120,6 @@ impl AsPosition for Vertex {
 
     fn as_position(&self) -> &Self::Position {
         &self.position
-    }
-
-    fn as_position_mut(&mut self) -> &mut Self::Position {
-        &mut self.position
     }
 }
 ```

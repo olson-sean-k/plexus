@@ -5,9 +5,9 @@ use std::collections::{HashSet, VecDeque};
 use crate::entity::borrow::{Reborrow, ReborrowInto};
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView, Unbind, View};
+use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceView, Ring};
-use crate::graph::geometry::{Geometric, Geometry, GraphGeometry};
 use crate::graph::mutation::path::{self, PathExtrudeCache};
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
@@ -33,8 +33,7 @@ use Selector::ByKey;
 pub struct Path<B>
 where
     B: Reborrow,
-    B::Target:
-        AsStorage<Arc<Geometry<B>>> + AsStorage<Vertex<Geometry<B>>> + Consistent + Geometric,
+    B::Target: AsStorage<Arc<Data<B>>> + AsStorage<Vertex<Data<B>>> + Consistent + Parametric,
 {
     keys: VecDeque<ArcKey>,
     storage: B,
@@ -43,8 +42,8 @@ where
 impl<B, M, G> Path<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     // Paths bind multiple keys to storage and so do not support view APIs.
     // This bespoke `bind` function ensures that the path is not empty and that
@@ -282,8 +281,8 @@ where
 impl<'a, B, M, G> Path<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Converts a mutable view into an immutable view.
     ///
@@ -347,8 +346,8 @@ where
 impl<'a, B, M, G> Path<B>
 where
     B: ReborrowInto<'a, Target = M>,
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     pub fn into_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
         let (key, _) = self.endpoints();
@@ -375,8 +374,8 @@ where
 impl<B, G> Path<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     /// Gets an iterator over the vertices in the path.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
@@ -396,8 +395,8 @@ where
         + AsStorage<Face<G>>
         + AsStorage<Vertex<G>>
         + Default
-        + Mutable<Geometry = G>,
-    G: GraphGeometry,
+        + Mutable<Data = G>,
+    G: GraphData,
 {
     /// Extrudes the contour of a boundary path.
     ///
@@ -439,8 +438,8 @@ where
 impl<B, M, G> From<Ring<B>> for Path<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn from(ring: Ring<B>) -> Self {
         let keys: VecDeque<_> = ring.arcs().keys().collect();
@@ -452,8 +451,8 @@ where
 impl<B, M, G> PartialEq for Path<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Geometric<Geometry = G>,
-    G: GraphGeometry,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
         let keys = |path: &Self| path.arcs().keys().collect::<HashSet<_>>();

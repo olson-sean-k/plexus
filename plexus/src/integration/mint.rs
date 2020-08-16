@@ -9,7 +9,7 @@ use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
-use crate::graph::GraphGeometry;
+use crate::graph::GraphData;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -115,7 +115,7 @@ where
     }
 }
 
-impl<T> GraphGeometry for Point2<T>
+impl<T> GraphData for Point2<T>
 where
     Self: Copy,
 {
@@ -125,7 +125,7 @@ where
     type Face = ();
 }
 
-impl<T> GraphGeometry for Point3<T>
+impl<T> GraphData for Point3<T>
 where
     Self: Copy,
 {

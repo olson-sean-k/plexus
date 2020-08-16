@@ -1,7 +1,7 @@
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::geometry::{FromGeometry, IntoGeometry};
+use crate::graph::data::GraphData;
 use crate::graph::face::FaceKey;
-use crate::graph::geometry::GraphGeometry;
 use crate::graph::mutation::face::{self, FaceInsertCache};
 use crate::graph::mutation::vertex;
 use crate::graph::mutation::Mutation;
@@ -11,14 +11,14 @@ use crate::transact::{ClosedInput, Transact};
 
 pub struct GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     mutation: Mutation<MeshGraph<G>>,
 }
 
 impl<G> Default for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn default() -> Self {
         GraphBuilder {
@@ -29,14 +29,14 @@ where
 
 impl<G> ClosedInput for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Input = ();
 }
 
 impl<G> MeshBuilder for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Builder = Self;
 
@@ -54,7 +54,7 @@ where
 
 impl<G> Transact<<Self as ClosedInput>::Input> for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = MeshGraph<G>;
     type Error = GraphError;
@@ -67,7 +67,7 @@ where
 
 impl<G> SurfaceBuilder for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Builder = Self;
     type Key = VertexKey;
@@ -93,7 +93,7 @@ where
 
 impl<G> FacetBuilder<VertexKey> for GraphBuilder<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Facet = G::Face;
     type Key = FaceKey;

@@ -182,7 +182,7 @@
 //!     .into_next_arc()
 //!     .into_destination_vertex();
 //! for mut face in vertex.adjacent_face_orphans() {
-//!     // `face.geometry` is mutable here.
+//!     // `face.data` is mutable here.
 //! }
 //! ```
 //!
@@ -191,6 +191,7 @@
 
 mod builder;
 mod core;
+mod data;
 mod edge;
 mod face;
 mod geometry;
@@ -200,7 +201,7 @@ mod trace;
 mod vertex;
 
 use decorum::cmp::IntrinsicOrd;
-use decorum::N64;
+use decorum::R64;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -226,7 +227,7 @@ use crate::entity::view::{Bind, Orphan, View};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
-use crate::graph::geometry::Geometric;
+use crate::graph::data::Parametric;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
@@ -237,13 +238,14 @@ use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::dijkstra::Metric;
 pub use crate::entity::view::{ClosedView, Rebind};
+pub use crate::graph::data::GraphData;
 pub use crate::graph::edge::{
     Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, ToArc,
 };
 pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, ToRing};
 pub use crate::graph::geometry::{
-    ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, GraphGeometry, VertexCentroid,
-    VertexNormal, VertexPosition,
+    ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, VertexCentroid, VertexNormal,
+    VertexPosition,
 };
 pub use crate::graph::path::Path;
 pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
@@ -404,16 +406,16 @@ impl<K> From<usize> for Selector<K> {
 /// manipulate topology and geometry in the graph.
 ///
 /// See the module documentation for more details.
-pub struct MeshGraph<G = (N64, N64, N64)>
+pub struct MeshGraph<G = (R64, R64, R64)>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     core: OwnedCore<G>,
 }
 
 impl<G> MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     /// Creates an empty `MeshGraph`.
     ///
@@ -585,7 +587,7 @@ where
         VertexPosition<G>: EuclideanSpace,
         Scalar<VertexPosition<G>>: IntrinsicOrd,
     {
-        Aabb::from_points(self.vertices().map(|vertex| *vertex.geometry.as_position()))
+        Aabb::from_points(self.vertices().map(|vertex| *vertex.data.as_position()))
     }
 
     // TODO: This triangulation does not consider geometry and exhibits some
@@ -652,7 +654,7 @@ where
             );
         }
         for mut vertex in self.vertex_orphans() {
-            *vertex.geometry.as_position_mut() = positions.remove(&vertex.key()).unwrap();
+            *vertex.data.as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
     }
 
@@ -813,7 +815,7 @@ where
         B: Buildable<Facet = ()>,
         B::Vertex: FromGeometry<G::Vertex>,
     {
-        self.to_mesh_by_vertex_with(|vertex| vertex.geometry.into_geometry())
+        self.to_mesh_by_vertex_with(|vertex| vertex.data.into_geometry())
     }
 
     /// Creates a `Buildable` mesh data structure from the graph.
@@ -870,7 +872,7 @@ where
         B::Vertex: FromGeometry<G::Vertex>,
         B::Facet: FromGeometry<G::Face>,
     {
-        self.to_mesh_by_face_with(|_, vertex| vertex.geometry.into_geometry())
+        self.to_mesh_by_face_with(|_, vertex| vertex.data.into_geometry())
     }
 
     /// Creates a `Buildable` mesh data structure from the graph.
@@ -938,9 +940,8 @@ where
                     .adjacent_vertices()
                     .map(|vertex| builder.insert_vertex(f(face, vertex)))
                     .collect::<Result<SmallVec<[_; 8]>, _>>()?;
-                builder.facets_with(|builder| {
-                    builder.insert_facet(indices.as_slice(), face.geometry)
-                })?;
+                builder
+                    .facets_with(|builder| builder.insert_facet(indices.as_slice(), face.data))?;
             }
             Ok(())
         })?;
@@ -950,7 +951,7 @@ where
 
 impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
         self.core.as_storage_of::<Vertex<_>>()
@@ -959,7 +960,7 @@ where
 
 impl<G> AsStorage<Arc<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Arc<G>> {
         self.core.as_storage_of::<Arc<_>>()
@@ -968,7 +969,7 @@ where
 
 impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
         self.core.as_storage_of::<Edge<_>>()
@@ -977,7 +978,7 @@ where
 
 impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
         self.core.as_storage_of::<Face<_>>()
@@ -986,7 +987,7 @@ where
 
 impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
         self.core.as_storage_mut_of::<Vertex<_>>()
@@ -995,7 +996,7 @@ where
 
 impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.core.as_storage_mut_of::<Arc<_>>()
@@ -1004,7 +1005,7 @@ where
 
 impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.core.as_storage_mut_of::<Edge<_>>()
@@ -1013,7 +1014,7 @@ where
 
 impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
         self.core.as_storage_mut_of::<Face<_>>()
@@ -1051,7 +1052,7 @@ where
 /// ```
 impl<G> Buildable for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Builder = GraphBuilder<G>;
     type Error = GraphError;
@@ -1064,11 +1065,11 @@ where
     }
 }
 
-impl<G> Consistent for MeshGraph<G> where G: GraphGeometry {}
+impl<G> Consistent for MeshGraph<G> where G: GraphData {}
 
 impl<G> Default for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn default() -> Self {
         MeshGraph::new()
@@ -1077,7 +1078,7 @@ where
 
 impl<G> DynamicArity for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Dynamic = MeshArity;
 
@@ -1089,7 +1090,7 @@ where
 impl<P, G> From<P> for MeshGraph<G>
 where
     P: Polygonal,
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<P::Vertex>,
 {
     fn from(polygon: P) -> Self {
@@ -1101,7 +1102,7 @@ where
 
 impl<G> From<OwnedCore<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn from(core: OwnedCore<G>) -> Self {
         MeshGraph { core }
@@ -1111,7 +1112,7 @@ where
 impl<E, G> FromEncoding<E> for MeshGraph<G>
 where
     E: FaceDecoder + VertexDecoder,
-    G: GraphGeometry,
+    G: GraphData,
     G::Face: FromGeometry<E::Face>,
     G::Vertex: FromGeometry<E::Vertex>,
 {
@@ -1141,7 +1142,7 @@ where
 
 impl<G, P> FromIndexer<P, P> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<P::Vertex>,
     P: Map<usize> + Polygonal,
     P::Output: Grouping<Group = P::Output> + IntoVertices + Polygonal<Vertex = usize>,
@@ -1175,7 +1176,7 @@ where
 
 impl<G, P> FromIterator<P> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<P::Vertex>,
     P: Polygonal,
     P::Vertex: Clone + Eq + Hash,
@@ -1193,7 +1194,7 @@ impl<P, G, H> FromRawBuffers<P, H> for MeshGraph<G>
 where
     P: IntoVertices + Polygonal,
     P::Vertex: Integer + ToPrimitive + Unsigned,
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
@@ -1228,7 +1229,7 @@ where
 impl<N, G, H> FromRawBuffersWithArity<N, H> for MeshGraph<G>
 where
     N: Integer + ToPrimitive + Unsigned,
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
@@ -1307,16 +1308,16 @@ where
     }
 }
 
-impl<G> Geometric for MeshGraph<G>
+impl<G> Parametric for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
-    type Geometry = G;
+    type Data = G;
 }
 
 impl<G> Into<OwnedCore<G>> for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn into(self) -> OwnedCore<G> {
         let MeshGraph { core, .. } = self;
@@ -1326,7 +1327,7 @@ where
 
 impl<G> IntoPolygons for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = vec::IntoIter<Self::Polygon>;
     type Polygon = UnboundedPolygon<G::Vertex>;
@@ -1336,7 +1337,7 @@ where
             .map(|face| {
                 // The arity of a face in a graph must be polygonal (three or
                 // higher) so this should never fail.
-                let vertices = face.adjacent_vertices().map(|vertex| vertex.geometry);
+                let vertices = face.adjacent_vertices().map(|vertex| vertex.data);
                 UnboundedPolygon::from_items(vertices).expect_consistent()
             })
             .collect::<Vec<_>>()
@@ -1346,7 +1347,7 @@ where
 
 impl<G> StaticArity for MeshGraph<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Static = (usize, Option<usize>);
 
@@ -1358,7 +1359,7 @@ where
     A: NonZero + typenum::Unsigned,
     N: Copy + Integer + NumCast + Unsigned,
     H: Clone,
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
@@ -1403,7 +1404,7 @@ where
     P: Grouping<Group = P> + IntoVertices + Polygonal,
     P::Vertex: Copy + Integer + NumCast + Unsigned,
     H: Clone,
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: FromGeometry<H>,
 {
     type Error = GraphError;
@@ -1448,7 +1449,7 @@ mod tests {
     use num::Zero;
 
     use crate::buffer::MeshBuffer3;
-    use crate::graph::{GraphError, GraphGeometry, MeshGraph};
+    use crate::graph::{GraphData, GraphError, MeshGraph};
     use crate::prelude::*;
     use crate::primitive::generate::Position;
     use crate::primitive::sphere::UvSphere;
@@ -1483,8 +1484,8 @@ mod tests {
             assert_eq!(4, vertex.incoming_arcs().count());
         }
         for mut vertex in graph.vertex_orphans() {
-            // Geometry should be mutable.
-            vertex.geometry += Vector3::zero();
+            // Data should be mutable.
+            vertex.data += Vector3::zero();
         }
     }
 
@@ -1548,7 +1549,7 @@ mod tests {
     fn read_write_geometry_ref() {
         struct ValueGeometry;
 
-        impl GraphGeometry for ValueGeometry {
+        impl GraphData for ValueGeometry {
             type Vertex = Point3<f64>;
             type Arc = ();
             type Edge = ();
@@ -1562,13 +1563,13 @@ mod tests {
             .collect::<MeshGraph<ValueGeometry>>();
         let value = 123_456_789;
         for mut face in graph.face_orphans() {
-            face.geometry = value;
+            face.data = value;
         }
 
         // Read the geometry of each face using an immutable iterator to ensure
         // it is what we expect.
         for face in graph.faces() {
-            assert_eq!(value, face.geometry);
+            assert_eq!(value, face.data);
         }
     }
 }

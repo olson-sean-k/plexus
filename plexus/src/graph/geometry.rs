@@ -1,23 +1,17 @@
-//! Geometric traits.
+//! Geometric graph traits.
 //!
-//! This module provides traits that specify the geometry of `MeshGraph`s and
-//! express the spatial operations supported by that geometry. The most basic
-//! and only required trait is `GraphGeometry`, which uses associated types to
-//! specify the type of the `geometry` field in the payloads for vertices, arcs,
-//! edges, and faces in a graph.
+//! This module provides traits that express the geometric capabilities
+//! supported by vertex data in a graph. These traits enable generic code
+//! without the need to express complicated relationships between types
+//! representing a Euclidean space. For example, the `FaceCentroid` trait is
+//! defined for `GraphData` types that expose positional data that implements
+//! the necessary traits to compute the centroid of a face.
 //!
-//! To support useful spatial operations, types that implement `GraphGeometry`
-//! may also implement `AsPosition`. The `AsPosition` trait exposes positional
-//! data in vertices. If that positional data also implements spatial traits
-//! from the [`theon`][1] crate, then spatial operations will be enabled, such
-//! as `smooth`, `split_at_midpoint`, and `poke_with_offset`.
-//!
-//! This module also defines traits that define the capabilities of geometry in
-//! a `MeshGraph`. These traits enable generic code without the need to express
-//! complicated relationships between types representing a Euclidean space. For
-//! example, the `FaceCentroid` trait is defined for `GraphGeometry` types that
-//! expose positional data that implements the necessary traits to compute the
-//! centroid of a face.
+//! To support useful spatial operations, the associated `Vertex` type of
+//! `GraphData` must also implement `AsPosition`. The `AsPosition` trait exposes
+//! positional data in vertices. If that positional data also implements spatial
+//! traits from the [`theon`][1] crate, then spatial operations will be enabled,
+//! such as `smooth`, `split_at_midpoint`, and `poke_with_offset`.
 //!
 //! # Examples
 //!
@@ -29,14 +23,14 @@
 //! # extern crate smallvec;
 //! #
 //! use plexus::geometry::AsPositionMut;
-//! use plexus::graph::{EdgeMidpoint, FaceView, GraphGeometry, MeshGraph};
+//! use plexus::graph::{EdgeMidpoint, FaceView, GraphData, MeshGraph};
 //! use plexus::prelude::*;
 //! use smallvec::SmallVec;
 //!
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
 //! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
 //! where
-//!     G: EdgeMidpoint + GraphGeometry,
+//!     G: EdgeMidpoint + GraphData,
 //!     G::Vertex: AsPositionMut,
 //! {
 //!     let arity = face.arity();
@@ -75,178 +69,41 @@ use typenum::U3;
 
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::AsStorage;
+use crate::graph::data::{GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcView, Edge, ToArc};
 use crate::graph::face::{Face, ToRing};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexView};
 use crate::graph::{GraphError, OptionExt as _};
 
-pub type Geometry<M> = <M as Geometric>::Geometry;
-pub type VertexPosition<G> = Position<<G as GraphGeometry>::Vertex>;
+pub type VertexPosition<G> = Position<<G as GraphData>::Vertex>;
 
-pub trait Geometric {
-    type Geometry: GraphGeometry;
-}
-
-impl<B> Geometric for B
-where
-    B: Reborrow,
-    B::Target: Geometric,
-{
-    type Geometry = <B::Target as Geometric>::Geometry;
-}
-
-// TODO: Consolidating immutable and mutable access in the `AsPosition` trait
-//       prevents the use of immutable references with geometric functions,
-//       because a type like `&'a Point3<f64>` cannot implement `AsPosition`.
-//       If these operations and reference-based graphs become useful (for
-//       certain computational geometry algorithms, for example), then consider
-//       separating the `as_position` and `as_position_mut` APIs in Theon.
-// TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
-//       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
-/// Graph geometry.
-///
-/// Specifies the types used to represent geometry for vertices, arcs, edges,
-/// and faces in a graph. Arbitrary types can be used, including `()` for no
-/// geometry at all.
-///
-/// Geometric operations depend on understanding the positional data in vertices
-/// exposed by the `AsPosition` trait. If the `Vertex` type implements
-/// `AsPosition`, then geometric operations supported by the `Position` type are
-/// exposed by graph APIs.
-///
-/// # Examples
-///
-/// ```rust
-/// # extern crate decorum;
-/// # extern crate nalgebra;
-/// # extern crate num;
-/// # extern crate plexus;
-/// #
-/// use decorum::N64;
-/// use nalgebra::{Point3, Vector4};
-/// use num::Zero;
-/// use plexus::geometry::{AsPosition, IntoGeometry};
-/// use plexus::graph::{GraphGeometry, MeshGraph};
-/// use plexus::prelude::*;
-/// use plexus::primitive::generate::Position;
-/// use plexus::primitive::sphere::UvSphere;
-///
-/// // Vertex-only geometry with position and color data.
-/// #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-/// pub struct Vertex {
-///     pub position: Point3<N64>,
-///     pub color: Vector4<N64>,
-/// }
-///
-/// impl GraphGeometry for Vertex {
-///     type Vertex = Self;
-///     type Arc = ();
-///     type Edge = ();
-///     type Face = ();
-/// }
-///
-/// impl AsPosition for Vertex {
-///     type Position = Point3<N64>;
-///
-///     fn as_position(&self) -> &Self::Position {
-///         &self.position
-///     }
-/// }
-///
-/// // Create a mesh from a sphere primitive and map the geometry data.
-/// let mut graph = UvSphere::new(8, 8)
-///     .polygons::<Position<Point3<N64>>>()
-///     .map_vertices(|position| Vertex {
-///         position,
-///         color: Zero::zero(),
-///     })
-///     .collect::<MeshGraph<Vertex>>();
-/// ```
-pub trait GraphGeometry: Sized {
-    type Vertex: Copy;
-    type Arc: Copy + Default;
-    type Edge: Copy + Default;
-    type Face: Copy + Default;
-}
-
-impl GraphGeometry for () {
-    type Vertex = ();
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> GraphGeometry for (T, T)
-where
-    T: Copy,
-{
-    type Vertex = Self;
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> GraphGeometry for (T, T, T)
-where
-    T: Copy,
-{
-    type Vertex = Self;
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> GraphGeometry for [T; 2]
-where
-    T: Copy,
-{
-    type Vertex = Self;
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-impl<T> GraphGeometry for [T; 3]
-where
-    T: Copy,
-{
-    type Vertex = Self;
-    type Arc = ();
-    type Edge = ();
-    type Face = ();
-}
-
-pub trait VertexCentroid: GraphGeometry
+pub trait VertexCentroid: GraphData
 where
     Self::Vertex: AsPosition,
 {
     fn centroid<B>(vertex: VertexView<B>) -> Result<VertexPosition<Self>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>;
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>;
 }
 
 impl<G> VertexCentroid for G
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: AsPosition,
 {
     fn centroid<B>(vertex: VertexView<B>) -> Result<VertexPosition<Self>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
     {
         Ok(VertexPosition::<Self>::centroid(
             vertex
                 .adjacent_vertices()
-                .map(|vertex| *vertex.geometry.as_position()),
+                .map(|vertex| *vertex.data.as_position()),
         )
         .expect_consistent())
     }
@@ -263,7 +120,7 @@ where
             + AsStorage<Face<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>;
+            + Parametric<Data = Self>;
 }
 
 impl<G> VertexNormal for G
@@ -278,7 +135,7 @@ where
             + AsStorage<Face<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>,
+            + Parametric<Data = Self>,
     {
         Vector::<VertexPosition<Self>>::mean(
             vertex
@@ -292,22 +149,20 @@ where
     }
 }
 
-pub trait ArcNormal: GraphGeometry
+pub trait ArcNormal: GraphData
 where
     Self::Vertex: AsPosition,
 {
     fn normal<B>(arc: ArcView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>;
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>;
 }
 
 impl<G> ArcNormal for G
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: AsPosition,
     VertexPosition<G>: EuclideanSpace,
     Vector<VertexPosition<G>>: Project<Output = Vector<VertexPosition<G>>>,
@@ -315,10 +170,8 @@ where
     fn normal<B>(arc: ArcView<B>) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
     {
         let (a, b) =
             FromItems::from_items(arc.adjacent_vertices().map(|vertex| *vertex.position()))
@@ -331,7 +184,7 @@ where
     }
 }
 
-pub trait EdgeMidpoint: GraphGeometry
+pub trait EdgeMidpoint: GraphData
 where
     Self::Vertex: AsPosition,
 {
@@ -342,13 +195,13 @@ where
             + AsStorage<Edge<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>,
+            + Parametric<Data = Self>,
         T: ToArc<B>;
 }
 
 impl<G> EdgeMidpoint for G
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: AsPosition,
     VertexPosition<G>: Interpolate<Output = VertexPosition<G>>,
 {
@@ -359,7 +212,7 @@ where
             + AsStorage<Edge<Self>>
             + AsStorage<Vertex<Self>>
             + Consistent
-            + Geometric<Geometry = Self>,
+            + Parametric<Data = Self>,
         T: ToArc<B>,
     {
         let arc = edge.into_arc();
@@ -370,32 +223,28 @@ where
     }
 }
 
-pub trait FaceCentroid: GraphGeometry
+pub trait FaceCentroid: GraphData
 where
     Self::Vertex: AsPosition,
 {
     fn centroid<B, T>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
         T: ToRing<B>;
 }
 
 impl<G> FaceCentroid for G
 where
-    G: GraphGeometry,
+    G: GraphData,
     G::Vertex: AsPosition,
 {
     fn centroid<B, T>(ring: T) -> Result<VertexPosition<Self>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
         T: ToRing<B>,
     {
         let ring = ring.into_ring();
@@ -406,23 +255,21 @@ where
     }
 }
 
-pub trait FaceNormal: GraphGeometry
+pub trait FaceNormal: GraphData
 where
     Self::Vertex: AsPosition,
 {
     fn normal<B, T>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
         T: ToRing<B>;
 }
 
 impl<G> FaceNormal for G
 where
-    G: FaceCentroid + GraphGeometry,
+    G: FaceCentroid + GraphData,
     G::Vertex: AsPosition,
     Vector<VertexPosition<G>>: Cross<Output = Vector<VertexPosition<G>>>,
     VertexPosition<G>: EuclideanSpace,
@@ -430,10 +277,8 @@ where
     fn normal<B, T>(ring: T) -> Result<Vector<VertexPosition<Self>>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
         T: ToRing<B>,
     {
         let ring = ring.into_ring();
@@ -447,7 +292,7 @@ where
     }
 }
 
-pub trait FacePlane: GraphGeometry
+pub trait FacePlane: GraphData
 where
     Self::Vertex: AsPosition,
     VertexPosition<Self>: FiniteDimensional<N = U3>,
@@ -455,10 +300,8 @@ where
     fn plane<B, T>(ring: T) -> Result<Plane<VertexPosition<Self>>, GraphError>
     where
         B: Reborrow,
-        B::Target: AsStorage<Arc<Self>>
-            + AsStorage<Vertex<Self>>
-            + Consistent
-            + Geometric<Geometry = Self>,
+        B::Target:
+            AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
         T: ToRing<B>;
 }
 
@@ -475,7 +318,7 @@ mod array {
 
     impl<G> FacePlane for G
     where
-        G: GraphGeometry,
+        G: GraphData,
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
         Scalar<VertexPosition<G>>: Lapack,
@@ -487,13 +330,13 @@ mod array {
             B::Target: AsStorage<Arc<Self>>
                 + AsStorage<Vertex<Self>>
                 + Consistent
-                + Geometric<Geometry = Self>,
+                + Parametric<Data = Self>,
             T: ToRing<B>,
         {
             let ring = ring.into_ring();
             let points = ring
                 .vertices()
-                .map(|vertex| *vertex.geometry.as_position())
+                .map(|vertex| *vertex.data.as_position())
                 .collect::<SmallVec<[_; 4]>>();
             Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
         }

@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
 use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Storage};
+use crate::graph::data::{GraphData, Parametric};
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
-use crate::graph::geometry::{Geometric, GraphGeometry};
 use crate::graph::vertex::Vertex;
 
 /// A complete core that owns all of its storage.
@@ -42,7 +42,7 @@ pub type RefCore<'a, G> = Core<
 /// A `Core` with no unfused fields is _complete_.
 pub struct Core<G, V = (), A = (), E = (), F = ()>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     vertices: V,
     arcs: A,
@@ -53,7 +53,7 @@ where
 
 impl<G> Core<G>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     pub fn empty() -> Self {
         Core {
@@ -68,7 +68,7 @@ where
 
 impl<G, V, A, E, F> Core<G, V, A, E, F>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     pub fn unfuse(self) -> (V, A, E, F) {
         let Core {
@@ -85,7 +85,7 @@ where
 impl<G, V, A, E, F> AsStorage<Vertex<G>> for Core<G, V, A, E, F>
 where
     V: AsStorage<Vertex<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Vertex<G>> {
         self.vertices.as_storage()
@@ -95,7 +95,7 @@ where
 impl<G, V, A, E, F> AsStorage<Arc<G>> for Core<G, V, A, E, F>
 where
     A: AsStorage<Arc<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Arc<G>> {
         self.arcs.as_storage()
@@ -105,7 +105,7 @@ where
 impl<G, V, A, E, F> AsStorage<Edge<G>> for Core<G, V, A, E, F>
 where
     E: AsStorage<Edge<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Edge<G>> {
         self.edges.as_storage()
@@ -115,7 +115,7 @@ where
 impl<G, V, A, E, F> AsStorage<Face<G>> for Core<G, V, A, E, F>
 where
     F: AsStorage<Face<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage(&self) -> &Storage<Face<G>> {
         self.faces.as_storage()
@@ -125,7 +125,7 @@ where
 impl<G, V, A, E, F> AsStorageMut<Vertex<G>> for Core<G, V, A, E, F>
 where
     V: AsStorageMut<Vertex<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
         self.vertices.as_storage_mut()
@@ -135,7 +135,7 @@ where
 impl<G, V, A, E, F> AsStorageMut<Arc<G>> for Core<G, V, A, E, F>
 where
     A: AsStorageMut<Arc<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
         self.arcs.as_storage_mut()
@@ -145,7 +145,7 @@ where
 impl<G, V, A, E, F> AsStorageMut<Edge<G>> for Core<G, V, A, E, F>
 where
     E: AsStorageMut<Edge<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
         self.edges.as_storage_mut()
@@ -155,7 +155,7 @@ where
 impl<G, V, A, E, F> AsStorageMut<Face<G>> for Core<G, V, A, E, F>
 where
     F: AsStorageMut<Face<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
         self.faces.as_storage_mut()
@@ -165,7 +165,7 @@ where
 impl<G, V, A, E, F> Fuse<V, Vertex<G>> for Core<G, (), A, E, F>
 where
     V: AsStorage<Vertex<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = Core<G, V, A, E, F>;
 
@@ -186,7 +186,7 @@ where
 impl<G, V, A, E, F> Fuse<A, Arc<G>> for Core<G, V, (), E, F>
 where
     A: AsStorage<Arc<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = Core<G, V, A, E, F>;
 
@@ -210,7 +210,7 @@ where
 impl<G, V, A, E, F> Fuse<E, Edge<G>> for Core<G, V, A, (), F>
 where
     E: AsStorage<Edge<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = Core<G, V, A, E, F>;
 
@@ -234,7 +234,7 @@ where
 impl<G, V, A, E, F> Fuse<F, Face<G>> for Core<G, V, A, E, ()>
 where
     F: AsStorage<Face<G>>,
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Output = Core<G, V, A, E, F>;
 
@@ -255,16 +255,16 @@ where
     }
 }
 
-impl<G, V, A, E, F> Geometric for Core<G, V, A, E, F>
+impl<G, V, A, E, F> Parametric for Core<G, V, A, E, F>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
-    type Geometry = G;
+    type Data = G;
 }
 
-impl<G, V, A, E, F> GraphGeometry for Core<G, V, A, E, F>
+impl<G, V, A, E, F> GraphData for Core<G, V, A, E, F>
 where
-    G: GraphGeometry,
+    G: GraphData,
 {
     type Vertex = G::Vertex;
     type Arc = G::Arc;
