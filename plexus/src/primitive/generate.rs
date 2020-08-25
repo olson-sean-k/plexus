@@ -84,6 +84,7 @@ pub trait Attribute {}
 ///
 /// let (indices, normals) = UvSphere::new(8, 8)
 ///     .polygons::<Normal<Point3<R64>>>()
+///     .map_vertices(|normal| normal.into_inner())
 ///     .triangulate()
 ///     .index_vertices::<Flat3, _>(HashIndexer::default());
 /// ```
