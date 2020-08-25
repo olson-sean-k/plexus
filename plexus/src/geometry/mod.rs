@@ -1,5 +1,7 @@
 //! Geometric traits and computational geometry.
 
+use num::{One, Zero};
+
 pub mod partition;
 
 pub use theon::{AsPosition, AsPositionMut, Position};
@@ -71,3 +73,7 @@ where
         U::from_geometry(self)
     }
 }
+
+pub trait Metric: Eq + One + Ord + Zero {}
+
+impl<Q> Metric for Q where Q: Eq + One + Ord + Zero {}

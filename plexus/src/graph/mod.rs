@@ -292,7 +292,6 @@ use crate::primitive::{IntoPolygons, Polygonal, UnboundedPolygon};
 use crate::transact::Transact;
 use crate::{DynamicArity, MeshArity, StaticArity};
 
-pub use crate::entity::dijkstra::Metric;
 pub use crate::entity::view::{ClosedView, Rebind};
 pub use crate::graph::data::GraphData;
 pub use crate::graph::edge::{

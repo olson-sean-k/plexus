@@ -8,11 +8,12 @@ use theon::space::Vector;
 use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::dijkstra::{self, Metric};
+use crate::entity::dijkstra;
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
+use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView};

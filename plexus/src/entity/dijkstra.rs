@@ -1,5 +1,4 @@
 use derivative::Derivative;
-use num::{One, Zero};
 use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -7,10 +6,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use crate::entity::storage::AsStorage;
 use crate::entity::traverse::Adjacency;
 use crate::entity::view::{Bind, Unbind};
-
-pub trait Metric: Eq + One + Ord + Zero {}
-
-impl<Q> Metric for Q where Q: Eq + One + Ord + Zero {}
+use crate::geometry::Metric;
 
 #[derivative(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 #[derive(Derivative)]
