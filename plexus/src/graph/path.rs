@@ -1,10 +1,12 @@
 use fool::BoolExt;
+use itertools::Itertools as _;
 use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto};
 use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView, Unbind, View};
+use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceView, Ring};
@@ -83,6 +85,70 @@ where
     /// Gets the opposite path.
     pub fn opposite_path(&self) -> Path<&M> {
         self.to_ref().into_opposite_path()
+    }
+
+    pub fn into_subpath(
+        self,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
+    ) -> Result<Self, GraphError> {
+        fn truncate(
+            keys: impl Iterator<Item = ArcKey>,
+            from: VertexKey,
+            to: VertexKey,
+        ) -> impl Iterator<Item = ArcKey> {
+            keys.map(|ab| (ab, ab.into()))
+                .skip_while(move |(_, (a, _))| *a != from)
+                .take_while(move |(_, (_, b))| *b != to)
+                .map(|(ab, _)| ab)
+        }
+
+        let index_key_of_selector = |selector| {
+            match selector {
+                Selector::ByKey(key) => self
+                    .vertices()
+                    .find_position(|vertex| vertex.key() == key)
+                    .map(|(index, _)| (index, key)),
+                Selector::ByIndex(index) => self
+                    .vertices()
+                    .nth(index)
+                    .map(|vertex| (index, vertex.key())),
+            }
+            .ok_or_else(|| GraphError::TopologyNotFound)
+        };
+        let (i, from) = index_key_of_selector(from)?;
+        let (j, to) = index_key_of_selector(to)?;
+        if i == j {
+            // Cannot truncate at the same vertex.
+            Err(GraphError::TopologyMalformed)
+        }
+        else {
+            if self.is_open() {
+                // TODO: This reorders vertices if their order is counter to the
+                //       path. Should this cause an error instead?
+                let (from, to) = if i < j { (from, to) } else { (to, from) };
+                let Path { keys, storage } = self;
+                Ok(Path::bind_unchecked(
+                    storage,
+                    truncate(keys.into_iter(), from, to),
+                ))
+            }
+            else {
+                let Path { keys, storage } = self;
+                Ok(Path::bind_unchecked(
+                    storage,
+                    truncate(keys.into_iter().cycle(), from, to),
+                ))
+            }
+        }
+    }
+
+    pub fn subpath(
+        &self,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
+    ) -> Result<Path<&M>, GraphError> {
+        self.to_ref().into_subpath(from, to)
     }
 
     /// Pushes a vertex onto the back of the path.
@@ -244,6 +310,18 @@ where
     pub fn front(&self) -> VertexView<&M> {
         let (_, key) = self.endpoints();
         View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
+    }
+
+    // TODO: Refactor the `distance` functions of `Ring` and `FaceView` to
+    //       resemble or use this function.
+    pub fn metric_with<Q, F>(&self, f: F) -> Q
+    where
+        Q: Metric,
+        F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
+    {
+        self.arcs().fold(Q::zero(), |metric, arc| {
+            metric + f(arc.source_vertex(), arc.destination_vertex())
+        })
     }
 
     /// Returns `true` if the path is open.
