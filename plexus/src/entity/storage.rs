@@ -12,12 +12,19 @@ pub type InnerKey<K> = <K as OpaqueKey>::Inner;
 pub type SlotStorage<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
 pub type HashStorage<E> = HashMap<InnerKey<<E as Entity>::Key>, E, FnvBuildHasher>;
 
-pub trait OpaqueKey: Copy + Eq + Hash + Sized {
+pub trait OpaqueKey: Copy + Eq + Hash + Sized + ToKey<Self> {
     type Inner: Copy + Sized;
 
     fn from_inner(key: Self::Inner) -> Self;
 
     fn into_inner(self) -> Self::Inner;
+}
+
+pub trait ToKey<K>
+where
+    K: OpaqueKey,
+{
+    fn to_key(&self) -> K;
 }
 
 pub trait Fuse<M, T>

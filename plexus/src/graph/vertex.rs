@@ -9,7 +9,7 @@ use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage, ToKey};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -73,6 +73,12 @@ impl OpaqueKey for VertexKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl ToKey<VertexKey> for VertexKey {
+    fn to_key(&self) -> VertexKey {
+        *self
     }
 }
 

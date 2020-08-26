@@ -2,7 +2,7 @@ use fool::BoolExt;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, ToKey};
 use crate::entity::Entity;
 
 pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
@@ -10,6 +10,16 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     type Entity: Entity<Key = Self::Key>;
 
     fn key(&self) -> Self::Key;
+}
+
+impl<T, K> ToKey<K> for T
+where
+    T: ClosedView<Key = K>,
+    K: OpaqueKey,
+{
+    fn to_key(&self) -> K {
+        self.key()
+    }
 }
 
 pub trait Bind<B>: ClosedView + Sized

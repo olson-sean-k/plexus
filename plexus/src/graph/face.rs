@@ -12,7 +12,7 @@ use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, ToKey};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -90,6 +90,12 @@ impl OpaqueKey for FaceKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl ToKey<FaceKey> for FaceKey {
+    fn to_key(&self) -> FaceKey {
+        *self
     }
 }
 
@@ -1147,7 +1153,7 @@ where
         destination: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
         let arity = self.arity();
-        let index_of_selector = |selector: Selector<_>| match selector {
+        let index = |selector: Selector<_>| match selector {
             Selector::ByKey(key) => self
                 .vertices()
                 .keys()
@@ -1164,8 +1170,8 @@ where
                 }
             }
         };
-        let source = index_of_selector(source)? as isize;
-        let destination = index_of_selector(destination)? as isize;
+        let source = index(source)? as isize;
+        let destination = index(destination)? as isize;
         let difference = (source - destination).abs() as usize;
         Ok(cmp::min(difference, arity - difference))
     }

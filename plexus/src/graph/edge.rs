@@ -8,7 +8,7 @@ use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage, ToKey};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -114,6 +114,12 @@ impl OpaqueKey for ArcKey {
 
     fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
+    }
+}
+
+impl ToKey<ArcKey> for ArcKey {
+    fn to_key(&self) -> ArcKey {
+        *self
     }
 }
 
@@ -1155,6 +1161,12 @@ impl OpaqueKey for EdgeKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl ToKey<EdgeKey> for EdgeKey {
+    fn to_key(&self) -> EdgeKey {
+        *self
     }
 }
 

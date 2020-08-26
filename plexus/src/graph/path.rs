@@ -1,10 +1,11 @@
 use fool::BoolExt;
 use itertools::Itertools as _;
 use std::borrow::Borrow;
+use std::cmp;
 use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto};
-use crate::entity::storage::AsStorage;
+use crate::entity::storage::{AsStorage, ToKey};
 use crate::entity::view::{Bind, ClosedView, Unbind, View};
 use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -18,6 +19,10 @@ use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
 
 use Selector::ByKey;
+
+// TODO: `Path`s are non-trivial to copy, unlike views. The use of `to_ref` is
+//       expensive. Borrowing variants of associated functions should probably
+//       provide bespoke implementations rather than using `to_ref`.
 
 /// Non-intersecting path.
 ///
@@ -85,68 +90,6 @@ where
     /// Gets the opposite path.
     pub fn opposite_path(&self) -> Path<&M> {
         self.to_ref().into_opposite_path()
-    }
-
-    pub fn into_subpath(
-        self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
-    ) -> Result<Self, GraphError> {
-        fn truncate(
-            keys: impl Iterator<Item = ArcKey>,
-            from: VertexKey,
-            to: VertexKey,
-        ) -> impl Iterator<Item = ArcKey> {
-            keys.map(|ab| (ab, ab.into()))
-                .skip_while(move |(_, (a, _))| *a != from)
-                .take_while(move |(_, (_, b))| *b != to)
-                .map(|(ab, _)| ab)
-        }
-
-        let index_key_of_selector = |selector| {
-            match selector {
-                Selector::ByKey(key) => self
-                    .vertices()
-                    .find_position(|vertex| vertex.key() == key)
-                    .map(|(index, _)| (index, key)),
-                Selector::ByIndex(index) => self
-                    .vertices()
-                    .nth(index)
-                    .map(|vertex| (index, vertex.key())),
-            }
-            .ok_or_else(|| GraphError::TopologyNotFound)
-        };
-        let (i, from) = index_key_of_selector(from)?;
-        let (j, to) = index_key_of_selector(to)?;
-        if i == j {
-            // Cannot truncate at the same vertex.
-            Err(GraphError::TopologyMalformed)
-        }
-        else if self.is_open() {
-            // TODO: This reorders vertices if their order is counter to the
-            //       path. Should this cause an error instead?
-            let (from, to) = if i < j { (from, to) } else { (to, from) };
-            let Path { keys, storage } = self;
-            Ok(Path::bind_unchecked(
-                storage,
-                truncate(keys.into_iter(), from, to),
-            ))
-        }
-        else {
-            let Path { keys, storage } = self;
-            Ok(Path::bind_unchecked(
-                storage,
-                truncate(keys.into_iter().cycle(), from, to),
-            ))
-        }
-    }
-
-    pub fn subpath(
-        &self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
-    ) -> Result<Path<&M>, GraphError> {
-        self.to_ref().into_subpath(from, to)
     }
 
     /// Pushes a vertex onto the back of the path.
@@ -312,13 +255,22 @@ where
 
     // TODO: Refactor the `distance` functions of `Ring` and `FaceView` to
     //       resemble or use this function.
-    pub fn metric_with<Q, F>(&self, f: F) -> Q
+    pub fn shortest_metric_with<Q, F>(
+        &self,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
+        f: F,
+    ) -> Result<Q, GraphError>
     where
         Q: Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
     {
-        self.arcs().fold(Q::zero(), |metric, arc| {
-            metric + f(arc.source_vertex(), arc.destination_vertex())
+        self.shortest_subpath_endpoints(from, to).map(|(from, to)| {
+            // A cycle is needed for closed paths. Note that if the path is
+            // open, then the vertex keys must not wrap over the endpoints here.
+            truncate(self.arcs().cycle(), from, to).fold(Q::zero(), |metric, arc: ArcView<_>| {
+                metric + f(arc.source_vertex(), arc.destination_vertex())
+            })
         })
     }
 
@@ -351,6 +303,43 @@ where
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
         let (_, b) = self.keys.front().cloned().expect("empty path").into();
         (a, b)
+    }
+
+    fn shortest_subpath_endpoints(
+        &self,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
+    ) -> Result<(VertexKey, VertexKey), GraphError> {
+        let index_key = |selector| {
+            match selector {
+                Selector::ByKey(key) => self
+                    .vertices()
+                    .find_position(|vertex| vertex.key() == key)
+                    .map(|(index, _)| (index, key)),
+                Selector::ByIndex(index) => self
+                    .vertices()
+                    .nth(index)
+                    .map(|vertex| (index, vertex.key())),
+            }
+            .ok_or_else(|| GraphError::TopologyNotFound)
+        };
+        let (i, from) = index_key(from)?;
+        let (j, to) = index_key(to)?;
+        if self.is_open() {
+            // Reorder the vertex keys if they oppose the direction of the open
+            // path.
+            Ok(if i > j { (to, from) } else { (from, to) })
+        }
+        else {
+            // Reorder the vertex keys if they form the longer closed path.
+            let n = self.keys.len() / 2;
+            Ok(if (cmp::max(i, j) - cmp::min(i, j)) > n {
+                (to, from)
+            }
+            else {
+                (from, to)
+            })
+        }
     }
 }
 
@@ -533,9 +522,25 @@ where
     G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
-        let keys = |path: &Self| path.arcs().keys().collect::<HashSet<_>>();
+        let keys = |path: &Self| path.keys.iter().cloned().collect::<HashSet<_>>();
         keys(self) == keys(other)
     }
+}
+
+fn truncate<T, U>(
+    arcs: impl IntoIterator<Item = T>,
+    from: VertexKey,
+    to: VertexKey,
+) -> impl Iterator<Item = T>
+where
+    T: Borrow<U> + Copy,
+    U: ToKey<ArcKey>,
+{
+    arcs.into_iter()
+        .map(|arc| (arc, arc.borrow().to_key().into()))
+        .skip_while(move |(_, (a, _))| *a != from)
+        .take_while(move |(_, (a, _))| *a != to)
+        .map(|(arc, _)| arc)
 }
 
 #[cfg(test)]
@@ -575,6 +580,41 @@ mod tests {
         path.push_front(ByKey(keys[0])).unwrap();
         assert!(path.is_closed());
         assert_eq!(path.front().key(), path.back().key());
+    }
+
+    #[test]
+    fn logical_metrics() {
+        let graph = MeshGraph::<E2>::from_raw_buffers(
+            vec![Tetragon::from([0usize, 1, 2, 3])],
+            vec![(1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0)],
+        )
+        .unwrap();
+        let path = {
+            let key = graph.faces().nth(0).unwrap().key();
+            graph.face(key).unwrap().into_ring().into_path()
+        };
+        let keys: Vec<_> = path.vertices().keys().collect();
+
+        assert_eq!(
+            0,
+            path.shortest_metric_with(ByIndex(0), ByIndex(0), |_, _| 1usize)
+                .unwrap()
+        );
+        assert_eq!(
+            0,
+            path.shortest_metric_with(ByKey(keys[0]), ByKey(keys[0]), |_, _| 1usize)
+                .unwrap()
+        );
+        assert_eq!(
+            1,
+            path.shortest_metric_with(ByIndex(0), ByIndex(3), |_, _| 1usize)
+                .unwrap()
+        );
+        assert_eq!(
+            2,
+            path.shortest_metric_with(ByKey(keys[1]), ByKey(keys[3]), |_, _| 1usize)
+                .unwrap()
+        );
     }
 
     #[test]
