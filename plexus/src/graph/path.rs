@@ -122,24 +122,22 @@ where
             // Cannot truncate at the same vertex.
             Err(GraphError::TopologyMalformed)
         }
+        else if self.is_open() {
+            // TODO: This reorders vertices if their order is counter to the
+            //       path. Should this cause an error instead?
+            let (from, to) = if i < j { (from, to) } else { (to, from) };
+            let Path { keys, storage } = self;
+            Ok(Path::bind_unchecked(
+                storage,
+                truncate(keys.into_iter(), from, to),
+            ))
+        }
         else {
-            if self.is_open() {
-                // TODO: This reorders vertices if their order is counter to the
-                //       path. Should this cause an error instead?
-                let (from, to) = if i < j { (from, to) } else { (to, from) };
-                let Path { keys, storage } = self;
-                Ok(Path::bind_unchecked(
-                    storage,
-                    truncate(keys.into_iter(), from, to),
-                ))
-            }
-            else {
-                let Path { keys, storage } = self;
-                Ok(Path::bind_unchecked(
-                    storage,
-                    truncate(keys.into_iter().cycle(), from, to),
-                ))
-            }
+            let Path { keys, storage } = self;
+            Ok(Path::bind_unchecked(
+                storage,
+                truncate(keys.into_iter().cycle(), from, to),
+            ))
         }
     }
 
