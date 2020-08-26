@@ -202,9 +202,9 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Arc<Data<B>>> + Parametric,
 {
-    // This function is also used to implement `Ring::to_mut`.
-    pub(in crate::graph) fn to_mut(&mut self) -> ArcView<&mut M> {
-        self.inner.to_mut().into()
+    // This function is also used to implement `Ring::to_mut_unchecked`.
+    pub(in crate::graph) fn to_mut_unchecked(&mut self) -> ArcView<&mut M> {
+        self.inner.to_mut_unchecked().into()
     }
 }
 
@@ -567,7 +567,7 @@ where
     pub fn adjacent_vertex_orphans(
         &mut self,
     ) -> impl ExactSizeIterator<Item = VertexOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_vertex_orphans()
+        self.to_mut_unchecked().into_adjacent_vertex_orphans()
     }
 }
 
@@ -588,7 +588,7 @@ where
 {
     /// Gets an iterator of orphan views over the faces connected to the arc.
     pub fn adjacent_face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_face_orphans()
+        self.to_mut_unchecked().into_adjacent_face_orphans()
     }
 }
 

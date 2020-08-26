@@ -119,8 +119,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Vertex<Data<B>>> + Parametric,
 {
-    fn to_mut(&mut self) -> VertexView<&mut M> {
-        self.inner.to_mut().into()
+    fn to_mut_unchecked(&mut self) -> VertexView<&mut M> {
+        self.inner.to_mut_unchecked().into()
     }
 }
 
@@ -427,7 +427,7 @@ where
     B::Target: AsStorage<Arc<Data<B>>> + AsStorageMut<Vertex<Data<B>>> + Consistent + Parametric,
 {
     pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_vertex_orphans()
+        self.to_mut_unchecked().into_adjacent_vertex_orphans()
     }
 }
 
@@ -451,7 +451,7 @@ where
     /// The ordering of arcs is deterministic and is based on the leading arc of
     /// the vertex.
     pub fn incoming_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Data<B>>> {
-        self.to_mut().into_incoming_arc_orphans()
+        self.to_mut_unchecked().into_incoming_arc_orphans()
     }
 }
 
@@ -483,7 +483,7 @@ where
     /// The ordering of faces is deterministic and is based on the leading arc
     /// of the vertex.
     pub fn adjacent_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_face_orphans()
+        self.to_mut_unchecked().into_adjacent_face_orphans()
     }
 }
 

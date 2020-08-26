@@ -134,8 +134,8 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Face<Data<B>>> + Parametric,
 {
-    fn to_mut(&mut self) -> FaceView<&mut M> {
-        self.inner.to_mut().into()
+    fn to_mut_unchecked(&mut self) -> FaceView<&mut M> {
+        self.inner.to_mut_unchecked().into()
     }
 }
 
@@ -395,7 +395,7 @@ where
 {
     /// Gets an iterator of orphan views over the arcs in the face's ring.
     pub fn adjacent_arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_arc_orphans()
+        self.to_mut_unchecked().into_adjacent_arc_orphans()
     }
 }
 
@@ -416,7 +416,7 @@ where
 {
     /// Gets an iterator of orphan views over adjacent faces.
     pub fn adjacent_face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_face_orphans()
+        self.to_mut_unchecked().into_adjacent_face_orphans()
     }
 }
 
@@ -444,7 +444,7 @@ where
 {
     /// Gets an iterator of orphan views over the vertices that form the face.
     pub fn adjacent_vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Data<B>>> {
-        self.to_mut().into_adjacent_vertex_orphans()
+        self.to_mut_unchecked().into_adjacent_vertex_orphans()
     }
 }
 
@@ -1099,8 +1099,8 @@ where
     M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    fn to_mut(&mut self) -> Ring<&mut M> {
-        self.arc.to_mut().into_ring()
+    fn to_mut_unchecked(&mut self) -> Ring<&mut M> {
+        self.arc.to_mut_unchecked().into_ring()
     }
 }
 
@@ -1263,7 +1263,7 @@ where
 {
     /// Gets an iterator of orphan views over the arcs in the ring.
     pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<Data<B>>> {
-        self.to_mut().into_arc_orphans()
+        self.to_mut_unchecked().into_arc_orphans()
     }
 }
 
@@ -1284,7 +1284,7 @@ where
 {
     /// Gets an iterator of views over the vertices within the ring.
     pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<Data<B>>> {
-        self.to_mut().into_vertex_orphans()
+        self.to_mut_unchecked().into_vertex_orphans()
     }
 }
 

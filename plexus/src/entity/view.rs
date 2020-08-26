@@ -154,7 +154,12 @@ where
     B::Target: AsStorage<E>,
     E: Entity,
 {
-    pub fn to_mut(&mut self) -> View<&mut B::Target, E> {
+    /// Mutably reborrows the interior of the view.
+    ///
+    /// It is possible to invalidate views using this function. Care must be
+    /// taken to ensure that the originating view's key is still present in
+    /// storage after the reborrowed view is dropped.
+    pub fn to_mut_unchecked(&mut self) -> View<&mut B::Target, E> {
         View::bind_unchecked(self.storage.reborrow_mut(), self.key)
     }
 }
