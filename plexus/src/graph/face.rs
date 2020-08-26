@@ -795,10 +795,6 @@ where
     /// Extrudes the face along a translation.
     ///
     /// Returns the extruded face.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the geometry could not be computed.
     pub fn extrude_with_translation(
         self,
         translation: Vector<VertexPosition<G>>,
