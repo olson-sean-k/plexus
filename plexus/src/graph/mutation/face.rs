@@ -353,9 +353,9 @@ impl FaceSplitCache {
             }
             false
         };
-        face.distance(source.into(), destination.into())
-            .and_then(|distance| {
-                if distance <= 1 {
+        face.shortest_metric(source.into(), destination.into())
+            .and_then(|metric| {
+                if metric <= 1 {
                     Err(GraphError::TopologyMalformed)
                 }
                 else {

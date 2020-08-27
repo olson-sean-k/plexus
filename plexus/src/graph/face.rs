@@ -231,12 +231,12 @@ where
         + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn distance(
+    pub fn shortest_metric(
         &self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
-        self.ring().distance(source, destination)
+        self.ring().shortest_metric(from, to)
     }
 
     pub fn centroid(&self) -> VertexPosition<G>
@@ -1148,11 +1148,17 @@ where
         self.to_ref().into_path()
     }
 
-    /// Gets the distance (number of arcs) between two vertices within the ring.
-    pub fn distance(
+    /// Gets the shortest logical metric between vertices within the ring.
+    ///
+    /// The _logical metric_ assigns the unit weight (one) to every arc and
+    /// effectively counts the number of arcs between vertices. In a closed path
+    /// like a ring, there are two sub-paths between any two vertices. This
+    /// function computes the metric of the shortest sub-path. This may be the
+    /// null path with a zero metric.
+    pub fn shortest_metric(
         &self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
+        from: Selector<VertexKey>,
+        to: Selector<VertexKey>,
     ) -> Result<usize, GraphError> {
         let arity = self.arity();
         let index = |selector: Selector<_>| match selector {
@@ -1172,10 +1178,10 @@ where
                 }
             }
         };
-        let source = index(source)? as isize;
-        let destination = index(destination)? as isize;
-        let difference = (source - destination).abs() as usize;
-        Ok(cmp::min(difference, arity - difference))
+        let from = index(from)?;
+        let to = index(to)?;
+        let metric = cmp::max(from, to) - cmp::min(from, to);
+        Ok(cmp::min(metric, arity - metric))
     }
 }
 
@@ -1857,7 +1863,7 @@ mod tests {
     }
 
     #[test]
-    fn ring_distance() {
+    fn logical_metrics() {
         let graph = MeshGraph::<Point2<f32>>::from_raw_buffers_with_arity(
             vec![0u32, 1, 2, 3],
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
@@ -1870,8 +1876,20 @@ mod tests {
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
         let ring = face.into_ring();
-        assert_eq!(2, ring.distance(keys[0].into(), keys[2].into()).unwrap());
-        assert_eq!(1, ring.distance(keys[0].into(), keys[3].into()).unwrap());
-        assert_eq!(0, ring.distance(keys[0].into(), keys[0].into()).unwrap());
+        assert_eq!(
+            2,
+            ring.shortest_metric(keys[0].into(), keys[2].into())
+                .unwrap()
+        );
+        assert_eq!(
+            1,
+            ring.shortest_metric(keys[0].into(), keys[3].into())
+                .unwrap()
+        );
+        assert_eq!(
+            0,
+            ring.shortest_metric(keys[0].into(), keys[0].into())
+                .unwrap()
+        );
     }
 }

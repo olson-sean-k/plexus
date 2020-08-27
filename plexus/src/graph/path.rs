@@ -253,8 +253,6 @@ where
         View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
     }
 
-    // TODO: Refactor the `distance` functions of `Ring` and `FaceView` to
-    //       resemble or use this function.
     pub fn shortest_metric_with<Q, F>(
         &self,
         from: Selector<VertexKey>,
@@ -268,7 +266,7 @@ where
         self.shortest_subpath_endpoints(from, to).map(|(from, to)| {
             // A cycle is needed for closed paths. Note that if the path is
             // open, then the vertex keys must not wrap over the endpoints here.
-            truncate(self.arcs().cycle(), from, to).fold(Q::zero(), |metric, arc: ArcView<_>| {
+            truncate(self.arcs().cycle(), from, to).fold(Q::zero(), |metric, arc| {
                 metric + f(arc.source_vertex(), arc.destination_vertex())
             })
         })
@@ -612,7 +610,7 @@ mod tests {
         );
         assert_eq!(
             2,
-            path.shortest_metric_with(ByKey(keys[1]), ByKey(keys[3]), |_, _| 1usize)
+            path.shortest_metric_with(ByKey(keys[3]), ByKey(keys[1]), |_, _| 1usize)
                 .unwrap()
         );
     }
