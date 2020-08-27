@@ -154,11 +154,16 @@ where
     B::Target: AsStorage<E>,
     E: Entity,
 {
+    // The "unannotated" name of this function is `to_mut`, but "unchecked" is
+    // used to indicate that this function can be used incorrectly and corrupt
+    // views. `to_mut` does not violate lints, but `to_mut_unchecked` does. This
+    // function and its proxies allow this unconventional name.
     /// Mutably reborrows the interior of the view.
     ///
     /// It is possible to invalidate views using this function. Care must be
     /// taken to ensure that the originating view's key is still present in
     /// storage after the reborrowed view is dropped.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_mut_unchecked(&mut self) -> View<&mut B::Target, E> {
         View::bind_unchecked(self.storage.reborrow_mut(), self.key)
     }

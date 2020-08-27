@@ -119,6 +119,7 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Vertex<Data<B>>> + Parametric,
 {
+    #[allow(clippy::wrong_self_convention)]
     fn to_mut_unchecked(&mut self) -> VertexView<&mut M> {
         self.inner.to_mut_unchecked().into()
     }

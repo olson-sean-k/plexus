@@ -134,6 +134,7 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Face<Data<B>>> + Parametric,
 {
+    #[allow(clippy::wrong_self_convention)]
     fn to_mut_unchecked(&mut self) -> FaceView<&mut M> {
         self.inner.to_mut_unchecked().into()
     }
@@ -1099,6 +1100,7 @@ where
     M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
+    #[allow(clippy::wrong_self_convention)]
     fn to_mut_unchecked(&mut self) -> Ring<&mut M> {
         self.arc.to_mut_unchecked().into_ring()
     }
