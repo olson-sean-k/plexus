@@ -192,8 +192,8 @@ pub trait Topological:
     /// # extern crate theon;
     /// #
     /// use nalgebra::{Point2, Point3};
+    /// use plexus::geometry::{Plane, Unit};
     /// use plexus::primitive::{Topological, Trigon};
-    /// use theon::query::{Plane, Unit};
     /// use theon::space::{Basis, EuclideanSpace};
     ///
     /// type E2 = Point2<f64>;
@@ -1215,9 +1215,7 @@ impl_unbounded_polygon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 /// ```rust
 /// # extern crate decorum;
 /// # extern crate nalgebra;
-/// # extern crate num;
 /// # extern crate plexus;
-/// # extern crate theon;
 /// #
 /// use decorum::N64;
 /// use nalgebra::Point3;

@@ -989,19 +989,18 @@ where
     /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
-    /// # extern crate theon;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
+    /// use plexus::geometry::Vector;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::BoundedPolygon;
-    /// use theon::space::Vector;
     ///
-    /// type E3 = Point3<N64>;
+    /// type E3 = Point3<R64>;
     ///
     /// pub struct Vertex {
     ///     pub position: E3,

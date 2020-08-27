@@ -660,17 +660,16 @@ where
     /// # extern crate decorum;
     /// # extern crate nalgebra;
     /// # extern crate plexus;
-    /// # extern crate theon;
     /// #
     /// use decorum::R64;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBuffer;
+    /// use plexus::geometry::Vector;
     /// use plexus::index::{Flat3, HashIndexer};
     /// use plexus::prelude::*;
     /// use plexus::primitive;
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::{Normal, Position};
-    /// use theon::space::Vector;
     ///
     /// type E3 = Point3<R64>;
     /// type Vertex = (E3, Vector<E3>); // Position and normal.
