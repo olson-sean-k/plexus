@@ -260,14 +260,13 @@ where
     M: AsStorage<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    #[allow(unstable_name_collisions)]
     pub(in crate::graph) fn into_reachable_boundary_arc(self) -> Option<Self> {
         if self.is_boundary_arc() {
             Some(self)
         }
         else {
             self.into_reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().then_some(opposite))
+                .and_then(|opposite| opposite.is_boundary_arc().then_some_ext(opposite))
         }
     }
 

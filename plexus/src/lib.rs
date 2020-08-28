@@ -6,12 +6,6 @@
 //!
 //! [website]: https://plexus.rs
 
-// TODO: Functions of the `fool::BoolExt` trait may collide with planned
-//       inherent functions for `bool`. Most uses of these functions would cause
-//       errors if these functions land in `bool`.
-//
-//       See uses of `#[allow(unstable_name_collisions)]`.
-
 // This lint is a bit subjective. Using `next` is equivalent, but the Plexus
 // authors find `nth(0)` more clear, especially as part of a non-trivial
 // iterator expression. This may be revisited though.

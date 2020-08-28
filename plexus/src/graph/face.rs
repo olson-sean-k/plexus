@@ -1504,10 +1504,9 @@ where
     M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    #[allow(unstable_name_collisions)]
     fn next(&mut self) -> Option<ArcKey> {
         self.arc
-            .and_then(|arc| self.trace.insert(arc).then_some(arc))
+            .and_then(|arc| self.trace.insert(arc).then_some_ext(arc))
             .map(|arc| {
                 self.arc = self
                     .storage

@@ -833,10 +833,9 @@ where
     M: AsStorage<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    #[allow(unstable_name_collisions)]
     fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
-            .and_then(|outgoing| self.trace.insert(outgoing).then_some(outgoing))
+            .and_then(|outgoing| self.trace.insert(outgoing).then_some_ext(outgoing))
             .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage

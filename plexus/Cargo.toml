@@ -54,9 +54,8 @@ typenum = "^1.10.0"
 
 ply-rs = { version = "^0.1.2", optional = true }
 
-[dependencies.fool] # Unstable.
-git = "https://github.com/olson-sean-k/fool.git"
-rev = "d5a287c"
+[dependencies.fool]
+version = "=0.0.4" # Unstable.
 default-features = false
 features = ["zip"]
 

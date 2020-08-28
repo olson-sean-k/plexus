@@ -760,12 +760,11 @@ where
     // TODO: This first computes a line intersection and then partitions each
     //       edge's endpoints by the other edge's line. That's probably more
     //       expensive than is necessary.
-    #[allow(unstable_name_collisions)]
     fn intersection(&self, other: &Edge<T>) -> Option<Self::Output> {
         fool::zip((self.line(), other.line())).and_then(|(l1, l2)| match l1.intersection(&l2) {
-            Some(LineLine::Point(point)) => {
-                self.is_bisected(other).then_some(EdgeEdge::Point(point))
-            }
+            Some(LineLine::Point(point)) => self
+                .is_bisected(other)
+                .then_some_ext(EdgeEdge::Point(point)),
             Some(LineLine::Line(_)) => todo!(),
             _ => None,
         })
