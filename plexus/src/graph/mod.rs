@@ -279,6 +279,7 @@ use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
 use crate::entity::view::{Bind, Orphan, View};
+use crate::entity::EntityError;
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
@@ -354,6 +355,15 @@ impl From<BufferError> for GraphError {
                 GraphError::ArityConflict { expected, actual }
             }
             _ => GraphError::Encoding,
+        }
+    }
+}
+
+impl From<EntityError> for GraphError {
+    fn from(error: EntityError) -> Self {
+        match error {
+            EntityError::EntityNotFound => GraphError::TopologyNotFound,
+            EntityError::Geometry => GraphError::Geometry,
         }
     }
 }

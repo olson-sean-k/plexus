@@ -6,6 +6,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use crate::entity::storage::AsStorage;
 use crate::entity::traverse::Adjacency;
 use crate::entity::view::{Bind, Unbind};
+use crate::entity::EntityError;
 use crate::geometry::Metric;
 
 #[derivative(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -21,7 +22,7 @@ pub fn metrics_with<'a, M, T, Q, F>(
     from: T,
     to: Option<T::Key>,
     f: F,
-) -> HashMap<T::Key, (Option<T::Key>, Q)>
+) -> Result<HashMap<T::Key, (Option<T::Key>, Q)>, EntityError>
 where
     M: 'a + AsStorage<T::Entity>,
     T: Adjacency + Bind<&'a M> + Copy + Unbind<&'a M>,
@@ -45,16 +46,19 @@ where
         if Some(key) == to {
             break;
         }
-        let entity = T::bind(storage, key).unwrap();
+        let entity = T::bind(storage, key).ok_or_else(|| EntityError::EntityNotFound)?;
         if breadcrumbs.insert(entity.key()) {
             for adjacent in entity
                 .adjacency()
                 .into_iter()
-                .map(|key| T::bind(storage, key).unwrap())
+                .map(|key| T::bind(storage, key))
             {
-                // TODO: Consider returning an error if the output of `f` is
-                //       less than zero.
-                let metric = metric + f(entity, adjacent);
+                let adjacent = adjacent.ok_or_else(|| EntityError::EntityNotFound)?;
+                let summand = f(entity, adjacent);
+                if summand < Q::zero() {
+                    return Err(EntityError::Geometry);
+                }
+                let metric = metric + summand;
                 match metrics.entry(adjacent.key()) {
                     Entry::Occupied(entry) => {
                         if metric < entry.get().1 {
@@ -69,7 +73,7 @@ where
             }
         }
     }
-    metrics
+    Ok(metrics)
 }
 
 #[cfg(test)]
@@ -78,17 +82,31 @@ mod tests {
     use nalgebra::Point2;
     use theon::space::InnerSpace;
 
-    use crate::entity::dijkstra;
+    use crate::entity::{dijkstra, EntityError};
     use crate::graph::MeshGraph;
     use crate::prelude::*;
     use crate::primitive::{Tetragon, Trigon};
+
+    #[test]
+    fn decreasing_summand() {
+        let graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
+            vec![Tetragon::new(0usize, 1, 2, 3)],
+            vec![(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)],
+        )
+        .unwrap();
+        let vertex = graph.vertices().nth(0).unwrap();
+        assert_eq!(
+            Err(EntityError::Geometry),
+            dijkstra::metrics_with(vertex, None, |_, _| -1isize)
+        )
+    }
 
     #[test]
     fn logical_metrics() {
         let graph = MeshGraph::<()>::from_raw_buffers(vec![Trigon::new(0usize, 1, 2)], vec![(); 3])
             .unwrap();
         let vertex = graph.vertices().nth(0).unwrap();
-        let metrics = dijkstra::metrics_with(vertex, None, |_, _| 1usize);
+        let metrics = dijkstra::metrics_with(vertex, None, |_, _| 1usize).unwrap();
         let a = vertex.key();
         let b = vertex.outgoing_arc().destination_vertex().key();
         let c = vertex.outgoing_arc().next_arc().destination_vertex().key();
@@ -112,7 +130,8 @@ mod tests {
         let vertex = graph.vertices().nth(0).unwrap();
         let metrics = dijkstra::metrics_with(vertex, None, |from, to| {
             R64::from((to.position() - from.position()).magnitude())
-        });
+        })
+        .unwrap();
         let a = vertex.key();
         let b = vertex.outgoing_arc().destination_vertex().key();
         let c = vertex.outgoing_arc().next_arc().destination_vertex().key();

@@ -218,7 +218,7 @@ where
         Q: Copy + Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
     {
-        let metrics = dijkstra::metrics_with(self.to_ref(), Some(key), f);
+        let metrics = dijkstra::metrics_with(self.to_ref(), Some(key), f)?;
         let mut keys = vec![key];
         while let Some((Some(previous), _)) = metrics.get(&key) {
             key = *previous;
