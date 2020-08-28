@@ -253,7 +253,6 @@ mod face;
 mod geometry;
 mod mutation;
 mod path;
-mod trace;
 mod vertex;
 
 use decorum::cmp::IntrinsicOrd;

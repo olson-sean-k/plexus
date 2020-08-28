@@ -1,4 +1,5 @@
 use std::collections::{HashSet, VecDeque};
+use std::hash::Hash;
 use std::marker::PhantomData;
 
 use crate::entity::borrow::Reborrow;
@@ -142,5 +143,80 @@ where
             1,
             Some(AsStorage::<T::Entity>::as_storage(&self.storage).len()),
         )
+    }
+}
+
+/// Trace of a traversal, iteration, etc.
+///
+/// A trace caches _breadcrumbs_, which identify entities encountered during a
+/// traversal.
+pub trait Trace<T> {
+    /// Inserts the given breadcrumb into the trace. The breadcrumb may or may
+    /// not be cached.
+    ///
+    /// A _collision_ occurs if a breadcrumb that has been cached by the trace
+    /// is reinserted. If a collision with the trace is detected, then this
+    /// function returns `false` and otherwise returns `true` (similarly to
+    /// collections like [`HashSet`]).
+    ///
+    /// If `false` is returned, then any traversal or iteration should
+    /// terminate.
+    ///
+    /// [`HashSet`]: std::collections::HashSet
+    fn insert(&mut self, breadcrumb: T) -> bool;
+}
+
+/// Trace that caches and detects collisions with only the first breadcrumb that
+/// is inserted.
+///
+/// A collision only occurs if the first breadcrumb is reinserted; no other
+/// breadcrumbs are cached.
+///
+/// This trace should **not** be used when traversing a structure with unknown
+/// consistency, because it may never signal that the iteration should
+/// terminate. However, it requires very little space and time to operate.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TraceFirst<T>
+where
+    T: Copy,
+{
+    breadcrumb: Option<T>,
+}
+
+impl<T> Trace<T> for TraceFirst<T>
+where
+    T: Copy + Eq,
+{
+    fn insert(&mut self, breadcrumb: T) -> bool {
+        match self.breadcrumb {
+            Some(collision) => collision != breadcrumb,
+            None => {
+                self.breadcrumb = Some(breadcrumb);
+                true
+            }
+        }
+    }
+}
+
+/// Trace that caches all inserted breadcrumbs and detects collisions with any
+/// such breadcrumb.
+///
+/// This trace is very robust and reliably signals termination of a traversal,
+/// but requires non-trivial space to cache breadcrumbs and must hash
+/// breadcrumbs to detect collisions.
+#[derive(Clone, Debug, Default)]
+pub struct TraceAny<T>
+where
+    T: Copy + Eq + Hash,
+{
+    breadcrumbs: HashSet<T>,
+}
+
+impl<T> Trace<T> for TraceAny<T>
+where
+    T: Copy + Eq + Hash,
+{
+    fn insert(&mut self, breadcrumb: T) -> bool {
+        self.breadcrumbs.insert(breadcrumb)
     }
 }

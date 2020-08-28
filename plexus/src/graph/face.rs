@@ -13,7 +13,7 @@ use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, ToKey};
-use crate::entity::traverse::{Adjacency, Breadth, Depth, Traversal};
+use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -25,7 +25,6 @@ use crate::graph::mutation::face::{
 };
 use crate::graph::mutation::{Consistent, Mutable, Mutation};
 use crate::graph::path::Path;
-use crate::graph::trace::{Trace, TraceFirst};
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
