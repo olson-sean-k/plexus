@@ -8,39 +8,15 @@ use crate::entity::view::{Bind, ClosedView, Unbind};
 pub enum Breadth {}
 pub enum Depth {}
 
-pub trait Order<T>
+pub trait Buffer<R, T>: Default + Extend<T>
 where
-    T: Adjacency,
+    R: Order<T>,
 {
-    type Buffer: Buffer<T::Key>;
-}
-
-impl<T> Order<T> for Breadth
-where
-    T: Adjacency,
-{
-    type Buffer = VecDeque<T::Key>;
-}
-
-impl<T> Order<T> for Depth
-where
-    T: Adjacency,
-{
-    type Buffer = Vec<T::Key>;
-}
-
-pub trait Adjacency: ClosedView {
-    type Output: IntoIterator<Item = Self::Key>;
-
-    fn adjacency(&self) -> Self::Output;
-}
-
-pub trait Buffer<T>: Default + Extend<T> {
     fn push(&mut self, item: T);
     fn pop(&mut self) -> Option<T>;
 }
 
-impl<T> Buffer<T> for Vec<T> {
+impl<T> Buffer<Depth, T> for Vec<T> {
     fn push(&mut self, item: T) {
         Vec::<T>::push(self, item)
     }
@@ -50,7 +26,7 @@ impl<T> Buffer<T> for Vec<T> {
     }
 }
 
-impl<T> Buffer<T> for VecDeque<T> {
+impl<T> Buffer<Breadth, T> for VecDeque<T> {
     fn push(&mut self, item: T) {
         VecDeque::<T>::push_back(self, item)
     }
@@ -60,13 +36,43 @@ impl<T> Buffer<T> for VecDeque<T> {
     }
 }
 
+/// Traversal ordering.
+///
+/// Provides a default type implementing [`Buffer`] for the ordering described
+/// by `Self`. This reduces the number of required type parameters in types
+/// implementing traversals, as only an ordering type is needed to derive the
+/// buffer. Note that the item type can typically be derived from other required
+/// type parameters.
+///
+/// See [`Traversal`].
+///
+/// [`Buffer`]: crate::entity::traverse::Buffer
+/// [`Traversal`]: crate::entity::traverse::Traversal
+pub trait Order<T>: Sized {
+    type Buffer: Buffer<Self, T>;
+}
+
+impl<T> Order<T> for Breadth {
+    type Buffer = VecDeque<T>;
+}
+
+impl<T> Order<T> for Depth {
+    type Buffer = Vec<T>;
+}
+
+pub trait Adjacency: ClosedView {
+    type Output: IntoIterator<Item = Self::Key>;
+
+    fn adjacency(&self) -> Self::Output;
+}
+
 #[derive(Debug)]
 pub struct Traversal<B, T, R = Depth>
 where
     B: Reborrow,
     B::Target: AsStorage<T::Entity>,
     T: Adjacency,
-    R: Order<T>,
+    R: Order<T::Key>,
 {
     storage: B,
     breadcrumbs: HashSet<T::Key>,
@@ -79,7 +85,7 @@ where
     B: Clone + Reborrow,
     B::Target: AsStorage<T::Entity>,
     T: Adjacency,
-    R: Order<T>,
+    R: Order<T::Key>,
     R::Buffer: Clone,
 {
     fn clone(&self) -> Self {
@@ -97,7 +103,7 @@ where
     B: Reborrow,
     B::Target: AsStorage<T::Entity>,
     T: Adjacency + Unbind<B>,
-    R: Order<T>,
+    R: Order<T::Key>,
 {
     fn from(view: T) -> Self {
         let (storage, key) = view.unbind();
@@ -117,7 +123,7 @@ impl<'a, M, T, R> Iterator for Traversal<&'a M, T, R>
 where
     M: 'a + AsStorage<T::Entity>,
     T: Adjacency + Bind<&'a M>,
-    R: Order<T>,
+    R: Order<T::Key>,
 {
     type Item = T;
 
