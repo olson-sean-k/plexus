@@ -17,16 +17,6 @@ struct KeyedMetric<K, Q>(
 where
     Q: Eq + Ord;
 
-// TODO: This may become part of the public API.
-#[allow(dead_code)]
-pub fn metrics<'a, M, T>(from: T, to: Option<T::Key>) -> HashMap<T::Key, (Option<T::Key>, usize)>
-where
-    M: 'a + AsStorage<T::Entity>,
-    T: Adjacency + Bind<&'a M> + Copy + Unbind<&'a M>,
-{
-    metrics_with(from, to, |_, _| 1usize)
-}
-
 pub fn metrics_with<'a, M, T, Q, F>(
     from: T,
     to: Option<T::Key>,
@@ -98,7 +88,7 @@ mod tests {
         let graph = MeshGraph::<()>::from_raw_buffers(vec![Trigon::new(0usize, 1, 2)], vec![(); 3])
             .unwrap();
         let vertex = graph.vertices().nth(0).unwrap();
-        let metrics = dijkstra::metrics(vertex, None);
+        let metrics = dijkstra::metrics_with(vertex, None, |_, _| 1usize);
         let a = vertex.key();
         let b = vertex.outgoing_arc().destination_vertex().key();
         let c = vertex.outgoing_arc().next_arc().destination_vertex().key();
