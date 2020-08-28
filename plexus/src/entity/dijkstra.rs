@@ -9,6 +9,8 @@ use crate::entity::view::{Bind, Unbind};
 use crate::entity::EntityError;
 use crate::geometry::Metric;
 
+pub type MetricTree<K, Q> = HashMap<K, (Option<K>, Q)>;
+
 #[derivative(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 #[derive(Derivative)]
 struct KeyedMetric<K, Q>(
@@ -22,7 +24,7 @@ pub fn metrics_with<'a, M, T, Q, F>(
     from: T,
     to: Option<T::Key>,
     f: F,
-) -> Result<HashMap<T::Key, (Option<T::Key>, Q)>, EntityError>
+) -> Result<MetricTree<T::Key, Q>, EntityError>
 where
     M: 'a + AsStorage<T::Entity>,
     T: Adjacency + Bind<&'a M> + Copy + Unbind<&'a M>,
