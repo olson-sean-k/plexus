@@ -233,15 +233,19 @@ where
         self.to_ref().into_outgoing_arc()
     }
 
-    pub fn shortest_path(&self, key: VertexKey) -> Result<Path<&M>, GraphError> {
+    pub fn shortest_path(&self, key: VertexKey) -> Result<Path<'static, &M>, GraphError> {
         self.to_ref().into_shortest_path(key)
     }
 
-    pub fn into_shortest_path(self, key: VertexKey) -> Result<Path<B>, GraphError> {
+    pub fn into_shortest_path(self, key: VertexKey) -> Result<Path<'static, B>, GraphError> {
         self.into_shortest_path_with(key, |_, _| 1usize)
     }
 
-    pub fn shortest_path_with<Q, F>(&self, key: VertexKey, f: F) -> Result<Path<&M>, GraphError>
+    pub fn shortest_path_with<Q, F>(
+        &self,
+        key: VertexKey,
+        f: F,
+    ) -> Result<Path<'static, &M>, GraphError>
     where
         Q: Copy + Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
@@ -253,7 +257,7 @@ where
         self,
         mut key: VertexKey,
         f: F,
-    ) -> Result<Path<B>, GraphError>
+    ) -> Result<Path<'static, B>, GraphError>
     where
         Q: Copy + Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,

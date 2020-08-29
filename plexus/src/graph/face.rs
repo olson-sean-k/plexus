@@ -1214,11 +1214,11 @@ where
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn into_path(self) -> Path<B> {
+    pub fn into_path(self) -> Path<'static, B> {
         self.into()
     }
 
-    pub fn path(&self) -> Path<&M> {
+    pub fn path(&self) -> Path<'static, &M> {
         self.to_ref().into_path()
     }
 

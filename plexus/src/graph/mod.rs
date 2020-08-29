@@ -702,7 +702,7 @@ where
     /// # Errors
     ///
     /// Returns an error if a vertex is not found or the path is malformed.
-    pub fn path<I>(&self, keys: I) -> Result<Path<&Self>, GraphError>
+    pub fn path<I>(&self, keys: I) -> Result<Path<'static, &Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,
@@ -715,7 +715,7 @@ where
     /// # Errors
     ///
     /// Returns an error if a vertex is not found or the path is malformed.
-    pub fn path_mut<I>(&mut self, keys: I) -> Result<Path<&mut Self>, GraphError>
+    pub fn path_mut<I>(&mut self, keys: I) -> Result<Path<'static, &mut Self>, GraphError>
     where
         I: IntoIterator,
         I::Item: Borrow<VertexKey>,

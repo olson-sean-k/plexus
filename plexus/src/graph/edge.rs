@@ -407,7 +407,7 @@ where
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn into_path(self) -> Path<B> {
+    pub fn into_path(self) -> Path<'static, B> {
         let (storage, ab) = self.unbind();
         let (a, b) = ab.into();
         Path::bind(storage, &[a, b]).unwrap()

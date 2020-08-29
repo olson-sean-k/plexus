@@ -1,6 +1,6 @@
 use fool::BoolExt;
 use itertools::Itertools as _;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::cmp;
 use std::collections::{HashSet, VecDeque};
 
@@ -20,10 +20,6 @@ use crate::IteratorExt as _;
 
 use Selector::ByKey;
 
-// TODO: `Path`s are non-trivial to copy, unlike views. The use of `to_ref` is
-//       expensive. Borrowing variants of associated functions should probably
-//       provide bespoke implementations rather than using `to_ref`.
-
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Non-intersecting path.
@@ -38,17 +34,20 @@ type Mutation<M> = mutation::Mutation<Immediate<M>>;
 /// is the _front_ of the path. Note that closed paths are always of the form
 /// $\overrightarrow{(A,\cdots,A)}$, where the back and front vertices are both
 /// $A$ (the same).
+///
+/// `Path` maintains an ordered set of keys and uses copy-on-write semantics to
+/// avoid allocations and copies.
 #[derive(Clone)]
-pub struct Path<B>
+pub struct Path<'k, B>
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<Data<B>>> + AsStorage<Vertex<Data<B>>> + Consistent + Parametric,
 {
-    keys: VecDeque<ArcKey>,
+    keys: Cow<'k, VecDeque<ArcKey>>,
     storage: B,
 }
 
-impl<B, M, G> Path<B>
+impl<B, M, G> Path<'static, B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
@@ -68,7 +67,7 @@ where
         let ab = (a, b).into();
         ArcView::bind(storage.reborrow(), ab).ok_or_else(|| GraphError::TopologyNotFound)?;
         let mut path = Path {
-            keys: (&[ab]).iter().cloned().collect(),
+            keys: Cow::Owned((&[ab]).iter().cloned().collect()),
             storage,
         };
         for key in keys {
@@ -77,20 +76,40 @@ where
         Ok(path)
     }
 
+    fn bind_unchecked<I>(storage: B, keys: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Borrow<ArcKey>,
+    {
+        let keys = Cow::Owned(keys.into_iter().map(|key| *key.borrow()).collect());
+        Path { storage, keys }
+    }
+}
+
+impl<'k, B, M, G> Path<'k, B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
+{
     pub fn to_ref(&self) -> Path<&M> {
-        let storage = self.storage.reborrow();
-        let keys = self.keys.iter();
-        Path::bind_unchecked(storage, keys)
+        Path {
+            storage: self.storage.reborrow(),
+            keys: Cow::Borrowed(&self.keys),
+        }
     }
 
     /// Converts the path into its opposite path.
-    pub fn into_opposite_path(self) -> Self {
+    pub fn into_opposite_path(self) -> Path<'static, B> {
         let Path { keys, storage } = self;
-        Path::bind_unchecked(storage, keys.into_iter().rev().map(|ab| ab.into_opposite()))
+        Path::bind_unchecked(
+            storage,
+            keys.iter().cloned().rev().map(|ab| ab.into_opposite()),
+        )
     }
 
     /// Gets the opposite path.
-    pub fn opposite_path(&self) -> Path<&M> {
+    pub fn opposite_path(&self) -> Path<'static, &M> {
         self.to_ref().into_opposite_path()
     }
 
@@ -142,14 +161,14 @@ where
             Err(GraphError::TopologyMalformed)
         }
         else {
-            self.keys.push_back(xa);
+            self.keys.to_mut().push_back(xa);
             Ok(xa)
         }
     }
 
     /// Pushes the source vertex of the previous arc onto the back of the path.
     pub fn push_previous_arc(&mut self) -> Result<ArcKey, GraphError> {
-        let key = *self.keys.back().expect("empty path");
+        let key = *self.keys.to_mut().back().expect("empty path");
         let key = ArcView::from(View::bind_unchecked(self.storage.reborrow(), key))
             .into_previous_arc()
             .into_source_vertex()
@@ -161,7 +180,7 @@ where
     pub fn pop_back(&mut self) -> Option<ArcKey> {
         // Empty paths are forbidden.
         if self.keys.len() > 1 {
-            self.keys.pop_back()
+            self.keys.to_mut().pop_back()
         }
         else {
             None
@@ -216,7 +235,7 @@ where
             Err(GraphError::TopologyMalformed)
         }
         else {
-            self.keys.push_front(bx);
+            self.keys.to_mut().push_front(bx);
             Ok(bx)
         }
     }
@@ -236,7 +255,7 @@ where
     pub fn pop_front(&mut self) -> Option<ArcKey> {
         // Empty paths are forbidden.
         if self.keys.len() > 1 {
-            self.keys.pop_front()
+            self.keys.to_mut().pop_front()
         }
         else {
             None
@@ -290,15 +309,6 @@ where
         a == b
     }
 
-    fn bind_unchecked<I>(storage: B, keys: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Borrow<ArcKey>,
-    {
-        let keys = keys.into_iter().map(|key| *key.borrow()).collect();
-        Path { storage, keys }
-    }
-
     fn endpoints(&self) -> (VertexKey, VertexKey) {
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
         let (_, b) = self.keys.front().cloned().expect("empty path").into();
@@ -343,14 +353,14 @@ where
     }
 }
 
-impl<'a, B, M, G> Path<B>
+impl<'k, 'a, B, M, G> Path<'k, B>
 where
     B: ReborrowInto<'a, Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
     /// Converts a mutable view into an immutable view.
-    pub fn into_ref(self) -> Path<&'a M> {
+    pub fn into_ref(self) -> Path<'k, &'a M> {
         let Path { keys, storage, .. } = self;
         Path {
             keys,
@@ -379,7 +389,10 @@ where
     /// [`ArcView::split_with`]: crate::graph::ArcView::split_with
     /// [`FaceView::split`]: crate::graph::FaceView::split
     /// [`MeshGraph::split_at_path`]: crate::graph::MeshGraph::split_at_path
-    pub fn split(self, at: Selector<VertexKey>) -> Result<(Path<&'a M>, Path<&'a M>), GraphError> {
+    pub fn split(
+        self,
+        at: Selector<VertexKey>,
+    ) -> Result<(Path<'static, &'a M>, Path<'static, &'a M>), GraphError> {
         let index = at.index_or_else(|key| {
             self.vertices()
                 .keys()
@@ -391,54 +404,23 @@ where
         if index == 0 || index >= self.keys.len() {
             return Err(GraphError::TopologyMalformed);
         }
-        let Path {
-            keys: mut right,
-            storage,
-            ..
-        } = self.into_ref();
+        let Path { keys, storage, .. } = self.into_ref();
+        let mut right = keys.into_owned();
         let left = right.split_off(index);
         Ok((
             Path {
-                keys: left,
+                keys: Cow::Owned(left),
                 storage,
             },
             Path {
-                keys: right,
+                keys: Cow::Owned(right),
                 storage,
             },
         ))
     }
 }
 
-impl<'a, B, M, G> Path<B>
-where
-    B: ReborrowInto<'a, Target = M>,
-    M: 'a + AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
-    G: GraphData,
-{
-    pub fn into_vertices(self) -> impl Clone + Iterator<Item = VertexView<&'a M>> {
-        let (key, _) = self.endpoints();
-        let Path { keys, storage, .. } = self.into_ref();
-        Some(key)
-            .into_iter()
-            .chain(keys.into_iter().rev().map(|key| {
-                let (_, key) = key.into();
-                key
-            }))
-            .map(move |key| View::bind_unchecked(storage, key))
-            .map(From::from)
-    }
-
-    pub fn into_arcs(self) -> impl Clone + ExactSizeIterator<Item = ArcView<&'a M>> {
-        let Path { keys, storage, .. } = self.into_ref();
-        keys.into_iter()
-            .rev()
-            .map(move |key| View::bind_unchecked(storage, key))
-            .map(From::from)
-    }
-}
-
-impl<B, G> Path<B>
+impl<'k, B, G> Path<'k, B>
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
@@ -446,16 +428,29 @@ where
 {
     /// Gets an iterator over the vertices in the path.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
-        self.to_ref().into_vertices()
+        let (key, _) = self.endpoints();
+        Some(key)
+            .into_iter()
+            .chain(self.keys.iter().cloned().rev().map(|key| {
+                let (_, key) = key.into();
+                key
+            }))
+            .map(move |key| View::bind_unchecked(self.storage.reborrow(), key))
+            .map(From::from)
     }
 
     /// Gets an iterator over the arcs in the path.
     pub fn arcs(&self) -> impl Clone + ExactSizeIterator<Item = ArcView<&B::Target>> {
-        self.to_ref().into_arcs()
+        self.keys
+            .iter()
+            .rev()
+            .cloned()
+            .map(move |key| View::bind_unchecked(self.storage.reborrow(), key))
+            .map(From::from)
     }
 }
 
-impl<'a, M, G> Path<&'a mut M>
+impl<'k, 'a, M, G> Path<'k, &'a mut M>
 where
     M: AsStorage<Arc<G>>
         + AsStorage<Edge<G>>
@@ -503,20 +498,20 @@ where
     }
 }
 
-impl<B, M, G> From<Ring<B>> for Path<B>
+impl<B, M, G> From<Ring<B>> for Path<'static, B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
     fn from(ring: Ring<B>) -> Self {
-        let keys: VecDeque<_> = ring.arcs().keys().collect();
+        let keys = Cow::Owned(ring.arcs().keys().collect());
         let (storage, _) = ring.into_arc().unbind();
         Path { keys, storage }
     }
 }
 
-impl<B, M, G> PartialEq for Path<B>
+impl<'k, B, M, G> PartialEq for Path<'k, B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
