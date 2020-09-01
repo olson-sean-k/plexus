@@ -2,13 +2,15 @@ use arrayvec::ArrayVec;
 use derivative::Derivative;
 use fool::BoolExt;
 use slotmap::DefaultKey;
+use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage, ToKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -114,12 +116,6 @@ impl OpaqueKey for ArcKey {
 
     fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
-    }
-}
-
-impl ToKey<ArcKey> for ArcKey {
-    fn to_key(&self) -> ArcKey {
-        *self
     }
 }
 
@@ -921,18 +917,13 @@ where
     }
 }
 
-impl<B, M, G> ClosedView for ArcView<B>
+impl<B> Borrow<ArcKey> for ArcView<B>
 where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    B: Reborrow,
+    B::Target: AsStorage<Arc<Data<B>>> + Parametric,
 {
-    type Key = ArcKey;
-    type Entity = Arc<G>;
-
-    /// Gets the key for the arc.
-    fn key(&self) -> Self::Key {
-        self.inner.key()
+    fn borrow(&self) -> &ArcKey {
+        self.inner.as_ref()
     }
 }
 
@@ -947,6 +938,21 @@ where
         ArcView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<B, M, G> ClosedView for ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    type Key = ArcKey;
+    type Entity = Arc<G>;
+
+    /// Gets the key for the arc.
+    fn key(&self) -> Self::Key {
+        self.inner.key()
     }
 }
 
@@ -983,6 +989,14 @@ where
     }
 }
 
+impl<B, M, G> Eq for ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+}
+
 impl<B, M, G> From<Ring<B>> for ArcView<B>
 where
     B: Reborrow<Target = M>,
@@ -1005,6 +1019,20 @@ where
     }
 }
 
+impl<B, M, G> Hash for ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
+    }
+}
+
 impl<B, M, G> Into<View<B, Arc<G>>> for ArcView<B>
 where
     B: Reborrow<Target = M>,
@@ -1020,7 +1048,7 @@ where
 impl<B, M, G> PartialEq for ArcView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -1051,6 +1079,15 @@ where
     G: GraphData,
 {
     inner: Orphan<'a, Arc<G>>,
+}
+
+impl<'a, G> Borrow<ArcKey> for ArcOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn borrow(&self) -> &ArcKey {
+        self.inner.as_ref()
+    }
 }
 
 impl<'a, G> ClosedView for ArcOrphan<'a, G>
@@ -1085,6 +1122,8 @@ where
     }
 }
 
+impl<'a, G> Eq for ArcOrphan<'a, G> where G: GraphData {}
+
 impl<'a, M, G> From<ArcView<&'a mut M>> for ArcOrphan<'a, G>
 where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
@@ -1111,6 +1150,27 @@ where
 {
     fn from(view: View<&'a mut M, Arc<G>>) -> Self {
         ArcOrphan { inner: view.into() }
+    }
+}
+
+impl<'a, G> Hash for ArcOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
+    }
+}
+
+impl<'a, G> PartialEq for ArcOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
@@ -1161,12 +1221,6 @@ impl OpaqueKey for EdgeKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
-    }
-}
-
-impl ToKey<EdgeKey> for EdgeKey {
-    fn to_key(&self) -> EdgeKey {
-        *self
     }
 }
 
@@ -1260,6 +1314,16 @@ where
     }
 }
 
+impl<B> Borrow<EdgeKey> for EdgeView<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Edge<Data<B>>> + Parametric,
+{
+    fn borrow(&self) -> &EdgeKey {
+        self.inner.as_ref()
+    }
+}
+
 impl<B, M, G> Clone for EdgeView<B>
 where
     B: Reborrow<Target = M>,
@@ -1271,6 +1335,21 @@ where
         EdgeView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<B, M, G> ClosedView for EdgeView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Edge<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    type Key = EdgeKey;
+    type Entity = Edge<G>;
+
+    /// Gets the key for the edge.
+    fn key(&self) -> Self::Key {
+        self.inner.key()
     }
 }
 
@@ -1307,19 +1386,12 @@ where
     }
 }
 
-impl<B, M, G> ClosedView for EdgeView<B>
+impl<B, M, G> Eq for EdgeView<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Edge<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    type Key = EdgeKey;
-    type Entity = Edge<G>;
-
-    /// Gets the key for the edge.
-    fn key(&self) -> Self::Key {
-        self.inner.key()
-    }
 }
 
 impl<B, M, G> From<View<B, Edge<G>>> for EdgeView<B>
@@ -1330,6 +1402,20 @@ where
 {
     fn from(view: View<B, Edge<G>>) -> Self {
         EdgeView { inner: view }
+    }
+}
+
+impl<B, M, G> Hash for EdgeView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Edge<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
     }
 }
 
@@ -1348,7 +1434,7 @@ where
 impl<B, M, G> PartialEq for EdgeView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Edge<G>> + Consistent + Parametric<Data = G>,
+    M: AsStorage<Edge<G>> + Parametric<Data = G>,
     G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -1379,6 +1465,15 @@ where
     G: GraphData,
 {
     inner: Orphan<'a, Edge<G>>,
+}
+
+impl<'a, G> Borrow<EdgeKey> for EdgeOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn borrow(&self) -> &EdgeKey {
+        self.inner.as_ref()
+    }
 }
 
 impl<'a, G> ClosedView for EdgeOrphan<'a, G>
@@ -1413,6 +1508,8 @@ where
     }
 }
 
+impl<'a, G> Eq for EdgeOrphan<'a, G> where G: GraphData {}
+
 impl<'a, M, G> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, G>
 where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
@@ -1439,6 +1536,27 @@ where
 {
     fn from(view: View<&'a mut M, Edge<G>>) -> Self {
         EdgeOrphan { inner: view.into() }
+    }
+}
+
+impl<'a, G> Hash for EdgeOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
+    }
+}
+
+impl<'a, G> PartialEq for EdgeOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 

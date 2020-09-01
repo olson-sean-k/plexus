@@ -5,7 +5,7 @@ use std::cmp;
 use std::collections::{HashSet, VecDeque};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto};
-use crate::entity::storage::{AsStorage, ToKey};
+use crate::entity::storage::AsStorage;
 use crate::entity::view::{Bind, ClosedView, Unbind, View};
 use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -525,17 +525,16 @@ where
     }
 }
 
-fn truncate<T, U>(
+fn truncate<T>(
     arcs: impl IntoIterator<Item = T>,
     from: VertexKey,
     to: VertexKey,
 ) -> impl Iterator<Item = T>
 where
-    T: Borrow<U> + Copy,
-    U: ToKey<ArcKey>,
+    T: Borrow<ArcKey> + Copy,
 {
     arcs.into_iter()
-        .map(|arc| (arc, arc.borrow().to_key().into()))
+        .map(|arc| (arc, arc.borrow().clone().into()))
         .skip_while(move |(_, (a, _))| *a != from)
         .take_while(move |(_, (a, _))| *a != to)
         .map(|(arc, _)| arc)

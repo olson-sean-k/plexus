@@ -1,8 +1,9 @@
 use fool::BoolExt;
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, ToKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
 use crate::entity::Entity;
 
 pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
@@ -10,16 +11,6 @@ pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
     type Entity: Entity<Key = Self::Key>;
 
     fn key(&self) -> Self::Key;
-}
-
-impl<T, K> ToKey<K> for T
-where
-    T: ClosedView<Key = K>,
-    K: OpaqueKey,
-{
-    fn to_key(&self) -> K {
-        self.key()
-    }
 }
 
 pub trait Bind<B>: ClosedView + Sized
@@ -180,6 +171,17 @@ where
     }
 }
 
+impl<B, E> AsRef<E::Key> for View<B, E>
+where
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
+{
+    fn as_ref(&self) -> &E::Key {
+        &self.key
+    }
+}
+
 impl<B, E> Clone for View<B, E>
 where
     B: Clone + Reborrow,
@@ -248,7 +250,28 @@ where
     }
 }
 
-// TODO: Consider implementing `Eq` for views.
+impl<B, E> Eq for View<B, E>
+where
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
+{
+}
+
+impl<B, E> Hash for View<B, E>
+where
+    B: Reborrow,
+    B::Target: AsStorage<E>,
+    E: Entity,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.key.hash(state);
+    }
+}
+
 impl<B, E> PartialEq for View<B, E>
 where
     B: Reborrow,
@@ -296,6 +319,15 @@ where
     }
 }
 
+impl<'a, E> AsRef<E::Key> for Orphan<'a, E>
+where
+    E: 'a + Entity,
+{
+    fn as_ref(&self) -> &E::Key {
+        &self.key
+    }
+}
+
 impl<'a, E> ClosedView for Orphan<'a, E>
 where
     E: 'a + Entity,
@@ -340,5 +372,28 @@ where
             .get_mut(&key)
             .expect("view key invalidated");
         Orphan::bind_unchecked(entity, key)
+    }
+}
+
+impl<'a, E> Eq for Orphan<'a, E> where E: 'a + Entity {}
+
+impl<'a, E> Hash for Orphan<'a, E>
+where
+    E: 'a + Entity,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.key.hash(state);
+    }
+}
+
+impl<'a, E> PartialEq for Orphan<'a, E>
+where
+    E: 'a + Entity,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
     }
 }

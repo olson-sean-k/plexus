@@ -2,6 +2,8 @@ use derivative::Derivative;
 use fool::BoolExt;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
+use std::borrow::Borrow;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::Vector;
@@ -9,7 +11,7 @@ use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage, ToKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -72,12 +74,6 @@ impl OpaqueKey for VertexKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
-    }
-}
-
-impl ToKey<VertexKey> for VertexKey {
-    fn to_key(&self) -> VertexKey {
-        *self
     }
 }
 
@@ -556,18 +552,13 @@ where
     }
 }
 
-impl<B, M, G> ClosedView for VertexView<B>
+impl<B> Borrow<VertexKey> for VertexView<B>
 where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
-    G: GraphData,
+    B: Reborrow,
+    B::Target: AsStorage<Vertex<Data<B>>> + Parametric,
 {
-    type Key = VertexKey;
-    type Entity = Vertex<G>;
-
-    /// Gets the key for the vertex.
-    fn key(&self) -> Self::Key {
-        self.inner.key()
+    fn borrow(&self) -> &VertexKey {
+        self.inner.as_ref()
     }
 }
 
@@ -582,6 +573,20 @@ where
         VertexView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<B, M, G> ClosedView for VertexView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    type Key = VertexKey;
+    type Entity = Vertex<G>;
+
+    fn key(&self) -> Self::Key {
+        self.inner.key()
     }
 }
 
@@ -618,6 +623,14 @@ where
     }
 }
 
+impl<B, M, G> Eq for VertexView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+}
+
 impl<B, M, G> From<View<B, Vertex<G>>> for VertexView<B>
 where
     B: Reborrow<Target = M>,
@@ -626,6 +639,20 @@ where
 {
     fn from(view: View<B, Vertex<G>>) -> Self {
         VertexView { inner: view }
+    }
+}
+
+impl<B, M, G> Hash for VertexView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
     }
 }
 
@@ -644,7 +671,7 @@ where
 impl<B, M, G> PartialEq for VertexView<B>
 where
     B: Reborrow<Target = M>,
-    M: AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
     G: GraphData,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -674,6 +701,27 @@ where
     }
 }
 
+impl<'a, G> Borrow<VertexKey> for VertexOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn borrow(&self) -> &VertexKey {
+        self.inner.as_ref()
+    }
+}
+
+impl<'a, G> ClosedView for VertexOrphan<'a, G>
+where
+    G: GraphData,
+{
+    type Key = VertexKey;
+    type Entity = Vertex<G>;
+
+    fn key(&self) -> Self::Key {
+        self.inner.key()
+    }
+}
+
 impl<'a, G> Deref for VertexOrphan<'a, G>
 where
     G: GraphData,
@@ -694,17 +742,7 @@ where
     }
 }
 
-impl<'a, G> ClosedView for VertexOrphan<'a, G>
-where
-    G: GraphData,
-{
-    type Key = VertexKey;
-    type Entity = Vertex<G>;
-
-    fn key(&self) -> Self::Key {
-        self.inner.key()
-    }
-}
+impl<'a, G> Eq for VertexOrphan<'a, G> where G: GraphData {}
 
 impl<'a, G> From<Orphan<'a, Vertex<G>>> for VertexOrphan<'a, G>
 where
@@ -732,6 +770,27 @@ where
 {
     fn from(vertex: VertexView<&'a mut M>) -> Self {
         Orphan::from(vertex.inner).into()
+    }
+}
+
+impl<'a, G> Hash for VertexOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
+    }
+}
+
+impl<'a, G> PartialEq for VertexOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 

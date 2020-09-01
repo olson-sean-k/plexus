@@ -1196,7 +1196,7 @@ where
     type Dynamic = MeshArity;
 
     fn arity(&self) -> Self::Dynamic {
-        MeshArity::from_components(self.faces())
+        MeshArity::from_components::<FaceView<_>, _>(self.faces())
     }
 }
 

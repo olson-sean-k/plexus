@@ -2,8 +2,10 @@ use derivative::Derivative;
 use fool::BoolExt;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
+use std::borrow::Borrow;
 use std::cmp;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::query::{Intersection, Line, LinePlane, Plane};
@@ -12,7 +14,7 @@ use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage, ToKey};
+use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::Entity;
@@ -89,12 +91,6 @@ impl OpaqueKey for FaceKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
-    }
-}
-
-impl ToKey<FaceKey> for FaceKey {
-    fn to_key(&self) -> FaceKey {
-        *self
     }
 }
 
@@ -856,18 +852,13 @@ where
     }
 }
 
-impl<B, M, G> ClosedView for FaceView<B>
+impl<B> Borrow<FaceKey> for FaceView<B>
 where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    B: Reborrow,
+    B::Target: AsStorage<Face<Data<B>>> + Parametric,
 {
-    type Key = FaceKey;
-    type Entity = Face<G>;
-
-    /// Gets the key for the face.
-    fn key(&self) -> Self::Key {
-        self.inner.key()
+    fn borrow(&self) -> &FaceKey {
+        self.inner.as_ref()
     }
 }
 
@@ -882,6 +873,21 @@ where
         FaceView {
             inner: self.inner.clone(),
         }
+    }
+}
+
+impl<B, M, G> ClosedView for FaceView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    type Key = FaceKey;
+    type Entity = Face<G>;
+
+    /// Gets the key for the face.
+    fn key(&self) -> Self::Key {
+        self.inner.key()
     }
 }
 
@@ -933,6 +939,14 @@ where
     }
 }
 
+impl<B, M, G> Eq for FaceView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Consistent + Parametric<Data = G>,
+    G: GraphData,
+{
+}
+
 impl<B, M, G> From<View<B, Face<G>>> for FaceView<B>
 where
     B: Reborrow<Target = M>,
@@ -941,6 +955,20 @@ where
 {
     fn from(view: View<B, Face<G>>) -> Self {
         FaceView { inner: view }
+    }
+}
+
+impl<B, M, G> Hash for FaceView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.inner.hash(state);
     }
 }
 
@@ -1035,6 +1063,8 @@ where
     }
 }
 
+impl<'a, G> Eq for FaceOrphan<'a, G> where G: GraphData {}
+
 impl<'a, M, G> From<FaceView<&'a mut M>> for FaceOrphan<'a, G>
 where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
@@ -1061,6 +1091,15 @@ where
 {
     fn from(view: View<&'a mut M, Face<G>>) -> Self {
         FaceOrphan { inner: view.into() }
+    }
+}
+
+impl<'a, G> PartialEq for FaceOrphan<'a, G>
+where
+    G: GraphData,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
