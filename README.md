@@ -14,9 +14,9 @@ the [user guide][guide].
 
 ## Primitives
 
-Plexus provides a rich set of primitive topological structures that can be
-composed using generators and iterator expressions. Iterator expressions operate
-over a sequence of polygons with arbitrary vertex data. These polygons can be
+Plexus provides primitive topological structures that can be composed using
+generators and iterator expressions. Iterator expressions operate over a
+sequence of polygons with arbitrary vertex data. These polygons can be
 decomposed, tessellated, indexed, and collected into mesh data structures.
 
 ```rust
@@ -52,10 +52,10 @@ and faces. Graphs can be traversed and manipulated in many ways that iterator
 expressions and linear buffers cannot.
 
 ```rust
-use ultraviolet::vec::Vec3;
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use plexus::primitive::Tetragon;
+use ultraviolet::vec::Vec3;
 
 type E3 = Vec3;
 
@@ -66,9 +66,9 @@ let mut graph = MeshGraph::<E3>::from(Tetragon::from([
     (-1.0, -1.0, 0.0),
     (1.0, -1.0, 0.0),
 ]));
-// Extrude the face forming the tetragon to form a cube.
+// Extrude the face of the tetragon.
 let key = graph.faces().nth(0).unwrap().key();
-face = graph.face_mut(key).unwrap().extrude_with_offset(1.0).unwrap();
+let face = graph.face_mut(key).unwrap().extrude_with_offset(1.0).unwrap();
 ```
 
 Plexus avoids exposing very basic topological operations like inserting
@@ -115,10 +115,9 @@ impl AsPosition for Vertex {
 }
 ```
 
-These traits enable APIs for offset extrusion, poking, smoothing, etc. Data
-structures like `MeshGraph` also provide functions that allow user code to
-specify arbitrary geometry without requiring any of these traits; the data in
-these structures may be arbitrary, including no data at all.
+Data structures like `MeshGraph` also provide functions that allow user code to
+compute geometry without requiring any of these traits; the data in these
+structures may be arbitrary, including no data at all.
 
 ## Integrations
 
@@ -135,8 +134,8 @@ enabling Cargo features.
 | `geometry-nalgebra`    | No      | [`nalgebra`]    |
 | `geometry-ultraviolet` | No      | [`ultraviolet`] |
 
-If using one of these supported crates, then enabling the corresponding feature
-is highly recommended.
+Enabling the corresponding feature is recommended if using one of these
+supported crates.
 
 Plexus also integrates with the [`decorum`] crate for floating-point
 representations that can be hashed for fast indexing. The `R64` type is a
@@ -157,9 +156,11 @@ use plexus::graph::MeshGraph;
 use plexus::prelude::*;
 use std::fs::File;
 
+type E3 = Point3<f64>;
+
 let ply = File::open("cube.ply").unwrap();
-let encoding = PositionEncoding::<Point3<f64>>::default();
-let (graph, _) = MeshGraph::<Point3<f64>>::from_ply(encoding, ply).unwrap();
+let encoding = PositionEncoding::<E3>::default();
+let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).unwrap();
 ```
 
 Encoding support is optional and enabled via Cargo features.
