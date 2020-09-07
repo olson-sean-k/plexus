@@ -34,5 +34,7 @@ pub mod theon {
 
 // Feature modules. These are empty unless Cargo features are enabled.
 pub mod cgmath;
+pub mod glam;
 pub mod mint;
 pub mod nalgebra;
+pub mod ultraviolet;

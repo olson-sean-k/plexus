@@ -32,7 +32,7 @@ use crate::render::pipeline::{Color4, Vertex};
 
 type E3 = Point3<R64>;
 
-// Construct a buffer of index and vertex data from a uv-sphere.
+// Create a buffer of index and vertex data from a uv-sphere.
 let buffer: MeshBuffer<Flat3, Vertex> = UvSphere::new(16, 8)
     .polygons::<Position<E3>>()
     .map_vertices(|position| Vertex::new(position, Color4::white()))
@@ -52,24 +52,23 @@ and faces. Graphs can be traversed and manipulated in many ways that iterator
 expressions and linear buffers cannot.
 
 ```rust
-use decorum::R64; // See "Integrations".
-use nalgebra::Point3;
+use ultraviolet::vec::Vec3;
 use plexus::graph::MeshGraph;
 use plexus::prelude::*;
-use plexus::primitive::generate::Position;
-use plexus::primitive::sphere::{Bounds, UvSphere};
+use plexus::primitive::Tetragon;
 
-type E3 = Point3<R64>;
+type E3 = Vec3;
 
-// Construct a graph from a uv-sphere.
-let mut graph: MeshGraph<E3> = UvSphere::new(8, 8)
-    .polygons_from::<Position<E3>>(Bounds::unit_width())
-    .collect();
-// Extrude a face in the mesh.
+// Create a graph of a tetragon.
+let mut graph = MeshGraph::<E3>::from(Tetragon::from([
+    (1.0, 1.0, 0.0),
+    (-1.0, 1.0, 0.0),
+    (-1.0, -1.0, 0.0),
+    (1.0, -1.0, 0.0),
+]));
+// Extrude the face forming the tetragon to form a cube.
 let key = graph.faces().nth(0).unwrap().key();
-if let Ok(face) = graph.face_mut(key).unwrap().extrude_with_offset(1.0) {
-    // ...
-}
+face = graph.face_mut(key).unwrap().extrude_with_offset(1.0).unwrap();
 ```
 
 Plexus avoids exposing very basic topological operations like inserting
@@ -87,16 +86,17 @@ supports these geometric traits, then geometric operations become available in
 primitive and mesh data structure APIs.
 
 ```rust
-use decorum::R64; // See "Integrations".
-use nalgebra::{Point3, Vector3};
-use plexus::geometry::AsPosition;
+use glam::Vec3A;
+use plexus::geometry::{AsPosition, Vector};
 use plexus::graph::GraphData;
 use plexus::prelude::*;
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+type E3 = Vec3A;
+
+#[derive(Clone, Copy, PartialEq)]
 pub struct Vertex {
-    pub position: Point3<R64>,
-    pub normal: Vector3<R64>,
+    pub position: E3,
+    pub normal: Vector<E3>,
 }
 
 impl GraphData for Vertex {
@@ -107,7 +107,7 @@ impl GraphData for Vertex {
 }
 
 impl AsPosition for Vertex {
-    type Position = Point3<R64>;
+    type Position = E3;
 
     fn as_position(&self) -> &Self::Position {
         &self.position
@@ -115,36 +115,34 @@ impl AsPosition for Vertex {
 }
 ```
 
-By implementing `AsPosition` to expose positional data in vertices in a graph,
-spatial operations like offset extrusion, poking, and smoothing become available
-in graph APIs. Data structures like `MeshGraph` also provide purely topological
-operations that allow user code to specify arbitrary geometries without
-requiring these traits; the data in these structures may be arbitrary, including
-no data at all.
+These traits enable APIs for offset extrusion, poking, smoothing, etc. Data
+structures like `MeshGraph` also provide functions that allow user code to
+specify arbitrary geometry without requiring any of these traits; the data in
+these structures may be arbitrary, including no data at all.
 
 ## Integrations
 
 Plexus integrates with the [`theon`] crate to provide geometric traits and
 support various mathematics crates in the Rust ecosystem. Any mathematics crate
-can be used and, if it is supported by Theon, Plexus provides geometric APIs.
+can be used and, if it is supported by Theon, Plexus provides geometric APIs by
+enabling Cargo features.
 
-Geometric traits are optionally implemented for types in the [`cgmath`],
-[`mint`], and [`nalgebra`] crates by enabling Cargo features.
+| Feature                | Default | Crate           |
+|------------------------|---------|-----------------|
+| `geometry-cgmath`      | No      | [`cgmath`]      |
+| `geometry-glam`        | No      | [`glam`]        |
+| `geometry-mint`        | No      | [`mint`]        |
+| `geometry-nalgebra`    | No      | [`nalgebra`]    |
+| `geometry-ultraviolet` | No      | [`ultraviolet`] |
 
-| Feature             | Default | Crate      |
-|---------------------|---------|------------|
-| `geometry-cgmath`   | No      | `cgmath`   |
-| `geometry-mint`     | No      | `mint`     |
-| `geometry-nalgebra` | No      | `nalgebra` |
-
-If using one of these supported crates, it is highly recommended to enable the
-corresponding feature.
+If using one of these supported crates, then enabling the corresponding feature
+is highly recommended.
 
 Plexus also integrates with the [`decorum`] crate for floating-point
 representations that can be hashed for fast indexing. The `R64` type is a
 (totally ordered) real number with an `f64` representation that cannot be `NaN`
 nor infinity, for example. Geometric conversion traits are implemented for
-supported types to allow for implicit conversions of scalars.
+supported types to allow for implicit conversions of scalar types.
 
 ## Encodings
 
@@ -185,6 +183,8 @@ a mesh from the file system.
 
 [`cgmath`]: https://crates.io/crates/cgmath
 [`decorum`]: https://crates.io/crates/decorum
+[`glam`]: https://crates.io/crates/glam
 [`mint`]: https://crates.io/crates/mint
 [`nalgebra`]: https://crates.io/crates/nalgebra
 [`theon`]: https://crates.io/crates/theon
+[`ultraviolet`]: https://crates.io/crates/ultraviolet

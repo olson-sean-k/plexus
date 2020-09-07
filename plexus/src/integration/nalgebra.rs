@@ -2,9 +2,6 @@
 
 use theon::integration::nalgebra;
 
-#[doc(hidden)]
-pub use self::nalgebra::*;
-
 use self::nalgebra::base::allocator::Allocator;
 use self::nalgebra::base::default_allocator::DefaultAllocator;
 use self::nalgebra::base::dimension::DimName;
@@ -13,6 +10,9 @@ use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
+
+#[doc(hidden)]
+pub use self::nalgebra::*;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where

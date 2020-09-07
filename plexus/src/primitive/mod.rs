@@ -96,7 +96,7 @@ use std::convert::TryInto;
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use theon::adjunct::{Adjunct, Converged, Fold, FromItems, IntoItems, Map, Push, ZipMap};
+use theon::adjunct::{Adjunct, Converged, Extend, Fold, FromItems, IntoItems, Map, ZipMap};
 use theon::ops::Cross;
 use theon::query::{Intersection, Line, LineLine, LinePlane, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
@@ -160,7 +160,7 @@ pub trait Topological:
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Self::Vertex>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
         Self::embed_into_e3_xy_with(ngon, z, |position| position)
@@ -172,11 +172,11 @@ pub trait Topological:
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
         P::Vertex:
-            EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Position<Self::Vertex>>,
+            EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Position<Self::Vertex>>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Position<Self::Vertex>>>,
         F: FnMut(Position<Self::Vertex>) -> Self::Vertex,
     {
-        ngon.map(move |position| f(position.push(z)))
+        ngon.map(move |position| f(position.extend(z)))
     }
 
     /// Embeds an $n$-gon from $\Reals^2$ into $\Reals^3$.
@@ -215,7 +215,7 @@ pub trait Topological:
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Self::Vertex>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
         Self::embed_into_e3_plane_with(ngon, plane, |position| position)
@@ -227,7 +227,7 @@ pub trait Topological:
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
         P::Vertex:
-            EuclideanSpace + FiniteDimensional<N = U2> + Push<Output = Position<Self::Vertex>>,
+            EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Position<Self::Vertex>>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Position<Self::Vertex>>>,
         F: FnMut(Position<Self::Vertex>) -> Self::Vertex,
     {

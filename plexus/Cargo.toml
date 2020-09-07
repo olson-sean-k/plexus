@@ -36,8 +36,10 @@ rustdoc-args = [
 default = []
 encoding-ply = ["ply-rs"]
 geometry-cgmath = ["theon/geometry-cgmath"]
+geometry-glam = ["theon/geometry-glam"]
 geometry-mint = ["theon/geometry-mint"]
 geometry-nalgebra = ["theon/geometry-nalgebra"]
+geometry-ultraviolet = ["theon/geometry-ultraviolet"]
 
 [dependencies]
 approx = "^0.3.0"
@@ -61,7 +63,7 @@ features = ["zip"]
 
 [dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "115e10b"
+rev = "d79c158"
 default-features = false
 features = ["lapack"]
 
@@ -74,7 +76,7 @@ nalgebra = "^0.21.0"
 
 [dev-dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
-rev = "115e10b"
+rev = "d79c158"
 default-features = false
 features = [
     "geometry-nalgebra",

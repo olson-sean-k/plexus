@@ -2,14 +2,14 @@
 
 use theon::integration::cgmath;
 
-#[doc(hidden)]
-pub use self::cgmath::*;
-
 use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
+
+#[doc(hidden)]
+pub use self::cgmath::*;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where

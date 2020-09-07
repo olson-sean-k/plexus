@@ -2,14 +2,14 @@
 
 use theon::integration::mint;
 
-#[doc(hidden)]
-pub use self::mint::*;
-
 use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
+
+#[doc(hidden)]
+pub use self::mint::*;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
