@@ -2,13 +2,14 @@ use plexus::integration::nalgebra;
 use plexus::integration::theon;
 
 use nalgebra::Point3;
-use pictor::pipeline::{self, Color4, Vertex};
+use pictor::pipeline::{self, Vertex};
 use plexus::buffer::MeshBuffer3;
 use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
 use theon::space::{EuclideanSpace, VectorSpace};
 
 type E3 = Point3<f32>;
+type Buffer = MeshBuffer3<u32, Vertex>;
 
 fn main() {
     let from = Point3::new(0.0, -6.0, 4.0);
@@ -21,10 +22,10 @@ fn main() {
 
         // Convert the graph into a buffer.
         graph
-            .to_mesh_by_vertex_with::<MeshBuffer3<u32, _>, _>(|vertex| Vertex {
+            .to_mesh_by_vertex_with::<Buffer, _>(|vertex| Vertex {
                 position: vertex.position().into_homogeneous().into(),
                 normal: vertex.normal().unwrap().into_homogeneous().into(),
-                color: Color4::white().0.into(),
+                color: [1.0, 0.6, 0.2, 1.0],
             })
             .expect("buffer")
     });
