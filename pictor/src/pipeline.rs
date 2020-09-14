@@ -1,11 +1,12 @@
 use plexus::integration::nalgebra;
+use plexus::integration::theon;
 
 use bytemuck::{self, Pod, Zeroable};
 use decorum::cmp::FloatEq;
 use decorum::hash::FloatHash;
 use fool::and;
 use futures::task::LocalSpawn;
-use nalgebra::{Point3, Scalar, Vector4};
+use nalgebra::{Point3, Scalar, Vector3, Vector4};
 use num::{self, One};
 use plexus::buffer::{IntoFlatIndex, MeshBuffer};
 use plexus::geometry::{FromGeometry, IntoGeometry, UnitGeometry};
@@ -16,6 +17,7 @@ use rand::{self, Rng};
 use std::f32::consts::FRAC_PI_4;
 use std::hash::{Hash, Hasher};
 use std::mem;
+use theon::adjunct::Extend;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{
     include_spirv, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
@@ -56,10 +58,12 @@ where
 
     pub fn random() -> Self
     where
+        T: One,
         Standard: Distribution<T>,
+        Vector3<T>: Extend<Vector4<T>, Item = T>,
     {
         let mut rng = rand::thread_rng();
-        Color4(Vector4::from_fn(|_, _| rng.gen()))
+        Color4(Vector3::from_fn(|_, _| rng.gen()).extend(One::one()))
     }
 }
 
@@ -400,7 +404,8 @@ where
     F: FnOnce() -> M,
 {
     let camera = {
-        let mut camera = Camera::from(Projection::perspective(1.0, FRAC_PI_4, 1.0, 10.0));
+        let mut camera = Camera::from(Projection::perspective(1.0, FRAC_PI_4, 0.1, 8.0));
+        //let mut camera = Camera::from(Projection::orthographic(-4.0, 4.0, -4.0, 4.0, -8.0, 8.0));
         camera.look_at(&from, &to);
         camera
     };
