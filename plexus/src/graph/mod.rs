@@ -933,10 +933,10 @@ where
     /// topology found in the graph.
     ///
     /// [`Buildable`]: crate::builder::Buildable
-    pub fn to_mesh_by_vertex_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
+    pub fn to_mesh_by_vertex_with<B, F>(&self, mut f: F) -> Result<B, B::Error>
     where
-        B: Buildable<Vertex = T, Facet = ()>,
-        F: FnMut(VertexView<&Self>) -> T,
+        B: Buildable<Facet = ()>,
+        F: FnMut(VertexView<&Self>) -> B::Vertex,
     {
         let mut builder = B::builder();
         builder.surface_with(|builder| {
@@ -1036,11 +1036,11 @@ where
     /// [`Buildable`]: crate::builder::Buildable
     /// [`FromGeometry`]: crate::geometry::FromGeometry
     /// [`MeshGraph`]: crate::graph::MeshGraph
-    pub fn to_mesh_by_face_with<B, T, F>(&self, mut f: F) -> Result<B, B::Error>
+    pub fn to_mesh_by_face_with<B, F>(&self, mut f: F) -> Result<B, B::Error>
     where
-        B: Buildable<Vertex = T>,
+        B: Buildable,
         B::Facet: FromGeometry<G::Face>,
-        F: FnMut(FaceView<&Self>, VertexView<&Self>) -> T,
+        F: FnMut(FaceView<&Self>, VertexView<&Self>) -> B::Vertex,
     {
         let mut builder = B::builder();
         builder.surface_with(|builder| {

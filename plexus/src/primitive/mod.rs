@@ -160,7 +160,7 @@ pub trait Topological:
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Self::Vertex>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
         Self::embed_into_e3_xy_with(ngon, z, |position| position)
@@ -171,8 +171,7 @@ pub trait Topological:
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex:
-            EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Position<Self::Vertex>>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Position<Self::Vertex>>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Position<Self::Vertex>>>,
         F: FnMut(Position<Self::Vertex>) -> Self::Vertex,
     {
@@ -215,7 +214,7 @@ pub trait Topological:
     where
         Self::Vertex: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Self::Vertex>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Self::Vertex>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Self::Vertex>>,
     {
         Self::embed_into_e3_plane_with(ngon, plane, |position| position)
@@ -226,8 +225,7 @@ pub trait Topological:
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U3>,
         P: Map<Self::Vertex, Output = Self> + Topological,
-        P::Vertex:
-            EuclideanSpace + FiniteDimensional<N = U2> + Extend<Output = Position<Self::Vertex>>,
+        P::Vertex: EuclideanSpace + FiniteDimensional<N = U2> + Extend<Position<Self::Vertex>>,
         Vector<P::Vertex>: VectorSpace<Scalar = Scalar<Position<Self::Vertex>>>,
         F: FnMut(Position<Self::Vertex>) -> Self::Vertex,
     {

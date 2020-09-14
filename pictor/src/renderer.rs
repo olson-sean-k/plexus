@@ -1,177 +1,85 @@
-use gfx::format::{Depth, Rgba8};
-use gfx::handle::{DepthStencilView, RenderTargetView};
-use gfx::state::{CullFace, FrontFace, RasterMethod, Rasterizer};
-use gfx::traits::FactoryExt;
-use gfx::{CommandBuffer, Device, Encoder, Factory, PipelineState, Primitive, Resources};
-use glutin::{NotCurrent, PossiblyCurrent, WindowedContext};
-use plexus::buffer::MeshBuffer;
-use plexus::index::Flat3;
+use wgpu::{
+    Adapter, BackendBit, Device, DeviceDescriptor, Instance, PresentMode, Queue,
+    RequestAdapterOptions, Surface, SwapChain, SwapChainDescriptor, TextureFormat, TextureUsage,
+};
+use winit::window::Window;
 
-use crate::pipeline::{self, Data, Meta, Transform, Vertex};
+use crate::harness::{ConfigureStage, RenderStage};
 
-const CLEAR_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-
-pub trait SwapBuffers {
-    fn swap_buffers(&mut self) -> Result<(), ()>;
+pub struct Renderer {
+    pub window: Window,
+    _instance: Instance,
+    _adapter: Adapter,
+    pub surface: Surface,
+    pub device: Device,
+    queue: Queue,
+    pub swap_chain_descriptor: SwapChainDescriptor,
+    pub swap_chain: SwapChain,
 }
 
-impl SwapBuffers for WindowedContext<PossiblyCurrent> {
-    fn swap_buffers(&mut self) -> Result<(), ()> {
-        match WindowedContext::swap_buffers(self) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
-        }
-    }
-}
-
-pub trait UpdateFrameBufferView<R>
-where
-    R: Resources,
-{
-    fn update_frame_buffer_view(
-        &self,
-        color: &mut RenderTargetView<R, Rgba8>,
-        depth: &mut DepthStencilView<R, Depth>,
-    );
-}
-
-impl UpdateFrameBufferView<gfx_device_gl::Resources> for WindowedContext<PossiblyCurrent> {
-    fn update_frame_buffer_view(
-        &self,
-        color: &mut RenderTargetView<gfx_device_gl::Resources, Rgba8>,
-        depth: &mut DepthStencilView<gfx_device_gl::Resources, Depth>,
-    ) {
-        gfx_window_glutin::update_views(self, color, depth);
-    }
-}
-
-pub trait Binding {
-    type Window: SwapBuffers + UpdateFrameBufferView<Self::Resources>;
-    type Resources: Resources;
-    type Factory: Factory<Self::Resources>;
-    type CommandBuffer: CommandBuffer<Self::Resources>;
-    type Device: Device<Resources = Self::Resources, CommandBuffer = Self::CommandBuffer>;
-}
-
-pub enum GlutinBinding {}
-
-impl Binding for GlutinBinding {
-    type Window = WindowedContext<PossiblyCurrent>;
-    type Resources = gfx_device_gl::Resources;
-    type Factory = gfx_device_gl::Factory;
-    type CommandBuffer = gfx_device_gl::CommandBuffer;
-    type Device = gfx_device_gl::Device;
-}
-
-pub struct Renderer<R>
-where
-    R: Binding,
-{
-    pub window: R::Window,
-    pub factory: R::Factory,
-    device: R::Device,
-    encoder: Encoder<R::Resources, R::CommandBuffer>,
-    state: PipelineState<R::Resources, Meta>,
-    data: Data<R::Resources>,
-}
-
-impl Renderer<GlutinBinding> {
-    pub fn from_glutin_window(window: WindowedContext<NotCurrent>) -> Self {
-        let (window, device, mut factory, color, depth) = gfx_window_glutin::init_existing(window);
-        let encoder = factory.create_command_buffer().into();
-        Renderer::new(window, factory, device, encoder, color, depth)
-    }
-}
-
-impl<R> Renderer<R>
-where
-    R: Binding,
-{
-    fn new(
-        window: R::Window,
-        mut factory: R::Factory,
-        device: R::Device,
-        encoder: Encoder<R::Resources, R::CommandBuffer>,
-        color: RenderTargetView<R::Resources, Rgba8>,
-        depth: DepthStencilView<R::Resources, Depth>,
-    ) -> Self {
-        let shaders = factory
-            .create_shader_set(
-                include_bytes!("shader.v.glsl"),
-                include_bytes!("shader.f.glsl"),
-            )
-            .unwrap();
-        let state = factory
-            .create_pipeline_state(
-                &shaders,
-                Primitive::TriangleList,
-                Rasterizer {
-                    method: RasterMethod::Fill,
-                    front_face: FrontFace::CounterClockwise,
-                    cull_face: CullFace::Back,
-                    offset: None,
-                    samples: None,
+impl Renderer {
+    pub async fn try_from_window(window: Window) -> Result<Self, ()> {
+        let instance = Instance::new(BackendBit::PRIMARY);
+        let surface = unsafe { instance.create_surface(&window) };
+        let adapter = instance
+            .request_adapter(&RequestAdapterOptions {
+                compatible_surface: Some(&surface),
+                ..Default::default()
+            })
+            .await
+            .ok_or_else(|| ())?;
+        let (device, queue) = adapter
+            .request_device(
+                &DeviceDescriptor {
+                    shader_validation: true,
+                    ..Default::default()
                 },
-                pipeline::new(),
+                None,
             )
-            .unwrap();
-        let data = Data {
-            buffer: factory.create_vertex_buffer(&[]),
-            transform: factory.create_constant_buffer(1),
-            viewpoint: [0.0; 4],
-            camera: [[0.0; 4]; 4],
-            model: [[0.0; 4]; 4],
-            color,
-            depth,
+            .await
+            .map_err(|_| ())?;
+        let dimensions = window.inner_size();
+        let swap_chain_descriptor = SwapChainDescriptor {
+            usage: TextureUsage::OUTPUT_ATTACHMENT,
+            format: TextureFormat::Bgra8UnormSrgb,
+            present_mode: PresentMode::Mailbox,
+            width: dimensions.width,
+            height: dimensions.height,
         };
-        Renderer {
+        let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+        Ok(Renderer {
             window,
-            factory,
+            _instance: instance,
+            _adapter: adapter,
+            surface,
             device,
-            encoder,
-            state,
-            data,
-        }
+            queue,
+            swap_chain_descriptor,
+            swap_chain,
+        })
+    }
+}
+
+impl ConfigureStage for Renderer {
+    fn device(&self) -> &Device {
+        &self.device
     }
 
-    pub fn set_transform(&mut self, transform: &Transform) -> Result<(), ()> {
-        self.data.camera = transform.camera;
-        self.data.model = transform.model;
-        match self
-            .encoder
-            .update_buffer(&self.data.transform, &[*transform], 0)
-        {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
-        }
+    fn queue(&self) -> &Queue {
+        &self.queue
     }
 
-    pub fn draw_mesh_buffer(&mut self, buffer: &MeshBuffer<Flat3<u32>, Vertex>) {
-        let (buffer, slice) = self
-            .factory
-            .create_vertex_buffer_with_slice(buffer.as_vertex_slice(), buffer.as_index_slice());
-        self.data.buffer = buffer;
-        self.encoder.draw(&slice, &self.state, &self.data);
+    fn swap_chain_descriptor(&self) -> &SwapChainDescriptor {
+        &self.swap_chain_descriptor
+    }
+}
+
+impl RenderStage for Renderer {
+    fn device(&self) -> &Device {
+        &self.device
     }
 
-    pub fn clear(&mut self) {
-        self.encoder.clear(&self.data.color, CLEAR_COLOR);
-        self.encoder.clear_depth(&self.data.depth, 1.0);
-    }
-
-    pub fn flush(&mut self) -> Result<(), ()> {
-        self.encoder.flush(&mut self.device);
-        if self.window.swap_buffers().is_ok() {
-            self.device.cleanup();
-            Ok(())
-        }
-        else {
-            Err(())
-        }
-    }
-
-    pub fn update_frame_buffer_view(&mut self) {
-        self.window
-            .update_frame_buffer_view(&mut self.data.color, &mut self.data.depth);
+    fn queue(&self) -> &Queue {
+        &self.queue
     }
 }

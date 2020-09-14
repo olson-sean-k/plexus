@@ -1,31 +1,30 @@
 use plexus::integration::nalgebra;
+use plexus::integration::theon;
 
-use decorum::R64;
 use nalgebra::Point3;
-use pictor::pipeline::Vertex;
-use pictor::{self, Color4};
+use pictor::pipeline::{self, Color4, Vertex};
+use plexus::buffer::MeshBuffer3;
 use plexus::encoding::ply::{FromPly, PositionEncoding};
 use plexus::graph::MeshGraph;
+use theon::space::{EuclideanSpace, VectorSpace};
 
-type E3 = Point3<R64>;
+type E3 = Point3<f32>;
 
 fn main() {
-    let from = Point3::new(0.0, -10.0, 4.0);
+    let from = Point3::new(0.0, -6.0, 4.0);
     let to = Point3::new(0.0, 0.0, 1.0);
-    pictor::draw_with(from, to, move || {
+    pipeline::render_mesh_buffer_with(from, to, move || {
         // Read PLY data into a graph.
         let ply: &[u8] = include_bytes!("../../../data/teapot.ply");
         let encoding = PositionEncoding::<E3>::default();
         let (graph, _) = MeshGraph::<E3>::from_ply(encoding, ply).expect("teapot");
 
-        // Convert the graph into a buffer that can be rendered for viewing.
+        // Convert the graph into a buffer.
         graph
-            .to_mesh_by_vertex_with(|vertex| {
-                Vertex::new(
-                    *vertex.position(),
-                    vertex.normal().unwrap(),
-                    Color4::white().into(),
-                )
+            .to_mesh_by_vertex_with::<MeshBuffer3<u32, _>, _>(|vertex| Vertex {
+                position: vertex.position().into_homogeneous().into(),
+                normal: vertex.normal().unwrap().into_homogeneous().into(),
+                color: Color4::white().0.into(),
             })
             .expect("buffer")
     });

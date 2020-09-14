@@ -1,133 +1,116 @@
-// Macros require that crate roots are explicitly imported.
-#![allow(clippy::single_component_path_imports)]
+use plexus::integration::nalgebra;
 
-use plexus::integration::{nalgebra, theon};
-
+use bytemuck::{self, Pod, Zeroable};
+use decorum::cmp::FloatEq;
 use decorum::hash::FloatHash;
-use gfx; // Imported for use in macro invocations.
-use nalgebra::{Matrix4, Point3, Scalar, Vector3, Vector4};
-use num::NumCast;
+use fool::and;
+use futures::task::LocalSpawn;
+use nalgebra::{Point3, Scalar, Vector4};
+use num::{self, One};
+use plexus::buffer::{IntoFlatIndex, MeshBuffer};
+use plexus::geometry::{FromGeometry, IntoGeometry, UnitGeometry};
+use plexus::index::Flat;
+use plexus::U3;
+use rand::distributions::{Distribution, Standard};
+use rand::{self, Rng};
+use std::f32::consts::FRAC_PI_4;
 use std::hash::{Hash, Hasher};
-use theon::adjunct::Map;
+use std::mem;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{
+    include_spirv, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, BlendDescriptor, Buffer, BufferAddress, BufferSize,
+    BufferUsage, Color, ColorStateDescriptor, ColorWrite, CommandEncoderDescriptor,
+    CompareFunction, CullMode, DepthStencilStateDescriptor, Extent3d, FrontFace, IndexFormat,
+    InputStepMode, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveTopology,
+    ProgrammableStageDescriptor, RasterizationStateDescriptor, RenderPassColorAttachmentDescriptor,
+    RenderPassDepthStencilAttachmentDescriptor, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, ShaderStage, SwapChainTexture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureUsage, TextureView, VertexAttributeDescriptor, VertexBufferDescriptor,
+    VertexFormat, VertexStateDescriptor,
+};
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::window::WindowBuilder;
 
-pub use self::pipeline::*;
+use crate::camera::{Camera, Projection};
+use crate::harness::{self, Application, ConfigureStage, Reaction, RenderStage};
 
-trait IntoArray {
-    type Output;
+use Reaction::Abort;
+use Reaction::Continue;
 
-    fn into_array(self) -> Self::Output;
-}
-
-impl<T> IntoArray for Matrix4<T>
+#[derive(Clone, Copy, Debug)]
+pub struct Color4<T>(pub Vector4<T>)
 where
-    T: Copy + Scalar,
-{
-    type Output = [[T; 4]; 4];
+    T: Scalar;
 
-    #[rustfmt::skip]
-    fn into_array(self) -> Self::Output {
-        [
-            [self[ 0], self[ 1], self[ 2], self[ 3]],
-            [self[ 4], self[ 5], self[ 6], self[ 7]],
-            [self[ 8], self[ 9], self[10], self[11]],
-            [self[12], self[13], self[14], self[15]],
-        ]
-    }
-}
-
-impl<T> IntoArray for Point3<T>
-where
-    T: Scalar,
-{
-    type Output = [T; 3];
-
-    fn into_array(self) -> Self::Output {
-        self.coords.into()
-    }
-}
-
-impl<T> IntoArray for Vector3<T>
+impl<T> Color4<T>
 where
     T: Scalar,
 {
-    type Output = [T; 3];
-
-    fn into_array(self) -> Self::Output {
-        self.into()
-    }
-}
-
-impl<T> IntoArray for Vector4<T>
-where
-    T: Scalar,
-{
-    type Output = [T; 4];
-
-    fn into_array(self) -> Self::Output {
-        self.into()
-    }
-}
-
-gfx_pipeline! {
-    pipeline {
-        buffer: gfx::VertexBuffer<Vertex> = (),
-        transform: gfx::ConstantBuffer<Transform> = "transform",
-        viewpoint: gfx::Global<[f32; 4]> = "u_viewpoint",
-        camera: gfx::Global<[[f32; 4]; 4]> = "u_camera",
-        model: gfx::Global<[[f32; 4]; 4]> = "u_model",
-        color: gfx::RenderTarget<gfx::format::Rgba8> = "f_target0",
-        depth: gfx::DepthTarget<gfx::format::Depth> = gfx::preset::depth::LESS_EQUAL_WRITE,
-    }
-}
-
-gfx_constant_struct! {
-    Transform {
-        viewpoint: [f32; 4] = "u_viewpoint",
-        camera: [[f32; 4]; 4] = "u_camera",
-        model: [[f32; 4]; 4] = "u_model",
-    }
-}
-
-impl Transform {
-    pub fn new<T>(viewpoint: Point3<T>, camera: Matrix4<T>, model: Matrix4<T>) -> Self
+    pub fn white() -> Self
     where
-        T: NumCast + Scalar,
+        T: One,
     {
-        let viewpoint = viewpoint.map(crate::num_cast);
-        Transform {
-            viewpoint: [viewpoint[0], viewpoint[1], viewpoint[2], 1.0],
-            camera: camera.map(crate::num_cast).into_array(),
-            model: model.map(crate::num_cast).into_array(),
-        }
+        Color4(Vector4::repeat(One::one()))
     }
-}
 
-gfx_vertex_struct! {
-    Vertex {
-        position: [f32; 3] = "a_position",
-        normal: [f32; 3] = "a_normal",
-        color: [f32; 4] = "a_color",
-    }
-}
-
-impl Vertex {
-    pub fn new<T>(position: Point3<T>, normal: Vector3<T>, color: Vector4<T>) -> Self
+    pub fn random() -> Self
     where
-        T: NumCast + Scalar,
+        Standard: Distribution<T>,
     {
-        Vertex {
-            position: position.map(crate::num_cast).into_array(),
-            normal: normal.map(crate::num_cast).into_array(),
-            color: color.map(crate::num_cast).into_array(),
-        }
+        let mut rng = rand::thread_rng();
+        Color4(Vector4::from_fn(|_, _| rng.gen()))
     }
+}
+
+impl<T> AsRef<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn as_ref(&self) -> &Vector4<T> {
+        &self.0
+    }
+}
+
+impl<T> Default for Color4<T>
+where
+    T: One + Scalar,
+{
+    fn default() -> Self {
+        Color4::white()
+    }
+}
+
+impl<T> From<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn from(vector: Vector4<T>) -> Self {
+        Color4(vector)
+    }
+}
+
+impl<T> Into<Vector4<T>> for Color4<T>
+where
+    T: Scalar,
+{
+    fn into(self) -> Vector4<T> {
+        self.0
+    }
+}
+
+impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct Vertex {
+    pub position: [f32; 4],
+    pub normal: [f32; 4],
+    pub color: [f32; 4],
 }
 
 impl Eq for Vertex {}
 
-// TODO: The `gfx_vertex_struct` macro derives a `PartialEq` implementation
-//       that may conflict with `Hash`.
-#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for Vertex {
     fn hash<H>(&self, state: &mut H)
     where
@@ -137,4 +120,304 @@ impl Hash for Vertex {
         self.normal.float_hash(state);
         self.color.float_hash(state);
     }
+}
+
+impl PartialEq for Vertex {
+    fn eq(&self, other: &Self) -> bool {
+        and!(
+            self.position.float_eq(&other.position),
+            self.normal.float_eq(&other.normal),
+            self.color.float_eq(&other.color),
+        )
+    }
+}
+
+unsafe impl Pod for Vertex {}
+
+unsafe impl Zeroable for Vertex {}
+
+struct RenderState {
+    camera: Camera,
+    from: Point3<f32>,
+    buffer: MeshBuffer<Flat<U3, u32>, Vertex>,
+}
+
+struct RenderApplication {
+    camera: Camera,
+    _viewpoint: Buffer,
+    transform: Buffer,
+    vertices: Buffer,
+    indices: Buffer,
+    depth: TextureView,
+    n: u32,
+    bind_group: BindGroup,
+    pipeline: RenderPipeline,
+}
+
+impl RenderApplication {
+    fn configure_depth_buffer(stage: &impl ConfigureStage) -> TextureView {
+        stage
+            .device()
+            .create_texture(&TextureDescriptor {
+                label: None,
+                size: Extent3d {
+                    width: stage.swap_chain_descriptor().width,
+                    height: stage.swap_chain_descriptor().height,
+                    depth: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Depth32Float,
+                usage: TextureUsage::COPY_DST | TextureUsage::OUTPUT_ATTACHMENT,
+            })
+            .create_view(&Default::default())
+    }
+}
+
+impl Application for RenderApplication {
+    type State = RenderState;
+    type Error = ();
+
+    fn configure(state: Self::State, stage: &impl ConfigureStage) -> Result<Self, Self::Error> {
+        let RenderState {
+            mut camera,
+            from,
+            buffer,
+        } = state;
+        camera.reproject(stage.swap_chain_descriptor());
+        let vertices = stage.device().create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(buffer.as_vertex_slice()),
+            usage: BufferUsage::VERTEX,
+        });
+        let indices = stage.device().create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(buffer.as_index_slice()),
+            usage: BufferUsage::INDEX,
+        });
+        let transform = stage.device().create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(camera.transform().as_slice()),
+            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
+        });
+        let viewpoint = stage.device().create_buffer_init(&BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(from.coords.as_slice()),
+            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
+        });
+        let depth = Self::configure_depth_buffer(stage);
+        let bind_group_layout =
+            stage
+                .device()
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: None,
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStage::VERTEX,
+                            ty: BindingType::UniformBuffer {
+                                dynamic: false,
+                                min_binding_size: BufferSize::new(64),
+                            },
+                            count: None,
+                        },
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStage::VERTEX,
+                            ty: BindingType::UniformBuffer {
+                                dynamic: false,
+                                min_binding_size: BufferSize::new(12),
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+        let bind_group = stage.device().create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: transform.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: viewpoint.as_entire_binding(),
+                },
+            ],
+        });
+        let pipeline =
+            stage
+                .device()
+                .create_render_pipeline(&RenderPipelineDescriptor {
+                    label: None,
+                    layout: Some(&stage.device().create_pipeline_layout(
+                        &PipelineLayoutDescriptor {
+                            label: None,
+                            bind_group_layouts: &[&bind_group_layout],
+                            push_constant_ranges: &[],
+                        },
+                    )),
+                    vertex_stage: ProgrammableStageDescriptor {
+                        module: &stage
+                            .device()
+                            .create_shader_module(include_spirv!("shader.spv.vert")),
+                        entry_point: "main",
+                    },
+                    fragment_stage: Some(ProgrammableStageDescriptor {
+                        module: &stage
+                            .device()
+                            .create_shader_module(include_spirv!("shader.spv.frag")),
+                        entry_point: "main",
+                    }),
+                    vertex_state: VertexStateDescriptor {
+                        index_format: IndexFormat::Uint32,
+                        vertex_buffers: &[VertexBufferDescriptor {
+                            stride: mem::size_of::<Vertex>() as BufferAddress,
+                            step_mode: InputStepMode::Vertex,
+                            attributes: &[
+                                #[allow(clippy::erasing_op)]
+                                VertexAttributeDescriptor {
+                                    format: VertexFormat::Float4,
+                                    offset: 0 * 4 * 4,
+                                    shader_location: 0,
+                                },
+                                #[allow(clippy::identity_op)]
+                                VertexAttributeDescriptor {
+                                    format: VertexFormat::Float4,
+                                    offset: 1 * 4 * 4,
+                                    shader_location: 1,
+                                },
+                                VertexAttributeDescriptor {
+                                    format: VertexFormat::Float4,
+                                    offset: 2 * 4 * 4,
+                                    shader_location: 2,
+                                },
+                            ],
+                        }],
+                    },
+                    primitive_topology: PrimitiveTopology::TriangleList,
+                    rasterization_state: Some(RasterizationStateDescriptor {
+                        front_face: FrontFace::Ccw,
+                        cull_mode: CullMode::Back,
+                        ..Default::default()
+                    }),
+                    color_states: &[ColorStateDescriptor {
+                        format: stage.swap_chain_descriptor().format,
+                        color_blend: BlendDescriptor::REPLACE,
+                        alpha_blend: BlendDescriptor::REPLACE,
+                        write_mask: ColorWrite::ALL,
+                    }],
+                    depth_stencil_state: Some(DepthStencilStateDescriptor {
+                        format: TextureFormat::Depth32Float,
+                        depth_write_enabled: true,
+                        depth_compare: CompareFunction::Less,
+                        stencil: Default::default(),
+                    }),
+                    alpha_to_coverage_enabled: false,
+                    sample_count: 1,
+                    sample_mask: !0,
+                });
+        Ok(RenderApplication {
+            camera,
+            _viewpoint: viewpoint,
+            transform,
+            vertices,
+            indices,
+            depth,
+            n: buffer.as_index_slice().len() as u32,
+            bind_group,
+            pipeline,
+        })
+    }
+
+    fn react(&mut self, event: WindowEvent) -> Reaction {
+        match event {
+            WindowEvent::KeyboardInput { input, .. } => match input {
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Escape),
+                    state: ElementState::Pressed,
+                    ..
+                } => Abort,
+                _ => Continue,
+            },
+            _ => Continue,
+        }
+    }
+
+    fn resize(&mut self, stage: &impl ConfigureStage) {
+        self.camera.reproject(stage.swap_chain_descriptor());
+        stage.queue().write_buffer(
+            &self.transform,
+            0,
+            bytemuck::cast_slice(self.camera.transform().as_slice()),
+        );
+        self.depth = Self::configure_depth_buffer(stage);
+    }
+
+    fn render(&mut self, stage: &impl RenderStage, frame: &SwapChainTexture, _: &impl LocalSpawn) {
+        let mut encoder = stage
+            .device()
+            .create_command_encoder(&CommandEncoderDescriptor { label: None });
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            color_attachments: &[RenderPassColorAttachmentDescriptor {
+                attachment: &frame.view,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(Color {
+                        r: 0.1,
+                        g: 0.2,
+                        b: 0.3,
+                        a: 1.0,
+                    }),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
+                attachment: &self.depth,
+                depth_ops: Some(Operations {
+                    load: LoadOp::Clear(1.0),
+                    store: true,
+                }),
+                stencil_ops: None,
+            }),
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.bind_group, &[]);
+        pass.set_index_buffer(self.indices.slice(..));
+        pass.set_vertex_buffer(0, self.vertices.slice(..));
+        pass.draw_indexed(0..self.n, 0, 0..1);
+        drop(pass); // Release `encoder`.
+        stage.queue().submit(Some(encoder.finish()));
+    }
+}
+
+pub fn render_mesh_buffer_with<M, G, F>(from: Point3<f32>, to: Point3<f32>, f: F)
+where
+    M: IntoFlatIndex<U3, G, Item = u32>,
+    Vertex: FromGeometry<G>,
+    F: FnOnce() -> M,
+{
+    let camera = {
+        let mut camera = Camera::from(Projection::perspective(1.0, FRAC_PI_4, 1.0, 10.0));
+        camera.look_at(&from, &to);
+        camera
+    };
+    let buffer = f()
+        .into_flat_index()
+        .map_vertices(|vertex| vertex.into_geometry());
+    harness::run::<RenderApplication, _>(
+        RenderState {
+            camera,
+            from,
+            buffer,
+        },
+        |reactor| {
+            WindowBuilder::default()
+                .with_title("Plexus")
+                .build(reactor)
+                .unwrap()
+        },
+    );
 }
