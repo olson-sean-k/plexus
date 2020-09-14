@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use theon::query::{Intersection, Line, LinePlane, Plane};
+use theon::query::{Intersection, Line, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
@@ -293,18 +293,13 @@ where
                 origin: position,
                 direction: plane.normal,
             };
-            // TODO: If the intersection yields no result, then this may fail
-            //       after mutating positions in the graph. Consider using
-            //       read/write stages to avoid partial completion.
-            // TODO: Assert that this case always occurs; the line lies along
-            //       the normal.
-            if let LinePlane::TimeOfImpact(distance) = line
+            let distance = line
                 .intersection(&plane)
-                .ok_or_else(|| GraphError::Geometry)?
-            {
-                let translation = *line.direction.get() * distance;
-                *vertex.data.as_position_mut() = position + translation;
-            }
+                .expect("no line-plane intersection along normal")
+                .into_time_of_impact()
+                .expect("normal is parallel to plane");
+            let translation = *line.direction.get() * distance;
+            *vertex.data.as_position_mut() = position + translation;
         }
         Ok(())
     }

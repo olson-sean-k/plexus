@@ -735,6 +735,25 @@ where
     Edge(Edge<S>),
 }
 
+impl<S> EdgeEdge<S>
+where
+    S: EuclideanSpace,
+{
+    pub fn into_point(self) -> Option<S> {
+        match self {
+            EdgeEdge::Point(point) => Some(point),
+            _ => None,
+        }
+    }
+
+    pub fn into_edge(self) -> Option<Edge<S>> {
+        match self {
+            EdgeEdge::Edge(edge) => Some(edge),
+            _ => None,
+        }
+    }
+}
+
 impl<S> Debug for EdgeEdge<S>
 where
     S: Debug + EuclideanSpace,
