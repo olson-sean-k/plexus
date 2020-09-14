@@ -7,8 +7,10 @@ license = "MIT"
 publish = false
 
 [dependencies]
-decorum = "^0.3.1"
 smallvec = "^1.0.0"
+
+[dependencies.pictor]
+path = "../../pictor"
 
 [dependencies.plexus]
 path = "../../plexus"
