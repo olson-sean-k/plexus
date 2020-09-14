@@ -49,8 +49,15 @@ impl Camera {
     }
 
     pub fn reproject(&mut self, descriptor: &SwapChainDescriptor) {
-        if let Projection::Perspective(ref mut perspective) = self.projection {
-            perspective.set_aspect(descriptor.width as f32 / descriptor.height as f32);
+        match self.projection {
+            Projection::Perspective(ref mut perspective) => {
+                perspective.set_aspect(descriptor.width as f32 / descriptor.height as f32);
+            }
+            Projection::Orthographic(ref mut orthographic) => {
+                let inverse = descriptor.height as f32 / descriptor.width as f32;
+                let radius = (orthographic.right() - orthographic.left()) * inverse * 0.5;
+                orthographic.set_bottom_and_top(-radius, radius);
+            }
         }
     }
 
