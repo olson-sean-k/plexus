@@ -48,8 +48,8 @@ where
 }
 
 fn main() {
-    let from = Point3::new(-1.0, 3.0, 3.0);
-    let to = Point3::new(0.0, 0.8, 0.0);
+    let from = Point3::new(-0.9, 3.1, 2.4);
+    let to = Point3::new(0.0, 1.0, 0.0);
     pipeline::render_mesh_buffer_with(from, to, || {
         // Create a graph from a tetragon.
         let mut graph = MeshGraph::<E3>::from(Tetragon::from([
@@ -63,7 +63,7 @@ fn main() {
         let mut face = graph.face_mut(key).unwrap();
 
         // Circumscribe and extrude the face recursively.
-        for _ in 0..4 {
+        for _ in 0..5 {
             face = face.circumscribe().extrude_with_offset(0.5).unwrap();
         }
 
