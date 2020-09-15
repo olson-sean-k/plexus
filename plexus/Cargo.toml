@@ -61,11 +61,14 @@ version = "=0.0.4" # Unstable.
 default-features = false
 features = ["zip"]
 
+# TODO: Re-enable the `lapack` feature. Some geometry features (the `FacePlane`
+#       trait) use this feature, but have been temporarily removed. See
+#       https://github.com/olson-sean-k/plexus/issues/58 and
+#       https://github.com/rust-ndarray/ndarray-linalg/issues/229
 [dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
 rev = "1a7b4f1"
 default-features = false
-features = ["lapack"]
 
 [dev-dependencies]
 # For brevity and simplicity, tests (and documentation comments) use a direct
@@ -79,6 +82,5 @@ git = "https://github.com/olson-sean-k/theon.git"
 rev = "1a7b4f1"
 default-features = false
 features = [
-    "geometry-nalgebra",
-    "lapack"
+    "geometry-nalgebra"
 ]

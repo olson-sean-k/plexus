@@ -252,40 +252,47 @@ where
         T: ToRing<B>;
 }
 
+// TODO: The `lapack` feature depends on `ndarray-linalg` and Intel MKL. MKL is
+//       dynamically linked, but the linkage fails during doctests and may fail
+//       when launching a binary. The `lapack` feature and this implementation
+//       have been disabled until an upstream fix is available. See
+//       https://github.com/olson-sean-k/plexus/issues/58 and
+//       https://github.com/rust-ndarray/ndarray-linalg/issues/229
 // TODO: The `lapack` feature only supports Linux. See
 //       https://github.com/olson-sean-k/theon/issues/1
-#[cfg(target_os = "linux")]
-mod array {
-    use super::*;
-
-    use smallvec::SmallVec;
-    use theon::adjunct::{FromItems, IntoItems};
-    use theon::lapack::Lapack;
-    use theon::space::Scalar;
-
-    impl<G> FacePlane for G
-    where
-        G: GraphData,
-        G::Vertex: AsPosition,
-        VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
-        Scalar<VertexPosition<G>>: Lapack,
-        Vector<VertexPosition<G>>: FromItems + IntoItems,
-    {
-        fn plane<B, T>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>
-        where
-            B: Reborrow,
-            B::Target: AsStorage<Arc<Self>>
-                + AsStorage<Vertex<Self>>
-                + Consistent
-                + Parametric<Data = Self>,
-            T: ToRing<B>,
-        {
-            let ring = ring.into_ring();
-            let points = ring
-                .vertices()
-                .map(|vertex| *vertex.data.as_position())
-                .collect::<SmallVec<[_; 4]>>();
-            Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
-        }
-    }
-}
+//
+//#[cfg(target_os = "linux")]
+//mod lapack {
+//    use super::*;
+//
+//    use smallvec::SmallVec;
+//    use theon::adjunct::{FromItems, IntoItems};
+//    use theon::lapack::Lapack;
+//    use theon::space::Scalar;
+//
+//    impl<G> FacePlane for G
+//    where
+//        G: GraphData,
+//        G::Vertex: AsPosition,
+//        VertexPosition<G>: EuclideanSpace + FiniteDimensional<N = U3>,
+//        Scalar<VertexPosition<G>>: Lapack,
+//        Vector<VertexPosition<G>>: FromItems + IntoItems,
+//    {
+//        fn plane<B, T>(ring: T) -> Result<Plane<VertexPosition<G>>, GraphError>
+//        where
+//            B: Reborrow,
+//            B::Target: AsStorage<Arc<Self>>
+//                + AsStorage<Vertex<Self>>
+//                + Consistent
+//                + Parametric<Data = Self>,
+//            T: ToRing<B>,
+//        {
+//            let ring = ring.into_ring();
+//            let points = ring
+//                .vertices()
+//                .map(|vertex| *vertex.data.as_position())
+//                .collect::<SmallVec<[_; 4]>>();
+//            Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
+//        }
+//    }
+//}
