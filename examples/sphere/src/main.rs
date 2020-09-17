@@ -3,7 +3,6 @@ use plexus::integration::theon;
 
 use nalgebra::Point3;
 use pictor::pipeline::{self, Vertex};
-use plexus::buffer::MeshBuffer3;
 use plexus::prelude::*;
 use plexus::primitive;
 use plexus::primitive::generate::{Normal, Position};
@@ -11,7 +10,6 @@ use plexus::primitive::sphere::UvSphere;
 use theon::space::{EuclideanSpace, VectorSpace};
 
 type E3 = Point3<f32>;
-type Buffer = MeshBuffer3<u32, Vertex>;
 
 fn main() {
     let from = Point3::new(0.0, 0.0, 3.0);
@@ -27,6 +25,6 @@ fn main() {
             normal: normal.into_inner().into_homogeneous().into(),
             color: [1.0, 0.6, 0.2, 1.0],
         })
-        .collect::<Buffer>()
+        .collect()
     });
 }

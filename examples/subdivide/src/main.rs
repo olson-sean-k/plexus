@@ -5,7 +5,6 @@ use plexus::integration::theon;
 
 use nalgebra::Point3;
 use pictor::pipeline::{self, Vertex};
-use plexus::buffer::MeshBuffer3;
 use plexus::geometry::AsPositionMut;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphData, MeshGraph};
 use plexus::prelude::*;
@@ -14,7 +13,6 @@ use smallvec::SmallVec;
 use theon::space::{EuclideanSpace, VectorSpace};
 
 type E3 = Point3<f32>;
-type Buffer = MeshBuffer3<u32, Vertex>;
 
 pub trait Circumscribe<G> {
     fn circumscribe(self) -> Self;
@@ -70,7 +68,7 @@ fn main() {
         // Convert the graph into a buffer.
         graph.triangulate();
         graph
-            .to_mesh_by_face_with::<Buffer, _>(|face, vertex| Vertex {
+            .to_mesh_by_face_with(|face, vertex| Vertex {
                 position: vertex.position().into_homogeneous().into(),
                 normal: face.normal().unwrap().into_homogeneous().into(),
                 color: [1.0, 0.6, 0.2, 1.0],

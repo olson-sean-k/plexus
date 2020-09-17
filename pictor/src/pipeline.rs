@@ -8,10 +8,9 @@ use fool::and;
 use futures::task::LocalSpawn;
 use nalgebra::{Point3, Scalar, Vector3, Vector4};
 use num::{self, One};
-use plexus::buffer::{IntoFlatIndex, MeshBuffer};
-use plexus::geometry::{FromGeometry, IntoGeometry, UnitGeometry};
-use plexus::index::Flat;
-use plexus::U3;
+use plexus::buffer::MeshBuffer;
+use plexus::geometry::UnitGeometry;
+use plexus::index::Flat3;
 use rand::distributions::{Distribution, Standard};
 use rand::{self, Rng};
 use std::f32::consts::FRAC_PI_4;
@@ -143,7 +142,7 @@ unsafe impl Zeroable for Vertex {}
 struct RenderState {
     camera: Camera,
     from: Point3<f32>,
-    buffer: MeshBuffer<Flat<U3, u32>, Vertex>,
+    buffer: MeshBuffer<Flat3<u32>, Vertex>,
 }
 
 struct RenderApplication {
@@ -397,11 +396,9 @@ impl Application for RenderApplication {
     }
 }
 
-pub fn render_mesh_buffer_with<M, G, F>(from: Point3<f32>, to: Point3<f32>, f: F)
+pub fn render_mesh_buffer_with<F>(from: Point3<f32>, to: Point3<f32>, f: F)
 where
-    M: IntoFlatIndex<U3, G, Item = u32>,
-    Vertex: FromGeometry<G>,
-    F: FnOnce() -> M,
+    F: FnOnce() -> MeshBuffer<Flat3<u32>, Vertex>,
 {
     let camera = {
         let mut camera = Camera::from(Projection::perspective(1.0, FRAC_PI_4, 0.1, 8.0));
@@ -409,9 +406,7 @@ where
         camera.look_at(&from, &to);
         camera
     };
-    let buffer = f()
-        .into_flat_index()
-        .map_vertices(|vertex| vertex.into_geometry());
+    let buffer = f();
     harness::run::<RenderApplication, _>(
         RenderState {
             camera,
