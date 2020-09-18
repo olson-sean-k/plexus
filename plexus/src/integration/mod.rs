@@ -27,6 +27,11 @@
 //!
 //! [`nalgebra`]: https://crates.io/crates/nalgebra
 
+pub mod decorum {
+    #[doc(hidden)]
+    pub use ::decorum::*;
+}
+
 pub mod theon {
     #[doc(hidden)]
     pub use ::theon::*;
