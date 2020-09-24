@@ -139,7 +139,7 @@ unsafe impl Pod for Vertex {}
 
 unsafe impl Zeroable for Vertex {}
 
-struct RenderState {
+struct RenderConfiguration {
     camera: Camera,
     from: Point3<f32>,
     buffer: MeshBuffer<Flat3<u32>, Vertex>,
@@ -179,15 +179,18 @@ impl RenderApplication {
 }
 
 impl Application for RenderApplication {
-    type State = RenderState;
+    type Configuration = RenderConfiguration;
     type Error = ();
 
-    fn configure(state: Self::State, stage: &impl ConfigureStage) -> Result<Self, Self::Error> {
-        let RenderState {
+    fn configure(
+        configuration: Self::Configuration,
+        stage: &impl ConfigureStage,
+    ) -> Result<Self, Self::Error> {
+        let RenderConfiguration {
             mut camera,
             from,
             buffer,
-        } = state;
+        } = configuration;
         camera.reproject(stage.swap_chain_descriptor());
         let vertices = stage.device().create_buffer_init(&BufferInitDescriptor {
             label: None,
@@ -408,7 +411,7 @@ where
     };
     let buffer = f();
     harness::run::<RenderApplication, _>(
-        RenderState {
+        RenderConfiguration {
             camera,
             from,
             buffer,

@@ -60,10 +60,13 @@ pub trait RenderStage {
 }
 
 pub trait Application: 'static + Sized {
-    type State: Sized;
+    type Configuration: Sized;
     type Error: Debug;
 
-    fn configure(state: Self::State, stage: &impl ConfigureStage) -> Result<Self, Self::Error>;
+    fn configure(
+        configuration: Self::Configuration,
+        stage: &impl ConfigureStage,
+    ) -> Result<Self, Self::Error>;
 
     fn react(&mut self, event: WindowEvent) -> Reaction {
         let _ = event;
@@ -80,7 +83,7 @@ pub trait Application: 'static + Sized {
     );
 }
 
-pub fn run<T, F>(state: T::State, f: F)
+pub fn run<T, F>(configuration: T::Configuration, f: F)
 where
     T: Application,
     F: FnOnce(&EventLoop<()>) -> Window,
@@ -88,7 +91,7 @@ where
     let mut executor = Executor::new();
     let reactor = EventLoop::new();
     let mut renderer = executor::block_on(Renderer::try_from_window(f(&reactor))).unwrap();
-    let mut application = T::configure(state, &renderer).unwrap();
+    let mut application = T::configure(configuration, &renderer).unwrap();
     reactor.run(move |event, _, reaction| {
         *reaction = Poll;
         match event {
