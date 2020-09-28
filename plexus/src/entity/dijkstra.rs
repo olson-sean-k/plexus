@@ -3,7 +3,7 @@ use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-use crate::entity::storage::AsStorage;
+use crate::entity::storage::{AsStorage, Enumerate};
 use crate::entity::traverse::Adjacency;
 use crate::entity::view::{Bind, Unbind};
 use crate::entity::EntityError;
@@ -58,7 +58,7 @@ where
                 let adjacent = adjacent.ok_or_else(|| EntityError::EntityNotFound)?;
                 let summand = f(entity, adjacent);
                 if summand < Q::zero() {
-                    return Err(EntityError::Geometry);
+                    return Err(EntityError::Data);
                 }
                 let metric = metric + summand;
                 match metrics.entry(adjacent.key()) {
@@ -98,7 +98,7 @@ mod tests {
         .unwrap();
         let vertex = graph.vertices().nth(0).unwrap();
         assert_eq!(
-            Err(EntityError::Geometry),
+            Err(EntityError::Data),
             dijkstra::metrics_with(vertex, None, |_, _| -1isize)
         )
     }

@@ -23,8 +23,8 @@ categories = [
 ]
 
 [package.metadata.docs.rs]
-# Enable all featues so that trait implementations for types from commonly used
-# linear algebra crates are shown.
+# Enable integration featues so that trait implementations for types from
+# commonly used linear algebra crates are shown.
 all-features = true
 # Enable KaTeX support.
 rustdoc-args = [
@@ -40,6 +40,7 @@ geometry-glam = ["theon/geometry-glam"]
 geometry-mint = ["theon/geometry-mint"]
 geometry-nalgebra = ["theon/geometry-nalgebra"]
 geometry-ultraviolet = ["theon/geometry-ultraviolet"]
+unstable = []
 
 [dependencies]
 approx = "^0.3.0"
@@ -49,7 +50,8 @@ derivative = "^2.1.1"
 fnv = "^1.0.6"
 itertools = "^0.9.0"
 num = "^0.3.0"
-slotmap = "^0.4.0"
+ordered-multimap = "^0.3.0"
+slotmap = "=0.4.0"
 smallvec = "^1.0.0"
 thiserror = "^1.0.3"
 typenum = "^1.10.0"
@@ -69,6 +71,9 @@ features = ["zip"]
 git = "https://github.com/olson-sean-k/theon.git"
 rev = "789eb62"
 default-features = false
+
+[build-dependencies]
+rustversion = "^1.0.3"
 
 [dev-dependencies]
 # For brevity and simplicity, tests (and documentation comments) use a direct

@@ -3,11 +3,11 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey};
-use crate::entity::Entity;
+use crate::entity::storage::{AsStorage, AsStorageMut, Get, Key};
+use crate::entity::{Entity, Payload};
 
-pub trait ClosedView: Deref<Target = <Self as ClosedView>::Entity> {
-    type Key: OpaqueKey;
+pub trait ClosedView {
+    type Key: Key;
     type Entity: Entity<Key = Self::Key>;
 
     fn key(&self) -> Self::Key;
@@ -129,12 +129,27 @@ where
         self.rebind(key).map(T::from)
     }
 
+    pub fn get(&self) -> &E::Data
+    where
+        E: Payload,
+    {
+        self.as_entity().get()
+    }
+
     pub fn key(&self) -> E::Key {
         self.key
     }
 
     pub fn to_ref(&self) -> View<&B::Target, E> {
         View::bind_unchecked(self.storage.reborrow(), self.key)
+    }
+
+    fn as_entity(&self) -> &E {
+        self.storage
+            .reborrow()
+            .as_storage()
+            .get(&self.key)
+            .expect("view key invalidated")
     }
 }
 
@@ -156,6 +171,28 @@ where
     #[allow(clippy::wrong_self_convention)]
     pub fn to_mut_unchecked(&mut self) -> View<&mut B::Target, E> {
         View::bind_unchecked(self.storage.reborrow_mut(), self.key)
+    }
+}
+
+impl<B, E> View<B, E>
+where
+    B: ReborrowMut,
+    B::Target: AsStorageMut<E>,
+    E: Entity,
+{
+    pub fn get_mut(&mut self) -> &mut E::Data
+    where
+        E: Payload,
+    {
+        self.as_entity_mut().get_mut()
+    }
+
+    fn as_entity_mut(&mut self) -> &mut E {
+        self.storage
+            .reborrow_mut()
+            .as_storage_mut()
+            .get_mut(&self.key)
+            .expect("view key invalidated")
     }
 }
 
@@ -227,11 +264,7 @@ where
     type Target = E;
 
     fn deref(&self) -> &Self::Target {
-        self.storage
-            .reborrow()
-            .as_storage()
-            .get(&self.key)
-            .expect("view key invalidated")
+        self.as_entity()
     }
 }
 
@@ -242,11 +275,7 @@ where
     E: Entity,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
-            .reborrow_mut()
-            .as_storage_mut()
-            .get_mut(&self.key)
-            .expect("view key invalidated")
+        self.as_entity_mut()
     }
 }
 
@@ -285,15 +314,15 @@ where
 
 pub struct Orphan<'a, E>
 where
-    E: Entity,
+    E: Payload,
 {
-    entity: &'a mut E,
+    data: &'a mut E::Data,
     key: E::Key,
 }
 
 impl<'a, E> Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
 {
     pub fn bind<M>(storage: &'a mut M, key: E::Key) -> Option<Self>
     where
@@ -302,8 +331,8 @@ where
         View::bind(storage, key).map(Orphan::from)
     }
 
-    pub fn bind_unchecked(entity: &'a mut E, key: E::Key) -> Self {
-        Orphan { entity, key }
+    pub fn bind_unchecked(data: &'a mut E::Data, key: E::Key) -> Self {
+        Orphan { data, key }
     }
 
     pub fn bind_into<T, M>(storage: &'a mut M, key: E::Key) -> Option<T>
@@ -314,6 +343,14 @@ where
         Orphan::bind(storage, key).map(T::from)
     }
 
+    pub fn get(&self) -> &E::Data {
+        &*self.data
+    }
+
+    pub fn get_mut(&mut self) -> &mut E::Data {
+        self.data
+    }
+
     pub fn key(&self) -> E::Key {
         self.key
     }
@@ -321,7 +358,7 @@ where
 
 impl<'a, E> AsRef<E::Key> for Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
 {
     fn as_ref(&self) -> &E::Key {
         &self.key
@@ -330,7 +367,7 @@ where
 
 impl<'a, E> ClosedView for Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
 {
     type Key = E::Key;
     type Entity = E;
@@ -340,29 +377,9 @@ where
     }
 }
 
-impl<'a, E> Deref for Orphan<'a, E>
-where
-    E: 'a + Entity,
-{
-    type Target = E;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.entity
-    }
-}
-
-impl<'a, E> DerefMut for Orphan<'a, E>
-where
-    E: 'a + Entity,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.entity
-    }
-}
-
 impl<'a, E, M> From<View<&'a mut M, E>> for Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
     M: AsStorageMut<E>,
 {
     fn from(view: View<&'a mut M, E>) -> Self {
@@ -371,15 +388,15 @@ where
             .as_storage_mut()
             .get_mut(&key)
             .expect("view key invalidated");
-        Orphan::bind_unchecked(entity, key)
+        Orphan::bind_unchecked(entity.get_mut(), key)
     }
 }
 
-impl<'a, E> Eq for Orphan<'a, E> where E: 'a + Entity {}
+impl<'a, E> Eq for Orphan<'a, E> where E: 'a + Payload {}
 
 impl<'a, E> Hash for Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
 {
     fn hash<H>(&self, state: &mut H)
     where
@@ -391,7 +408,7 @@ where
 
 impl<'a, E> PartialEq for Orphan<'a, E>
 where
-    E: 'a + Entity,
+    E: 'a + Payload,
 {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key

@@ -5,6 +5,7 @@ use theon::integration::mint;
 use decorum::{Finite, Float, NotNan, Primitive, Total};
 use num::{NumCast, ToPrimitive};
 
+use crate::entity::Lifetime;
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
 
@@ -117,7 +118,7 @@ where
 
 impl<T> GraphData for Point2<T>
 where
-    Self: Copy,
+    Self: Copy + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();
@@ -127,7 +128,7 @@ where
 
 impl<T> GraphData for Point3<T>
 where
-    Self: Copy,
+    Self: Copy + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();

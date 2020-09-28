@@ -2,8 +2,9 @@ use fool::and;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind};
+use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
@@ -19,9 +20,29 @@ use crate::IteratorExt as _;
 pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
 
-type OwnedCore<G> = Core<G, Storage<Vertex<G>>, Storage<Arc<G>>, Storage<Edge<G>>, ()>;
-type RefCore<'a, G> =
-    Core<G, &'a Storage<Vertex<G>>, &'a Storage<Arc<G>>, &'a Storage<Edge<G>>, ()>;
+type OwnedCore<G> = Core<
+    G,
+    <Vertex<G> as Entity>::Storage,
+    <Arc<G> as Entity>::Storage,
+    <Edge<G> as Entity>::Storage,
+    (),
+>;
+#[cfg(not(all(nightly, feature = "unstable")))]
+type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<Vertex<G>>,
+    &'a StorageObject<Arc<G>>,
+    &'a StorageObject<Edge<G>>,
+    (),
+>;
+#[cfg(all(nightly, feature = "unstable"))]
+type RefCore<'a, G> = Core<
+    G,
+    &'a StorageObject<'a, Vertex<G>>,
+    &'a StorageObject<'a, Arc<G>>,
+    &'a StorageObject<'a, Edge<G>>,
+    (),
+>;
 
 pub struct EdgeMutation<M>
 where
@@ -29,8 +50,12 @@ where
 {
     inner: VertexMutation<M>,
     // TODO: Split this into two fields.
+    // TODO: Use and require journaled storage.
     #[allow(clippy::type_complexity)]
-    storage: (Storage<Arc<Data<M>>>, Storage<Edge<Data<M>>>),
+    storage: (
+        <Arc<Data<M>> as Entity>::Storage,
+        <Edge<Data<M>> as Entity>::Storage,
+    ),
 }
 
 impl<M, G> EdgeMutation<M>
@@ -41,8 +66,8 @@ where
     pub fn to_ref_core(&self) -> RefCore<G> {
         self.inner
             .to_ref_core()
-            .fuse(&self.storage.0)
-            .fuse(&self.storage.1)
+            .fuse(self.storage.0.as_storage())
+            .fuse(self.storage.1.as_storage())
     }
 
     pub fn connect_adjacent_arcs(&mut self, ab: ArcKey, bc: ArcKey) -> Result<(), GraphError> {
@@ -88,6 +113,7 @@ where
         let arc = self
             .storage
             .0
+            .as_storage_mut()
             .get_mut(&ab)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(f(arc))
@@ -99,7 +125,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<G>> {
         &self.storage.0
     }
 }
@@ -109,7 +135,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<G>> {
         &self.storage.1
     }
 }
@@ -400,7 +426,7 @@ where
     {
         let (a, _) = endpoints;
         let ab = endpoints.into();
-        if let Some(arc) = mutation.as_mut().storage.0.get(&ab) {
+        if let Some(arc) = mutation.as_mut().storage.0.as_storage().get(&ab) {
             (arc.edge, ab)
         }
         else {
@@ -408,7 +434,8 @@ where
                 .as_mut()
                 .storage
                 .0
-                .insert_with_key(ab, Arc::new(geometry));
+                .as_storage_mut()
+                .insert_with_key(&ab, Arc::new(geometry));
             let _ = mutation.as_mut().connect_outgoing_arc(a, ab);
             (None, ab)
         }
@@ -425,6 +452,7 @@ where
                 .as_mut()
                 .storage
                 .1
+                .as_storage_mut()
                 .insert(Edge::new(ab, geometry.0));
             mutation.as_mut().connect_arc_to_edge(ab, ab_ba)?;
             mutation.as_mut().connect_arc_to_edge(ba, ab_ba)?;
@@ -462,6 +490,7 @@ where
             .as_mut()
             .storage
             .0
+            .as_storage_mut()
             .remove(&ab)
             .ok_or_else(|| GraphError::TopologyNotFound)
     }
@@ -491,6 +520,7 @@ where
         .as_mut()
         .storage
         .1
+        .as_storage_mut()
         .remove(&ab_ba)
         .ok_or_else(|| GraphError::TopologyNotFound)?;
     Ok((
@@ -526,7 +556,13 @@ where
         // mutation.as_mut().disconnect_outgoing_arc(a)?;
         let xa = mutation.as_mut().disconnect_previous_arc(ab)?;
         let bx = mutation.as_mut().disconnect_next_arc(ab)?;
-        let mut arc = mutation.as_mut().storage.0.remove(&ab).unwrap();
+        let mut arc = mutation
+            .as_mut()
+            .storage
+            .0
+            .as_storage_mut()
+            .remove(&ab)
+            .unwrap();
         // Restore the connectivity of the arc. The mutations will clear this
         // data, because it is still a part of the mesh at that point.
         arc.previous = xa;
@@ -588,6 +624,7 @@ where
         .as_mut()
         .storage
         .1
+        .as_storage_mut()
         .remove(&ab_ba)
         .ok_or_else(|| GraphError::TopologyMalformed)?;
     // Split the arcs.

@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::AsStorage;
+use crate::entity::storage::{AsStorage, Enumerate};
 use crate::entity::view::{Bind, ClosedView, Unbind};
 
 pub enum Breadth {}

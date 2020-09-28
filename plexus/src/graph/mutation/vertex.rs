@@ -1,5 +1,6 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
@@ -9,14 +10,18 @@ use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::Transact;
 
-type OwnedCore<G> = Core<G, Storage<Vertex<G>>, (), (), ()>;
-type RefCore<'a, G> = Core<G, &'a Storage<Vertex<G>>, (), (), ()>;
+type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
+#[cfg(not(all(nightly, feature = "unstable")))]
+type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
+#[cfg(all(nightly, feature = "unstable"))]
+type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<M>
 where
     M: Parametric,
 {
-    storage: Storage<Vertex<Data<M>>>,
+    // TODO: Use and require journaled storage.
+    storage: <Vertex<Data<M>> as Entity>::Storage,
 }
 
 impl<M, G> VertexMutation<M>
@@ -25,7 +30,7 @@ where
     G: GraphData,
 {
     pub fn to_ref_core(&self) -> RefCore<G> {
-        Core::empty().fuse(&self.storage)
+        Core::empty().fuse(self.storage.as_storage())
     }
 
     pub fn connect_outgoing_arc(&mut self, a: VertexKey, ab: ArcKey) -> Result<(), GraphError> {
@@ -44,6 +49,7 @@ where
     {
         let vertex = self
             .storage
+            .as_storage_mut()
             .get_mut(&a)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(f(vertex))
@@ -55,7 +61,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
         &self.storage
     }
 }
@@ -113,7 +119,11 @@ where
     N: AsMut<Mutation<M>>,
     M: Mutable,
 {
-    mutation.as_mut().storage.insert(Vertex::new(geometry))
+    mutation
+        .as_mut()
+        .storage
+        .as_storage_mut()
+        .insert(Vertex::new(geometry))
 }
 
 pub fn remove<M, N>(

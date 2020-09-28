@@ -5,7 +5,7 @@ pub mod vertex;
 
 use std::ops::{Deref, DerefMut};
 
-use crate::entity::storage::{AsStorage, Storage};
+use crate::entity::storage::{AsStorage, StorageObject};
 use crate::graph::core::OwnedCore;
 use crate::graph::data::{Data, Parametric};
 use crate::graph::edge::{Arc, Edge};
@@ -72,7 +72,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<G>> {
         self.inner.to_ref_core().unfuse().1
     }
 }
@@ -82,7 +82,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<G>> {
         self.inner.to_ref_core().unfuse().2
     }
 }
@@ -92,7 +92,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<G>> {
         self.inner.to_ref_core().unfuse().3
     }
 }
@@ -102,7 +102,7 @@ where
     M: Consistent + From<OwnedCore<G>> + Parametric<Data = G> + Into<OwnedCore<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
         self.inner.to_ref_core().unfuse().0
     }
 }

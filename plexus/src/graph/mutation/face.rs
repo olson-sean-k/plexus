@@ -4,8 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, Fuse, Storage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
+use crate::entity::Entity;
 use crate::graph::core::{Core, OwnedCore, RefCore};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView};
@@ -23,7 +24,7 @@ where
     M: Parametric,
 {
     inner: EdgeMutation<M>,
-    storage: Storage<Face<Data<M>>>,
+    storage: <Face<Data<M>> as Entity>::Storage,
 }
 
 impl<M, G> FaceMutation<M>
@@ -120,6 +121,7 @@ where
     {
         let face = self
             .storage
+            .as_storage_mut()
             .get_mut(&abc)
             .ok_or_else(|| GraphError::TopologyNotFound)?;
         Ok(f(face))
@@ -131,7 +133,7 @@ where
     M: Parametric<Data = G>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<G>> {
         &self.storage
     }
 }
@@ -500,6 +502,7 @@ where
     let face = mutation
         .as_mut()
         .storage
+        .as_storage_mut()
         .insert(Face::new(arcs[0], geometry.1));
     mutation.as_mut().connect_face_interior(&arcs, face)?;
     mutation
@@ -521,6 +524,7 @@ where
     let face = mutation
         .as_mut()
         .storage
+        .as_storage_mut()
         .remove(&abc)
         .ok_or_else(|| GraphError::TopologyNotFound)?;
     Ok(face)

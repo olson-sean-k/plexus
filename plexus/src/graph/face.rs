@@ -14,10 +14,10 @@ use theon::{AsPosition, AsPositionMut};
 use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, OpaqueKey, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Key, SlotEntityMap};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
 use crate::graph::geometry::{FaceCentroid, FaceNormal, FacePlane, VertexPosition};
@@ -53,16 +53,16 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub data: G::Face,
+    pub(in crate) data: G::Face,
     /// Required key into the leading arc.
-    pub(in crate::graph) arc: ArcKey,
+    pub(in crate) arc: ArcKey,
 }
 
 impl<G> Face<G>
 where
     G: GraphData,
 {
-    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Face) -> Self {
+    pub fn new(arc: ArcKey, geometry: G::Face) -> Self {
         Face {
             data: geometry,
             arc,
@@ -75,14 +75,29 @@ where
     G: GraphData,
 {
     type Key = FaceKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = SlotEntityMap<Self>;
+}
+
+impl<G> Payload for Face<G>
+where
+    G: GraphData,
+{
+    type Data = G::Face;
+
+    fn get(&self) -> &Self::Data {
+        &self.data
+    }
+
+    fn get_mut(&mut self) -> &mut Self::Data {
+        &mut self.data
+    }
 }
 
 /// Face key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(DefaultKey);
 
-impl OpaqueKey for FaceKey {
+impl Key for FaceKey {
     type Inner = DefaultKey;
 
     fn from_inner(key: Self::Inner) -> Self {
@@ -94,7 +109,7 @@ impl OpaqueKey for FaceKey {
     }
 }
 
-/// View of a [`Face`] entity.
+/// View of a face entity.
 ///
 /// Faces are notated by the path of their associated ring. A triangular face
 /// with a perimeter formed by vertices $A$, $B$, and $C$ is notated
@@ -173,6 +188,34 @@ where
     /// ```
     pub fn into_ref(self) -> FaceView<&'a M> {
         self.inner.into_ref().into()
+    }
+}
+
+impl<B, M, G> FaceView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get<'a>(&'a self) -> &'a G::Face
+    where
+        G: 'a,
+    {
+        self.inner.get()
+    }
+}
+
+impl<B, M, G> FaceView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Face
+    where
+        G: 'a,
+    {
+        self.inner.get_mut()
     }
 }
 
@@ -299,7 +342,7 @@ where
                 .into_time_of_impact()
                 .expect("normal is parallel to plane");
             let translation = *line.direction.get() * distance;
-            *vertex.data.as_position_mut() = position + translation;
+            *vertex.get_mut().as_position_mut() = position + translation;
         }
         Ok(())
     }
@@ -1016,14 +1059,25 @@ where
     }
 }
 
-/// Orphan view of a [`Face`] entity.
-///
-/// [`Face`]: crate::graph::Face
+/// Orphan view of a face entity.
 pub struct FaceOrphan<'a, G>
 where
     G: GraphData,
 {
     inner: Orphan<'a, Face<G>>,
+}
+
+impl<'a, G> FaceOrphan<'a, G>
+where
+    G: 'a + GraphData,
+{
+    pub fn get(&self) -> &G::Face {
+        self.inner.get()
+    }
+
+    pub fn get_mut(&mut self) -> &mut G::Face {
+        self.inner.get_mut()
+    }
 }
 
 impl<'a, G> ClosedView for FaceOrphan<'a, G>
@@ -1038,32 +1092,12 @@ where
     }
 }
 
-impl<'a, G> Deref for FaceOrphan<'a, G>
-where
-    G: GraphData,
-{
-    type Target = Face<G>;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner.deref()
-    }
-}
-
-impl<'a, G> DerefMut for FaceOrphan<'a, G>
-where
-    G: GraphData,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.deref_mut()
-    }
-}
-
 impl<'a, G> Eq for FaceOrphan<'a, G> where G: GraphData {}
 
 impl<'a, M, G> From<FaceView<&'a mut M>> for FaceOrphan<'a, G>
 where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(face: FaceView<&'a mut M>) -> Self {
         Orphan::from(face.inner).into()
@@ -1082,7 +1116,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Face<G>>> for FaceOrphan<'a, G>
 where
     M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Face<G>>) -> Self {
         FaceOrphan { inner: view.into() }
@@ -1510,8 +1544,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).map(|key| {
             let vertex = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let vertex = unsafe { mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(vertex) };
-            Orphan::bind_unchecked(vertex, key).into()
+            let data = &mut vertex.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Vertex, &'a mut G::Vertex>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 
@@ -1612,8 +1647,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         ArcCirculator::next(self).map(|key| {
             let arc = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let arc = unsafe { mem::transmute::<&'_ mut Arc<G>, &'a mut Arc<G>>(arc) };
-            Orphan::bind_unchecked(arc, key).into()
+            let data = &mut arc.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Arc, &'a mut G::Arc>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 
@@ -1706,8 +1742,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).map(|key| {
             let face = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let face = unsafe { mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(face) };
-            Orphan::bind_unchecked(face, key).into()
+            let data = &mut face.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Face, &'a mut G::Face>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 }

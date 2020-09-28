@@ -68,8 +68,8 @@
 //!
 //! [`MeshGraph`]s expose _views_ over their entities (vertices, arcs, edges,
 //! and faces). Views are a type of _smart pointer_ and bind entity storage with
-//! a key for a specific entity. They implement [`Deref`] for their associated
-//! entity type.
+//! a key for a specific entity. They extend entities with rich behaviors and
+//! expose their associated data via `get` and `get_mut` functions.
 //!
 //! Views provide the primary API for interacting with a [`MeshGraph`]'s
 //! topology and data. There are three types of views summarized below:
@@ -226,7 +226,7 @@
 //!     .into_next_arc()
 //!     .into_destination_vertex();
 //! for mut face in vertex.adjacent_face_orphans() {
-//!     // `face.data` is mutable here.
+//!     // `face.get_mut()` provides a mutable reference to face data.
 //! }
 //! ```
 //!
@@ -277,15 +277,18 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, OpaqueKey, Storage};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, Key, StorageObject};
 use crate::entity::view::{Bind, Orphan, View};
-use crate::entity::EntityError;
+use crate::entity::{Entity, EntityError};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
 use crate::graph::data::Parametric;
+use crate::graph::edge::{Arc, Edge};
+use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceInsertCache;
 use crate::graph::mutation::{Consistent, Mutation};
+use crate::graph::vertex::Vertex;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::{IntoPolygons, Polygonal, UnboundedPolygon};
@@ -293,17 +296,15 @@ use crate::transact::Transact;
 use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::view::{ClosedView, Rebind};
-pub use crate::graph::data::GraphData;
-pub use crate::graph::edge::{
-    Arc, ArcKey, ArcOrphan, ArcView, Edge, EdgeKey, EdgeOrphan, EdgeView, ToArc,
-};
-pub use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring, ToRing};
+pub use crate::graph::data::{EntityData, GraphData};
+pub use crate::graph::edge::{ArcKey, ArcOrphan, ArcView, EdgeKey, EdgeOrphan, EdgeView, ToArc};
+pub use crate::graph::face::{FaceKey, FaceOrphan, FaceView, Ring, ToRing};
 pub use crate::graph::geometry::{
     ArcNormal, EdgeMidpoint, FaceCentroid, FaceNormal, FacePlane, VertexCentroid, VertexNormal,
     VertexPosition,
 };
 pub use crate::graph::path::Path;
-pub use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
+pub use crate::graph::vertex::{VertexKey, VertexOrphan, VertexView};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
@@ -363,7 +364,7 @@ impl From<EntityError> for GraphError {
     fn from(error: EntityError) -> Self {
         match error {
             EntityError::EntityNotFound => GraphError::TopologyNotFound,
-            EntityError::Geometry => GraphError::Geometry,
+            EntityError::Data => GraphError::Geometry,
         }
     }
 }
@@ -468,7 +469,7 @@ impl<K> Selector<K> {
 
 impl<K> From<K> for Selector<K>
 where
-    K: OpaqueKey,
+    K: Key,
 {
     fn from(key: K) -> Self {
         Selector::ByKey(key)
@@ -478,6 +479,38 @@ where
 impl<K> From<usize> for Selector<K> {
     fn from(index: usize) -> Self {
         Selector::ByIndex(index)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum GraphKey {
+    Vertex(VertexKey),
+    Arc(ArcKey),
+    Edge(EdgeKey),
+    Face(FaceKey),
+}
+
+impl From<VertexKey> for GraphKey {
+    fn from(key: VertexKey) -> Self {
+        GraphKey::Vertex(key)
+    }
+}
+
+impl From<ArcKey> for GraphKey {
+    fn from(key: ArcKey) -> Self {
+        GraphKey::Arc(key)
+    }
+}
+
+impl From<EdgeKey> for GraphKey {
+    fn from(key: EdgeKey) -> Self {
+        GraphKey::Edge(key)
+    }
+}
+
+impl From<FaceKey> for GraphKey {
+    fn from(key: FaceKey) -> Self {
+        GraphKey::Face(key)
     }
 }
 
@@ -523,10 +556,10 @@ where
     pub fn new() -> Self {
         MeshGraph::from(
             Core::empty()
-                .fuse(Storage::<Vertex<G>>::new())
-                .fuse(Storage::<Arc<G>>::new())
-                .fuse(Storage::<Edge<G>>::new())
-                .fuse(Storage::<Face<G>>::new()),
+                .fuse(<Vertex<G> as Entity>::Storage::default())
+                .fuse(<Arc<G> as Entity>::Storage::default())
+                .fuse(<Edge<G> as Entity>::Storage::default())
+                .fuse(<Face<G> as Entity>::Storage::default()),
         )
     }
 
@@ -547,18 +580,19 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
-    pub fn vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
+    pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self>> {
         self.as_storage_of::<Vertex<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the vertices in the graph.
-    pub fn vertex_orphans(&mut self) -> impl ExactSizeIterator<Item = VertexOrphan<G>> {
+    pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
         self.as_storage_mut_of::<Vertex<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -579,18 +613,19 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
-    pub fn arcs(&self) -> impl ExactSizeIterator<Item = ArcView<&Self>> {
+    pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self>> {
         self.as_storage_of::<Arc<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the arcs in the graph.
-    pub fn arc_orphans(&mut self) -> impl ExactSizeIterator<Item = ArcOrphan<G>> {
+    pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
         self.as_storage_mut_of::<Arc<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -611,18 +646,19 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = EdgeView<&Self>> {
+    pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self>> {
         self.as_storage_of::<Edge<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the edges in the graph.
-    pub fn edge_orphans(&mut self) -> impl ExactSizeIterator<Item = EdgeOrphan<G>> {
+    pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
         self.as_storage_mut_of::<Edge<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -643,18 +679,19 @@ where
 
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
-    pub fn faces(&self) -> impl ExactSizeIterator<Item = FaceView<&Self>> {
+    pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self>> {
         self.as_storage_of::<Face<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
             .map(From::from)
     }
 
     /// Gets an iterator of orphan views over the faces in the graph.
-    pub fn face_orphans(&mut self) -> impl ExactSizeIterator<Item = FaceOrphan<G>> {
+    pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
         self.as_storage_mut_of::<Face<_>>()
             .iter_mut()
-            .map(|(key, entity)| Orphan::bind_unchecked(entity, key))
+            .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
     }
 
@@ -709,7 +746,11 @@ where
         //       any of these conditions aren't possible? This should work a bit
         //       better than using `FaceView::triangulate` until triangulation
         //       is reworked.
-        let keys = self.as_storage_of::<Face<_>>().keys().collect::<Vec<_>>();
+        let keys = self
+            .as_storage_of::<Face<_>>()
+            .iter()
+            .map(|(key, _)| key)
+            .collect::<Vec<_>>();
         for key in keys {
             let mut face = self.face_mut(key).unwrap();
             let mut offset = 0;
@@ -758,7 +799,7 @@ where
             );
         }
         for mut vertex in self.vertex_orphans() {
-            *vertex.data.as_position_mut() = positions.remove(&vertex.key()).unwrap();
+            *vertex.get_mut().as_position_mut() = positions.remove(&vertex.key()).unwrap();
         }
     }
 
@@ -851,7 +892,8 @@ where
     pub fn disjoint_subgraph_vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
         let keys = self
             .as_storage_of::<Vertex<_>>()
-            .keys()
+            .iter()
+            .map(|(key, _)| key)
             .collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_>; 4]>::new();
@@ -1062,7 +1104,7 @@ impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Vertex<G>> {
+    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
         self.core.as_storage_of::<Vertex<_>>()
     }
 }
@@ -1071,7 +1113,7 @@ impl<G> AsStorage<Arc<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Arc<G>> {
+    fn as_storage(&self) -> &StorageObject<Arc<G>> {
         self.core.as_storage_of::<Arc<_>>()
     }
 }
@@ -1080,7 +1122,7 @@ impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Edge<G>> {
+    fn as_storage(&self) -> &StorageObject<Edge<G>> {
         self.core.as_storage_of::<Edge<_>>()
     }
 }
@@ -1089,7 +1131,7 @@ impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &Storage<Face<G>> {
+    fn as_storage(&self) -> &StorageObject<Face<G>> {
         self.core.as_storage_of::<Face<_>>()
     }
 }
@@ -1098,7 +1140,7 @@ impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Vertex<G>> {
         self.core.as_storage_mut_of::<Vertex<_>>()
     }
 }
@@ -1107,7 +1149,7 @@ impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Arc<G>> {
         self.core.as_storage_mut_of::<Arc<_>>()
     }
 }
@@ -1116,7 +1158,7 @@ impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Edge<G>> {
         self.core.as_storage_mut_of::<Edge<_>>()
     }
 }
@@ -1125,7 +1167,7 @@ impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut Storage<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageObject<Face<G>> {
         self.core.as_storage_mut_of::<Face<_>>()
     }
 }
@@ -1263,6 +1305,10 @@ where
 {
     type Error = GraphError;
 
+    // TODO: This appears to be a false positive. The `collect` is necessary,
+    //       because the data is transformed and read randomly by index. See
+    //       https://github.com/rust-lang/rust-clippy/issues/5991
+    #[allow(clippy::needless_collect)]
     fn from_indexer<I, N>(input: I, indexer: N) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = P>,
@@ -1612,7 +1658,7 @@ mod tests {
         }
         for mut vertex in graph.vertex_orphans() {
             // Data should be mutable.
-            vertex.data += Vector3::zero();
+            *vertex.get_mut() += Vector3::zero();
         }
     }
 
@@ -1688,7 +1734,7 @@ mod tests {
         let mut graph: MeshGraph<Weight> = UvSphere::new(4, 4).polygons::<Position<E3>>().collect();
         let value = 123_456_789;
         for mut face in graph.face_orphans() {
-            face.data = value;
+            *face.get_mut() = value;
         }
 
         // Read the geometry of each face to ensure it is what we expect.

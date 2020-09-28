@@ -10,9 +10,11 @@ use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, OpaqueKey, SlotStorage};
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, DependentKey, FnvEntityMap, Key, Rekeying, SlotEntityMap,
+};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
-use crate::entity::Entity;
+use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView, Ring};
 use crate::graph::geometry::{ArcNormal, EdgeMidpoint, VertexPosition};
@@ -50,22 +52,22 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub data: G::Arc,
+    pub(in crate) data: G::Arc,
     /// Required key into the next arc.
-    pub(in crate::graph) next: Option<ArcKey>,
+    pub(in crate) next: Option<ArcKey>,
     /// Required key into the previous arc.
-    pub(in crate::graph) previous: Option<ArcKey>,
+    pub(in crate) previous: Option<ArcKey>,
     /// Required key into the edge.
-    pub(in crate::graph) edge: Option<EdgeKey>,
+    pub(in crate) edge: Option<EdgeKey>,
     /// Optional key into the face.
-    pub(in crate::graph) face: Option<FaceKey>,
+    pub(in crate) face: Option<FaceKey>,
 }
 
 impl<G> Arc<G>
 where
     G: GraphData,
 {
-    pub(in crate::graph) fn new(geometry: G::Arc) -> Self {
+    pub fn new(geometry: G::Arc) -> Self {
         Arc {
             data: geometry,
             next: None,
@@ -81,7 +83,22 @@ where
     G: GraphData,
 {
     type Key = ArcKey;
-    type Storage = HashStorage<Self>;
+    type Storage = FnvEntityMap<Self>;
+}
+
+impl<G> Payload for Arc<G>
+where
+    G: GraphData,
+{
+    type Data = G::Arc;
+
+    fn get(&self) -> &Self::Data {
+        &self.data
+    }
+
+    fn get_mut(&mut self) -> &mut Self::Data {
+        &mut self.data
+    }
 }
 
 /// Arc key.
@@ -92,6 +109,17 @@ impl ArcKey {
     pub(in crate::graph) fn into_opposite(self) -> ArcKey {
         let (a, b) = self.into();
         (b, a).into()
+    }
+}
+
+impl DependentKey for ArcKey {
+    type Foreign = VertexKey;
+
+    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
+        let (a, b) = self.into();
+        let a = rekeying.get(&a).cloned().unwrap_or(a);
+        let b = rekeying.get(&b).cloned().unwrap_or(b);
+        (a, b).into()
     }
 }
 
@@ -107,7 +135,7 @@ impl Into<(VertexKey, VertexKey)> for ArcKey {
     }
 }
 
-impl OpaqueKey for ArcKey {
+impl Key for ArcKey {
     type Inner = (VertexKey, VertexKey);
 
     fn from_inner(key: Self::Inner) -> Self {
@@ -119,7 +147,7 @@ impl OpaqueKey for ArcKey {
     }
 }
 
-/// View of an [`Arc`] entity.
+/// View of an arc entity.
 ///
 /// An arc from a vertex $A$ to a vertex $B$ is notated $\overrightarrow{AB}$.
 /// This is shorthand for the path notation $\overrightarrow{(A,B)}$.
@@ -165,7 +193,6 @@ impl OpaqueKey for ArcKey {
 ///     .unwrap();
 /// ```
 ///
-/// [`Arc`]: crate::graph::Arc
 /// [`MeshGraph`]: crate::graph::MeshGraph
 /// [`graph`]: crate::graph
 pub struct ArcView<B>
@@ -246,6 +273,34 @@ where
     /// ```
     pub fn into_ref(self) -> ArcView<&'a M> {
         self.inner.into_ref().into()
+    }
+}
+
+impl<B, M, G> ArcView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get<'a>(&'a self) -> &'a G::Arc
+    where
+        G: 'a,
+    {
+        self.inner.get()
+    }
+}
+
+impl<B, M, G> ArcView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Arc
+    where
+        G: 'a,
+    {
+        self.inner.get_mut()
     }
 }
 
@@ -751,7 +806,7 @@ where
     ///     let data = data.into_geometry();
     ///     input
     ///         .into_iter()
-    ///         .find(|vertex| vertex.data == data)
+    ///         .find(|vertex| *vertex.get() == data)
     ///         .map(|vertex| vertex.key())
     /// }
     ///
@@ -1071,14 +1126,25 @@ where
     }
 }
 
-/// Orphan view of an [`Arc`] entity.
-///
-/// [`Arc`]: crate::graph::Arc
+/// Orphan view of an arc entity.
 pub struct ArcOrphan<'a, G>
 where
     G: GraphData,
 {
     inner: Orphan<'a, Arc<G>>,
+}
+
+impl<'a, G> ArcOrphan<'a, G>
+where
+    G: 'a + GraphData,
+{
+    pub fn get(&self) -> &G::Arc {
+        self.inner.get()
+    }
+
+    pub fn get_mut(&mut self) -> &mut G::Arc {
+        self.inner.get_mut()
+    }
 }
 
 impl<'a, G> Borrow<ArcKey> for ArcOrphan<'a, G>
@@ -1102,32 +1168,12 @@ where
     }
 }
 
-impl<'a, G> Deref for ArcOrphan<'a, G>
-where
-    G: GraphData,
-{
-    type Target = Arc<G>;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner.deref()
-    }
-}
-
-impl<'a, G> DerefMut for ArcOrphan<'a, G>
-where
-    G: GraphData,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.deref_mut()
-    }
-}
-
 impl<'a, G> Eq for ArcOrphan<'a, G> where G: GraphData {}
 
 impl<'a, M, G> From<ArcView<&'a mut M>> for ArcOrphan<'a, G>
 where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(arc: ArcView<&'a mut M>) -> Self {
         Orphan::from(arc.inner).into()
@@ -1146,7 +1192,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Arc<G>>> for ArcOrphan<'a, G>
 where
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Arc<G>>) -> Self {
         ArcOrphan { inner: view.into() }
@@ -1183,16 +1229,16 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub data: G::Edge,
+    pub(in crate) data: G::Edge,
     /// Required key into the leading arc.
-    pub(in crate::graph) arc: ArcKey,
+    pub(in crate) arc: ArcKey,
 }
 
 impl<G> Edge<G>
 where
     G: GraphData,
 {
-    pub(in crate::graph) fn new(arc: ArcKey, geometry: G::Edge) -> Self {
+    pub fn new(arc: ArcKey, geometry: G::Edge) -> Self {
         Edge {
             data: geometry,
             arc,
@@ -1205,14 +1251,29 @@ where
     G: GraphData,
 {
     type Key = EdgeKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = SlotEntityMap<Self>;
+}
+
+impl<G> Payload for Edge<G>
+where
+    G: GraphData,
+{
+    type Data = G::Edge;
+
+    fn get(&self) -> &Self::Data {
+        &self.data
+    }
+
+    fn get_mut(&mut self) -> &mut Self::Data {
+        &mut self.data
+    }
 }
 
 /// Edge key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EdgeKey(DefaultKey);
 
-impl OpaqueKey for EdgeKey {
+impl Key for EdgeKey {
     type Inner = DefaultKey;
 
     fn from_inner(key: Self::Inner) -> Self {
@@ -1224,14 +1285,13 @@ impl OpaqueKey for EdgeKey {
     }
 }
 
-/// View of an [`Edge`] entity.
+/// View of an edge entity.
 ///
 /// An edge connecting a vertex $A$ and a vertex $B$ is notated
 /// $\overleftrightarrow{AB}$ or $\overleftrightarrow{BA}$.
 ///
 /// See the [`graph`] module documentation for more information about views.
 ///
-/// [`Edge`]: crate::graph::Edge
 /// [`graph`]: crate::graph
 pub struct EdgeView<B>
 where
@@ -1259,6 +1319,34 @@ where
 {
     pub fn into_ref(self) -> EdgeView<&'a M> {
         self.inner.into_ref().into()
+    }
+}
+
+impl<B, M, G> EdgeView<B>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Edge<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get<'a>(&'a self) -> &'a G::Edge
+    where
+        G: 'a,
+    {
+        self.inner.get()
+    }
+}
+
+impl<B, M, G> EdgeView<B>
+where
+    B: ReborrowMut<Target = M>,
+    M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut G::Edge
+    where
+        G: 'a,
+    {
+        self.inner.get_mut()
     }
 }
 
@@ -1457,14 +1545,25 @@ where
     }
 }
 
-/// Orphan view of an [`Edge`] entity.
-///
-/// [`Edge`]: crate::graph::Edge
+/// Orphan view of an edge entity.
 pub struct EdgeOrphan<'a, G>
 where
     G: GraphData,
 {
     inner: Orphan<'a, Edge<G>>,
+}
+
+impl<'a, G> EdgeOrphan<'a, G>
+where
+    G: 'a + GraphData,
+{
+    pub fn get(&self) -> &G::Edge {
+        self.inner.get()
+    }
+
+    pub fn get_mut(&mut self) -> &mut G::Edge {
+        self.inner.get_mut()
+    }
 }
 
 impl<'a, G> Borrow<EdgeKey> for EdgeOrphan<'a, G>
@@ -1488,32 +1587,12 @@ where
     }
 }
 
-impl<'a, G> Deref for EdgeOrphan<'a, G>
-where
-    G: GraphData,
-{
-    type Target = Edge<G>;
-
-    fn deref(&self) -> &Self::Target {
-        self.inner.deref()
-    }
-}
-
-impl<'a, G> DerefMut for EdgeOrphan<'a, G>
-where
-    G: GraphData,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.deref_mut()
-    }
-}
-
 impl<'a, G> Eq for EdgeOrphan<'a, G> where G: GraphData {}
 
 impl<'a, M, G> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, G>
 where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(edge: EdgeView<&'a mut M>) -> Self {
         Orphan::from(edge.inner).into()
@@ -1532,7 +1611,7 @@ where
 impl<'a, M, G> From<View<&'a mut M, Edge<G>>> for EdgeOrphan<'a, G>
 where
     M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: GraphData,
+    G: 'a + GraphData,
 {
     fn from(view: View<&'a mut M, Edge<G>>) -> Self {
         EdgeOrphan { inner: view.into() }
@@ -1645,8 +1724,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         VertexCirculator::next(self).map(|key| {
             let vertex = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let vertex = unsafe { mem::transmute::<&'_ mut Vertex<G>, &'a mut Vertex<G>>(vertex) };
-            Orphan::bind_unchecked(vertex, key).into()
+            let data = &mut vertex.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Vertex, &'a mut G::Vertex>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 
@@ -1747,8 +1827,9 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         FaceCirculator::next(self).map(|key| {
             let face = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let face = unsafe { mem::transmute::<&'_ mut Face<G>, &'a mut Face<G>>(face) };
-            Orphan::bind_unchecked(face, key).into()
+            let data = &mut face.data;
+            let data = unsafe { mem::transmute::<&'_ mut G::Face, &'a mut G::Face>(data) };
+            Orphan::bind_unchecked(data, key).into()
         })
     }
 
