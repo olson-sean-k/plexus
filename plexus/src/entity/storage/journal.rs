@@ -171,7 +171,7 @@ where
     }
 }
 
-// TODO: Is a general implementation possible? See `Journaled`.
+// TODO: Is a general implementation possible? See `AsStorage`.
 impl<E, K> AsStorage<E> for Journaled<FnvEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
@@ -185,7 +185,7 @@ where
     }
 }
 
-// TODO: Is a general implementation possible? See `Journaled`.
+// TODO: Is a general implementation possible? See `AsStorage`.
 impl<E, K> AsStorage<E> for Journaled<SlotEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = SlotEntityMap<E>>,
@@ -199,7 +199,7 @@ where
     }
 }
 
-// TODO: Is a general implementation possible? See `Journaled`.
+// TODO: Is a general implementation possible? See `AsStorage`.
 impl<E, K> AsStorageMut<E> for Journaled<FnvEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = FnvEntityMap<E>>,
@@ -213,7 +213,7 @@ where
     }
 }
 
-// TODO: Is a general implementation possible? See `Journaled`.
+// TODO: Is a general implementation possible? See `AsStorage`.
 impl<E, K> AsStorageMut<E> for Journaled<SlotEntityMap<E>, E>
 where
     E: Entity<Key = K, Storage = SlotEntityMap<E>>,
@@ -315,6 +315,16 @@ where
                     })
                 })),
         )
+    }
+}
+
+impl<T, E> From<T> for Journaled<T, E>
+where
+    T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
+    E: Entity<Storage = T>,
+{
+    fn from(storage: T) -> Self {
+        Journaled::transact(storage)
     }
 }
 

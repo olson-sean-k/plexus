@@ -12,7 +12,7 @@ use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceView, Ring};
 use crate::graph::mutation::path::{self, PathExtrudeCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{Mutate, Transact};
@@ -23,6 +23,8 @@ use Selector::ByKey;
 // TODO: `Path`s are non-trivial to copy, unlike views. The use of `to_ref` is
 //       expensive. Borrowing variants of associated functions should probably
 //       provide bespoke implementations rather than using `to_ref`.
+
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Non-intersecting path.
 ///
@@ -487,6 +489,7 @@ where
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent())
     }
 

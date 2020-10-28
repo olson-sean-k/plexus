@@ -157,11 +157,14 @@ where
     R: Grouping,
     Vec<R::Group>: IndexBuffer<R>,
 {
-    type Output = MeshBuffer<R, G>;
+    type Commit = MeshBuffer<R, G>;
+    type Abort = ();
     type Error = BufferError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let BufferBuilder { indices, vertices } = self;
         Ok(MeshBuffer::from_raw_buffers_unchecked(indices, vertices))
     }
+
+    fn abort(self) -> Self::Abort {}
 }

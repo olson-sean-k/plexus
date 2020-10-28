@@ -16,28 +16,6 @@ pub type OwnedCore<G> = Core<
     <Face<G> as Entity>::Storage,
 >;
 
-/// A complete and ephemeral core with immutable references to all of its
-/// storage.
-#[cfg(not(all(nightly, feature = "unstable")))]
-pub type RefCore<'a, G> = Core<
-    G,
-    &'a StorageObject<Vertex<G>>,
-    &'a StorageObject<Arc<G>>,
-    &'a StorageObject<Edge<G>>,
-    &'a StorageObject<Face<G>>,
->;
-
-/// A complete and ephemeral core with immutable references to all of its
-/// storage.
-#[cfg(all(nightly, feature = "unstable"))]
-pub type RefCore<'a, G> = Core<
-    G,
-    &'a StorageObject<'a, Vertex<G>>,
-    &'a StorageObject<'a, Arc<G>>,
-    &'a StorageObject<'a, Edge<G>>,
-    &'a StorageObject<'a, Face<G>>,
->;
-
 /// Adaptable graph representation that can incorporate arbitrary storage.
 ///
 /// Cores act as a container for storage that comprises a graph and allow

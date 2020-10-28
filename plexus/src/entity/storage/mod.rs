@@ -6,7 +6,6 @@ use std::hash::Hash;
 
 use crate::entity::{Entity, Payload};
 
-// TODO: Should this module be flattened or expose sub-modules?
 pub use crate::entity::storage::hash::FnvEntityMap;
 pub use crate::entity::storage::journal::{Journaled, Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;
@@ -153,6 +152,11 @@ where
     fn fuse(self, source: M) -> Self::Output;
 }
 
+// TODO: It may not be possible for storage wrapper types to implement this
+//       generally for all underlying storage types when using trait objects. An
+//       input type parameter for the wrapped storage type may be required with
+//       an implementation for each type that can be wrapped. Is there some way
+//       to support blanket implementations?
 pub trait AsStorage<E>
 where
     E: Entity,

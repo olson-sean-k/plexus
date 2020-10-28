@@ -21,11 +21,13 @@ use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
 use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView};
 use crate::graph::geometry::{VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
 use crate::transact::{Mutate, Transact};
 use crate::IteratorExt as _;
+
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Vertex entity.
 #[derivative(Clone, Copy, Debug, Hash)]
@@ -577,6 +579,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| vertex::remove(mutation, cache))
             .map(|_| ())
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 }

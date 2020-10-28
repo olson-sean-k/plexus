@@ -25,7 +25,7 @@ use crate::graph::mutation::face::{
     self, FaceBridgeCache, FaceExtrudeCache, FaceInsertCache, FacePokeCache, FaceRemoveCache,
     FaceSplitCache,
 };
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
@@ -33,6 +33,8 @@ use crate::transact::{Mutate, Transact};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
+
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
 where
@@ -579,6 +581,7 @@ where
         Ok(Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::split(mutation, cache))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent())
     }
 
@@ -670,6 +673,7 @@ where
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::bridge(mutation, cache))
+            .map_err(|(_, error)| error)
             .expect_consistent();
         Ok(())
     }
@@ -744,6 +748,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::poke_with(mutation, cache, f))
             .map(|(storage, vertex)| Bind::bind(storage, vertex).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 
@@ -859,6 +864,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+            .map_err(|(_, error)| error)
             .expect_consistent()
     }
 
@@ -872,6 +878,7 @@ where
         Mutation::replace(storage, Default::default())
             .commit_with(|mutation| face::remove(mutation, cache))
             .map(|(storage, face)| ArcView::bind(storage, face.arc))
+            .map_err(|(_, error)| error)
             .expect_consistent()
             .map(|arc| arc.into_ring())
     }
@@ -1400,6 +1407,7 @@ where
                     face::insert_with(mutation, cache, || (Default::default(), f()))
                 })
                 .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
+                .map_err(|(_, error)| error)
                 .expect_consistent()
         }
     }

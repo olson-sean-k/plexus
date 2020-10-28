@@ -287,7 +287,7 @@ use crate::graph::data::Parametric;
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceInsertCache;
-use crate::graph::mutation::{Consistent, Mutation};
+use crate::graph::mutation::{Consistent, Immediate};
 use crate::graph::vertex::Vertex;
 use crate::index::{Flat, FromIndexer, Grouping, HashIndexer, IndexBuffer, IndexVertices, Indexer};
 use crate::primitive::decompose::IntoVertices;
@@ -308,6 +308,8 @@ pub use crate::graph::vertex::{VertexKey, VertexOrphan, VertexView};
 
 pub use Selector::ByIndex;
 pub use Selector::ByKey;
+
+type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Errors concerning [`MeshGraph`]s.
 ///
@@ -1291,7 +1293,7 @@ where
             let geometry = geometry.into_geometry();
             mutation::face::insert_with(&mut mutation, cache, || (Default::default(), geometry))?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1329,7 +1331,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1381,7 +1383,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 
@@ -1467,7 +1469,7 @@ where
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
         }
-        mutation.commit()
+        mutation.commit().map_err(|(_, error)| error)
     }
 }
 

@@ -4,7 +4,7 @@ use crate::graph::data::GraphData;
 use crate::graph::face::FaceKey;
 use crate::graph::mutation::face::{self, FaceInsertCache};
 use crate::graph::mutation::vertex;
-use crate::graph::mutation::Mutation;
+use crate::graph::mutation::{Immediate, Mutation};
 use crate::graph::vertex::VertexKey;
 use crate::graph::{GraphError, MeshGraph};
 use crate::transact::{ClosedInput, Transact};
@@ -13,7 +13,7 @@ pub struct GraphBuilder<G>
 where
     G: GraphData,
 {
-    mutation: Mutation<MeshGraph<G>>,
+    mutation: Mutation<Immediate<MeshGraph<G>>>,
 }
 
 impl<G> Default for GraphBuilder<G>
@@ -56,13 +56,16 @@ impl<G> Transact<<Self as ClosedInput>::Input> for GraphBuilder<G>
 where
     G: GraphData,
 {
-    type Output = MeshGraph<G>;
+    type Commit = MeshGraph<G>;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let GraphBuilder { mutation } = self;
         mutation.commit()
     }
+
+    fn abort(self) -> Self::Abort {}
 }
 
 impl<G> SurfaceBuilder for GraphBuilder<G>

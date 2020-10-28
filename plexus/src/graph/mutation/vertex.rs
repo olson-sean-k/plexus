@@ -1,35 +1,32 @@
 use crate::entity::borrow::Reborrow;
 use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
-use crate::entity::Entity;
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
-use crate::graph::mutation::{Consistent, Mutable, Mutation};
+use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
-use crate::transact::Transact;
+use crate::transact::{Bypass, Transact};
 
-type OwnedCore<G> = Core<G, <Vertex<G> as Entity>::Storage, (), (), ()>;
+type ModalCore<P> = Core<Data<<P as Mode>::Graph>, <P as Mode>::VertexStorage, (), (), ()>;
 #[cfg(not(all(nightly, feature = "unstable")))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
 #[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
 
-pub struct VertexMutation<M>
+pub struct VertexMutation<P>
 where
-    M: Parametric,
+    P: Mode,
 {
-    // TODO: Use and require journaled storage.
-    storage: <Vertex<Data<M>> as Entity>::Storage,
+    storage: P::VertexStorage,
 }
 
-impl<M, G> VertexMutation<M>
+impl<P> VertexMutation<P>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    pub fn to_ref_core(&self) -> RefCore<G> {
+    pub fn to_ref_core(&self) -> RefCore<Data<P::Graph>> {
         Core::empty().fuse(self.storage.as_storage())
     }
 
@@ -45,7 +42,7 @@ where
 
     fn with_vertex_mut<T, F>(&mut self, a: VertexKey, mut f: F) -> Result<T, GraphError>
     where
-        F: FnMut(&mut Vertex<G>) -> T,
+        F: FnMut(&mut Vertex<Data<P::Graph>>) -> T,
     {
         let vertex = self
             .storage
@@ -56,46 +53,84 @@ where
     }
 }
 
-impl<M, G> AsStorage<Vertex<G>> for VertexMutation<M>
+impl<P> AsStorage<Vertex<Data<P::Graph>>> for VertexMutation<P>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
-        &self.storage
+    fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
+        self.storage.as_storage()
     }
 }
 
-impl<M, G> From<OwnedCore<G>> for VertexMutation<M>
+impl<M> Bypass<ModalCore<Immediate<M>>> for VertexMutation<Immediate<M>>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    M: Parametric,
 {
-    fn from(core: OwnedCore<G>) -> Self {
+    fn bypass(self) -> Self::Commit {
+        let VertexMutation {
+            storage: vertices, ..
+        } = self;
+        Core::empty().fuse(vertices)
+    }
+}
+
+impl<P> From<ModalCore<P>> for VertexMutation<P>
+where
+    P: Mode,
+{
+    fn from(core: ModalCore<P>) -> Self {
         let (vertices, ..) = core.unfuse();
         VertexMutation { storage: vertices }
     }
 }
 
-impl<M, G> Transact<OwnedCore<G>> for VertexMutation<M>
+impl<M> Transact<ModalCore<Immediate<M>>> for VertexMutation<Immediate<M>>
 where
-    M: Parametric<Data = G>,
-    G: GraphData,
+    M: Parametric,
 {
-    type Output = OwnedCore<G>;
+    type Commit = ModalCore<Immediate<M>>;
+    type Abort = ();
     type Error = GraphError;
 
-    fn commit(self) -> Result<Self::Output, Self::Error> {
+    // TODO: Refactor consistency checks and share them among `commit`
+    //       implementations.
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let VertexMutation {
             storage: vertices, ..
         } = self;
         // In a consistent graph, all vertices must have a leading arc.
-        for (_, vertex) in vertices.iter() {
+        for (_, vertex) in vertices.as_storage().iter() {
             if vertex.arc.is_none() {
-                return Err(GraphError::TopologyMalformed);
+                return Err(((), GraphError::TopologyMalformed));
             }
         }
         Ok(Core::empty().fuse(vertices))
+    }
+
+    fn abort(self) -> Self::Abort {}
+}
+
+impl<M> Transact<ModalCore<Transacted<M>>> for VertexMutation<Transacted<M>>
+where
+    M: Parametric,
+{
+    type Commit = ModalCore<Transacted<M>>;
+    type Abort = ModalCore<Transacted<M>>;
+    type Error = GraphError;
+
+    // TODO: Ensure that faces are in a consistent state.
+    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
+        let VertexMutation {
+            storage: vertices, ..
+        } = self;
+        Ok(Core::empty().fuse(vertices))
+    }
+
+    fn abort(self) -> Self::Abort {
+        let VertexMutation {
+            storage: vertices, ..
+        } = self;
+        Core::empty().fuse(vertices)
     }
 }
 
@@ -114,10 +149,11 @@ impl VertexRemoveCache {
     }
 }
 
-pub fn insert<M, N>(mut mutation: N, geometry: <Data<M> as GraphData>::Vertex) -> VertexKey
+pub fn insert<N, P>(mut mutation: N, geometry: <Data<P::Graph> as GraphData>::Vertex) -> VertexKey
 where
-    N: AsMut<Mutation<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     mutation
         .as_mut()
@@ -126,13 +162,14 @@ where
         .insert(Vertex::new(geometry))
 }
 
-pub fn remove<M, N>(
+pub fn remove<N, P>(
     mut mutation: N,
     cache: VertexRemoveCache,
-) -> Result<Vertex<Data<M>>, GraphError>
+) -> Result<Vertex<Data<P::Graph>>, GraphError>
 where
-    N: AsMut<Mutation<M>>,
-    M: Mutable,
+    N: AsMut<Mutation<P>>,
+    P: Mode,
+    P::Graph: Mutable,
 {
     let VertexRemoveCache { cache } = cache;
     for cache in cache {

@@ -393,7 +393,7 @@ impl<R, G> Buildable for MeshBuffer<R, G>
 where
     R: Grouping,
     Vec<R::Group>: IndexBuffer<R>,
-    BufferBuilder<R, G>: MeshBuilder<Error = BufferError, Output = Self, Vertex = G, Facet = ()>,
+    BufferBuilder<R, G>: MeshBuilder<Error = BufferError, Commit = Self, Vertex = G, Facet = ()>,
 {
     type Builder = BufferBuilder<R, G>;
     type Error = BufferError;

@@ -73,7 +73,7 @@ use crate::transact::ClosedInput;
 /// [`MeshBuilder`]: crate::builder::MeshBuilder
 pub trait Buildable: Sized {
     type Builder: MeshBuilder<
-        Output = Self,
+        Commit = Self,
         Error = Self::Error,
         Vertex = Self::Vertex,
         Facet = Self::Facet,
@@ -147,8 +147,8 @@ pub trait MeshBuilder: ClosedInput {
     /// Returns a latent error if the constructed surfaces and facets are
     /// incompatible with the underlying data structure. May return other
     /// errors depending on the details of the implementation.
-    fn build(self) -> Result<Self::Output, Self::Error> {
-        self.commit()
+    fn build(self) -> Result<Self::Commit, Self::Error> {
+        self.commit().map_err(|(_, error)| error)
     }
 }
 
