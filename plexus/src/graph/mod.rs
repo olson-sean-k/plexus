@@ -277,7 +277,7 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, Key, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, Key, StorageTarget};
 use crate::entity::view::{Bind, Orphan, View};
 use crate::entity::{Entity, EntityError};
 use crate::geometry::{FromGeometry, IntoGeometry};
@@ -1106,7 +1106,7 @@ impl<G> AsStorage<Vertex<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
+    fn as_storage(&self) -> &StorageTarget<Vertex<G>> {
         self.core.as_storage_of::<Vertex<_>>()
     }
 }
@@ -1115,7 +1115,7 @@ impl<G> AsStorage<Arc<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Arc<G>> {
+    fn as_storage(&self) -> &StorageTarget<Arc<G>> {
         self.core.as_storage_of::<Arc<_>>()
     }
 }
@@ -1124,7 +1124,7 @@ impl<G> AsStorage<Edge<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Edge<G>> {
+    fn as_storage(&self) -> &StorageTarget<Edge<G>> {
         self.core.as_storage_of::<Edge<_>>()
     }
 }
@@ -1133,7 +1133,7 @@ impl<G> AsStorage<Face<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Face<G>> {
+    fn as_storage(&self) -> &StorageTarget<Face<G>> {
         self.core.as_storage_of::<Face<_>>()
     }
 }
@@ -1142,7 +1142,7 @@ impl<G> AsStorageMut<Vertex<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Vertex<G>> {
         self.core.as_storage_mut_of::<Vertex<_>>()
     }
 }
@@ -1151,7 +1151,7 @@ impl<G> AsStorageMut<Arc<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Arc<G>> {
         self.core.as_storage_mut_of::<Arc<_>>()
     }
 }
@@ -1160,7 +1160,7 @@ impl<G> AsStorageMut<Edge<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Edge<G>> {
         self.core.as_storage_mut_of::<Edge<_>>()
     }
 }
@@ -1169,7 +1169,7 @@ impl<G> AsStorageMut<Face<G>> for MeshGraph<G>
 where
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Face<G>> {
         self.core.as_storage_mut_of::<Face<_>>()
     }
 }

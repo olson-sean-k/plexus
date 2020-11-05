@@ -8,7 +8,7 @@ use crate::entity::storage::hash::FnvEntityMap;
 use crate::entity::storage::slot::{SlotEntityMap, SlotKey};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, DependentKey, Dispatch, Enumerate, Get, Insert, InsertWithKey, Key,
-    Remove, Storage, StorageObject,
+    Remove, Storage, StorageTarget,
 };
 use crate::entity::{Entity, Payload};
 
@@ -178,7 +178,7 @@ where
     K: Key,
     K::Inner: 'static + Eq + Hash,
 {
-    fn as_storage(&self) -> &StorageObject<E> {
+    fn as_storage(&self) -> &StorageTarget<E> {
         // It is essential that this returns `self` and does NOT simply forward
         // to the `storage` field.
         self
@@ -192,7 +192,7 @@ where
     K: Key,
     K::Inner: 'static + SlotKey,
 {
-    fn as_storage(&self) -> &StorageObject<E> {
+    fn as_storage(&self) -> &StorageTarget<E> {
         // It is essential that this returns `self` and does NOT simply forward
         // to the `storage` field.
         self
@@ -206,7 +206,7 @@ where
     K: Key,
     K::Inner: 'static + Eq + Hash,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         // It is essential that this returns `self` and does NOT simply forward
         // to the `storage` field.
         self
@@ -220,7 +220,7 @@ where
     K: Key,
     K::Inner: 'static + SlotKey,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         // It is essential that this returns `self` and does NOT simply forward
         // to the `storage` field.
         self
@@ -233,7 +233,7 @@ where
     T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
     E: Entity<Storage = T>,
 {
-    type Object = StorageObject<E>;
+    type Target = StorageTarget<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
@@ -243,7 +243,7 @@ where
     T: Default + Dispatch<E> + JournalState + Storage<E> + Unjournaled,
     E: Entity<Storage = T>,
 {
-    type Object<'a> where E: 'a = StorageObject<'a, E>;
+    type Target<'a> where E: 'a = StorageTarget<'a, E>;
 }
 
 impl<T, E> Enumerate<E> for Journaled<T, E>

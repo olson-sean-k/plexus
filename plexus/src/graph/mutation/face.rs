@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageTarget};
 use crate::entity::view::{Bind, ClosedView, Rebind, Unbind};
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -27,18 +27,18 @@ type ModalCore<P> = Core<
 #[cfg(not(all(nightly, feature = "unstable")))]
 pub type RefCore<'a, G> = Core<
     G,
-    &'a StorageObject<Vertex<G>>,
-    &'a StorageObject<Arc<G>>,
-    &'a StorageObject<Edge<G>>,
-    &'a StorageObject<Face<G>>,
+    &'a StorageTarget<Vertex<G>>,
+    &'a StorageTarget<Arc<G>>,
+    &'a StorageTarget<Edge<G>>,
+    &'a StorageTarget<Face<G>>,
 >;
 #[cfg(all(nightly, feature = "unstable"))]
 pub type RefCore<'a, G> = Core<
     G,
-    &'a StorageObject<'a, Vertex<G>>,
-    &'a StorageObject<'a, Arc<G>>,
-    &'a StorageObject<'a, Edge<G>>,
-    &'a StorageObject<'a, Face<G>>,
+    &'a StorageTarget<'a, Vertex<G>>,
+    &'a StorageTarget<'a, Arc<G>>,
+    &'a StorageTarget<'a, Edge<G>>,
+    &'a StorageTarget<'a, Face<G>>,
 >;
 
 pub struct FaceMutation<P>
@@ -153,7 +153,7 @@ impl<P> AsStorage<Face<Data<P::Graph>>> for FaceMutation<P>
 where
     P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Face<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Face<Data<P::Graph>>> {
         self.storage.as_storage()
     }
 }

@@ -1,5 +1,5 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageTarget};
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
@@ -11,9 +11,9 @@ use crate::transact::{Bypass, Transact};
 
 type ModalCore<P> = Core<Data<<P as Mode>::Graph>, <P as Mode>::VertexStorage, (), (), ()>;
 #[cfg(not(all(nightly, feature = "unstable")))]
-type RefCore<'a, G> = Core<G, &'a StorageObject<Vertex<G>>, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a StorageTarget<Vertex<G>>, (), (), ()>;
 #[cfg(all(nightly, feature = "unstable"))]
-type RefCore<'a, G> = Core<G, &'a StorageObject<'a, Vertex<G>>, (), (), ()>;
+type RefCore<'a, G> = Core<G, &'a StorageTarget<'a, Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<P>
 where
@@ -57,7 +57,7 @@ impl<P> AsStorage<Vertex<Data<P::Graph>>> for VertexMutation<P>
 where
     P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Vertex<Data<P::Graph>>> {
         self.storage.as_storage()
     }
 }

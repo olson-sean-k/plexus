@@ -11,9 +11,9 @@ pub use crate::entity::storage::journal::{Journaled, Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;
 
 #[cfg(not(all(nightly, feature = "unstable")))]
-pub type StorageObject<E> = <<E as Entity>::Storage as Dispatch<E>>::Object;
+pub type StorageTarget<E> = <<E as Entity>::Storage as Dispatch<E>>::Target;
 #[cfg(all(nightly, feature = "unstable"))]
-pub type StorageObject<'a, E> = <<E as Entity>::Storage as Dispatch<E>>::Object<'a>;
+pub type StorageTarget<'a, E> = <<E as Entity>::Storage as Dispatch<E>>::Target<'a>;
 
 pub type InnerKey<K> = <K as Key>::Inner;
 
@@ -36,7 +36,7 @@ pub trait Dispatch<E>
 where
     E: Entity,
 {
-    type Object: ?Sized + Storage<E>;
+    type Target: ?Sized + Storage<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
@@ -45,7 +45,7 @@ pub trait Dispatch<E>
 where
     E: Entity,
 {
-    type Object<'a>: 'a + ?Sized + Storage<E>
+    type Target<'a>: 'a + ?Sized + Storage<E>
     where
         E: 'a;
 }
@@ -161,7 +161,7 @@ pub trait AsStorage<E>
 where
     E: Entity,
 {
-    fn as_storage(&self) -> &StorageObject<E>;
+    fn as_storage(&self) -> &StorageTarget<E>;
 }
 
 impl<'a, E, T> AsStorage<E> for &'a T
@@ -169,7 +169,7 @@ where
     E: Entity,
     T: AsStorage<E> + ?Sized,
 {
-    fn as_storage(&self) -> &StorageObject<E> {
+    fn as_storage(&self) -> &StorageTarget<E> {
         <T as AsStorage<E>>::as_storage(self)
     }
 }
@@ -179,7 +179,7 @@ where
     E: Entity,
     T: AsStorage<E> + ?Sized,
 {
-    fn as_storage(&self) -> &StorageObject<E> {
+    fn as_storage(&self) -> &StorageTarget<E> {
         <T as AsStorage<E>>::as_storage(self)
     }
 }
@@ -188,7 +188,7 @@ pub trait AsStorageMut<E>: AsStorage<E>
 where
     E: Entity,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E>;
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E>;
 }
 
 impl<'a, E, T> AsStorageMut<E> for &'a mut T
@@ -196,13 +196,13 @@ where
     E: Entity,
     T: AsStorageMut<E> + ?Sized,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         <T as AsStorageMut<E>>::as_storage_mut(self)
     }
 }
 
 pub trait AsStorageOf {
-    fn as_storage_of<E>(&self) -> &StorageObject<E>
+    fn as_storage_of<E>(&self) -> &StorageTarget<E>
     where
         E: Entity,
         Self: AsStorage<E>,
@@ -210,7 +210,7 @@ pub trait AsStorageOf {
         self.as_storage()
     }
 
-    fn as_storage_mut_of<E>(&mut self) -> &mut StorageObject<E>
+    fn as_storage_mut_of<E>(&mut self) -> &mut StorageTarget<E>
     where
         E: Entity,
         Self: AsStorageMut<E>,

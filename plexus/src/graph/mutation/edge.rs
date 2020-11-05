@@ -2,7 +2,7 @@ use fool::and;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageTarget};
 use crate::entity::view::{Bind, ClosedView, Rebind};
 use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -29,17 +29,17 @@ type ModalCore<P> = Core<
 #[cfg(not(all(nightly, feature = "unstable")))]
 type RefCore<'a, G> = Core<
     G,
-    &'a StorageObject<Vertex<G>>,
-    &'a StorageObject<Arc<G>>,
-    &'a StorageObject<Edge<G>>,
+    &'a StorageTarget<Vertex<G>>,
+    &'a StorageTarget<Arc<G>>,
+    &'a StorageTarget<Edge<G>>,
     (),
 >;
 #[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<
     G,
-    &'a StorageObject<'a, Vertex<G>>,
-    &'a StorageObject<'a, Arc<G>>,
-    &'a StorageObject<'a, Edge<G>>,
+    &'a StorageTarget<'a, Vertex<G>>,
+    &'a StorageTarget<'a, Arc<G>>,
+    &'a StorageTarget<'a, Edge<G>>,
     (),
 >;
 
@@ -117,7 +117,7 @@ impl<P> AsStorage<Arc<Data<P::Graph>>> for EdgeMutation<P>
 where
     P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Arc<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Arc<Data<P::Graph>>> {
         self.storage.0.as_storage()
     }
 }
@@ -126,7 +126,7 @@ impl<P> AsStorage<Edge<Data<P::Graph>>> for EdgeMutation<P>
 where
     P: Mode,
 {
-    fn as_storage(&self) -> &StorageObject<Edge<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Edge<Data<P::Graph>>> {
         self.storage.1.as_storage()
     }
 }

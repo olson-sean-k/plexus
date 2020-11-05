@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, StorageTarget};
 use crate::entity::Entity;
 use crate::graph::data::{GraphData, Parametric};
 use crate::graph::edge::{Arc, Edge};
@@ -84,7 +84,7 @@ where
     V: AsStorage<Vertex<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<G>> {
+    fn as_storage(&self) -> &StorageTarget<Vertex<G>> {
         self.vertices.as_storage()
     }
 }
@@ -94,7 +94,7 @@ where
     A: AsStorage<Arc<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Arc<G>> {
+    fn as_storage(&self) -> &StorageTarget<Arc<G>> {
         self.arcs.as_storage()
     }
 }
@@ -104,7 +104,7 @@ where
     E: AsStorage<Edge<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Edge<G>> {
+    fn as_storage(&self) -> &StorageTarget<Edge<G>> {
         self.edges.as_storage()
     }
 }
@@ -114,7 +114,7 @@ where
     F: AsStorage<Face<G>>,
     G: GraphData,
 {
-    fn as_storage(&self) -> &StorageObject<Face<G>> {
+    fn as_storage(&self) -> &StorageTarget<Face<G>> {
         self.faces.as_storage()
     }
 }
@@ -124,7 +124,7 @@ where
     V: AsStorageMut<Vertex<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Vertex<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Vertex<G>> {
         self.vertices.as_storage_mut()
     }
 }
@@ -134,7 +134,7 @@ where
     A: AsStorageMut<Arc<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Arc<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Arc<G>> {
         self.arcs.as_storage_mut()
     }
 }
@@ -144,7 +144,7 @@ where
     E: AsStorageMut<Edge<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Edge<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Edge<G>> {
         self.edges.as_storage_mut()
     }
 }
@@ -154,7 +154,7 @@ where
     F: AsStorageMut<Face<G>>,
     G: GraphData,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<Face<G>> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<Face<G>> {
         self.faces.as_storage_mut()
     }
 }

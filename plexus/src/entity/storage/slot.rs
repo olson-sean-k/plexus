@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 use crate::entity::storage::journal::{JournalState, SyntheticKey, Unjournaled};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Enumerate, Get, IndependentStorage, InnerKey, Insert, Key,
-    Remove, StorageObject,
+    Remove, StorageTarget,
 };
 use crate::entity::{Entity, Payload};
 
@@ -61,7 +61,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    fn as_storage(&self) -> &StorageObject<E> {
+    fn as_storage(&self) -> &StorageTarget<E> {
         self
     }
 }
@@ -72,7 +72,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    fn as_storage_mut(&mut self) -> &mut StorageObject<E> {
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         self
     }
 }
@@ -84,7 +84,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    type Object = dyn 'static + IndependentStorage<E>;
+    type Target = dyn 'static + IndependentStorage<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
@@ -95,7 +95,7 @@ where
     K: Key,
     InnerKey<K>: 'static + SlotKey,
 {
-    type Object<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
+    type Target<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
 }
 
 impl<E> Enumerate<E> for HopSlotMap<InnerKey<E::Key>, E>

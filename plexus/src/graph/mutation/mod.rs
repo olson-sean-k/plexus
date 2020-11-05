@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Journaled, StorageObject};
+use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Journaled, StorageTarget};
 use crate::entity::Entity;
 use crate::graph::core::{Core, OwnedCore};
 use crate::graph::data::{Data, Parametric};
@@ -137,7 +137,7 @@ where
     P: Mode,
     P::Graph: Consistent + From<OwnedCore<Data<P::Graph>>> + Into<OwnedCore<Data<P::Graph>>>,
 {
-    fn as_storage(&self) -> &StorageObject<Arc<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Arc<Data<P::Graph>>> {
         self.inner.to_ref_core().unfuse().1
     }
 }
@@ -147,7 +147,7 @@ where
     P: Mode,
     P::Graph: Consistent + From<OwnedCore<Data<P::Graph>>> + Into<OwnedCore<Data<P::Graph>>>,
 {
-    fn as_storage(&self) -> &StorageObject<Edge<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Edge<Data<P::Graph>>> {
         self.inner.to_ref_core().unfuse().2
     }
 }
@@ -157,7 +157,7 @@ where
     P: Mode,
     P::Graph: Consistent + From<OwnedCore<Data<P::Graph>>> + Into<OwnedCore<Data<P::Graph>>>,
 {
-    fn as_storage(&self) -> &StorageObject<Face<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Face<Data<P::Graph>>> {
         self.inner.to_ref_core().unfuse().3
     }
 }
@@ -167,7 +167,7 @@ where
     P: Mode,
     P::Graph: Consistent + From<OwnedCore<Data<P::Graph>>> + Into<OwnedCore<Data<P::Graph>>>,
 {
-    fn as_storage(&self) -> &StorageObject<Vertex<Data<P::Graph>>> {
+    fn as_storage(&self) -> &StorageTarget<Vertex<Data<P::Graph>>> {
         self.inner.to_ref_core().unfuse().0
     }
 }
