@@ -159,6 +159,25 @@ where
     }
 }
 
+impl<G, V, A, E, F> Default for Core<G, V, A, E, F>
+where
+    G: GraphData,
+    V: Default,
+    A: Default,
+    E: Default,
+    F: Default,
+{
+    fn default() -> Self {
+        Core {
+            vertices: Default::default(),
+            arcs: Default::default(),
+            edges: Default::default(),
+            faces: Default::default(),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<G, V, A, E, F> Fuse<V, Vertex<G>> for Core<G, (), A, E, F>
 where
     V: AsStorage<Vertex<G>>,

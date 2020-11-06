@@ -277,9 +277,9 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Fuse, Key, StorageTarget};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, StorageTarget};
 use crate::entity::view::{Bind, Orphan, View};
-use crate::entity::{Entity, EntityError};
+use crate::entity::EntityError;
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
@@ -556,13 +556,7 @@ where
     /// let mut graph = MeshGraph::<()>::new();
     /// ```
     pub fn new() -> Self {
-        MeshGraph::from(
-            Core::empty()
-                .fuse(<Vertex<G> as Entity>::Storage::default())
-                .fuse(<Arc<G> as Entity>::Storage::default())
-                .fuse(<Edge<G> as Entity>::Storage::default())
-                .fuse(<Face<G> as Entity>::Storage::default()),
-        )
+        MeshGraph::from(Core::default())
     }
 
     /// Gets the number of vertices in the graph.
