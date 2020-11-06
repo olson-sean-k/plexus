@@ -686,7 +686,7 @@ where
         // This should never fail here.
         let cache = EdgeSplitCache::from_arc(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
-        Mutation::replace(storage, Default::default())
+        Mutation::take(storage)
             .bypass_or_commit_with(|mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| Bind::bind(storage, m).expect_consistent())
             .map_err(|(_, error)| error)
@@ -834,7 +834,7 @@ where
         })?;
         let cache = ArcBridgeCache::from_arc(self.to_ref(), destination)?;
         let (storage, _) = self.unbind();
-        Ok(Mutation::replace(storage, Default::default())
+        Ok(Mutation::take(storage)
             .bypass_or_commit_with(|mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .map_err(|(_, error)| error)
@@ -937,7 +937,7 @@ where
     {
         let cache = ArcExtrudeCache::from_arc(self.to_ref())?;
         let (storage, _) = self.unbind();
-        Ok(Mutation::replace(storage, Default::default())
+        Ok(Mutation::take(storage)
             .bypass_or_commit_with(|mutation| edge::extrude_with(mutation, cache, f))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .map_err(|(_, error)| error)
@@ -957,7 +957,7 @@ where
         // This should never fail here.
         let cache = EdgeRemoveCache::from_arc(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
-        Mutation::replace(storage, Default::default())
+        Mutation::take(storage)
             .bypass_or_commit_with(|mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| Bind::bind(storage, a))
             .map_err(|(_, error)| error)

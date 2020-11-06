@@ -481,7 +481,7 @@ where
     {
         let cache = PathExtrudeCache::from_path(self.to_ref())?;
         let Path { storage, .. } = self;
-        Ok(Mutation::replace(storage, Default::default())
+        Ok(Mutation::take(storage)
             .bypass_or_commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .map_err(|(_, error)| error)

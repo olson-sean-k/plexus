@@ -580,7 +580,7 @@ where
         // This should never fail here.
         let cache = VertexRemoveCache::from_vertex(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
-        Mutation::replace(storage, Default::default())
+        Mutation::take(storage)
             .bypass_or_commit_with(|mutation| vertex::remove(mutation, cache))
             .map(|_| ())
             .map_err(|(_, error)| error)

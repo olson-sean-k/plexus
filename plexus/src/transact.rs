@@ -94,6 +94,14 @@ pub trait Mutate<T>: Transact<T, Commit = T> {
     {
         Replace::replace(target, replacement)
     }
+
+    fn take(target: &mut T) -> Replace<T, Self>
+    where
+        Self: From<T> + Transact<T>,
+        T: Default,
+    {
+        Replace::take(target)
+    }
 }
 
 impl<T, U> Mutate<U> for T where T: Transact<U, Commit = U> {}
@@ -152,6 +160,13 @@ where
         Replace {
             inner: Some((target, M::from(mutant))),
         }
+    }
+
+    pub fn take(target: &'a mut T) -> Self
+    where
+        T: Default,
+    {
+        Self::replace(target, T::default())
     }
 
     fn drain_and_commit(
