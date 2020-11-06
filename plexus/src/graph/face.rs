@@ -271,14 +271,6 @@ where
         + Parametric<Data = G>,
     G: GraphData,
 {
-    pub fn shortest_metric(
-        &self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
-    ) -> Result<usize, GraphError> {
-        self.ring().shortest_metric(from, to)
-    }
-
     pub fn centroid(&self) -> VertexPosition<G>
     where
         G: FaceCentroid,

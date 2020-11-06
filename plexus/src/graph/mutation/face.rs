@@ -391,7 +391,8 @@ impl FaceSplitCache {
             }
             false
         };
-        face.shortest_metric(source.into(), destination.into())
+        face.ring()
+            .shortest_metric(source.into(), destination.into())
             .and_then(|metric| {
                 if metric <= 1 {
                     Err(GraphError::TopologyMalformed)
