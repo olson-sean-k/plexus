@@ -15,7 +15,7 @@ use crate::graph::mutation::path::{self, PathExtrudeCache};
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
-use crate::transact::{Mutate, Transact};
+use crate::transact::{BypassOrCommit, Mutate};
 use crate::IteratorExt as _;
 
 use Selector::ByKey;
@@ -487,7 +487,7 @@ where
         let cache = PathExtrudeCache::from_path(self.to_ref())?;
         let Path { storage, .. } = self;
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
+            .bypass_or_commit_with(|mutation| path::extrude_contour_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent())

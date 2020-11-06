@@ -29,7 +29,7 @@ use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
-use crate::transact::{Mutate, Transact};
+use crate::transact::{BypassOrCommit, Mutate};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
 use Selector::ByIndex;
@@ -579,7 +579,7 @@ where
         let cache = FaceSplitCache::from_face(self.to_ref(), source, destination)?;
         let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::split(mutation, cache))
+            .bypass_or_commit_with(|mutation| face::split(mutation, cache))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent())
@@ -672,7 +672,7 @@ where
         let cache = FaceBridgeCache::from_face(self.to_ref(), destination)?;
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::bridge(mutation, cache))
+            .bypass_or_commit_with(|mutation| face::bridge(mutation, cache))
             .map_err(|(_, error)| error)
             .expect_consistent();
         Ok(())
@@ -746,7 +746,7 @@ where
         let cache = FacePokeCache::from_face(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::poke_with(mutation, cache, f))
+            .bypass_or_commit_with(|mutation| face::poke_with(mutation, cache, f))
             .map(|(storage, vertex)| Bind::bind(storage, vertex).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent()
@@ -862,7 +862,7 @@ where
         let cache = FaceExtrudeCache::from_face(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::extrude_with(mutation, cache, f))
+            .bypass_or_commit_with(|mutation| face::extrude_with(mutation, cache, f))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent()
@@ -876,7 +876,7 @@ where
         let cache = FaceRemoveCache::from_face(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| face::remove(mutation, cache))
+            .bypass_or_commit_with(|mutation| face::remove(mutation, cache))
             .map(|(storage, face)| ArcView::bind(storage, face.arc))
             .map_err(|(_, error)| error)
             .expect_consistent()
@@ -1403,7 +1403,7 @@ where
             let cache = FaceInsertCache::from_ring(self.to_ref()).expect_consistent();
             let (storage, _) = self.arc.unbind();
             Mutation::replace(storage, Default::default())
-                .commit_with(|mutation| {
+                .bypass_or_commit_with(|mutation| {
                     face::insert_with(mutation, cache, || (Default::default(), f()))
                 })
                 .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())

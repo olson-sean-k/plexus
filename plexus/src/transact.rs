@@ -30,11 +30,11 @@ pub trait Bypass<T>: Transact<T> {
     fn bypass(self) -> Self::Commit;
 }
 
-pub trait MaybeCommit<T>: Bypass<T> {
-    fn maybe_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)>;
+pub trait BypassOrCommit<T>: Bypass<T> {
+    fn bypass_or_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)>;
 
     #[allow(clippy::type_complexity)]
-    fn maybe_commit_with<F, X, E>(
+    fn bypass_or_commit_with<F, X, E>(
         self,
         f: F,
     ) -> Result<(Self::Commit, X), (Self::Abort, Self::Error)>
@@ -44,16 +44,16 @@ pub trait MaybeCommit<T>: Bypass<T> {
 }
 
 #[cfg(test)]
-impl<T, U> MaybeCommit<U> for T
+impl<T, U> BypassOrCommit<U> for T
 where
     T: Bypass<U>,
 {
-    fn maybe_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
+    fn bypass_or_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
         self.commit()
     }
 
     #[allow(clippy::type_complexity)]
-    fn maybe_commit_with<F, X, E>(self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
+    fn bypass_or_commit_with<F, X, E>(self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
     where
         F: FnOnce(&mut T) -> Result<X, E>,
         E: Into<T::Error>,
@@ -63,16 +63,19 @@ where
 }
 
 #[cfg(not(test))]
-impl<T, U> MaybeCommit<U> for T
+impl<T, U> BypassOrCommit<U> for T
 where
     T: Bypass<U>,
 {
-    fn maybe_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
+    fn bypass_or_commit(self) -> Result<T::Commit, (T::Abort, T::Error)> {
         Ok(self.bypass())
     }
 
     #[allow(clippy::type_complexity)]
-    fn maybe_commit_with<F, X, E>(mut self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
+    fn bypass_or_commit_with<F, X, E>(
+        mut self,
+        f: F,
+    ) -> Result<(T::Commit, X), (T::Abort, T::Error)>
     where
         F: FnOnce(&mut T) -> Result<X, E>,
         E: Into<T::Error>,
@@ -171,6 +174,17 @@ where
     }
 }
 
+impl<'a, T, M> Replace<'a, T, M>
+where
+    M: Bypass<T> + From<T> + Mutate<T>,
+{
+    pub fn drain_and_bypass(&mut self) -> &'a mut T {
+        let (target, inner) = self.drain();
+        *target = inner.bypass();
+        target
+    }
+}
+
 impl<'a, T, M> AsRef<M> for Replace<'a, T, M>
 where
     M: From<T> + Mutate<T>,
@@ -186,6 +200,17 @@ where
 {
     fn as_mut(&mut self) -> &mut M {
         &mut self.inner.as_mut().unwrap().1
+    }
+}
+
+impl<'a, T, M> Bypass<&'a mut T> for Replace<'a, T, M>
+where
+    M: Bypass<T> + From<T> + Mutate<T>,
+{
+    fn bypass(mut self) -> Self::Commit {
+        let mutant = self.drain_and_bypass();
+        mem::forget(self);
+        mutant
     }
 }
 

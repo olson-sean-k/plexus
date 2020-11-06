@@ -24,7 +24,7 @@ use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
-use crate::transact::{Mutate, Transact};
+use crate::transact::{BypassOrCommit, Mutate};
 use crate::IteratorExt as _;
 
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
@@ -577,7 +577,7 @@ where
         let cache = VertexRemoveCache::from_vertex(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| vertex::remove(mutation, cache))
+            .bypass_or_commit_with(|mutation| vertex::remove(mutation, cache))
             .map(|_| ())
             .map_err(|(_, error)| error)
             .expect_consistent()

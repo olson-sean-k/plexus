@@ -23,7 +23,7 @@ use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
 use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
-use crate::transact::{Mutate, Transact};
+use crate::transact::{BypassOrCommit, Mutate};
 
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
@@ -687,7 +687,7 @@ where
         let cache = EdgeSplitCache::from_arc(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| edge::split_with(mutation, cache, f))
+            .bypass_or_commit_with(|mutation| edge::split_with(mutation, cache, f))
             .map(|(storage, m)| Bind::bind(storage, m).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent()
@@ -835,7 +835,7 @@ where
         let cache = ArcBridgeCache::from_arc(self.to_ref(), destination)?;
         let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| edge::bridge(mutation, cache))
+            .bypass_or_commit_with(|mutation| edge::bridge(mutation, cache))
             .map(|(storage, face)| Bind::bind(storage, face).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent())
@@ -938,7 +938,7 @@ where
         let cache = ArcExtrudeCache::from_arc(self.to_ref())?;
         let (storage, _) = self.unbind();
         Ok(Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| edge::extrude_with(mutation, cache, f))
+            .bypass_or_commit_with(|mutation| edge::extrude_with(mutation, cache, f))
             .map(|(storage, arc)| Bind::bind(storage, arc).expect_consistent())
             .map_err(|(_, error)| error)
             .expect_consistent())
@@ -958,7 +958,7 @@ where
         let cache = EdgeRemoveCache::from_arc(self.to_ref()).expect_consistent();
         let (storage, _) = self.unbind();
         Mutation::replace(storage, Default::default())
-            .commit_with(|mutation| edge::remove(mutation, cache))
+            .bypass_or_commit_with(|mutation| edge::remove(mutation, cache))
             .map(|(storage, _)| Bind::bind(storage, a))
             .map_err(|(_, error)| error)
             .expect_consistent()
