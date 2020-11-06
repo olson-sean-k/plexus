@@ -10,7 +10,7 @@ use crate::graph::edge::{Arc, ArcKey, ArcView, Edge, EdgeKey};
 use crate::graph::face::{Face, FaceKey};
 use crate::graph::mutation::face::{self, FaceInsertCache, FaceRemoveCache};
 use crate::graph::mutation::vertex::{self, VertexMutation};
-use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
+use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
@@ -187,8 +187,6 @@ where
     type Abort = ();
     type Error = GraphError;
 
-    // TODO: Refactor consistency checks and share them among `commit`
-    //       implementations.
     fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let EdgeMutation {
             inner,
@@ -206,37 +204,6 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
-}
-
-impl<M> Transact<ModalCore<Transacted<M>>> for EdgeMutation<Transacted<M>>
-where
-    M: Parametric,
-{
-    type Commit = ModalCore<Transacted<M>>;
-    type Abort = ModalCore<Transacted<M>>;
-    type Error = GraphError;
-
-    // TODO: Ensure that faces are in a consistent state.
-    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
-        let EdgeMutation {
-            inner,
-            storage: (arcs, edges),
-            ..
-        } = self;
-        match inner.commit() {
-            Ok(core) => Ok(core.fuse(arcs).fuse(edges)),
-            Err((core, error)) => Err((core.fuse(arcs).fuse(edges), error)),
-        }
-    }
-
-    fn abort(self) -> Self::Abort {
-        let EdgeMutation {
-            inner,
-            storage: (arcs, edges),
-            ..
-        } = self;
-        inner.abort().fuse(arcs).fuse(edges)
-    }
 }
 
 struct ArcRemoveCache {

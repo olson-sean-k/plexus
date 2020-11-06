@@ -3,27 +3,20 @@ pub mod face;
 pub mod path;
 pub mod vertex;
 
-use fnv::FnvBuildHasher;
-use std::borrow::Borrow;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use crate::entity::storage::{AsStorage, AsStorageMut, Fuse, Journaled, StorageTarget};
+use crate::entity::storage::{AsStorage, AsStorageMut, StorageTarget};
 use crate::entity::Entity;
-use crate::graph::core::{Core, OwnedCore};
+use crate::graph::core::OwnedCore;
 use crate::graph::data::{Data, Parametric};
 use crate::graph::edge::{Arc, Edge};
 use crate::graph::face::Face;
 use crate::graph::mutation::face::FaceMutation;
-use crate::graph::vertex::{Vertex, VertexKey};
-use crate::graph::{GraphData, GraphError, GraphKey};
+use crate::graph::vertex::Vertex;
+use crate::graph::{GraphData, GraphError};
 use crate::transact::{Bypass, Transact};
 
-// TODO: The mutation API exposes raw entities (see removals). It would be ideal
-//       if those types need not be exposed at all, since they have limited
-//       utility to users. Is it possible to expose user data instead of
-//       entities in these APIs?
 // TODO: The stable toolchain does not allow a type parameter `G` to be
 //       introduced and bound to the associated type `Mode::Graph::Data`. The
 //       compiler does not seem to consider the types equal, and requires
@@ -36,11 +29,6 @@ use crate::transact::{Bypass, Transact};
 //       https://github.com/rust-lang/rust/issues/58231
 //       https://github.com/rust-lang/rust/issues/70703
 //       https://github.com/rust-lang/rust/issues/47897
-
-type StorageOf<E> = <E as Entity>::Storage;
-type JournalOf<E> = Journaled<StorageOf<E>, E>;
-
-type Rekeying = HashMap<GraphKey, GraphKey, FnvBuildHasher>;
 
 /// Marker trait for graph representations that promise to be in a consistent
 /// state.
@@ -79,28 +67,10 @@ where
     M: Parametric,
 {
     type Graph = M;
-    type VertexStorage = StorageOf<Vertex<Data<M>>>;
-    type ArcStorage = StorageOf<Arc<Data<M>>>;
-    type EdgeStorage = StorageOf<Edge<Data<M>>>;
-    type FaceStorage = StorageOf<Face<Data<M>>>;
-}
-
-pub struct Transacted<M>
-where
-    M: Parametric,
-{
-    phantom: PhantomData<M>,
-}
-
-impl<M> Mode for Transacted<M>
-where
-    M: Parametric,
-{
-    type Graph = M;
-    type VertexStorage = JournalOf<Vertex<Data<M>>>;
-    type ArcStorage = JournalOf<Arc<Data<M>>>;
-    type EdgeStorage = JournalOf<Edge<Data<M>>>;
-    type FaceStorage = JournalOf<Face<Data<M>>>;
+    type VertexStorage = <Vertex<Data<M>> as Entity>::Storage;
+    type ArcStorage = <Arc<Data<M>> as Entity>::Storage;
+    type EdgeStorage = <Edge<Data<M>> as Entity>::Storage;
+    type FaceStorage = <Face<Data<M>> as Entity>::Storage;
 }
 
 /// Graph mutation.
@@ -204,27 +174,6 @@ where
     }
 }
 
-// TODO: The type bounds in this implementation are redundant but required. This
-//       is probably a compiler bug and occurs because the type parameter `M` is
-//       used as an alias for `P::Graph`. The aliasing is necessary to avoid
-//       conflicts with the identity implementation of `From` in `core`, which
-//       is also likely a compiler bug. See comments at the top of this module.
-//impl<P, M> From<M> for Mutation<P>
-//where
-//    P: Mode<Graph = M>,
-//    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
-//    P::VertexStorage: AsStorageMut<Vertex<Data<M>>> + From<<Vertex<Data<M>> as Entity>::Storage>,
-//    P::ArcStorage: AsStorageMut<Arc<Data<M>>> + From<<Arc<Data<M>> as Entity>::Storage>,
-//    P::EdgeStorage: AsStorageMut<Edge<Data<M>>> + From<<Edge<Data<M>> as Entity>::Storage>,
-//    P::FaceStorage: AsStorageMut<Face<Data<M>>> + From<<Face<Data<M>> as Entity>::Storage>,
-//{
-//    fn from(graph: M) -> Self {
-//        Mutation {
-//            inner: graph.into().into(),
-//        }
-//    }
-//}
-
 impl<M> From<M> for Mutation<Immediate<M>>
 where
     M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
@@ -233,21 +182,6 @@ where
         Mutation {
             inner: graph.into().into(),
         }
-    }
-}
-
-impl<M> From<M> for Mutation<Transacted<M>>
-where
-    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
-{
-    fn from(graph: M) -> Self {
-        let (vertices, arcs, edges, faces) = Into::<Core<_, _, _, _, _>>::into(graph).unfuse();
-        let core = Core::empty()
-            .fuse(Journaled::from(vertices))
-            .fuse(Journaled::from(arcs))
-            .fuse(Journaled::from(edges))
-            .fuse(Journaled::from(faces));
-        Mutation { inner: core.into() }
     }
 }
 
@@ -272,70 +206,6 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
-}
-
-impl<M> Transact<M> for Mutation<Transacted<M>>
-where
-    M: Consistent + From<OwnedCore<Data<M>>> + Parametric + Into<OwnedCore<Data<M>>>,
-{
-    type Commit = (M, Rekeying);
-    type Abort = M;
-    type Error = GraphError;
-
-    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
-        fn wrap<T, U>((from, to): (T, T)) -> (GraphKey, GraphKey)
-        where
-            T: Borrow<U>,
-            U: Copy + Into<GraphKey>,
-        {
-            (from.borrow().clone().into(), to.borrow().clone().into())
-        }
-        self.inner
-            .commit()
-            .map(|core| {
-                let mut rekeying = Rekeying::default();
-                let (vertices, arcs, edges, faces) = core.unfuse();
-                let (vertices, keys) = vertices.commit_and_rekey();
-                rekeying.extend(keys.iter().map(wrap::<_, VertexKey>));
-                let (arcs, keys) = arcs.commit_with_rekeying(&keys);
-                rekeying.extend(keys.into_iter().map(wrap));
-                let (edges, keys) = edges.commit_and_rekey();
-                rekeying.extend(keys.into_iter().map(wrap));
-                let (faces, keys) = faces.commit_and_rekey();
-                rekeying.extend(keys.into_iter().map(wrap));
-                (
-                    Core::empty()
-                        .fuse(vertices)
-                        .fuse(arcs)
-                        .fuse(edges)
-                        .fuse(faces)
-                        .into(),
-                    rekeying,
-                )
-            })
-            .map_err(|(core, error)| {
-                let (vertices, arcs, edges, faces) = core.unfuse();
-                (
-                    Core::empty()
-                        .fuse(vertices.abort())
-                        .fuse(arcs.abort())
-                        .fuse(edges.abort())
-                        .fuse(faces.abort())
-                        .into(),
-                    error,
-                )
-            })
-    }
-
-    fn abort(self) -> Self::Abort {
-        let (vertices, arcs, edges, faces) = self.inner.abort().unfuse();
-        Core::empty()
-            .fuse(vertices.abort())
-            .fuse(arcs.abort())
-            .fuse(edges.abort())
-            .fuse(faces.abort())
-            .into()
-    }
 }
 
 pub trait Mutable:

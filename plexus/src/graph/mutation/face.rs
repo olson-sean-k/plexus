@@ -11,7 +11,7 @@ use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcView, Edge};
 use crate::graph::face::{Face, FaceKey, FaceView, ToRing};
 use crate::graph::mutation::edge::{self, ArcBridgeCache, EdgeMutation};
-use crate::graph::mutation::{vertex, Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
+use crate::graph::mutation::{vertex, Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
@@ -225,37 +225,6 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
-}
-
-impl<M> Transact<ModalCore<Transacted<M>>> for FaceMutation<Transacted<M>>
-where
-    M: Parametric,
-{
-    type Commit = ModalCore<Transacted<M>>;
-    type Abort = ModalCore<Transacted<M>>;
-    type Error = GraphError;
-
-    // TODO: Ensure that faces are in a consistent state.
-    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
-        let FaceMutation {
-            inner,
-            storage: faces,
-            ..
-        } = self;
-        match inner.commit() {
-            Ok(core) => Ok(core.fuse(faces)),
-            Err((core, error)) => Err((core.fuse(faces), error)),
-        }
-    }
-
-    fn abort(self) -> Self::Abort {
-        let FaceMutation {
-            inner,
-            storage: faces,
-            ..
-        } = self;
-        inner.abort().fuse(faces)
-    }
 }
 
 pub struct FaceInsertCache {

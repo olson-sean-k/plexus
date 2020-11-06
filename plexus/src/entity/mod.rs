@@ -6,7 +6,7 @@ pub mod view;
 
 use thiserror::Error;
 
-use crate::entity::storage::{Dispatch, Key, Storage, Unjournaled};
+use crate::entity::storage::{Dispatch, Key, Storage};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum EntityError {
@@ -30,7 +30,7 @@ impl<T> Lifetime for T {}
 
 pub trait Entity: Copy + Lifetime + Sized {
     type Key: Key;
-    type Storage: Default + Dispatch<Self> + Storage<Self> + Unjournaled;
+    type Storage: Default + Dispatch<Self> + Storage<Self>;
 }
 
 pub trait Payload: Entity {

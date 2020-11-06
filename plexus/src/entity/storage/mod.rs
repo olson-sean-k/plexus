@@ -1,5 +1,4 @@
 mod hash;
-mod journal;
 mod slot;
 
 use std::hash::Hash;
@@ -7,7 +6,6 @@ use std::hash::Hash;
 use crate::entity::{Entity, Payload};
 
 pub use crate::entity::storage::hash::FnvEntityMap;
-pub use crate::entity::storage::journal::{Journaled, Rekeying, Unjournaled};
 pub use crate::entity::storage::slot::SlotEntityMap;
 
 #[cfg(not(all(nightly, feature = "unstable")))]
@@ -23,12 +21,6 @@ pub trait Key: Copy + Eq + Hash + Sized {
     fn from_inner(key: Self::Inner) -> Self;
 
     fn into_inner(self) -> Self::Inner;
-}
-
-pub trait DependentKey: Key {
-    type Foreign: Key;
-
-    fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self;
 }
 
 #[cfg(not(all(nightly, feature = "unstable")))]
@@ -60,10 +52,9 @@ where
     fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>>;
 
     // This iterator exposes mutable references to user data and **not**
-    // entities. This prevents categorical mutations of entities, which
-    // interacts poorly with journaling. Moreover, such an iterator does not
-    // provide much utility, because entities are typically mutated via
-    // relationships like adjacency.
+    // entities. This prevents categorical mutations of entities. Such an
+    // iterator does not provide much utility, because entities are typically
+    // mutated via relationships like adjacency.
     fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload;
@@ -220,68 +211,3 @@ pub trait AsStorageOf {
 }
 
 impl<T> AsStorageOf for T {}
-
-#[cfg(test)]
-mod tests {
-    use slotmap::DefaultKey;
-
-    use crate::entity::storage::{DependentKey, FnvEntityMap, Key, Rekeying, SlotEntityMap};
-    use crate::entity::Entity;
-
-    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-    pub struct NodeKey(DefaultKey);
-
-    impl Key for NodeKey {
-        type Inner = DefaultKey;
-
-        fn from_inner(key: Self::Inner) -> Self {
-            NodeKey(key)
-        }
-
-        fn into_inner(self) -> Self::Inner {
-            self.0
-        }
-    }
-
-    #[derive(Clone, Copy, Default)]
-    pub struct Node;
-
-    impl Entity for Node {
-        type Key = NodeKey;
-        type Storage = SlotEntityMap<Self>;
-    }
-
-    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-    pub struct LinkKey(NodeKey, NodeKey);
-
-    impl DependentKey for LinkKey {
-        type Foreign = NodeKey;
-
-        fn rekey(self, rekeying: &Rekeying<Self::Foreign>) -> Self {
-            let LinkKey(a, b) = self;
-            let a = rekeying.get(&a).cloned().unwrap_or(a);
-            let b = rekeying.get(&b).cloned().unwrap_or(b);
-            LinkKey(a, b)
-        }
-    }
-
-    impl Key for LinkKey {
-        type Inner = (NodeKey, NodeKey);
-
-        fn from_inner(key: Self::Inner) -> Self {
-            LinkKey(key.0, key.1)
-        }
-
-        fn into_inner(self) -> Self::Inner {
-            (self.0, self.1)
-        }
-    }
-
-    #[derive(Clone, Copy, Default)]
-    pub struct Link;
-
-    impl Entity for Link {
-        type Key = LinkKey;
-        type Storage = FnvEntityMap<Self>;
-    }
-}

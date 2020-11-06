@@ -4,7 +4,7 @@ use crate::graph::core::Core;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::ArcKey;
 use crate::graph::mutation::edge::{self, EdgeRemoveCache};
-use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation, Transacted};
+use crate::graph::mutation::{Consistent, Immediate, Mode, Mutable, Mutation};
 use crate::graph::vertex::{Vertex, VertexKey, VertexView};
 use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
@@ -92,8 +92,6 @@ where
     type Abort = ();
     type Error = GraphError;
 
-    // TODO: Refactor consistency checks and share them among `commit`
-    //       implementations.
     fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
         let VertexMutation {
             storage: vertices, ..
@@ -108,30 +106,6 @@ where
     }
 
     fn abort(self) -> Self::Abort {}
-}
-
-impl<M> Transact<ModalCore<Transacted<M>>> for VertexMutation<Transacted<M>>
-where
-    M: Parametric,
-{
-    type Commit = ModalCore<Transacted<M>>;
-    type Abort = ModalCore<Transacted<M>>;
-    type Error = GraphError;
-
-    // TODO: Ensure that faces are in a consistent state.
-    fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)> {
-        let VertexMutation {
-            storage: vertices, ..
-        } = self;
-        Ok(Core::empty().fuse(vertices))
-    }
-
-    fn abort(self) -> Self::Abort {
-        let VertexMutation {
-            storage: vertices, ..
-        } = self;
-        Core::empty().fuse(vertices)
-    }
 }
 
 pub struct VertexRemoveCache {
