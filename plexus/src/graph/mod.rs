@@ -322,6 +322,8 @@ pub enum GraphError {
     TopologyConflict,
     #[error("topology malformed")]
     TopologyMalformed,
+    #[error("topology unreachable")]
+    TopologyUnreachable,
     #[error("arity is non-polygonal")]
     ArityNonPolygonal,
     /// The arity of a [`MeshGraph`] or other data structure is not compatible

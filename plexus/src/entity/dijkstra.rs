@@ -1,9 +1,10 @@
 use derivative::Derivative;
+use fool::BoolExt as _;
 use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-use crate::entity::storage::{AsStorage, Enumerate};
+use crate::entity::storage::{AsStorage, Enumerate, Get};
 use crate::entity::traverse::Adjacency;
 use crate::entity::view::{Bind, Unbind};
 use crate::entity::EntityError;
@@ -32,6 +33,12 @@ where
     F: Fn(T, T) -> Q,
 {
     let (storage, from) = from.unbind();
+    if let Some(key) = to {
+        storage
+            .as_storage()
+            .contains_key(&key)
+            .ok_or_else(|| EntityError::EntityNotFound)?;
+    }
     let capacity = if to.is_some() {
         0
     }

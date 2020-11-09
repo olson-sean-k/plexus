@@ -268,11 +268,10 @@ where
             key = *previous;
             keys.push(key);
         }
+        if keys.len() < 2 {
+            return Err(GraphError::TopologyUnreachable);
+        }
         let (storage, _) = self.unbind();
-        // TODO: This will fail if `key` is not found in the graph or is
-        //       unreachable, but with a `TopologyMalformed` error. It would be
-        //       better to emit `TopologyNotFound` and some kind of unreachable
-        //       error in these cases.
         Path::bind(storage, keys.iter().rev())
     }
 
@@ -1117,7 +1116,7 @@ mod tests {
     use decorum::R64;
     use nalgebra::{Point2, Point3};
 
-    use crate::graph::MeshGraph;
+    use crate::graph::{GraphError, MeshGraph};
     use crate::prelude::*;
     use crate::primitive::cube::Cube;
     use crate::primitive::generate::Position;
@@ -1140,7 +1139,7 @@ mod tests {
     }
 
     #[test]
-    fn path() {
+    fn reachable_shortest_path() {
         let graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
             vec![Trigon::new(0usize, 1, 2)],
             vec![(-1.0, 0.0), (0.0, 1.0), (1.0, 0.0)],
@@ -1153,6 +1152,31 @@ mod tests {
         assert_eq!(path.back().key(), from.key());
         assert_eq!(path.front().key(), to);
         assert_eq!(path.arcs().count(), 1);
+    }
+
+    #[test]
+    fn unreachable_shortest_path() {
+        // Create a graph from two disjoint trigons.
+        let graph = MeshGraph::<Point2<f64>>::from_raw_buffers(
+            vec![Trigon::new(0usize, 1, 2), Trigon::new(3, 4, 5)],
+            vec![
+                (-2.0, 0.0),
+                (-1.0, 1.0),
+                (-1.0, 0.0),
+                (0.0, 0.0),
+                (1.0, 1.0),
+                (1.0, 0.0),
+            ],
+        )
+        .unwrap();
+        let mut vertices = graph.disjoint_subgraph_vertices();
+        let from = vertices.next().unwrap();
+        let to = vertices.next().unwrap().key();
+
+        assert!(matches!(
+            from.into_shortest_path(to),
+            Err(GraphError::TopologyUnreachable)
+        ));
     }
 
     #[test]
