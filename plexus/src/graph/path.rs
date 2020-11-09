@@ -1,5 +1,5 @@
-use fool::BoolExt;
-use itertools::Itertools as _;
+use fool::BoolExt as _;
+use itertools::Itertools;
 use std::borrow::{Borrow, Cow};
 use std::cmp;
 use std::collections::{HashSet, VecDeque};

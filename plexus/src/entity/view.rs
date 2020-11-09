@@ -1,4 +1,4 @@
-use fool::BoolExt;
+use fool::BoolExt as _;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 

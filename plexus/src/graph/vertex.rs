@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use fool::BoolExt;
+use fool::BoolExt as _;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::borrow::Borrow;

@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use derivative::Derivative;
-use fool::BoolExt;
+use fool::BoolExt as _;
 use slotmap::DefaultKey;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
