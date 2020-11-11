@@ -5,8 +5,12 @@ use std::hash::Hash;
 
 use crate::entity::{Entity, Payload};
 
-pub use crate::entity::storage::hash::FnvEntityMap;
-pub use crate::entity::storage::slot::SlotEntityMap;
+pub use crate::entity::storage::hash::HashStorage;
+pub use crate::entity::storage::slot::SlotStorage;
+
+pub mod prelude {
+    pub use crate::entity::storage::{Enumerate, Get, Insert, InsertWithKey, Remove};
+}
 
 #[cfg(not(all(nightly, feature = "unstable")))]
 pub type StorageTarget<E> = <<E as Entity>::Storage as Dispatch<E>>::Target;
@@ -42,7 +46,20 @@ where
         E: 'a;
 }
 
-// TODO: Can GATs be used here while still supporting trait objects?
+pub trait Mode {}
+
+pub enum Static {}
+
+impl Mode for Static {}
+
+pub enum Dynamic {}
+
+impl Mode for Dynamic {}
+
+// TODO: GATs cannot yet be used here while still supporting trait objects,
+//       because the types cannot be bound in a supertrait. To support trait
+//       objects, the associated types must be bound (likely to `Box<dyn ...>`).
+//       See https://github.com/rust-lang/rust/issues/67510
 pub trait Enumerate<E>
 where
     E: Entity,
@@ -51,10 +68,6 @@ where
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>>;
 
-    // This iterator exposes mutable references to user data and **not**
-    // entities. This prevents categorical mutations of entities. Such an
-    // iterator does not provide much utility, because entities are typically
-    // mutated via relationships like adjacency.
     fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
     where
         E: Payload;

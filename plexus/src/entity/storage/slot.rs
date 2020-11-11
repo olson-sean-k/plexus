@@ -1,70 +1,130 @@
 use slotmap::hop::HopSlotMap;
+use std::marker::PhantomData;
 
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, Dispatch, Enumerate, Get, IndependentStorage, InnerKey, Insert, Key,
-    Remove, StorageTarget,
+    AsStorage, AsStorageMut, Dispatch, Dynamic, Enumerate, Get, IndependentStorage, InnerKey,
+    Insert, Key, Mode, Remove, Static, StorageTarget,
 };
 use crate::entity::{Entity, Payload};
 
 pub use slotmap::Key as SlotKey;
 
-pub type SlotEntityMap<E> = HopSlotMap<InnerKey<<E as Entity>::Key>, E>;
-
-impl<E, K> AsStorage<E> for HopSlotMap<InnerKey<K>, E>
+pub struct SlotStorage<E, P = Static>
 where
-    E: Entity<Key = K, Storage = Self>,
-    K: Key,
-    InnerKey<K>: 'static + SlotKey,
+    E: Entity,
+    InnerKey<E::Key>: SlotKey,
+    P: Mode,
+{
+    inner: HopSlotMap<InnerKey<<E as Entity>::Key>, E>,
+    phantom: PhantomData<P>,
+}
+
+impl<E> AsStorage<E> for SlotStorage<E, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
 {
     fn as_storage(&self) -> &StorageTarget<E> {
         self
     }
 }
 
-impl<E, K> AsStorageMut<E> for HopSlotMap<InnerKey<K>, E>
+impl<E> AsStorage<E> for SlotStorage<E, Static>
 where
-    E: Entity<Key = K, Storage = Self>,
-    K: Key,
-    InnerKey<K>: 'static + SlotKey,
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
+{
+    fn as_storage(&self) -> &StorageTarget<E> {
+        self
+    }
+}
+
+impl<E> AsStorageMut<E> for SlotStorage<E, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
 {
     fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         self
     }
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
+impl<E> AsStorageMut<E> for SlotStorage<E, Static>
 where
-    E: Entity<Key = K, Storage = Self>,
-    K: Key,
-    InnerKey<K>: 'static + SlotKey,
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
+        self
+    }
+}
+
+impl<E, P> Default for SlotStorage<E, P>
+where
+    E: Entity,
+    InnerKey<E::Key>: SlotKey,
+    P: Mode,
+{
+    fn default() -> Self {
+        SlotStorage {
+            inner: Default::default(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+#[cfg(not(all(nightly, feature = "unstable")))]
+impl<E> Dispatch<E> for SlotStorage<E, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
 {
     type Target = dyn 'static + IndependentStorage<E>;
 }
 
 #[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
-impl<E, K> Dispatch<E> for HopSlotMap<InnerKey<K>, E>
+impl<E> Dispatch<E> for SlotStorage<E, Dynamic>
 where
-    E: Entity<Key = K, Storage = Self>,
-    K: Key,
-    InnerKey<K>: 'static + SlotKey,
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
 {
     type Target<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
 }
 
-impl<E> Enumerate<E> for HopSlotMap<InnerKey<E::Key>, E>
+#[cfg(not(all(nightly, feature = "unstable")))]
+impl<E> Dispatch<E> for SlotStorage<E, Static>
+where
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
+{
+    type Target = Self;
+}
+
+#[cfg(all(nightly, feature = "unstable"))]
+#[rustfmt::skip]
+impl<E> Dispatch<E> for SlotStorage<E, Static>
+where
+    E: Entity<Storage = Self>,
+    InnerKey<E::Key>: SlotKey,
+{
+    type Target<'a> where E: 'a = Self;
+}
+
+impl<E, P> Enumerate<E> for SlotStorage<E, P>
 where
     E: Entity,
     InnerKey<E::Key>: SlotKey,
+    P: Mode,
 {
     fn len(&self) -> usize {
-        self.len()
+        self.inner.len()
     }
 
     fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>> {
         Box::new(
-            self.iter()
+            self.inner
+                .iter()
                 .map(|(key, entity)| (E::Key::from_inner(key), entity)),
         )
     }
@@ -74,42 +134,46 @@ where
         E: Payload,
     {
         Box::new(
-            self.iter_mut()
+            self.inner
+                .iter_mut()
                 .map(|(key, entity)| (E::Key::from_inner(key), entity.get_mut())),
         )
     }
 }
 
-impl<E> Get<E> for HopSlotMap<InnerKey<E::Key>, E>
+impl<E, P> Get<E> for SlotStorage<E, P>
 where
     E: Entity,
     InnerKey<E::Key>: SlotKey,
+    P: Mode,
 {
     fn get(&self, key: &E::Key) -> Option<&E> {
-        self.get(key.into_inner())
+        self.inner.get(key.into_inner())
     }
 
     fn get_mut(&mut self, key: &E::Key) -> Option<&mut E> {
-        self.get_mut(key.into_inner())
+        self.inner.get_mut(key.into_inner())
     }
 }
 
-impl<E> Insert<E> for HopSlotMap<InnerKey<E::Key>, E>
+impl<E, P> Insert<E> for SlotStorage<E, P>
 where
     E: Entity,
     InnerKey<E::Key>: SlotKey,
+    P: Mode,
 {
     fn insert(&mut self, entity: E) -> E::Key {
-        E::Key::from_inner(self.insert(entity))
+        E::Key::from_inner(self.inner.insert(entity))
     }
 }
 
-impl<E> Remove<E> for HopSlotMap<InnerKey<E::Key>, E>
+impl<E, P> Remove<E> for SlotStorage<E, P>
 where
     E: Entity,
     InnerKey<E::Key>: SlotKey,
+    P: Mode,
 {
     fn remove(&mut self, key: &E::Key) -> Option<E> {
-        self.remove(key.into_inner())
+        self.inner.remove(key.into_inner())
     }
 }

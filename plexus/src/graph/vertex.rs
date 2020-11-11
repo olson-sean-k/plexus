@@ -11,7 +11,8 @@ use theon::AsPosition;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotEntityMap};
+use crate::entity::storage::prelude::*;
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -60,7 +61,7 @@ where
     G: GraphData,
 {
     type Key = VertexKey;
-    type Storage = SlotEntityMap<Self>;
+    type Storage = SlotStorage<Self>;
 }
 
 impl<G> Payload for Vertex<G>

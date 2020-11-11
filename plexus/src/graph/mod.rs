@@ -277,6 +277,7 @@ use typenum::{self, NonZero};
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
+use crate::entity::storage::prelude::*;
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, StorageTarget};
 use crate::entity::view::{Bind, Orphan, View};
 use crate::entity::EntityError;

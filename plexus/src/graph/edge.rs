@@ -10,7 +10,8 @@ use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::{AsStorage, AsStorageMut, FnvEntityMap, Key, SlotEntityMap};
+use crate::entity::storage::prelude::*;
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, Key, SlotStorage};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -83,7 +84,7 @@ where
     G: GraphData,
 {
     type Key = ArcKey;
-    type Storage = FnvEntityMap<Self>;
+    type Storage = HashStorage<Self>;
 }
 
 impl<G> Payload for Arc<G>
@@ -1244,7 +1245,7 @@ where
     G: GraphData,
 {
     type Key = EdgeKey;
-    type Storage = SlotEntityMap<Self>;
+    type Storage = SlotStorage<Self>;
 }
 
 impl<G> Payload for Edge<G>
