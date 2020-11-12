@@ -350,7 +350,7 @@ pub enum GraphError {
     Geometry,
     /// A graph or other data structure is not compatible with an encoding.
     #[error("encoding operation failed")]
-    Encoding,
+    EncodingIncompatible,
 }
 
 // TODO: How should buffer errors be handled? Is this sufficient?
@@ -360,7 +360,7 @@ impl From<BufferError> for GraphError {
             BufferError::ArityConflict { expected, actual } => {
                 GraphError::ArityConflict { expected, actual }
             }
-            _ => GraphError::Encoding,
+            _ => GraphError::EncodingIncompatible,
         }
     }
 }

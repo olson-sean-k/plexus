@@ -33,7 +33,7 @@
 //! let (graph, _) = MeshGraph::<E3>::from_ply(encoding, read()).unwrap();
 //! ```
 //!
-//! [ply]: https://en.wikipedia.org/wiki/PLY_(file_format)
+//! [PLY]: https://en.wikipedia.org/wiki/PLY_(file_format)
 //!
 //! [`ply-rs`]: https://crates.io/crates/ply-rs
 //!
@@ -52,11 +52,10 @@ use std::io::{self, Read, Write};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use theon::space::{EuclideanSpace, FiniteDimensional};
+use thiserror::Error;
 use typenum::{NonZero, Unsigned, U2, U3};
 
-use crate::buffer::BufferError;
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
-use crate::graph::GraphError;
 
 pub use ply_rs::ply::{
     ElementDef as ElementDefinition, Property, PropertyDef as PropertyDefinition, PropertyType,
@@ -65,7 +64,7 @@ pub use ply_rs::ply::{
 // TODO: These traits only allow a single element to be read for each topology
 //       (vertices, faces, etc.). It may be useful to allow code to aggregate
 //       various elements to produce an output for a single topology.
-// TODO: Consider using the new-type pattern to hide underlying types and expose
+// TODO: Consider using the newtype pattern to hide underlying types and expose
 //       a smaller and more tailored API surface.
 
 pub type Header = KeyMap<ElementDefinition>;
@@ -78,41 +77,38 @@ pub struct Ply {
 }
 
 impl Ply {
-    pub fn parse<R>(mut read: R) -> Result<Self, PlyError>
-    where
-        R: Read,
-    {
-        let ply = Parser::<Element>::new().read_ply(&mut read)?;
-        Ok(Ply {
+    pub fn parse(mut read: impl Read) -> io::Result<Self> {
+        Parser::<Element>::new().read_ply(&mut read).map(|ply| Ply {
             header: ply.header.elements,
             payload: ply.payload,
         })
     }
 }
 
-#[derive(Debug)]
+/// Errors concerning the [PLY] encoding.
+///
+/// [PLY]: https://en.wikipedia.org/wiki/PLY_(file_format)
+#[derive(Debug, Error)]
 pub enum PlyError {
+    #[error("required element not found")]
     ElementNotFound,
+    #[error("required property not found")]
     PropertyNotFound,
-    Encoding,
+    /// The type of a property conflicts with a decoding.
+    #[error("conflicting property type found")]
+    PropertyTypeConflict,
+    /// A polygonal mesh data structure is not compatible with encoded PLY data.
+    #[error("encoding operation failed")]
+    EncodingIncompatible,
+    /// An I/O operation (read or write via the `Read` and `Write` traits)
+    /// failed.
+    #[error("I/O operation failed")]
     Io(io::Error),
-}
-
-impl From<BufferError> for PlyError {
-    fn from(_: BufferError) -> Self {
-        PlyError::Encoding
-    }
 }
 
 impl From<io::Error> for PlyError {
     fn from(error: io::Error) -> Self {
         PlyError::Io(error)
-    }
-}
-
-impl From<GraphError> for PlyError {
-    fn from(_: GraphError) -> Self {
-        PlyError::Encoding
     }
 }
 
@@ -179,7 +175,7 @@ impl PropertyExt for Property {
             Property::UInt(value) => num_cast_scalar(value),
             Property::Float(value) => num_cast_scalar(value),
             Property::Double(value) => num_cast_scalar(value),
-            _ => Err(PlyError::Encoding),
+            _ => Err(PlyError::PropertyTypeConflict),
         }
     }
 
@@ -197,7 +193,7 @@ impl PropertyExt for Property {
             Property::ListUInt(values) => num_cast_list(values),
             Property::ListFloat(values) => num_cast_list(values),
             Property::ListDouble(values) => num_cast_list(values),
-            _ => Err(PlyError::Encoding),
+            _ => Err(PlyError::PropertyTypeConflict),
         }
     }
 }
@@ -243,34 +239,32 @@ pub trait FacePropertyDecoder: FaceDecoder {
 }
 
 pub trait FromPly<E>: Sized {
-    fn from_ply<R>(decoder: E, read: R) -> Result<(Self, Ply), PlyError>
-    where
-        R: Read;
+    fn from_ply(decoder: E, read: impl Read) -> Result<(Self, Ply), PlyError>;
 }
 
 impl<T, E> FromPly<E> for T
 where
     T: FromEncoding<E>,
-    PlyError: From<<T as FromEncoding<E>>::Error>,
     E: FaceElementDecoder + FacePropertyDecoder + VertexPropertyDecoder + VertexElementDecoder,
 {
-    fn from_ply<R>(decoder: E, mut read: R) -> Result<(Self, Ply), PlyError>
-    where
-        R: Read,
-    {
+    fn from_ply(decoder: E, mut read: impl Read) -> Result<(Self, Ply), PlyError> {
         let ply = Ply::parse(&mut read)?;
         let mesh = T::from_encoding(
             decode_vertex_properties(&decoder, &ply.header, &ply.payload)?,
             decode_face_properties(&decoder, &ply.header, &ply.payload)?,
-        )?;
+        )
+        .map_err(|_| PlyError::EncodingIncompatible)?;
         Ok((mesh, ply))
     }
 }
 
 pub trait ToPly<E> {
-    fn to_ply<W>(&self, definitions: Header, encoder: E, write: W) -> Result<usize, PlyError>
-    where
-        W: Write;
+    fn to_ply(
+        &self,
+        definitions: &Header,
+        encoder: E,
+        write: impl Write,
+    ) -> Result<usize, PlyError>;
 }
 
 pub trait DecodePosition<N>: FiniteDimensional<N = N> + Sized
@@ -420,7 +414,7 @@ where
     T: NumCast,
     U: NumCast,
 {
-    cast::cast(value).ok_or_else(|| PlyError::Encoding)
+    cast::cast(value).ok_or_else(|| PlyError::PropertyTypeConflict)
 }
 
 fn num_cast_list<T, U, I>(values: Vec<T>) -> Result<I, PlyError>
@@ -448,11 +442,10 @@ mod tests {
 
     #[test]
     fn decode_into_buffer() {
-        let buffer = {
+        let (buffer, _) = {
             let ply: &[u8] = include_bytes!("../../../data/cube.ply");
             MeshBuffer::<Tetragon<usize>, E3>::from_ply(PositionEncoding::<E3>::default(), ply)
                 .unwrap()
-                .0
         };
         assert_eq!(8, buffer.as_vertex_slice().len());
         assert_eq!(6, buffer.as_index_slice().len());
@@ -460,11 +453,9 @@ mod tests {
 
     #[test]
     fn decode_into_graph() {
-        let graph = {
+        let (graph, _) = {
             let ply: &[u8] = include_bytes!("../../../data/cube.ply");
-            MeshGraph::<E3>::from_ply(PositionEncoding::<E3>::default(), ply)
-                .unwrap()
-                .0
+            MeshGraph::<E3>::from_ply(PositionEncoding::<E3>::default(), ply).unwrap()
         };
         assert_eq!(8, graph.vertex_count());
         assert_eq!(12, graph.edge_count());
