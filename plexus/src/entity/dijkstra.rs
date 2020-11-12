@@ -33,13 +33,11 @@ where
     F: Fn(T, T) -> Q,
 {
     let (storage, from) = from.unbind();
-    if let Some(key) = to {
+    let capacity = if let Some(key) = to {
         storage
             .as_storage()
             .contains_key(&key)
             .ok_or_else(|| EntityError::EntityNotFound)?;
-    }
-    let capacity = if to.is_some() {
         0
     }
     else {
