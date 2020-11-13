@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::cmp;
 use std::collections::HashSet;
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -15,7 +16,7 @@ use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, Key, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, Key, Rekey, Rekeying, SlotStorage};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -29,7 +30,7 @@ use crate::graph::mutation::face::{
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
-use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Selector};
+use crate::graph::{GraphError, GraphKey, MeshGraph, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{BypassOrCommit, Mutate};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
@@ -96,6 +97,15 @@ where
     }
 }
 
+impl<G> Rekey<GraphKey> for Face<G>
+where
+    G: GraphData,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = GraphKey>) -> bool {
+        rekeying.get_and_rekey(&mut self.arc)
+    }
+}
+
 /// Face key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FaceKey(DefaultKey);
@@ -109,6 +119,17 @@ impl Key for FaceKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl TryFrom<GraphKey> for FaceKey {
+    type Error = GraphError;
+
+    fn try_from(key: GraphKey) -> Result<Self, Self::Error> {
+        match key {
+            GraphKey::Face(key) => Ok(key),
+            _ => Err(GraphError::KeyTypeConflict),
+        }
     }
 }
 

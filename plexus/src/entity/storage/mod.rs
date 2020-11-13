@@ -6,7 +6,7 @@ use std::hash::Hash;
 use crate::entity::{Entity, Payload};
 
 pub use crate::entity::storage::hash::HashStorage;
-pub use crate::entity::storage::slot::SlotStorage;
+pub use crate::entity::storage::slot::{Rekey, Rekeying, SlotStorage};
 
 pub mod prelude {
     pub use crate::entity::storage::{Enumerate, Get, Insert, InsertWithKey, Remove};

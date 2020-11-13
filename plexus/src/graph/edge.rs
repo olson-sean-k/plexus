@@ -1,8 +1,9 @@
 use arrayvec::ArrayVec;
 use derivative::Derivative;
-use fool::BoolExt as _;
+use fool::{or, BoolExt as _};
 use slotmap::DefaultKey;
 use std::borrow::Borrow;
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -11,7 +12,9 @@ use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, Key, SlotStorage};
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, HashStorage, Key, Rekey, Rekeying, SlotStorage,
+};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -23,7 +26,7 @@ use crate::graph::mutation::edge::{
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
-use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::graph::{GraphError, GraphKey, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{BypassOrCommit, Mutate};
 
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
@@ -102,6 +105,20 @@ where
     }
 }
 
+impl<G> Rekey<GraphKey> for Arc<G>
+where
+    G: GraphData,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = GraphKey>) -> bool {
+        or!(
+            rekeying.get_and_rekey_some(&mut self.next),
+            rekeying.get_and_rekey_some(&mut self.previous),
+            rekeying.get_and_rekey_some(&mut self.edge),
+            rekeying.get_and_rekey_some(&mut self.face),
+        )
+    }
+}
+
 /// Arc key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ArcKey(VertexKey, VertexKey);
@@ -134,6 +151,17 @@ impl Key for ArcKey {
 
     fn into_inner(self) -> Self::Inner {
         (self.0, self.1)
+    }
+}
+
+impl TryFrom<GraphKey> for ArcKey {
+    type Error = GraphError;
+
+    fn try_from(key: GraphKey) -> Result<Self, Self::Error> {
+        match key {
+            GraphKey::Arc(key) => Ok(key),
+            _ => Err(GraphError::KeyTypeConflict),
+        }
     }
 }
 
@@ -1263,6 +1291,15 @@ where
     }
 }
 
+impl<G> Rekey<GraphKey> for Edge<G>
+where
+    G: GraphData,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = GraphKey>) -> bool {
+        rekeying.get_and_rekey(&mut self.arc)
+    }
+}
+
 /// Edge key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EdgeKey(DefaultKey);
@@ -1276,6 +1313,17 @@ impl Key for EdgeKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl TryFrom<GraphKey> for EdgeKey {
+    type Error = GraphError;
+
+    fn try_from(key: GraphKey) -> Result<Self, Self::Error> {
+        match key {
+            GraphKey::Edge(key) => Ok(key),
+            _ => Err(GraphError::KeyTypeConflict),
+        }
     }
 }
 

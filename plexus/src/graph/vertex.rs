@@ -3,6 +3,7 @@ use fool::BoolExt as _;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
+use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -12,7 +13,9 @@ use theon::AsPosition;
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotStorage};
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, AsStorageOf, Key, Rekey, Rekeying, SlotStorage,
+};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -24,7 +27,7 @@ use crate::graph::geometry::{VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
-use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
+use crate::graph::{GraphError, GraphKey, OptionExt as _, ResultExt as _};
 use crate::transact::{BypassOrCommit, Mutate};
 use crate::IteratorExt as _;
 
@@ -79,6 +82,15 @@ where
     }
 }
 
+impl<G> Rekey<GraphKey> for Vertex<G>
+where
+    G: GraphData,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = GraphKey>) -> bool {
+        rekeying.get_and_rekey_some(&mut self.arc)
+    }
+}
+
 /// Vertex key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VertexKey(DefaultKey);
@@ -92,6 +104,17 @@ impl Key for VertexKey {
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+impl TryFrom<GraphKey> for VertexKey {
+    type Error = GraphError;
+
+    fn try_from(key: GraphKey) -> Result<Self, Self::Error> {
+        match key {
+            GraphKey::Vertex(key) => Ok(key),
+            _ => Err(GraphError::KeyTypeConflict),
+        }
     }
 }
 
