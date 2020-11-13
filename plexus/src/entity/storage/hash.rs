@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use crate::entity::storage::slot::{Rekey, Rekeying};
+use crate::entity::storage::rekey::{Rekey, Rekeying};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, DependentStorage, Dispatch, Dynamic, Enumerate, Get, InnerKey,
     InsertWithKey, Key, Mode, Remove, Static, StorageTarget,
