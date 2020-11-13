@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
+use crate::entity::storage::slot::{Rekey, Rekeying};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, DependentStorage, Dispatch, Dynamic, Enumerate, Get, InnerKey,
     InsertWithKey, Key, Mode, Remove, Static, StorageTarget,
@@ -16,6 +17,31 @@ where
 {
     inner: HashMap<InnerKey<<E as Entity>::Key>, E, FnvBuildHasher>,
     phantom: PhantomData<P>,
+}
+
+impl<E, P> HashStorage<E, P>
+where
+    E: Entity,
+    InnerKey<E::Key>: Eq + Hash,
+    P: Mode,
+{
+    pub fn clone_with_rekeying<R>(&self, rekeying: &R) -> Self
+    where
+        E::Key: Rekey<R::Key>,
+        R: Rekeying,
+        R::Key: From<E::Key>,
+    {
+        let mut inner = HashMap::with_capacity_and_hasher(self.inner.len(), Default::default());
+        for (key, entity) in self.inner.iter() {
+            let mut key: E::Key = Key::from_inner(key.clone());
+            key.rekey(rekeying);
+            inner.insert(key.into_inner(), entity.clone());
+        }
+        HashStorage {
+            inner,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<E> AsStorage<E> for HashStorage<E, Dynamic>

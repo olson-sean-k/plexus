@@ -154,6 +154,13 @@ impl Key for ArcKey {
     }
 }
 
+impl Rekey<GraphKey> for ArcKey {
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = GraphKey>) -> bool {
+        let ArcKey(ref mut a, ref mut b) = self;
+        rekeying.get_and_rekey(a) || rekeying.get_and_rekey(b)
+    }
+}
+
 impl TryFrom<GraphKey> for ArcKey {
     type Error = GraphError;
 

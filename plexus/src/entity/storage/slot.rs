@@ -15,6 +15,10 @@ pub use slotmap::Key as SlotKey;
 pub trait Rekeying {
     type Key: Copy + Eq;
 
+    fn insert<T>(&mut self, from: T, to: T) -> Option<Self::Key>
+    where
+        Self::Key: From<T>;
+
     fn get_and_rekey<T>(&self, target: &mut T) -> bool
     where
         T: Copy + TryFrom<Self::Key>,
@@ -40,6 +44,13 @@ where
     H: BuildHasher,
 {
     type Key = K;
+
+    fn insert<T>(&mut self, from: T, to: T) -> Option<Self::Key>
+    where
+        Self::Key: From<T>,
+    {
+        self.insert(from.into(), to.into())
+    }
 
     fn get_and_rekey<T>(&self, target: &mut T) -> bool
     where
@@ -77,6 +88,31 @@ where
 {
     inner: HopSlotMap<InnerKey<<E as Entity>::Key>, E>,
     phantom: PhantomData<P>,
+}
+
+impl<E, P> SlotStorage<E, P>
+where
+    E: Entity,
+    InnerKey<E::Key>: SlotKey,
+    P: Mode,
+{
+    pub fn clone_and_rekey<R>(&self, rekeying: &mut R) -> Self
+    where
+        R: Rekeying,
+        R::Key: From<E::Key>,
+    {
+        let mut inner = HopSlotMap::with_capacity_and_key(self.inner.len());
+        for (key, entity) in self.inner.iter() {
+            rekeying.insert(
+                Key::from_inner(key),
+                Key::from_inner(inner.insert(entity.clone())),
+            );
+        }
+        SlotStorage {
+            inner,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<E> AsStorage<E> for SlotStorage<E, Dynamic>
