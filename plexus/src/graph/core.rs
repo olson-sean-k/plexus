@@ -77,6 +77,22 @@ where
         } = self;
         (vertices, arcs, edges, faces)
     }
+
+    pub fn as_raw_vertex_storage(&self) -> &V {
+        &self.vertices
+    }
+
+    pub fn as_raw_arc_storage(&self) -> &A {
+        &self.arcs
+    }
+
+    pub fn as_raw_edge_storage(&self) -> &E {
+        &self.edges
+    }
+
+    pub fn as_raw_face_storage(&self) -> &F {
+        &self.faces
+    }
 }
 
 impl<G, V, A, E, F> AsStorage<Vertex<G>> for Core<G, V, A, E, F>

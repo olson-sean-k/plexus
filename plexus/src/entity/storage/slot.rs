@@ -1,7 +1,7 @@
 use slotmap::hop::HopSlotMap;
 use std::marker::PhantomData;
 
-use crate::entity::storage::rekey::Rekeying;
+use crate::entity::storage::rekey::{Rekey, Rekeying};
 use crate::entity::storage::{
     AsStorage, AsStorageMut, Dispatch, Dynamic, Enumerate, Get, IndependentStorage, InnerKey,
     Insert, Key, Mode, Remove, Static, StorageTarget,
@@ -26,17 +26,14 @@ where
     InnerKey<E::Key>: SlotKey,
     P: Mode,
 {
-    pub fn clone_and_rekey<R>(&self, rekeying: &mut R) -> Self
+    pub fn clone_and_log_keys<R>(&self, rekeying: &mut R) -> Self
     where
         R: Rekeying,
         R::Key: From<E::Key>,
     {
         let mut inner = HopSlotMap::with_capacity_and_key(self.inner.len());
         for (key, entity) in self.inner.iter() {
-            rekeying.insert(
-                Key::from_inner(key),
-                Key::from_inner(inner.insert(entity.clone())),
-            );
+            rekeying.insert(Key::from_inner(key), Key::from_inner(inner.insert(*entity)));
         }
         SlotStorage {
             inner,
@@ -190,6 +187,22 @@ where
 {
     fn insert(&mut self, entity: E) -> E::Key {
         E::Key::from_inner(self.inner.insert(entity))
+    }
+}
+
+impl<E, P, K> Rekey<K> for SlotStorage<E, P>
+where
+    E: Entity + Rekey<K>,
+    InnerKey<E::Key>: SlotKey,
+    P: Mode,
+    K: Copy + Eq,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = K>) -> bool {
+        let mut is_rekeyed = false;
+        for entity in self.inner.values_mut() {
+            is_rekeyed = is_rekeyed || entity.rekey(rekeying);
+        }
+        is_rekeyed
     }
 }
 

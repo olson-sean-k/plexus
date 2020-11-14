@@ -25,7 +25,7 @@ where
     InnerKey<E::Key>: Eq + Hash,
     P: Mode,
 {
-    pub fn clone_with_rekeying<R>(&self, rekeying: &R) -> Self
+    pub fn clone_with_key_log<R>(&self, rekeying: &R) -> Self
     where
         E::Key: Rekey<R::Key>,
         R: Rekeying,
@@ -33,9 +33,9 @@ where
     {
         let mut inner = HashMap::with_capacity_and_hasher(self.inner.len(), Default::default());
         for (key, entity) in self.inner.iter() {
-            let mut key: E::Key = Key::from_inner(key.clone());
+            let mut key: E::Key = Key::from_inner(*key);
             key.rekey(rekeying);
-            inner.insert(key.into_inner(), entity.clone());
+            inner.insert(key.into_inner(), *entity);
         }
         HashStorage {
             inner,
@@ -188,6 +188,22 @@ where
 {
     fn insert_with_key(&mut self, key: &E::Key, entity: E) -> Option<E> {
         self.inner.insert(key.into_inner(), entity)
+    }
+}
+
+impl<E, P, K> Rekey<K> for HashStorage<E, P>
+where
+    E: Entity + Rekey<K>,
+    InnerKey<E::Key>: Eq + Hash,
+    P: Mode,
+    K: Copy + Eq,
+{
+    fn rekey(&mut self, rekeying: &impl Rekeying<Key = K>) -> bool {
+        let mut is_rekeyed = false;
+        for entity in self.inner.values_mut() {
+            is_rekeyed = is_rekeyed || entity.rekey(rekeying);
+        }
+        is_rekeyed
     }
 }
 

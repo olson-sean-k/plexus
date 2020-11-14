@@ -257,6 +257,7 @@ mod vertex;
 
 use decorum::cmp::IntrinsicOrd;
 use decorum::R64;
+use fnv::FnvBuildHasher;
 use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -278,7 +279,9 @@ use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBu
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, StorageTarget};
+use crate::entity::storage::{
+    AsStorage, AsStorageMut, AsStorageOf, Fuse, Key, Rekey, StorageTarget,
+};
 use crate::entity::view::{Bind, Orphan, View};
 use crate::entity::EntityError;
 use crate::geometry::{FromGeometry, IntoGeometry};
@@ -1232,6 +1235,48 @@ where
     }
 }
 
+impl<G> Clone for MeshGraph<G>
+where
+    G: GraphData,
+{
+    fn clone(&self) -> Self {
+        // Arcs are not included here, because they use dependent storage.
+        let n = self.vertex_count() + self.edge_count() + self.face_count();
+        let mut rekeying = HashMap::<GraphKey, GraphKey, FnvBuildHasher>::with_capacity_and_hasher(
+            n,
+            Default::default(),
+        );
+
+        // Clone independent storage and log keys.
+        let mut vertices = self
+            .core
+            .as_raw_vertex_storage()
+            .clone_and_log_keys(&mut rekeying);
+        let mut edges = self
+            .core
+            .as_raw_edge_storage()
+            .clone_and_log_keys(&mut rekeying);
+        let mut faces = self
+            .core
+            .as_raw_face_storage()
+            .clone_and_log_keys(&mut rekeying);
+        // Clone dependent storage with the logged keys.
+        let mut arcs = self.core.as_raw_arc_storage().clone_with_key_log(&rekeying);
+
+        // Rekey entities and fuse the storage into a core.
+        vertices.rekey(&rekeying);
+        arcs.rekey(&rekeying);
+        edges.rekey(&rekeying);
+        faces.rekey(&rekeying);
+        Core::empty()
+            .fuse(vertices)
+            .fuse(arcs)
+            .fuse(edges)
+            .fuse(faces)
+            .into()
+    }
+}
+
 impl<G> DynamicArity for MeshGraph<G>
 where
     G: GraphData,
@@ -1641,6 +1686,29 @@ mod tests {
         assert_eq!(5, graph.vertex_count());
         assert_eq!(18, graph.arc_count());
         assert_eq!(6, graph.face_count());
+    }
+
+    #[allow(clippy::redundant_clone)]
+    #[test]
+    fn clone() {
+        // Construct a graph from a UV-sphere and clone it.
+        let graph: MeshGraph<Point3<f64>> = UvSphere::new(4, 2)
+            .polygons::<Position<E3>>() // 8 triangles, 24 vertices.
+            .collect();
+        let graph = graph.clone();
+
+        assert_eq!(6, graph.vertices().count());
+        assert_eq!(24, graph.arcs().count());
+        assert_eq!(8, graph.faces().count());
+
+        // Traverse the graph. This exercises inter-entity keys.
+        let key = graph.vertices().nth(0).unwrap().key();
+        let vertex = graph.vertex(key).unwrap();
+        assert_eq!(6, vertex.traverse_by_depth().count());
+
+        let key = graph.faces().nth(0).unwrap().key();
+        let face = graph.face(key).unwrap();
+        assert_eq!(8, face.traverse_by_depth().count());
     }
 
     #[test]
