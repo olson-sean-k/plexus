@@ -5,7 +5,7 @@ use std::hash::{BuildHasher, Hash};
 pub trait Rekeying {
     type Key: Copy + Eq;
 
-    fn insert<T>(&mut self, from: T, to: T) -> Option<Self::Key>
+    fn set<T>(&mut self, from: T, to: T) -> Option<Self::Key>
     where
         Self::Key: From<T>;
 
@@ -35,7 +35,7 @@ where
 {
     type Key = K;
 
-    fn insert<T>(&mut self, from: T, to: T) -> Option<Self::Key>
+    fn set<T>(&mut self, from: T, to: T) -> Option<Self::Key>
     where
         Self::Key: From<T>,
     {

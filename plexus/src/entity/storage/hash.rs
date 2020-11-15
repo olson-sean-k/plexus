@@ -25,7 +25,7 @@ where
     InnerKey<E::Key>: Eq + Hash,
     P: Mode,
 {
-    pub fn clone_with_key_log<R>(&self, rekeying: &R) -> Self
+    pub fn clone_and_rekey<R>(&self, rekeying: &R) -> Self
     where
         E::Key: Rekey<R::Key>,
         R: Rekeying,

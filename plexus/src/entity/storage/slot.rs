@@ -26,14 +26,14 @@ where
     InnerKey<E::Key>: SlotKey,
     P: Mode,
 {
-    pub fn clone_and_log_keys<R>(&self, rekeying: &mut R) -> Self
+    pub fn clone_and_set_keys<R>(&self, rekeying: &mut R) -> Self
     where
         R: Rekeying,
         R::Key: From<E::Key>,
     {
         let mut inner = HopSlotMap::with_capacity_and_key(self.inner.len());
         for (key, entity) in self.inner.iter() {
-            rekeying.insert(Key::from_inner(key), Key::from_inner(inner.insert(*entity)));
+            rekeying.set(Key::from_inner(key), Key::from_inner(inner.insert(*entity)));
         }
         SlotStorage {
             inner,

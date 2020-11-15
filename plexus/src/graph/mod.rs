@@ -1240,28 +1240,26 @@ where
     G: GraphData,
 {
     fn clone(&self) -> Self {
-        // Arcs are not included here, because they use dependent storage.
-        let n = self.vertex_count() + self.edge_count() + self.face_count();
         let mut rekeying = HashMap::<GraphKey, GraphKey, FnvBuildHasher>::with_capacity_and_hasher(
-            n,
+            self.vertex_count() + self.edge_count() + self.face_count(),
             Default::default(),
         );
 
-        // Clone independent storage and log keys.
+        // Clone independent storage and write into the rekeying.
         let mut vertices = self
             .core
             .as_raw_vertex_storage()
-            .clone_and_log_keys(&mut rekeying);
+            .clone_and_set_keys(&mut rekeying);
         let mut edges = self
             .core
             .as_raw_edge_storage()
-            .clone_and_log_keys(&mut rekeying);
+            .clone_and_set_keys(&mut rekeying);
         let mut faces = self
             .core
             .as_raw_face_storage()
-            .clone_and_log_keys(&mut rekeying);
-        // Clone dependent storage with the logged keys.
-        let mut arcs = self.core.as_raw_arc_storage().clone_with_key_log(&rekeying);
+            .clone_and_set_keys(&mut rekeying);
+        // Clone dependent storage with the rekeying.
+        let mut arcs = self.core.as_raw_arc_storage().clone_and_rekey(&rekeying);
 
         // Rekey entities and fuse the storage into a core.
         vertices.rekey(&rekeying);
