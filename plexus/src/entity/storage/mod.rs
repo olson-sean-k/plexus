@@ -27,6 +27,29 @@ pub trait Key: Copy + Eq + Hash + Sized {
     fn into_inner(self) -> Self::Inner;
 }
 
+pub trait Keyer<K>: Clone + Default
+where
+    K: Key,
+{
+    fn next(&mut self) -> K::Inner;
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct DiiKeyer {
+    key: u64,
+}
+
+impl<K> Keyer<K> for DiiKeyer
+where
+    K: Key<Inner = u64>,
+{
+    fn next(&mut self) -> K::Inner {
+        let key = self.key;
+        self.key = self.key.checked_add(1).expect("keyspace exhausted");
+        key
+    }
+}
+
 #[cfg(not(all(nightly, feature = "unstable")))]
 pub trait Dispatch<E>
 where
