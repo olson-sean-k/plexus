@@ -1,5 +1,4 @@
-use fnv::FnvBuildHasher;
-use std::collections::HashMap;
+use ahash::AHashMap;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
@@ -14,7 +13,7 @@ where
     E: Entity,
     P: Mode,
 {
-    inner: HashMap<InnerKey<<E as Entity>::Key>, E, FnvBuildHasher>,
+    inner: AHashMap<InnerKey<<E as Entity>::Key>, E>,
     phantom: PhantomData<P>,
 }
 
