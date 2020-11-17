@@ -1,6 +1,5 @@
 use derivative::Derivative;
 use fool::BoolExt as _;
-use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::cmp;
@@ -15,7 +14,7 @@ use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, Key, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, DiiKeyer, HashStorage, Key};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -78,7 +77,7 @@ where
     G: GraphData,
 {
     type Key = FaceKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = HashStorage<Self, DiiKeyer>;
 }
 
 impl<G> Payload for Face<G>
@@ -98,10 +97,10 @@ where
 
 /// Face key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct FaceKey(DefaultKey);
+pub struct FaceKey(u64);
 
 impl Key for FaceKey {
-    type Inner = DefaultKey;
+    type Inner = u64;
 
     fn from_inner(key: Self::Inner) -> Self {
         FaceKey(key)

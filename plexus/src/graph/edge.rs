@@ -1,7 +1,6 @@
 use arrayvec::ArrayVec;
 use derivative::Derivative;
 use fool::BoolExt as _;
-use slotmap::DefaultKey;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -11,7 +10,7 @@ use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, Key, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, DiiKeyer, HashStorage, Key};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -1245,7 +1244,7 @@ where
     G: GraphData,
 {
     type Key = EdgeKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = HashStorage<Self, DiiKeyer>;
 }
 
 impl<G> Payload for Edge<G>
@@ -1265,10 +1264,10 @@ where
 
 /// Edge key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct EdgeKey(DefaultKey);
+pub struct EdgeKey(u64);
 
 impl Key for EdgeKey {
-    type Inner = DefaultKey;
+    type Inner = u64;
 
     fn from_inner(key: Self::Inner) -> Self {
         EdgeKey(key)

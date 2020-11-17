@@ -1,6 +1,5 @@
 use derivative::Derivative;
 use fool::BoolExt as _;
-use slotmap::DefaultKey;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
@@ -12,7 +11,7 @@ use theon::AsPosition;
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::dijkstra;
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, SlotStorage};
+use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, DiiKeyer, HashStorage, Key};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -61,7 +60,7 @@ where
     G: GraphData,
 {
     type Key = VertexKey;
-    type Storage = SlotStorage<Self>;
+    type Storage = HashStorage<Self, DiiKeyer>;
 }
 
 impl<G> Payload for Vertex<G>
@@ -81,10 +80,10 @@ where
 
 /// Vertex key.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct VertexKey(DefaultKey);
+pub struct VertexKey(u64);
 
 impl Key for VertexKey {
-    type Inner = DefaultKey;
+    type Inner = u64;
 
     fn from_inner(key: Self::Inner) -> Self {
         VertexKey(key)
