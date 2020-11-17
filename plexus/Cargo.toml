@@ -32,6 +32,11 @@ rustdoc-args = [
     "../doc/katex-header.html"
 ]
 
+[[bench]]
+name = "subdivide"
+harness = false
+path = "../benches/subdivide.rs"
+
 [features]
 default = []
 encoding-ply = ["ply-rs"]
@@ -75,6 +80,7 @@ default-features = false
 rustversion = "^1.0.3"
 
 [dev-dependencies]
+criterion = "^0.3.0"
 # For brevity and simplicity, tests (and documentation comments) use a direct
 # dependency on `nalgebra`. This approach requires that the version
 # specification is compatible with `theon`. Other crates use re-exported types
