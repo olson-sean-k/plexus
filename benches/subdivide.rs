@@ -1,3 +1,5 @@
+#![allow(clippy::iter_nth_zero)]
+
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use decorum::R64;
 use nalgebra::Point3;
