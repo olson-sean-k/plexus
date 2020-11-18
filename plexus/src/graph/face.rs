@@ -14,7 +14,7 @@ use typenum::U3;
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, DiiKeyer, HashStorage, Key};
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, IncrementalKeyer, Key};
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceFirst, Traversal};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -77,7 +77,7 @@ where
     G: GraphData,
 {
     type Key = FaceKey;
-    type Storage = HashStorage<Self, DiiKeyer>;
+    type Storage = HashStorage<Self, IncrementalKeyer>;
 }
 
 impl<G> Payload for Face<G>

@@ -10,7 +10,7 @@ use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
 use crate::entity::storage::prelude::*;
-use crate::entity::storage::{AsStorage, AsStorageMut, DiiKeyer, HashStorage, Key};
+use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, IncrementalKeyer, Key};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
 use crate::graph::data::{Data, GraphData, Parametric};
@@ -1244,7 +1244,7 @@ where
     G: GraphData,
 {
     type Key = EdgeKey;
-    type Storage = HashStorage<Self, DiiKeyer>;
+    type Storage = HashStorage<Self, IncrementalKeyer>;
 }
 
 impl<G> Payload for Edge<G>

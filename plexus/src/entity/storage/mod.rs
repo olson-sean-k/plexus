@@ -35,11 +35,11 @@ where
 }
 
 #[derive(Clone, Copy, Default)]
-pub struct DiiKeyer {
+pub struct IncrementalKeyer {
     key: u64,
 }
 
-impl<K> Keyer<K> for DiiKeyer
+impl<K> Keyer<K> for IncrementalKeyer
 where
     K: Key<Inner = u64>,
 {
