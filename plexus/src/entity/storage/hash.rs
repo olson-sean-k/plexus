@@ -3,13 +3,19 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use crate::entity::storage::{
-    AsStorage, AsStorageMut, DependentStorage, Dispatch, Dynamic, Enumerate, Get, InnerKey, Insert,
-    InsertWithKey, Key, Keyer, Mode, Remove, Static, StorageTarget,
+    AsStorage, AsStorageMut, DependentStorage, Dispatch, Dynamic, Enumerate, Get, IncrementalKeyer,
+    IndependentStorage, InnerKey, Insert, InsertWithKey, Key, Keyer, Mode, Remove, Static,
+    StorageTarget,
 };
 use crate::entity::{Entity, Payload};
 
-// TODO: Complete the `AsStorage` and `Dispatch` implementations to cover
-//       `Keyer`s and dispatch to `IndependentStorage`.
+// TODO: The `Keyer` parameter `R` of `HashStorage` cannot be parameterized when
+//       implementing the `AsStorage` and `Dispatch` traits even if the
+//       conflicting implementations use a private local type or the `Keyer`
+//       trait is private. Instead, this is implemented more specifically for
+//       `IncrementalKeyer`. Perhaps this will be possible in the future.
+//
+//       See https://github.com/rust-lang/rust/issues/48869
 
 pub struct HashStorage<E, R = (), P = Static>
 where
@@ -32,6 +38,16 @@ where
     }
 }
 
+impl<E> AsStorage<E> for HashStorage<E, IncrementalKeyer, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    E::Key: Key<Inner = u64>,
+{
+    fn as_storage(&self) -> &StorageTarget<E> {
+        self
+    }
+}
+
 impl<E, R> AsStorage<E> for HashStorage<E, R, Static>
 where
     E: Entity<Storage = Self>,
@@ -47,6 +63,16 @@ impl<E> AsStorageMut<E> for HashStorage<E, (), Dynamic>
 where
     E: Entity<Storage = Self>,
     InnerKey<E::Key>: Eq + Hash,
+{
+    fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
+        self
+    }
+}
+
+impl<E> AsStorageMut<E> for HashStorage<E, IncrementalKeyer, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    E::Key: Key<Inner = u64>,
 {
     fn as_storage_mut(&mut self) -> &mut StorageTarget<E> {
         self
@@ -96,6 +122,25 @@ where
     InnerKey<E::Key>: Eq + Hash,
 {
     type Target<'a> where E: 'a = dyn 'a + DependentStorage<E>;
+}
+
+#[cfg(not(all(nightly, feature = "unstable")))]
+impl<E> Dispatch<E> for HashStorage<E, IncrementalKeyer, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    E::Key: Key<Inner = u64>,
+{
+    type Target = dyn 'static + IndependentStorage<E>;
+}
+
+#[cfg(all(nightly, feature = "unstable"))]
+#[rustfmt::skip]
+impl<E> Dispatch<E> for HashStorage<E, IncrementalKeyer, Dynamic>
+where
+    E: Entity<Storage = Self>,
+    E::Key: Key<Inner = u64>,
+{
+    type Target<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
 }
 
 #[cfg(not(all(nightly, feature = "unstable")))]
