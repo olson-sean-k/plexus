@@ -17,8 +17,12 @@ use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
 use crate::IteratorExt as _;
 
-pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 pub type CompositeEdge<G> = (Edge<G>, (Arc<G>, Arc<G>));
+pub type CompositeEdgeData<G> = (
+    <G as GraphData>::Edge,
+    (<G as GraphData>::Arc, <G as GraphData>::Arc),
+);
+pub type CompositeEdgeKey = (EdgeKey, (ArcKey, ArcKey));
 
 type ModalCore<P> = Core<
     Data<<P as Mode>::Graph>,
@@ -421,10 +425,7 @@ where
     N: AsMut<Mutation<P>>,
     P: Mode,
     P::Graph: Mutable,
-    F: FnOnce() -> (
-        <Data<P::Graph> as GraphData>::Edge,
-        <Data<P::Graph> as GraphData>::Arc,
-    ),
+    F: FnOnce() -> CompositeEdgeData<Data<P::Graph>>,
 {
     fn get_or_insert_arc<N, P>(
         mut mutation: N,
@@ -455,8 +456,8 @@ where
 
     let geometry = f();
     let (a, b) = endpoints;
-    let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), geometry.1);
-    let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), geometry.1);
+    let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), geometry.1 .0);
+    let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), geometry.1 .1);
     match (e1, e2) {
         (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
         (None, None) => {
@@ -595,6 +596,7 @@ where
         b: VertexKey,
         m: VertexKey,
         ab: ArcKey,
+        edge_data: <Data<P::Graph> as GraphData>::Edge,
     ) -> Result<(ArcKey, ArcKey), GraphError>
     where
         N: AsMut<Mutation<P>>,
@@ -606,13 +608,13 @@ where
             next,
             previous,
             face,
-            data: geometry,
+            data: arc_data,
             ..
         } = remove(mutation.as_mut(), ab)?;
-        let am = get_or_insert_with(mutation.as_mut(), (a, m), || (Default::default(), geometry))
+        let data = (edge_data, (arc_data.clone(), arc_data));
+        let am = get_or_insert_with(mutation.as_mut(), (a, m), || data.clone())
             .map(|(_, (am, _))| am)?;
-        let mb = get_or_insert_with(mutation.as_mut(), (m, b), || (Default::default(), geometry))
-            .map(|(_, (mb, _))| mb)?;
+        let mb = get_or_insert_with(mutation.as_mut(), (m, b), || data).map(|(_, (mb, _))| mb)?;
         // Connect the new arcs to each other and their leading arcs.
         mutation.as_mut().connect_adjacent_arcs(am, mb)?;
         if let Some(xa) = previous {
@@ -640,7 +642,7 @@ where
     } = cache;
     let m = vertex::insert(mutation.as_mut(), f());
     // Remove the edge.
-    let _ = mutation
+    let Edge { data, .. } = mutation
         .as_mut()
         .storage
         .1
@@ -648,8 +650,8 @@ where
         .remove(&ab_ba)
         .ok_or(GraphError::TopologyMalformed)?;
     // Split the arcs.
-    split_at_vertex(mutation.as_mut(), a, b, m, ab)?;
-    split_at_vertex(mutation.as_mut(), b, a, m, ba)?;
+    split_at_vertex(mutation.as_mut(), a, b, m, ab, data.clone())?;
+    split_at_vertex(mutation.as_mut(), b, a, m, ba, data)?;
     Ok(m)
 }
 
@@ -684,10 +686,12 @@ where
         let (a, b) = ab.into();
         let c = VertexView::bind(mutation.as_mut(), b)
             .ok_or(GraphError::TopologyNotFound)?
-            .data;
+            .get()
+            .clone();
         let d = VertexView::bind(mutation.as_mut(), a)
             .ok_or(GraphError::TopologyNotFound)?
-            .data;
+            .get()
+            .clone();
         (f(c), f(d))
     };
     let c = vertex::insert(mutation.as_mut(), c);

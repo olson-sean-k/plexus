@@ -297,7 +297,7 @@ use crate::transact::Transact;
 use crate::{DynamicArity, MeshArity, StaticArity};
 
 pub use crate::entity::view::{ClosedView, Rebind};
-pub use crate::graph::data::{EntityData, GraphData};
+pub use crate::graph::data::GraphData;
 pub use crate::graph::edge::{ArcKey, ArcOrphan, ArcView, EdgeKey, EdgeOrphan, EdgeView, ToArc};
 pub use crate::graph::face::{FaceKey, FaceOrphan, FaceView, Ring, ToRing};
 pub use crate::graph::geometry::{
@@ -727,7 +727,7 @@ where
         VertexPosition<G>: EuclideanSpace,
         Scalar<VertexPosition<G>>: IntrinsicOrd,
     {
-        Aabb::from_points(self.vertices().map(|vertex| *vertex.data.as_position()))
+        Aabb::from_points(self.vertices().map(|vertex| *vertex.position()))
     }
 
     // TODO: This triangulation does not consider geometry and exhibits some
@@ -958,7 +958,7 @@ where
         B: Buildable<Facet = ()>,
         B::Vertex: FromGeometry<G::Vertex>,
     {
-        self.to_mesh_by_vertex_with(|vertex| vertex.data.into_geometry())
+        self.to_mesh_by_vertex_with(|vertex| vertex.get().clone().into_geometry())
     }
 
     /// Creates a [`Buildable`] mesh data structure from the graph.
@@ -1020,7 +1020,7 @@ where
         B::Vertex: FromGeometry<G::Vertex>,
         B::Facet: FromGeometry<G::Face>,
     {
-        self.to_mesh_by_face_with(|_, vertex| vertex.data.into_geometry())
+        self.to_mesh_by_face_with(|_, vertex| vertex.get().clone().into_geometry())
     }
 
     /// Creates a [`Buildable`] mesh data structure from the graph.
@@ -1090,8 +1090,9 @@ where
                     .adjacent_vertices()
                     .map(|vertex| builder.insert_vertex(f(face, vertex)))
                     .collect::<Result<SmallVec<[_; 8]>, _>>()?;
-                builder
-                    .facets_with(|builder| builder.insert_facet(indices.as_slice(), face.data))?;
+                builder.facets_with(|builder| {
+                    builder.insert_facet(indices.as_slice(), face.get().clone())
+                })?;
             }
             Ok(())
         })?;
@@ -1491,7 +1492,7 @@ where
             .map(|face| {
                 // The arity of a face in a graph must be polygonal (three or
                 // higher) so this should never fail.
-                let vertices = face.adjacent_vertices().map(|vertex| vertex.data);
+                let vertices = face.adjacent_vertices().map(|vertex| vertex.get().clone());
                 UnboundedPolygon::from_items(vertices).expect_consistent()
             })
             .collect::<Vec<_>>()
@@ -1730,7 +1731,7 @@ mod tests {
 
         // Read the geometry of each face to ensure it is what we expect.
         for face in graph.faces() {
-            assert_eq!(value, face.data);
+            assert_eq!(value, *face.get());
         }
     }
 }

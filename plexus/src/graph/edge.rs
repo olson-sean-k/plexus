@@ -44,7 +44,7 @@ where
 // reason, `Arc` has no fields representing its source and destination vertices
 // nor its opposite arc; such fields would be redundant.
 /// Arc entity.
-#[derivative(Clone, Copy, Debug, Hash)]
+#[derivative(Debug, Hash)]
 #[derive(Derivative)]
 pub struct Arc<G>
 where
@@ -738,13 +738,13 @@ where
     pub fn split_at_midpoint(self) -> VertexView<&'a mut M>
     where
         G: EdgeMidpoint,
-        G::Vertex: AsPositionMut,
+        G::Vertex: AsPositionMut + Clone,
     {
-        let mut geometry = self.source_vertex().data;
+        let mut data = self.source_vertex().get().clone();
         let midpoint = self.midpoint();
         self.split_with(move || {
-            *geometry.as_position_mut() = midpoint;
-            geometry
+            *data.as_position_mut() = midpoint;
+            data
         })
     }
 
@@ -1214,7 +1214,7 @@ where
 }
 
 /// Edge entity.
-#[derivative(Clone, Copy, Debug, Hash)]
+#[derivative(Debug, Hash)]
 #[derive(Derivative)]
 pub struct Edge<G>
 where

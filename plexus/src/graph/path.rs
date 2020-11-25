@@ -475,7 +475,7 @@ where
     /// Returns an error if the path is not a boundary path.
     pub fn extrude_contour_with<F>(self, f: F) -> Result<FaceView<&'a mut M>, GraphError>
     where
-        F: Fn(G::Vertex) -> G::Vertex,
+        F: Fn(&G::Vertex) -> G::Vertex,
     {
         let cache = PathExtrudeCache::from_path(self.to_ref())?;
         let Path { storage, .. } = self;

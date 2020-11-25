@@ -49,7 +49,7 @@ where
     N: AsMut<Mutation<P>>,
     P: Mode,
     P::Graph: Mutable,
-    F: Fn(<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
+    F: Fn(&<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let PathExtrudeCache { sources } = cache;
     let destinations: SmallVec<[_; 2]> = sources
@@ -57,10 +57,10 @@ where
         .cloned()
         .rev()
         .map(|source| -> Result<_, GraphError> {
-            let geometry = VertexView::bind(mutation.as_mut(), source)
-                .ok_or(GraphError::TopologyNotFound)?
-                .data;
-            Ok(vertex::insert(mutation.as_mut(), f(geometry)))
+            let vertex =
+                VertexView::bind(mutation.as_mut(), source).ok_or(GraphError::TopologyNotFound)?;
+            let data = f(vertex.get());
+            Ok(vertex::insert(mutation.as_mut(), data))
         })
         .collect::<Result<_, _>>()?;
     let cache =

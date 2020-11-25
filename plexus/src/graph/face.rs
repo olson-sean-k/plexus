@@ -47,7 +47,7 @@ where
 }
 
 /// Face entity.
-#[derivative(Clone, Copy, Debug, Hash)]
+#[derivative(Debug, Hash)]
 #[derive(Derivative)]
 pub struct Face<G>
 where
@@ -638,8 +638,10 @@ where
             })
             .map(|arc| arc.key())
             .ok_or(GraphError::TopologyNotFound)?;
-        let geometry = self.data;
-        // TODO: Batch this operation by using the mutation API instead.
+        // TODO: `Clone` should not be needed here. Consolidate this using the
+        //       mutation API and move the necessary face data instead of
+        //       cloning it.
+        let data = self.get().clone();
         let arc: ArcView<_> = self.rebind(ab).expect_consistent();
         Ok(arc
             .remove()
@@ -647,7 +649,7 @@ where
             .expect_consistent()
             .into_outgoing_arc()
             .into_ring()
-            .get_or_insert_face_with(|| geometry))
+            .get_or_insert_face_with(|| data))
     }
 
     /// Connects faces with equal arity with faces inserted along their
@@ -753,11 +755,11 @@ where
         G: FaceCentroid,
         G::Vertex: AsPositionMut,
     {
-        let mut geometry = self.arc().source_vertex().data;
+        let mut data = self.arc().source_vertex().get().clone();
         let centroid = self.centroid();
         self.poke_with(move || {
-            *geometry.as_position_mut() = centroid;
-            geometry
+            *data.as_position_mut() = centroid;
+            data
         })
     }
 
@@ -803,11 +805,11 @@ where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
-        let mut geometry = self.arc().source_vertex().data;
+        let mut data = self.arc().source_vertex().get().clone();
         let position = self.centroid() + (self.normal()? * offset.into());
         Ok(self.poke_with(move || {
-            *geometry.as_position_mut() = position;
-            geometry
+            *data.as_position_mut() = position;
+            data
         }))
     }
 
@@ -840,7 +842,10 @@ where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
-        self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
+        self.extrude_with(|data| {
+            data.clone()
+                .map_position(|position| *position + translation)
+        })
     }
 
     /// Extrudes a face using the given vertex data.
@@ -848,7 +853,7 @@ where
     /// Returns the extruded face.
     pub fn extrude_with<F>(self, f: F) -> FaceView<&'a mut M>
     where
-        F: Fn(G::Vertex) -> G::Vertex,
+        F: Fn(&G::Vertex) -> G::Vertex,
     {
         // This should never fail here.
         let cache = FaceExtrudeCache::from_face(self.to_ref()).expect_consistent();

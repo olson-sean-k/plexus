@@ -3,12 +3,6 @@ use crate::entity::Lifetime;
 
 pub type Data<M> = <M as Parametric>::Data;
 
-pub trait EntityData: Copy + Lifetime {}
-
-impl<T> EntityData for T where T: Copy + Lifetime {}
-
-// TODO: Require `Clone` instead of `Copy` once non-`Copy` types are supported
-//       by the slotmap crate. See https://github.com/orlp/slotmap/issues/27
 /// Graph data.
 ///
 /// Specifies the types used to represent data in vertices, arcs, edges, and
@@ -71,10 +65,10 @@ impl<T> EntityData for T where T: Copy + Lifetime {}
 /// [`AsPosition`]: crate::geometry::AsPosition
 /// [`MeshGraph`]: crate::graph::MeshGraph
 pub trait GraphData: Lifetime + Sized {
-    type Vertex: EntityData;
-    type Arc: EntityData + Default;
-    type Edge: EntityData + Default;
-    type Face: EntityData + Default;
+    type Vertex: Clone + Lifetime;
+    type Arc: Clone + Default + Lifetime;
+    type Edge: Clone + Default + Lifetime;
+    type Face: Clone + Default + Lifetime;
 }
 
 impl GraphData for () {
@@ -86,7 +80,7 @@ impl GraphData for () {
 
 impl<T> GraphData for (T, T)
 where
-    T: EntityData,
+    T: Clone + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();
@@ -96,7 +90,7 @@ where
 
 impl<T> GraphData for (T, T, T)
 where
-    T: EntityData,
+    T: Clone + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();
@@ -106,7 +100,7 @@ where
 
 impl<T> GraphData for [T; 2]
 where
-    T: EntityData,
+    T: Clone + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();
@@ -116,7 +110,7 @@ where
 
 impl<T> GraphData for [T; 3]
 where
-    T: EntityData,
+    T: Clone + Lifetime,
 {
     type Vertex = Self;
     type Arc = ();

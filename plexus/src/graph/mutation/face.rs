@@ -535,7 +535,7 @@ where
         .perimeter()
         .map(|(a, b)| {
             edge::get_or_insert_with(mutation.as_mut(), (a, b), || {
-                (Default::default(), geometry.0)
+                (Default::default(), (geometry.0.clone(), geometry.0.clone()))
             })
             .map(|(_, (ab, _))| ab)
         })
@@ -608,7 +608,9 @@ where
     let c = vertex::insert(mutation.as_mut(), f());
     for (a, b) in vertices.into_iter().perimeter() {
         let cache = FaceInsertCache::from_storage(mutation.as_mut(), &[a, b, c])?;
-        insert_with(mutation.as_mut(), cache, || (Default::default(), face.data))?;
+        insert_with(mutation.as_mut(), cache, || {
+            (Default::default(), face.data.clone())
+        })?;
     }
     Ok(c)
 }
@@ -648,7 +650,7 @@ where
     N: AsMut<Mutation<P>>,
     P: Mode,
     P::Graph: Mutable,
-    F: Fn(<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
+    F: Fn(&<Data<P::Graph> as GraphData>::Vertex) -> <Data<P::Graph> as GraphData>::Vertex,
 {
     let FaceExtrudeCache { sources, cache } = cache;
     remove(mutation.as_mut(), cache)?;
@@ -658,7 +660,7 @@ where
             .iter()
             .cloned()
             .flat_map(|a| VertexView::bind(mutation, a))
-            .map(|source| f(source.data))
+            .map(|source| f(source.get()))
             .collect::<Vec<_>>()
     };
     if sources.len() != destinations.len() {
