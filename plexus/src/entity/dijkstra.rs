@@ -37,7 +37,7 @@ where
         storage
             .as_storage()
             .contains_key(&key)
-            .ok_or_else(|| EntityError::EntityNotFound)?;
+            .ok_or(EntityError::EntityNotFound)?;
         0
     }
     else {
@@ -53,14 +53,14 @@ where
         if Some(key) == to {
             break;
         }
-        let entity = T::bind(storage, key).ok_or_else(|| EntityError::EntityNotFound)?;
+        let entity = T::bind(storage, key).ok_or(EntityError::EntityNotFound)?;
         if breadcrumbs.insert(entity.key()) {
             for adjacent in entity
                 .adjacency()
                 .into_iter()
                 .map(|key| T::bind(storage, key))
             {
-                let adjacent = adjacent.ok_or_else(|| EntityError::EntityNotFound)?;
+                let adjacent = adjacent.ok_or(EntityError::EntityNotFound)?;
                 let summand = f(entity, adjacent);
                 if summand < Q::zero() {
                     return Err(EntityError::Data);

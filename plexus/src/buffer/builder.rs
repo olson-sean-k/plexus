@@ -90,7 +90,7 @@ where
     {
         let arity = keys.as_ref().len();
         P::try_from_slice(keys)
-            .ok_or_else(|| BufferError::ArityConflict {
+            .ok_or(BufferError::ArityConflict {
                 expected: P::ARITY.into_interval().0,
                 actual: arity,
             })
@@ -146,7 +146,7 @@ where
         Self::Vertex: FromGeometry<T>,
     {
         let key = <VertexKey<R> as NumCast>::from(self.vertices.len())
-            .ok_or_else(|| BufferError::IndexOverflow)?;
+            .ok_or(BufferError::IndexOverflow)?;
         self.vertices.push(geometry.into_geometry());
         Ok(key)
     }

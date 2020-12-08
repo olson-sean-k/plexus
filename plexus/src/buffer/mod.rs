@@ -82,7 +82,7 @@
 // its maximum addressable capacity (the maximum value that `usize` can
 // represent).
 
-// TODO: More consistently `expect` or `ok_or_else` index conversions and sums.
+// TODO: More consistently `expect` or `ok_or` index conversions and sums.
 
 mod builder;
 
@@ -493,7 +493,7 @@ where
         R: Grouping,
         R::Group: Into<<Flat<A, N> as Grouping>::Group>,
     {
-        let offset = N::from(self.vertices.len()).ok_or_else(|| BufferError::IndexOverflow)?;
+        let offset = N::from(self.vertices.len()).ok_or(BufferError::IndexOverflow)?;
         self.vertices.extend(
             buffer
                 .vertices
@@ -525,8 +525,8 @@ where
         <P as Grouping>::Group:
             Map<P::Vertex, Output = <P as Grouping>::Group> + Topological<Vertex = P::Vertex>,
     {
-        let offset = <P::Vertex as NumCast>::from(self.vertices.len())
-            .ok_or_else(|| BufferError::IndexOverflow)?;
+        let offset =
+            <P::Vertex as NumCast>::from(self.vertices.len()).ok_or(BufferError::IndexOverflow)?;
         self.vertices.extend(
             buffer
                 .vertices
@@ -584,7 +584,7 @@ where
         let indices: Vec<_> = faces
             .into_iter()
             .map(|(index, _)| {
-                P::try_from_slice(index.as_ref()).ok_or_else(|| BufferError::ArityConflict {
+                P::try_from_slice(index.as_ref()).ok_or(BufferError::ArityConflict {
                     expected: P::ARITY.into_interval().0,
                     actual: index.as_ref().len(),
                 })
@@ -691,7 +691,7 @@ where
     {
         let indices = indices
             .into_iter()
-            .map(|index| <N as NumCast>::from(index).ok_or_else(|| BufferError::IndexOverflow))
+            .map(|index| <N as NumCast>::from(index).ok_or(BufferError::IndexOverflow))
             .collect::<Result<Vec<_>, _>>()?;
         if indices.len() % A::USIZE != 0 {
             Err(BufferError::IndexUnaligned)
@@ -759,8 +759,8 @@ where
             .map(|vertex| vertex.into_geometry())
             .collect();
         let is_out_of_bounds = {
-            let len = <P::Vertex as NumCast>::from(vertices.len())
-                .ok_or_else(|| BufferError::IndexOverflow)?;
+            let len =
+                <P::Vertex as NumCast>::from(vertices.len()).ok_or(BufferError::IndexOverflow)?;
             indices
                 .iter()
                 .any(|polygon| polygon.as_ref().iter().any(|index| *index >= len))

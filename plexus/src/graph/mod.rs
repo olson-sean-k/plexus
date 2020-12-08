@@ -1371,11 +1371,7 @@ where
             let mut perimeter = SmallVec::<[_; 4]>::with_capacity(face.arity());
             for index in face.into_vertices() {
                 let index = <usize as NumCast>::from(index).unwrap();
-                perimeter.push(
-                    *vertices
-                        .get(index)
-                        .ok_or_else(|| GraphError::TopologyNotFound)?,
-                );
+                perimeter.push(*vertices.get(index).ok_or(GraphError::TopologyNotFound)?);
             }
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;
@@ -1457,11 +1453,7 @@ where
             }
             let mut perimeter = SmallVec::<[_; 4]>::with_capacity(arity);
             for index in face {
-                perimeter.push(
-                    *vertices
-                        .get(index)
-                        .ok_or_else(|| GraphError::TopologyNotFound)?,
-                );
+                perimeter.push(*vertices.get(index).ok_or(GraphError::TopologyNotFound)?);
             }
             let cache = FaceInsertCache::from_storage(&mutation, &perimeter)?;
             mutation::face::insert_with(&mut mutation, cache, Default::default)?;

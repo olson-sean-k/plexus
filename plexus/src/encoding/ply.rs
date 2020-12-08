@@ -132,7 +132,7 @@ impl ElementExt for Element {
         T: NumCast,
     {
         self.get(key.as_ref())
-            .ok_or_else(|| PlyError::PropertyNotFound)?
+            .ok_or(PlyError::PropertyNotFound)?
             .clone()
             .into_scalar()
     }
@@ -144,7 +144,7 @@ impl ElementExt for Element {
         I: FromIterator<T>,
     {
         self.get(key.as_ref())
-            .ok_or_else(|| PlyError::PropertyNotFound)?
+            .ok_or(PlyError::PropertyNotFound)?
             .clone()
             .into_list()
     }
@@ -374,11 +374,11 @@ where
 {
     definitions
         .get(key.as_ref())
-        .ok_or_else(|| PlyError::ElementNotFound)
+        .ok_or(PlyError::ElementNotFound)
         .and_then(|definition| {
             elements
                 .get(&definition.name)
-                .ok_or_else(|| PlyError::ElementNotFound)
+                .ok_or(PlyError::ElementNotFound)
                 .map(|elements| (definition, elements))
         })
 }
@@ -414,7 +414,7 @@ where
     T: NumCast,
     U: NumCast,
 {
-    cast::cast(value).ok_or_else(|| PlyError::PropertyTypeConflict)
+    cast::cast(value).ok_or(PlyError::PropertyTypeConflict)
 }
 
 fn num_cast_list<T, U, I>(values: Vec<T>) -> Result<I, PlyError>

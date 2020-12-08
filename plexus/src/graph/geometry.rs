@@ -92,7 +92,7 @@ where
         )
         .expect_consistent()
         .normalize()
-        .ok_or_else(|| GraphError::Geometry)
+        .ok_or(GraphError::Geometry)
     }
 }
 
@@ -127,7 +127,7 @@ where
         let ab = a - b;
         let cb = c - b;
         let p = b + ab.project(cb);
-        (p - c).normalize().ok_or_else(|| GraphError::Geometry)
+        (p - c).normalize().ok_or(GraphError::Geometry)
     }
 }
 
@@ -235,7 +235,7 @@ where
         let c = G::centroid(ring)?;
         let ab = a - b;
         let bc = b - c;
-        ab.cross(bc).normalize().ok_or_else(|| GraphError::Geometry)
+        ab.cross(bc).normalize().ok_or(GraphError::Geometry)
     }
 }
 
@@ -292,7 +292,7 @@ where
 //                .vertices()
 //                .map(|vertex| *vertex.data.as_position())
 //                .collect::<SmallVec<[_; 4]>>();
-//            Plane::from_points(points).ok_or_else(|| GraphError::Geometry)
+//            Plane::from_points(points).ok_or(GraphError::Geometry)
 //        }
 //    }
 //}

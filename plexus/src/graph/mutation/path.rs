@@ -58,7 +58,7 @@ where
         .rev()
         .map(|source| -> Result<_, GraphError> {
             let geometry = VertexView::bind(mutation.as_mut(), source)
-                .ok_or_else(|| GraphError::TopologyNotFound)?
+                .ok_or(GraphError::TopologyNotFound)?
                 .data;
             Ok(vertex::insert(mutation.as_mut(), f(geometry)))
         })

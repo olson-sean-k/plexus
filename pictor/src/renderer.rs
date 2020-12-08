@@ -27,7 +27,7 @@ impl Renderer {
                 ..Default::default()
             })
             .await
-            .ok_or_else(|| ())?;
+            .ok_or(())?;
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {

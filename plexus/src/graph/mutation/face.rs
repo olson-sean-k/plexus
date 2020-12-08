@@ -94,7 +94,7 @@ where
             let adjacent = {
                 let core = &self.to_ref_core();
                 if ArcView::bind(core, ba)
-                    .ok_or_else(|| GraphError::TopologyMalformed)?
+                    .ok_or(GraphError::TopologyMalformed)?
                     .is_boundary_arc()
                 {
                     // The next arc of BA is the outgoing arc of the destination
@@ -145,7 +145,7 @@ where
             .storage
             .as_storage_mut()
             .get_mut(&abc)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         Ok(f(face))
     }
 }
@@ -277,7 +277,7 @@ impl FaceInsertCache {
         let vertices = perimeter
             .iter()
             .cloned()
-            .map(|key| VertexView::bind(storage, key).ok_or_else(|| GraphError::TopologyNotFound))
+            .map(|key| VertexView::bind(storage, key).ok_or(GraphError::TopologyNotFound))
             .collect::<Result<SmallVec<[_; 4]>, _>>()?;
         for (previous, next) in perimeter
             .iter()
@@ -468,7 +468,7 @@ impl FaceBridgeCache {
         let destination: FaceView<_> = face
             .to_ref()
             .rebind(destination)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         let cache = (
             FaceRemoveCache::from_face(face.to_ref())?,
             FaceRemoveCache::from_face(destination.to_ref())?,
@@ -572,7 +572,7 @@ where
         .storage
         .as_storage_mut()
         .remove(&abc)
-        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        .ok_or(GraphError::TopologyNotFound)?;
     Ok(face)
 }
 

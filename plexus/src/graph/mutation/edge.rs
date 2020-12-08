@@ -109,7 +109,7 @@ where
             .0
             .as_storage_mut()
             .get_mut(&ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         Ok(f(arc))
     }
 }
@@ -299,19 +299,19 @@ impl EdgeSplitCache {
         let opposite = arc
             .to_ref()
             .into_reachable_opposite_arc()
-            .ok_or_else(|| GraphError::TopologyMalformed)?;
+            .ok_or(GraphError::TopologyMalformed)?;
         let source = opposite
             .to_ref()
             .into_reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?;
+            .ok_or(GraphError::TopologyMalformed)?;
         let destination = arc
             .to_ref()
             .into_reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?;
+            .ok_or(GraphError::TopologyMalformed)?;
         let edge = arc
             .to_ref()
             .into_reachable_edge()
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         Ok(EdgeSplitCache {
             a: source.key(),
             b: destination.key(),
@@ -338,26 +338,26 @@ impl ArcBridgeCache {
         let destination: ArcView<_> = arc
             .to_ref()
             .rebind(destination)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         let a = arc
             .to_ref()
             .into_reachable_source_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .ok_or(GraphError::TopologyMalformed)?
             .key();
         let b = arc
             .to_ref()
             .into_reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .ok_or(GraphError::TopologyMalformed)?
             .key();
         let c = destination
             .to_ref()
             .into_reachable_source_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .ok_or(GraphError::TopologyMalformed)?
             .key();
         let d = destination
             .to_ref()
             .into_reachable_destination_vertex()
-            .ok_or_else(|| GraphError::TopologyMalformed)?
+            .ok_or(GraphError::TopologyMalformed)?
             .key();
         // Ensure that existing interior arcs are boundaries.
         for arc in [a, b, c, d]
@@ -383,7 +383,7 @@ impl ArcBridgeCache {
         B::Target: AsStorage<Arc<Data<B>>> + AsStorage<Vertex<Data<B>>> + Parametric,
     {
         ArcBridgeCache::from_arc(
-            ArcView::bind(storage, source).ok_or_else(|| GraphError::TopologyNotFound)?,
+            ArcView::bind(storage, source).ok_or(GraphError::TopologyNotFound)?,
             destination,
         )
     }
@@ -509,7 +509,7 @@ where
             .0
             .as_storage_mut()
             .remove(&ab)
-            .ok_or_else(|| GraphError::TopologyNotFound)
+            .ok_or(GraphError::TopologyNotFound)
     }
 
     let EdgeRemoveCache {
@@ -539,7 +539,7 @@ where
         .1
         .as_storage_mut()
         .remove(&ab_ba)
-        .ok_or_else(|| GraphError::TopologyNotFound)?;
+        .ok_or(GraphError::TopologyNotFound)?;
     Ok((
         edge,
         (
@@ -646,7 +646,7 @@ where
         .1
         .as_storage_mut()
         .remove(&ab_ba)
-        .ok_or_else(|| GraphError::TopologyMalformed)?;
+        .ok_or(GraphError::TopologyMalformed)?;
     // Split the arcs.
     split_at_vertex(mutation.as_mut(), a, b, m, ab)?;
     split_at_vertex(mutation.as_mut(), b, a, m, ba)?;
@@ -683,10 +683,10 @@ where
     let (c, d) = {
         let (a, b) = ab.into();
         let c = VertexView::bind(mutation.as_mut(), b)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
+            .ok_or(GraphError::TopologyNotFound)?
             .data;
         let d = VertexView::bind(mutation.as_mut(), a)
-            .ok_or_else(|| GraphError::TopologyNotFound)?
+            .ok_or(GraphError::TopologyNotFound)?
             .data;
         (f(c), f(d))
     };

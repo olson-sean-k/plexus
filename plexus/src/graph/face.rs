@@ -564,7 +564,7 @@ where
         let key_at_index = |index| {
             self.adjacent_vertices()
                 .nth(index)
-                .ok_or_else(|| GraphError::TopologyNotFound)
+                .ok_or(GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
         };
         let source = source.key_or_else(key_at_index)?;
@@ -628,7 +628,7 @@ where
         let destination = destination.key_or_else(|index| {
             self.adjacent_faces()
                 .nth(index)
-                .ok_or_else(|| GraphError::TopologyNotFound)
+                .ok_or(GraphError::TopologyNotFound)
                 .map(|face| face.key())
         })?;
         let ab = self
@@ -638,7 +638,7 @@ where
                 _ => false,
             })
             .map(|arc| arc.key())
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         let geometry = self.data;
         // TODO: Batch this operation by using the mutation API instead.
         let arc: ArcView<_> = self.rebind(ab).expect_consistent();
@@ -1235,7 +1235,7 @@ where
                 .enumerate()
                 .find(|(_, a)| *a == key)
                 .map(|(index, _)| index)
-                .ok_or_else(|| GraphError::TopologyNotFound),
+                .ok_or(GraphError::TopologyNotFound),
             Selector::ByIndex(index) => {
                 if index >= arity {
                     Err(GraphError::TopologyNotFound)

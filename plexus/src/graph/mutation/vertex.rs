@@ -49,7 +49,7 @@ where
             .storage
             .as_storage_mut()
             .get_mut(&a)
-            .ok_or_else(|| GraphError::TopologyNotFound)?;
+            .ok_or(GraphError::TopologyNotFound)?;
         Ok(f(vertex))
     }
 }

@@ -830,7 +830,7 @@ where
             self.ring()
                 .arcs()
                 .nth(index)
-                .ok_or_else(|| GraphError::TopologyNotFound)
+                .ok_or(GraphError::TopologyNotFound)
                 .map(|arc| arc.key())
         })?;
         let cache = ArcBridgeCache::from_arc(self.to_ref(), destination)?;

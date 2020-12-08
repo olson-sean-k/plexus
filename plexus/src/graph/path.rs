@@ -62,10 +62,10 @@ where
         I::Item: Borrow<VertexKey>,
     {
         let mut keys = keys.into_iter().map(|key| *key.borrow());
-        let a = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
-        let b = keys.next().ok_or_else(|| GraphError::TopologyMalformed)?;
+        let a = keys.next().ok_or(GraphError::TopologyMalformed)?;
+        let b = keys.next().ok_or(GraphError::TopologyMalformed)?;
         let ab = (a, b).into();
-        ArcView::bind(storage.reborrow(), ab).ok_or_else(|| GraphError::TopologyNotFound)?;
+        ArcView::bind(storage.reborrow(), ab).ok_or(GraphError::TopologyNotFound)?;
         let mut path = Path {
             keys: Cow::Owned((&[ab]).iter().cloned().collect()),
             storage,
@@ -130,21 +130,20 @@ where
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the back of the path.
     pub fn push_back(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
-        self.is_open()
-            .ok_or_else(|| GraphError::TopologyMalformed)?;
+        self.is_open().ok_or(GraphError::TopologyMalformed)?;
         let back = self.back();
         let xa = match destination {
             Selector::ByKey(key) => back
                 .incoming_arcs()
                 .find(|arc| arc.into_source_vertex().key() == key)
-                .ok_or_else(|| GraphError::TopologyMalformed)?
+                .ok_or(GraphError::TopologyMalformed)?
                 .key(),
             Selector::ByIndex(index) => {
                 let x = back
                     .adjacent_vertices()
                     .keys()
                     .nth(index)
-                    .ok_or_else(|| GraphError::TopologyNotFound)?;
+                    .ok_or(GraphError::TopologyNotFound)?;
                 (x, back.key()).into()
             }
         };
@@ -204,21 +203,20 @@ where
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the front of the path.
     pub fn push_front(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
-        self.is_open()
-            .ok_or_else(|| GraphError::TopologyMalformed)?;
+        self.is_open().ok_or(GraphError::TopologyMalformed)?;
         let front = self.front();
         let bx = match destination {
             Selector::ByKey(key) => front
                 .outgoing_arcs()
                 .find(|arc| arc.into_destination_vertex().key() == key)
-                .ok_or_else(|| GraphError::TopologyMalformed)?
+                .ok_or(GraphError::TopologyMalformed)?
                 .key(),
             Selector::ByIndex(index) => {
                 let x = front
                     .adjacent_vertices()
                     .keys()
                     .nth(index)
-                    .ok_or_else(|| GraphError::TopologyNotFound)?;
+                    .ok_or(GraphError::TopologyNotFound)?;
                 (front.key(), x).into()
             }
         };
@@ -331,7 +329,7 @@ where
                     .nth(index)
                     .map(|vertex| (index, vertex.key())),
             }
-            .ok_or_else(|| GraphError::TopologyNotFound)
+            .ok_or(GraphError::TopologyNotFound)
         };
         let (i, from) = index_key(from)?;
         let (j, to) = index_key(to)?;
@@ -399,7 +397,7 @@ where
                 .enumerate()
                 .find(|(_, a)| *a == key)
                 .map(|(n, _)| n)
-                .ok_or_else(|| GraphError::TopologyNotFound)
+                .ok_or(GraphError::TopologyNotFound)
         })?;
         if index == 0 || index >= self.keys.len() {
             return Err(GraphError::TopologyMalformed);
