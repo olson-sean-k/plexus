@@ -564,7 +564,7 @@ where
 
     /// Gets the number of vertices in the graph.
     pub fn vertex_count(&self) -> usize {
-        self.as_storage_of::<Vertex<_>>().len()
+        self.core.vertices.len()
     }
 
     /// Gets an immutable view of the vertex with the given key.
@@ -580,7 +580,8 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the vertices in the graph.
     pub fn vertices(&self) -> impl Iterator<Item = VertexView<&Self>> {
-        self.as_storage_of::<Vertex<_>>()
+        self.core
+            .vertices
             .iter()
             .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
@@ -589,7 +590,8 @@ where
 
     /// Gets an iterator of orphan views over the vertices in the graph.
     pub fn vertex_orphans(&mut self) -> impl Iterator<Item = VertexOrphan<G>> {
-        self.as_storage_mut_of::<Vertex<_>>()
+        self.core
+            .vertices
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
@@ -597,7 +599,7 @@ where
 
     /// Gets the number of arcs in the graph.
     pub fn arc_count(&self) -> usize {
-        self.as_storage_of::<Arc<_>>().len()
+        self.core.arcs.len()
     }
 
     /// Gets an immutable view of the arc with the given key.
@@ -613,7 +615,8 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the arcs in the graph.
     pub fn arcs(&self) -> impl Iterator<Item = ArcView<&Self>> {
-        self.as_storage_of::<Arc<_>>()
+        self.core
+            .arcs
             .iter()
             .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
@@ -622,7 +625,8 @@ where
 
     /// Gets an iterator of orphan views over the arcs in the graph.
     pub fn arc_orphans(&mut self) -> impl Iterator<Item = ArcOrphan<G>> {
-        self.as_storage_mut_of::<Arc<_>>()
+        self.core
+            .arcs
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
@@ -630,7 +634,7 @@ where
 
     /// Gets the number of edges in the graph.
     pub fn edge_count(&self) -> usize {
-        self.as_storage_of::<Edge<_>>().len()
+        self.core.edges.len()
     }
 
     /// Gets an immutable view of the edge with the given key.
@@ -646,7 +650,8 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the edges in the graph.
     pub fn edges(&self) -> impl Iterator<Item = EdgeView<&Self>> {
-        self.as_storage_of::<Edge<_>>()
+        self.core
+            .edges
             .iter()
             .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
@@ -655,7 +660,8 @@ where
 
     /// Gets an iterator of orphan views over the edges in the graph.
     pub fn edge_orphans(&mut self) -> impl Iterator<Item = EdgeOrphan<G>> {
-        self.as_storage_mut_of::<Edge<_>>()
+        self.core
+            .edges
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
@@ -663,7 +669,7 @@ where
 
     /// Gets the number of faces in the graph.
     pub fn face_count(&self) -> usize {
-        self.as_storage_of::<Face<_>>().len()
+        self.core.faces.len()
     }
 
     /// Gets an immutable view of the face with the given key.
@@ -679,7 +685,8 @@ where
     // TODO: Return `Clone + Iterator`.
     /// Gets an iterator of immutable views over the faces in the graph.
     pub fn faces(&self) -> impl Iterator<Item = FaceView<&Self>> {
-        self.as_storage_of::<Face<_>>()
+        self.core
+            .faces
             .iter()
             .map(|(key, _)| key)
             .map(move |key| View::bind_unchecked(self, key))
@@ -688,7 +695,8 @@ where
 
     /// Gets an iterator of orphan views over the faces in the graph.
     pub fn face_orphans(&mut self) -> impl Iterator<Item = FaceOrphan<G>> {
-        self.as_storage_mut_of::<Face<_>>()
+        self.core
+            .faces
             .iter_mut()
             .map(|(key, data)| Orphan::bind_unchecked(data, key))
             .map(From::from)
@@ -746,7 +754,8 @@ where
         //       better than using `FaceView::triangulate` until triangulation
         //       is reworked.
         let keys = self
-            .as_storage_of::<Face<_>>()
+            .core
+            .faces
             .iter()
             .map(|(key, _)| key)
             .collect::<Vec<_>>();
@@ -890,7 +899,8 @@ where
     /// ```
     pub fn disjoint_subgraph_vertices(&self) -> impl ExactSizeIterator<Item = VertexView<&Self>> {
         let keys = self
-            .as_storage_of::<Vertex<_>>()
+            .core
+            .vertices
             .iter()
             .map(|(key, _)| key)
             .collect::<HashSet<_>>();
@@ -907,6 +917,15 @@ where
     /// Moves disjoint sub-graphs into separate graphs.
     pub fn into_disjoint_subgraphs(self) -> Vec<Self> {
         unimplemented!()
+    }
+
+    /// Shrinks the capacity of the graph's underlying storage as much as
+    /// possible.
+    pub fn shrink_to_fit(&mut self) {
+        self.core.vertices.shrink_to_fit();
+        self.core.arcs.shrink_to_fit();
+        self.core.edges.shrink_to_fit();
+        self.core.faces.shrink_to_fit();
     }
 
     /// Creates a [`Buildable`] mesh data structure from the graph.

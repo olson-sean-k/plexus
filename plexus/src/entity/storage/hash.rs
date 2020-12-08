@@ -28,6 +28,18 @@ where
     phantom: PhantomData<P>,
 }
 
+impl<E, R, P> HashStorage<E, R, P>
+where
+    E: Entity,
+    InnerKey<E::Key>: Eq + Hash,
+    R: Default,
+    P: Mode,
+{
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit();
+    }
+}
+
 impl<E> AsStorage<E> for HashStorage<E, (), Dynamic>
 where
     E: Entity<Storage = Self>,

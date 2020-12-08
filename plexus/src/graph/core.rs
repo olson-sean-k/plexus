@@ -41,10 +41,10 @@ pub struct Core<G, V = (), A = (), E = (), F = ()>
 where
     G: GraphData,
 {
-    vertices: V,
-    arcs: A,
-    edges: E,
-    faces: F,
+    pub(in crate::graph) vertices: V,
+    pub(in crate::graph) arcs: A,
+    pub(in crate::graph) edges: E,
+    pub(in crate::graph) faces: F,
     phantom: PhantomData<G>,
 }
 
