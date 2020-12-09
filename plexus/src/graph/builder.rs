@@ -86,11 +86,11 @@ where
         f(self).map_err(|error| error.into())
     }
 
-    fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
+    fn insert_vertex<T>(&mut self, data: T) -> Result<Self::Key, Self::Error>
     where
         Self::Vertex: FromGeometry<T>,
     {
-        Ok(vertex::insert(&mut self.mutation, geometry.into_geometry()))
+        Ok(vertex::insert(&mut self.mutation, data.into_geometry()))
     }
 }
 
@@ -101,13 +101,13 @@ where
     type Facet = G::Face;
     type Key = FaceKey;
 
-    fn insert_facet<T, U>(&mut self, keys: T, geometry: U) -> Result<Self::Key, Self::Error>
+    fn insert_facet<T, U>(&mut self, keys: T, data: U) -> Result<Self::Key, Self::Error>
     where
         Self::Facet: FromGeometry<U>,
         T: AsRef<[VertexKey]>,
     {
         let cache = FaceInsertCache::from_storage(&self.mutation, keys.as_ref())?;
-        let geometry = geometry.into_geometry();
-        face::insert_with(&mut self.mutation, cache, || (Default::default(), geometry))
+        let data = data.into_geometry();
+        face::insert_with(&mut self.mutation, cache, || (Default::default(), data))
     }
 }

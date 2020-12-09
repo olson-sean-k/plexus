@@ -49,11 +49,8 @@ impl<G> Vertex<G>
 where
     G: GraphData,
 {
-    pub fn new(geometry: G::Vertex) -> Self {
-        Vertex {
-            data: geometry,
-            arc: None,
-        }
+    pub fn new(data: G::Vertex) -> Self {
+        Vertex { data, arc: None }
     }
 }
 

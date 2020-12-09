@@ -67,9 +67,9 @@ impl<G> Arc<G>
 where
     G: GraphData,
 {
-    pub fn new(geometry: G::Arc) -> Self {
+    pub fn new(data: G::Arc) -> Self {
         Arc {
-            data: geometry,
+            data,
             next: None,
             previous: None,
             edge: None,
@@ -916,7 +916,7 @@ where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
     {
-        self.extrude_with(|geometry| geometry.map_position(|position| *position + translation))
+        self.extrude_with(|data| data.map_position(|position| *position + translation))
     }
 
     /// Extrudes the arc using the given vertex data.
@@ -1231,11 +1231,8 @@ impl<G> Edge<G>
 where
     G: GraphData,
 {
-    pub fn new(arc: ArcKey, geometry: G::Edge) -> Self {
-        Edge {
-            data: geometry,
-            arc,
-        }
+    pub fn new(arc: ArcKey, data: G::Edge) -> Self {
+        Edge { data, arc }
     }
 }
 

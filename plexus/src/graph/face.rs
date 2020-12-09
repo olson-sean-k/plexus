@@ -64,11 +64,8 @@ impl<G> Face<G>
 where
     G: GraphData,
 {
-    pub fn new(arc: ArcKey, geometry: G::Face) -> Self {
-        Face {
-            data: geometry,
-            arc,
-        }
+    pub fn new(arc: ArcKey, data: G::Face) -> Self {
+        Face { data, arc }
     }
 }
 
@@ -724,13 +721,9 @@ where
     /// let key = graph.faces().nth(0).unwrap().key();
     /// let mut face = graph.face_mut(key).unwrap();
     ///
-    /// // See `poke_with_offset`, which provides this functionality.
-    /// let mut geometry = face.centroid();
-    /// let position = geometry.as_position().clone() + face.normal().unwrap();
-    /// face.poke_with(move || {
-    ///     *geometry.as_position_mut() = position;
-    ///     geometry
-    /// });
+    /// // See also `poke_with_offset`, which provides this functionality.
+    /// let position = face.centroid() + face.normal().unwrap();
+    /// face.poke_with(move || position);
     /// ```
     pub fn poke_with<F>(self, f: F) -> VertexView<&'a mut M>
     where

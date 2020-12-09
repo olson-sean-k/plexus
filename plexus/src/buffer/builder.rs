@@ -141,13 +141,13 @@ where
         f(self).map_err(|error| error.into())
     }
 
-    fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
+    fn insert_vertex<T>(&mut self, data: T) -> Result<Self::Key, Self::Error>
     where
         Self::Vertex: FromGeometry<T>,
     {
         let key = <VertexKey<R> as NumCast>::from(self.vertices.len())
             .ok_or(BufferError::IndexOverflow)?;
-        self.vertices.push(geometry.into_geometry());
+        self.vertices.push(data.into_geometry());
         Ok(key)
     }
 }

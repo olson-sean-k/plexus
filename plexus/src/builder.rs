@@ -183,7 +183,7 @@ pub trait SurfaceBuilder: ClosedInput {
     /// to insert facets with a [`FacetBuilder`].
     ///
     /// [`FacetBuilder`]: crate::builder::FacetBuilder
-    fn insert_vertex<T>(&mut self, geometry: T) -> Result<Self::Key, Self::Error>
+    fn insert_vertex<T>(&mut self, data: T) -> Result<Self::Key, Self::Error>
     where
         Self::Vertex: FromGeometry<T>;
 }
@@ -207,7 +207,7 @@ where
     /// Returns a key that refers to the inserted facet.
     ///
     /// [`SurfaceBuilder`]: crate::builder::SurfaceBuilder
-    fn insert_facet<T, U>(&mut self, keys: T, geometry: U) -> Result<Self::Key, Self::Error>
+    fn insert_facet<T, U>(&mut self, keys: T, data: U) -> Result<Self::Key, Self::Error>
     where
         Self::Facet: FromGeometry<U>,
         T: AsRef<[K]>;

@@ -814,7 +814,7 @@ where
     /// Splits the graph along a path.
     ///
     /// Splitting a graph creates boundaries along the given path and copies any
-    /// necessary vertex, arc, and edge geometry.
+    /// necessary vertex, arc, and edge data.
     ///
     /// If the path bisects the graph, then splitting will result in disjointed
     /// sub-graphs.
@@ -988,9 +988,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the vertex geometry cannot be inserted into the
-    /// output, there are arity conflicts, or the output does not support
-    /// topology found in the graph.
+    /// Returns an error if the vertex data cannot be inserted into the output,
+    /// there are arity conflicts, or the output does not support topology found
+    /// in the graph.
     ///
     /// [`Buildable`]: crate::builder::Buildable
     pub fn to_mesh_by_vertex_with<B, F>(&self, mut f: F) -> Result<B, B::Error>
@@ -1027,9 +1027,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the vertex geometry cannot be inserted into the
-    /// output, there are arity conflicts, or the output does not support
-    /// topology found in the graph.
+    /// Returns an error if the vertex data cannot be inserted into the output,
+    /// there are arity conflicts, or the output does not support topology found
+    /// in the graph.
     ///
     /// [`Buildable`]: crate::builder::Buildable
     /// [`FromGeometry`]: crate::geometry::FromGeometry
@@ -1088,9 +1088,9 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the vertex geometry cannot be inserted into the
-    /// output, there are arity conflicts, or the output does not support
-    /// topology found in the graph.
+    /// Returns an error if the vertex data cannot be inserted into the output,
+    /// there are arity conflicts, or the output does not support topology found
+    /// in the graph.
     ///
     /// [`MeshBuffer`]: crate::buffer::MeshBuffer
     /// [`Buildable`]: crate::builder::Buildable
@@ -1299,16 +1299,16 @@ where
         let mut mutation = Mutation::from(MeshGraph::new());
         let keys = vertices
             .into_iter()
-            .map(|geometry| mutation::vertex::insert(&mut mutation, geometry.into_geometry()))
+            .map(|data| mutation::vertex::insert(&mut mutation, data.into_geometry()))
             .collect::<Vec<_>>();
-        for (perimeter, geometry) in faces {
+        for (perimeter, data) in faces {
             let perimeter = perimeter
                 .into_iter()
                 .map(|index| keys[index])
                 .collect::<SmallVec<[_; 4]>>();
             let cache = FaceInsertCache::from_storage(&mutation, perimeter.as_slice())?;
-            let geometry = geometry.into_geometry();
-            mutation::face::insert_with(&mut mutation, cache, || (Default::default(), geometry))?;
+            let data = data.into_geometry();
+            mutation::face::insert_with(&mut mutation, cache, || (Default::default(), data))?;
         }
         mutation.commit().map_err(|(_, error)| error)
     }
@@ -1741,14 +1741,14 @@ mod tests {
         }
 
         // Create a graph with a floating-point weight in each face. Use an
-        // iterator over orphan views to write to the geometry of each face.
+        // iterator over orphan views to write data to each face.
         let mut graph: MeshGraph<Weight> = UvSphere::new(4, 4).polygons::<Position<E3>>().collect();
         let value = 123_456_789;
         for mut face in graph.face_orphans() {
             *face.get_mut() = value;
         }
 
-        // Read the geometry of each face to ensure it is what we expect.
+        // Read the data of each face to ensure it is what we expect.
         for face in graph.faces() {
             assert_eq!(value, *face.get());
         }

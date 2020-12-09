@@ -430,7 +430,7 @@ where
     fn get_or_insert_arc<N, P>(
         mut mutation: N,
         endpoints: (VertexKey, VertexKey),
-        geometry: <Data<P::Graph> as GraphData>::Arc,
+        data: <Data<P::Graph> as GraphData>::Arc,
     ) -> (Option<EdgeKey>, ArcKey)
     where
         N: AsMut<Mutation<P>>,
@@ -448,16 +448,16 @@ where
                 .storage
                 .0
                 .as_storage_mut()
-                .insert_with_key(&ab, Arc::new(geometry));
+                .insert_with_key(&ab, Arc::new(data));
             let _ = mutation.as_mut().connect_outgoing_arc(a, ab);
             (None, ab)
         }
     }
 
-    let geometry = f();
+    let data = f();
     let (a, b) = endpoints;
-    let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), geometry.1 .0);
-    let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), geometry.1 .1);
+    let (e1, ab) = get_or_insert_arc(mutation.as_mut(), (a, b), data.1 .0);
+    let (e2, ba) = get_or_insert_arc(mutation.as_mut(), (b, a), data.1 .1);
     match (e1, e2) {
         (Some(e1), Some(e2)) if e1 == e2 => Ok((e1, (ab, ba))),
         (None, None) => {
@@ -466,7 +466,7 @@ where
                 .storage
                 .1
                 .as_storage_mut()
-                .insert(Edge::new(ab, geometry.0));
+                .insert(Edge::new(ab, data.0));
             mutation.as_mut().connect_arc_to_edge(ab, ab_ba)?;
             mutation.as_mut().connect_arc_to_edge(ba, ab_ba)?;
             Ok((ab_ba, (ab, ba)))

@@ -124,7 +124,7 @@ impl VertexRemoveCache {
     }
 }
 
-pub fn insert<N, P>(mut mutation: N, geometry: <Data<P::Graph> as GraphData>::Vertex) -> VertexKey
+pub fn insert<N, P>(mut mutation: N, data: <Data<P::Graph> as GraphData>::Vertex) -> VertexKey
 where
     N: AsMut<Mutation<P>>,
     P: Mode,
@@ -134,7 +134,7 @@ where
         .as_mut()
         .storage
         .as_storage_mut()
-        .insert(Vertex::new(geometry))
+        .insert(Vertex::new(data))
 }
 
 pub fn remove<N, P>(

@@ -487,8 +487,6 @@ impl FaceBridgeCache {
 
 pub struct FaceExtrudeCache {
     sources: Vec<VertexKey>,
-    //destinations: Vec<G::Vertex>,
-    //geometry: G::Face,
     cache: FaceRemoveCache,
 }
 
@@ -508,7 +506,7 @@ impl FaceExtrudeCache {
     }
 }
 
-// TODO: Should this accept arc geometry at all?
+// TODO: Should this accept arc data at all?
 pub fn insert_with<N, P, F>(
     mut mutation: N,
     cache: FaceInsertCache,
@@ -527,7 +525,7 @@ where
         perimeter,
         connectivity,
     } = cache;
-    let geometry = f();
+    let data = f();
     // Insert edges and collect the interior arcs.
     let arcs = perimeter
         .iter()
@@ -535,7 +533,7 @@ where
         .perimeter()
         .map(|(a, b)| {
             edge::get_or_insert_with(mutation.as_mut(), (a, b), || {
-                (Default::default(), (geometry.0.clone(), geometry.0.clone()))
+                (Default::default(), (data.0.clone(), data.0.clone()))
             })
             .map(|(_, (ab, _))| ab)
         })
@@ -545,7 +543,7 @@ where
         .as_mut()
         .storage
         .as_storage_mut()
-        .insert(Face::new(arcs[0], geometry.1));
+        .insert(Face::new(arcs[0], data.1));
     mutation.as_mut().connect_face_interior(&arcs, face)?;
     mutation
         .as_mut()
@@ -627,7 +625,7 @@ where
         cache,
     } = cache;
     // Remove the source and destination faces. Pair the topology with edge
-    // geometry for the source face.
+    // data for the source face.
     remove(mutation.as_mut(), cache.0)?;
     remove(mutation.as_mut(), cache.1)?;
     // TODO: Is it always correct to reverse the order of the opposite face's
@@ -668,7 +666,7 @@ where
     }
     let destinations = destinations
         .into_iter()
-        .map(|geometry| vertex::insert(mutation.as_mut(), geometry))
+        .map(|data| vertex::insert(mutation.as_mut(), data))
         .collect::<Vec<_>>();
     // Use the keys for the existing vertices and the translated geometries to
     // construct the extruded face and its connective faces.
