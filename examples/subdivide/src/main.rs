@@ -14,18 +14,18 @@ use theon::space::{EuclideanSpace, VectorSpace};
 
 type E3 = Point3<f32>;
 
-pub trait Circumscribe<G> {
-    fn circumscribe(self) -> Self;
+pub trait Ambo<G> {
+    fn ambo(self) -> Self;
 }
 
-impl<'a, G> Circumscribe<G> for FaceView<&'a mut MeshGraph<G>>
+impl<'a, G> Ambo<G> for FaceView<&'a mut MeshGraph<G>>
 where
     G: EdgeMidpoint + GraphData,
     G::Vertex: AsPositionMut,
 {
     // Subdivide the face such that a similar polygon is formed within its
     // perimeter.
-    fn circumscribe(self) -> Self {
+    fn ambo(self) -> Self {
         // Split each edge, stashing the vertex key and moving to the next arc.
         let arity = self.arity();
         let mut arc = self.into_arc();
@@ -62,7 +62,7 @@ fn main() {
 
         // Circumscribe and extrude the face recursively.
         for _ in 0..5 {
-            face = face.circumscribe().extrude_with_offset(0.5).unwrap();
+            face = face.ambo().extrude_with_offset(0.5).unwrap();
         }
 
         // Convert the graph into a buffer.
