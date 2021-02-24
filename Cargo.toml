@@ -3,6 +3,7 @@ members = [
     "examples/sphere",
     "examples/subdivide",
     "examples/teapot",
+    "examples/transcode",
     "pictor",
     "plexus"
 ]
