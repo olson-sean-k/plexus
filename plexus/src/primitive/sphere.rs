@@ -318,7 +318,6 @@ where
 mod tests {
     use nalgebra::Point3;
     use std::collections::BTreeSet;
-    use std::iter::FromIterator;
 
     use crate::prelude::*;
     use crate::primitive::generate::Position;
@@ -351,12 +350,11 @@ mod tests {
     fn position_index_to_vertex_mapping() {
         assert_eq!(
             5,
-            BTreeSet::from_iter(
-                UvSphere::new(3, 2)
-                    .indexing_polygons::<Position>() // 18 vertices, 5 indices.
-                    .vertices()
-            )
-            .len()
+            UvSphere::new(3, 2)
+                .indexing_polygons::<Position>() // 18 vertices, 5 indices.
+                .vertices()
+                .collect::<BTreeSet<_>>()
+                .len()
         )
     }
 }

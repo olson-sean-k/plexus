@@ -93,12 +93,12 @@ where
     }
 }
 
-impl<T> Into<Vector4<T>> for Color4<T>
+impl<T> From<Color4<T>> for Vector4<T>
 where
     T: Scalar,
 {
-    fn into(self) -> Vector4<T> {
-        self.0
+    fn from(color: Color4<T>) -> Self {
+        color.0
     }
 }
 
@@ -340,14 +340,15 @@ impl Application for RenderApplication {
 
     fn react(&mut self, event: WindowEvent) -> Reaction {
         match event {
-            WindowEvent::KeyboardInput { input, .. } => match input {
-                KeyboardInput {
-                    virtual_keycode: Some(VirtualKeyCode::Escape),
-                    state: ElementState::Pressed,
-                    ..
-                } => Abort,
-                _ => Continue,
-            },
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                        state: ElementState::Pressed,
+                        ..
+                    },
+                ..
+            } => Abort,
             _ => Continue,
         }
     }

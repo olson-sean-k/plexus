@@ -25,7 +25,7 @@
 //!
 //! | Type               | Morphism    | Arity        | Map | Zip | Tessellate |
 //! |--------------------|-------------|--------------|-----|-----|------------|
-//! | `NGon`             | Monomorphic | $[2,12]$     | Yes | Yes | Yes        |
+//! | `NGon`             | Monomorphic | $1,[3,32]$   | Yes | Yes | Yes        |
 //! | `BoundedPolygon`   | Polymorphic | $[3,4]$      | Yes | No  | Yes        |
 //! | `UnboundedPolygon` | Polymorphic | $[3,\infin)$ | Yes | No  | No         |
 //!
@@ -43,7 +43,7 @@
 //! traits. [`UnboundedPolygon`] is most flexible and can represent any
 //! arbitrary polygon, but does not support any tessellation features.
 //!
-//! [`Edge`]s are always represented as `NGon<[_; 2]>`.
+//! [`Edge`]s are always represented as `NGon<_, 2>`.
 //!
 //! # Examples
 //!
@@ -85,13 +85,14 @@ pub mod decompose;
 pub mod generate;
 pub mod sphere;
 
-use arrayvec::{Array, ArrayVec};
+use arrayvec::ArrayVec;
 use decorum::Real;
 use fool::BoolExt as _;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::{Integer, One, Signed, Unsigned, Zero};
 use smallvec::{smallvec, SmallVec};
+use std::array;
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
@@ -101,12 +102,12 @@ use theon::ops::Cross;
 use theon::query::{Intersection, Line, LineLine, LinePlane, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
 use theon::{AsPosition, AsPositionMut, Position};
-use typenum::type_operators::Cmp;
-use typenum::{Greater, U2, U3};
+use typenum::{Cmp, Greater, U1, U2, U3};
 
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::geometry::partition::PointPartition;
 use crate::primitive::decompose::IntoVertices;
-use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity};
+use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity, TryFromIterator};
 
 /// Topological structure.
 ///
@@ -413,62 +414,104 @@ where
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with adjacent elements being connected by an
 /// implicit undirected edge. For example, an `NGon` with three vertices
-/// (`NGon<[T; 3]>`) would represent a trigon (triangle). Generally these
-/// elements are labeled $A$, $B$, $C$, etc.
+/// (`NGon<_, 3>`) would represent a trigon (triangle). Generally these elements
+/// are labeled $A$, $B$, $C$, etc. Note that the constant parameter `N`
+/// represents the number of the `NGon`'s vertices and **not** the number of its
+/// edges (arity).
 ///
 /// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
-/// two vertices (`NGon<[T; 2]>`) is considered a _monogon_ despite common
-/// definitions specifying a single vertex. Such an `NGon` is not considered a
-/// _digon_, as it represents a single undirected edge rather than two distinct
-/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the `Edge`
-/// type definition.
+/// two vertices (`NGon<_, 2>`) is considered a _monogon_ and is used to
+/// represent edges. Such an `NGon` is not considered a _digon_, as it
+/// represents a single undirected edge rather than two distinct (but collapsed)
+/// edges. Note that the polygonal types [`BoundedPolygon`] and
+/// [`UnboundedPolygon`] never represent edges. See the [`Edge`] type
+/// definition.
+///
+/// `NGon`s with one or zero vertices are unsupported and lack various trait
+/// implementations.
 ///
 /// See the [module][`primitive`] documentation for more information.
 ///
+/// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
+/// [`Edge`]: crate::primitive::Edge
 /// [`primitive`]: crate::primitive
+/// [`UnboundedPolygon`]: crate::primitive::UnboundedPolygon
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NGon<A>(pub A)
-where
-    A: Array;
+pub struct NGon<G, const N: usize>(pub [G; N]);
 
-impl<A> NGon<A>
-where
-    A: Array,
-{
-    pub fn into_array(self) -> A {
+impl<G, const N: usize> NGon<G, N> {
+    pub fn into_array(self) -> [G; N] {
         self.0
     }
-}
 
-impl<A> AsRef<[<A as Array>::Item]> for NGon<A>
-where
-    A: Array,
-{
-    fn as_ref(&self) -> &[A::Item] {
-        self.0.as_slice()
+    pub fn positions(&self) -> NGon<&Position<G>, N>
+    where
+        G: AsPosition,
+    {
+        if let Ok(array) = self
+            .as_ref()
+            .iter()
+            .map(|vertex| vertex.as_position())
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+        {
+            array.into()
+        }
+        else {
+            panic!()
+        }
     }
 }
 
-impl<A> AsMut<[<A as Array>::Item]> for NGon<A>
-where
-    A: Array,
-{
-    fn as_mut(&mut self) -> &mut [A::Item] {
-        self.0.as_mut_slice()
+impl<'a, G, const N: usize> NGon<&'a G, N> {
+    pub fn cloned(self) -> NGon<G, N>
+    where
+        G: Clone,
+    {
+        self.map(|vertex| vertex.clone())
     }
 }
 
-impl<A> Adjunct for NGon<A>
-where
-    A: Array,
-{
-    type Item = A::Item;
+impl<G, const N: usize> AsRef<[G]> for NGon<G, N> {
+    fn as_ref(&self) -> &[G] {
+        &self.0
+    }
 }
 
-impl<A> Fold for NGon<A>
+impl<G, const N: usize> AsMut<[G]> for NGon<G, N> {
+    fn as_mut(&mut self) -> &mut [G] {
+        &mut self.0
+    }
+}
+
+impl<G, const N: usize> Adjunct for NGon<G, N> {
+    type Item = G;
+}
+
+impl<G, const N: usize> Converged for NGon<G, N>
 where
-    Self: Topological + IntoItems,
-    A: Array,
+    G: Copy,
+{
+    fn converged(vertex: G) -> Self {
+        NGon([vertex; N])
+    }
+}
+
+impl<G, const N: usize> DynamicArity for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
+    type Dynamic = usize;
+
+    fn arity(&self) -> Self::Dynamic {
+        <Self as StaticArity>::ARITY
+    }
+}
+
+impl<G, const N: usize> Fold for NGon<G, N>
+where
+    Self: Topological,
 {
     fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
@@ -481,225 +524,168 @@ where
     }
 }
 
-impl<A> From<A> for NGon<A>
-where
-    A: Array,
-{
-    fn from(array: A) -> Self {
+impl<G, const N: usize> From<[G; N]> for NGon<G, N> {
+    fn from(array: [G; N]) -> Self {
         NGon(array)
     }
 }
 
-impl<A> FromItems for NGon<A>
-where
-    A: Array,
-{
+impl<G, const N: usize> FromItems for NGon<G, N> {
     fn from_items<I>(items: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self::Item>,
     {
-        items
-            .into_iter()
-            .collect::<ArrayVec<A>>()
-            .into_inner()
-            .ok()
-            .map(NGon)
+        items.into_iter().try_collect().ok()
     }
 }
 
-impl<A> Index<usize> for NGon<A>
-where
-    A: Array + AsRef<[<A as Array>::Item]>,
-{
-    type Output = A::Item;
+impl<G, const N: usize> Index<usize> for NGon<G, N> {
+    type Output = G;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.0.as_ref().index(index)
     }
 }
 
-impl<A> IndexMut<usize> for NGon<A>
-where
-    A: Array + AsRef<[<A as Array>::Item]> + AsMut<[<A as Array>::Item]>,
-{
+impl<G, const N: usize> IndexMut<usize> for NGon<G, N> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.0.as_mut().index_mut(index)
     }
 }
 
-impl<A> IntoItems for NGon<A>
-where
-    A: Array,
-{
-    type Output = ArrayVec<A>;
+impl<G, const N: usize> IntoItems for NGon<G, N> {
+    type Output = <Self as IntoIterator>::IntoIter;
 
     fn into_items(self) -> Self::Output {
-        ArrayVec::from(self.into_array())
+        self.into_iter()
     }
 }
 
-impl<A> IntoIterator for NGon<A>
-where
-    A: Array,
-{
-    type Item = <A as Array>::Item;
-    type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
+impl<G, const N: usize> IntoIterator for NGon<G, N> {
+    type Item = G;
+    type IntoIter = array::IntoIter<G, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.into_items().into_iter()
+        array::IntoIter::new(self.into_array())
     }
 }
 
-macro_rules! impl_monomorphic_ngon {
-    (length => $n:expr) => (
-        impl<T> Monomorphic for NGon<[T; $n]> {}
+impl<G, H, const N: usize> Map<H> for NGon<G, N> {
+    type Output = NGon<H, N>;
 
-        impl<T> StaticArity for NGon<[T; $n]> {
-            type Static = usize;
-
-            const ARITY: Self::Static = $n;
-        }
-
-        impl<T> Polygonal for NGon<[T; $n]> {}
-    );
-    (lengths => $($n:expr),*$(,)?) => (
-        impl<T> Monomorphic for NGon<[T; 2]> {}
-
-        impl<T> StaticArity for NGon<[T; 2]> {
-            type Static = usize;
-
-            const ARITY: Self::Static = 1;
-        }
-
-        $(impl_monomorphic_ngon!(length => $n);)*
-    );
+    fn map<F>(self, f: F) -> Self::Output
+    where
+        F: FnMut(Self::Item) -> H,
+    {
+        (self.into_iter().map(f)).try_collect().unwrap()
+    }
 }
-impl_monomorphic_ngon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+
+impl<G, const N: usize> Monomorphic for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
+}
+
+impl<G, const N: usize> Polygonal for NGon<G, N>
+where
+    // The compiler cannot deduce that the bounds on `TypeOf<N>` are a strict
+    // subset of the similar bounds on the `Topological` implementation, so an
+    // explicit bound on `Self` is required.
+    Self: Topological,
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U2, Output = Greater>,
+{
+}
+
+impl<G, const N: usize> StaticArity for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
+    type Static = usize;
+
+    const ARITY: Self::Static = crate::n_arity(N);
+}
+
+impl<G, const N: usize> Topological for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
+    type Vertex = G;
+
+    fn try_from_slice<I>(vertices: I) -> Option<Self>
+    where
+        Self::Vertex: Copy,
+        I: AsRef<[Self::Vertex]>,
+    {
+        vertices.as_ref().try_into().map(NGon).ok()
+    }
+}
+
+impl<G, const N: usize> TryFromIterator<G> for NGon<G, N> {
+    type Error = ();
+
+    fn try_from_iter<I>(vertices: I) -> Result<Self, Self::Error>
+    where
+        I: Iterator<Item = G>,
+    {
+        vertices
+            .collect::<ArrayVec<G, N>>()
+            .into_inner()
+            .map(NGon)
+            .map_err(|_| ())
+    }
+}
+
+impl<G, H, const N: usize> ZipMap<H> for NGon<G, N> {
+    type Output = NGon<H, N>;
+
+    fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
+    where
+        F: FnMut(Self::Item, Self::Item) -> H,
+    {
+        (self.into_iter().zip(other).map(|(a, b)| f(a, b)))
+            .try_collect()
+            .unwrap()
+    }
+}
 
 macro_rules! impl_zip_ngon {
-    (length => $n:expr) => (
-        impl_zip_ngon!(length => $n, items => (A, B));
-        impl_zip_ngon!(length => $n, items => (A, B, C));
-        impl_zip_ngon!(length => $n, items => (A, B, C, D));
-        impl_zip_ngon!(length => $n, items => (A, B, C, D, E));
-        impl_zip_ngon!(length => $n, items => (A, B, C, D, E, F));
-    );
-    (length => $n:expr, items => ($($i:ident),*)) => (
+    (ngons => ($($i:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($i),*> Zip for ($(NGon<[$i; $n]>),*) {
-            type Output = NGon<[($($i),*); $n]>;
+        impl<$($i),*, const N: usize> Zip for ($(NGon<$i, N>),*)
+        where
+            Constant<N>: ToType,
+            TypeOf<N>: Cmp<U1, Output = Greater>,
+        {
+            type Output = NGon<($($i),*), N>;
 
             fn zip(self) -> Self::Output {
                 let ($($i,)*) = self;
-                FromItems::from_items(izip!($($i.into_items()),*)).unwrap()
+                (izip!($($i.into_iter()),*)).try_collect().unwrap()
             }
         }
     );
 }
+impl_zip_ngon!(ngons => (A, B));
+impl_zip_ngon!(ngons => (A, B, C));
+impl_zip_ngon!(ngons => (A, B, C, D));
+impl_zip_ngon!(ngons => (A, B, C, D, E));
+impl_zip_ngon!(ngons => (A, B, C, D, E, F));
 
-// TODO: Some inherent functions are not documented to avoid bloat.
-macro_rules! impl_ngon {
-    (length => $n:expr) => (
-        impl<T> NGon<[T; $n]> {
-            #[doc(hidden)]
-            pub fn positions(&self) -> NGon<[&Position<T>; $n]>
-            where
-                T: AsPosition,
-            {
-                if let Ok(array) = self
-                    .as_ref()
-                    .iter()
-                    .map(|vertex| vertex.as_position())
-                    .collect::<ArrayVec<[_; $n]>>()
-                    .into_inner()
-                {
-                    array.into()
-                }
-                else {
-                    panic!()
-                }
-            }
-        }
+pub type Edge<G> = NGon<G, 2>;
 
-        impl<'a, T> NGon<[&'a T; $n]> {
-            #[doc(hidden)]
-            pub fn cloned(self) -> NGon<[T; $n]>
-            where
-                T: Clone,
-            {
-                self.map(|vertex| vertex.clone())
-            }
-        }
-
-        impl<T> Converged for NGon<[T; $n]>
-        where
-            T: Copy,
-        {
-            fn converged(item: T) -> Self {
-                NGon([item; $n])
-            }
-        }
-
-        impl<T> DynamicArity for NGon<[T; $n]> {
-            type Dynamic = usize;
-
-            fn arity(&self) -> Self::Dynamic {
-                <Self as StaticArity>::ARITY
-            }
-        }
-
-        impl<T, U> Map<U> for NGon<[T; $n]> {
-            type Output = NGon<[U; $n]>;
-
-            fn map<F>(self, f: F) -> Self::Output
-            where
-                F: FnMut(Self::Item) -> U,
-            {
-                FromItems::from_items(self.into_iter().map(f)).unwrap()
-            }
-        }
-
-        impl<T> Topological for NGon<[T; $n]> {
-            type Vertex = T;
-
-            fn try_from_slice<U>(vertices: U) -> Option<Self>
-            where
-                Self::Vertex: Copy,
-                U: AsRef<[Self::Vertex]>,
-            {
-                vertices.as_ref().try_into().map(NGon).ok()
-            }
-        }
-
-        impl_zip_ngon!(length => $n);
-
-        impl<T, U> ZipMap<U> for NGon<[T; $n]> {
-            type Output = NGon<[U; $n]>;
-
-            fn zip_map<F>(self, other: Self, mut f: F) -> Self::Output
-            where
-                F: FnMut(Self::Item, Self::Item) -> U,
-            {
-                FromItems::from_items(self.into_iter().zip(other).map(|(a, b)| f(a, b))).unwrap()
-            }
-        }
-    );
-    (lengths => $($n:expr),*$(,)?) => (
-        $(impl_ngon!(length => $n);)*
-    );
-}
-impl_ngon!(lengths => 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
-
-pub type Edge<T> = NGon<[T; 2]>;
-
-impl<T> Edge<T> {
-    pub fn new(a: T, b: T) -> Self {
+impl<G> Edge<G> {
+    pub fn new(a: G, b: G) -> Self {
         NGon([a, b])
     }
 
-    pub fn line(&self) -> Option<Line<Position<T>>>
+    pub fn line(&self) -> Option<Line<Position<G>>>
     where
-        T: AsPosition,
+        G: AsPosition,
     {
         let [origin, endpoint] = self.positions().cloned().into_array();
         Unit::try_from_inner(endpoint - origin).map(|direction| Line { origin, direction })
@@ -707,19 +693,21 @@ impl<T> Edge<T> {
 
     pub fn is_bisected(&self, other: &Self) -> bool
     where
-        T: AsPosition,
-        Position<T>: FiniteDimensional<N = U2>,
+        G: AsPosition,
+        Position<G>: FiniteDimensional<N = U2>,
     {
-        let is_disjoint = |line: Line<Position<T>>, [a, b]: [Position<T>; 2]| {
-            fool::zip((line.partition(a), line.partition(b)))
+        let is_disjoint = |line: Line<Position<G>>, [a, b]: [Position<G>; 2]| {
+            line.partition(a)
+                .zip(line.partition(b))
                 .map(|(pa, pb)| pa != pb)
                 .unwrap_or(false)
         };
-        fool::zip((self.line(), other.line()))
-            .map(|(l1, l2)| {
-                let l1 = is_disjoint(l1, other.positions().cloned().into_array());
-                let l2 = is_disjoint(l2, self.positions().cloned().into_array());
-                l1 && l2
+        self.line()
+            .zip(other.line())
+            .map(|(left, right)| {
+                let left = is_disjoint(left, other.positions().cloned().into_array());
+                let right = is_disjoint(right, self.positions().cloned().into_array());
+                left && right
             })
             .unwrap_or(false)
     }
@@ -778,13 +766,15 @@ where
     //       edge's endpoints by the other edge's line. That's probably more
     //       expensive than is necessary.
     fn intersection(&self, other: &Edge<T>) -> Option<Self::Output> {
-        fool::zip((self.line(), other.line())).and_then(|(l1, l2)| match l1.intersection(&l2) {
-            Some(LineLine::Point(point)) => self
-                .is_bisected(other)
-                .then_some_ext(EdgeEdge::Point(point)),
-            Some(LineLine::Line(_)) => todo!(),
-            _ => None,
-        })
+        self.line()
+            .zip(other.line())
+            .and_then(|(left, right)| match left.intersection(&right) {
+                Some(LineLine::Point(point)) => self
+                    .is_bisected(other)
+                    .then_some_ext(EdgeEdge::Point(point)),
+                Some(LineLine::Line(_)) => todo!(),
+                _ => None,
+            })
     }
 }
 
@@ -801,29 +791,29 @@ impl<T> Rotate for Edge<T> {
 }
 
 /// Triangle.
-pub type Trigon<T> = NGon<[T; 3]>;
+pub type Trigon<G> = NGon<G, 3>;
 
-impl<T> Trigon<T> {
-    pub fn new(a: T, b: T, c: T) -> Self {
+impl<G> Trigon<G> {
+    pub fn new(a: G, b: G, c: G) -> Self {
         NGon([a, b, c])
     }
 
     #[allow(clippy::many_single_char_names)]
-    pub fn plane(&self) -> Option<Plane<Position<T>>>
+    pub fn plane(&self) -> Option<Plane<Position<G>>>
     where
-        T: AsPosition,
-        Position<T>: EuclideanSpace + FiniteDimensional<N = U3>,
-        Vector<Position<T>>: Cross<Output = Vector<Position<T>>>,
+        G: AsPosition,
+        Position<G>: EuclideanSpace + FiniteDimensional<N = U3>,
+        Vector<Position<G>>: Cross<Output = Vector<Position<G>>>,
     {
         let [a, b, c] = self.positions().cloned().into_array();
         let v = a - b;
         let u = a - c;
         Unit::try_from_inner(v.cross(u))
-            .map(move |normal| Plane::<Position<T>> { origin: a, normal })
+            .map(move |normal| Plane::<Position<G>> { origin: a, normal })
     }
 }
 
-impl<T> Rotate for Trigon<T> {
+impl<G> Rotate for Trigon<G> {
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
@@ -841,15 +831,15 @@ impl<T> Rotate for Trigon<T> {
 }
 
 /// Quadrilateral.
-pub type Tetragon<T> = NGon<[T; 4]>;
+pub type Tetragon<G> = NGon<G, 4>;
 
-impl<T> Tetragon<T> {
-    pub fn new(a: T, b: T, c: T, d: T) -> Self {
+impl<G> Tetragon<G> {
+    pub fn new(a: G, b: G, c: G, d: G) -> Self {
         NGon([a, b, c, d])
     }
 }
 
-impl<T> Rotate for Tetragon<T> {
+impl<G> Rotate for Tetragon<G> {
     #[allow(clippy::many_single_char_names)]
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
@@ -883,13 +873,13 @@ impl<T> Rotate for Tetragon<T> {
 /// [`primitive`]: crate::primitive
 /// [`NGon`]: crate::primitive::NGon
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum BoundedPolygon<T> {
-    N3(Trigon<T>),
-    N4(Tetragon<T>),
+pub enum BoundedPolygon<G> {
+    N3(Trigon<G>),
+    N4(Tetragon<G>),
 }
 
-impl<T> AsRef<[T]> for BoundedPolygon<T> {
-    fn as_ref(&self) -> &[T] {
+impl<G> AsRef<[G]> for BoundedPolygon<G> {
+    fn as_ref(&self) -> &[G] {
         match *self {
             BoundedPolygon::N3(ref trigon) => trigon.as_ref(),
             BoundedPolygon::N4(ref tetragon) => tetragon.as_ref(),
@@ -897,8 +887,8 @@ impl<T> AsRef<[T]> for BoundedPolygon<T> {
     }
 }
 
-impl<T> AsMut<[T]> for BoundedPolygon<T> {
-    fn as_mut(&mut self) -> &mut [T] {
+impl<G> AsMut<[G]> for BoundedPolygon<G> {
+    fn as_mut(&mut self) -> &mut [G] {
         match *self {
             BoundedPolygon::N3(ref mut trigon) => trigon.as_mut(),
             BoundedPolygon::N4(ref mut tetragon) => tetragon.as_mut(),
@@ -906,22 +896,22 @@ impl<T> AsMut<[T]> for BoundedPolygon<T> {
     }
 }
 
-impl<T> Adjunct for BoundedPolygon<T> {
-    type Item = T;
+impl<G> Adjunct for BoundedPolygon<G> {
+    type Item = G;
 }
 
-impl<T> DynamicArity for BoundedPolygon<T> {
+impl<G> DynamicArity for BoundedPolygon<G> {
     type Dynamic = usize;
 
     fn arity(&self) -> Self::Dynamic {
         match *self {
-            BoundedPolygon::N3(..) => Trigon::<T>::ARITY,
-            BoundedPolygon::N4(..) => Tetragon::<T>::ARITY,
+            BoundedPolygon::N3(..) => Trigon::<G>::ARITY,
+            BoundedPolygon::N4(..) => Tetragon::<G>::ARITY,
         }
     }
 }
 
-impl<T> Fold for BoundedPolygon<T> {
+impl<G> Fold for BoundedPolygon<G> {
     fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
         F: FnMut(U, Self::Item) -> U,
@@ -933,32 +923,32 @@ impl<T> Fold for BoundedPolygon<T> {
     }
 }
 
-impl<T> From<[T; 3]> for BoundedPolygon<T> {
-    fn from(array: [T; 3]) -> Self {
+impl<G> From<[G; 3]> for BoundedPolygon<G> {
+    fn from(array: [G; 3]) -> Self {
         BoundedPolygon::N3(array.into())
     }
 }
 
-impl<T> From<[T; 4]> for BoundedPolygon<T> {
-    fn from(array: [T; 4]) -> Self {
+impl<G> From<[G; 4]> for BoundedPolygon<G> {
+    fn from(array: [G; 4]) -> Self {
         BoundedPolygon::N4(array.into())
     }
 }
 
-impl<T> From<Trigon<T>> for BoundedPolygon<T> {
-    fn from(trigon: Trigon<T>) -> Self {
+impl<G> From<Trigon<G>> for BoundedPolygon<G> {
+    fn from(trigon: Trigon<G>) -> Self {
         BoundedPolygon::N3(trigon)
     }
 }
 
-impl<T> From<Tetragon<T>> for BoundedPolygon<T> {
-    fn from(tetragon: Tetragon<T>) -> Self {
+impl<G> From<Tetragon<G>> for BoundedPolygon<G> {
+    fn from(tetragon: Tetragon<G>) -> Self {
         BoundedPolygon::N4(tetragon)
     }
 }
 
-impl<T> Index<usize> for BoundedPolygon<T> {
-    type Output = T;
+impl<G> Index<usize> for BoundedPolygon<G> {
+    type Output = G;
 
     fn index(&self, index: usize) -> &Self::Output {
         match *self {
@@ -968,7 +958,7 @@ impl<T> Index<usize> for BoundedPolygon<T> {
     }
 }
 
-impl<T> IndexMut<usize> for BoundedPolygon<T> {
+impl<G> IndexMut<usize> for BoundedPolygon<G> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match *self {
             BoundedPolygon::N3(ref mut trigon) => trigon.index_mut(index),
@@ -977,8 +967,8 @@ impl<T> IndexMut<usize> for BoundedPolygon<T> {
     }
 }
 
-impl<T> IntoItems for BoundedPolygon<T> {
-    type Output = SmallVec<[T; 4]>;
+impl<G> IntoItems for BoundedPolygon<G> {
+    type Output = SmallVec<[G; 4]>;
 
     fn into_items(self) -> Self::Output {
         match self {
@@ -988,8 +978,8 @@ impl<T> IntoItems for BoundedPolygon<T> {
     }
 }
 
-impl<T> IntoIterator for BoundedPolygon<T> {
-    type Item = T;
+impl<G> IntoIterator for BoundedPolygon<G> {
+    type Item = G;
     type IntoIter = <<Self as IntoItems>::Output as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -1011,9 +1001,9 @@ impl<T, U> Map<U> for BoundedPolygon<T> {
     }
 }
 
-impl<T> Polygonal for BoundedPolygon<T> {}
+impl<G> Polygonal for BoundedPolygon<G> {}
 
-impl<T> Rotate for BoundedPolygon<T> {
+impl<G> Rotate for BoundedPolygon<G> {
     fn rotate(self, n: isize) -> Self {
         match self {
             BoundedPolygon::N3(trigon) => BoundedPolygon::N3(trigon.rotate(n)),
@@ -1022,19 +1012,19 @@ impl<T> Rotate for BoundedPolygon<T> {
     }
 }
 
-impl<T> StaticArity for BoundedPolygon<T> {
+impl<G> StaticArity for BoundedPolygon<G> {
     type Static = (usize, usize);
 
     const ARITY: Self::Static = (3, 4);
 }
 
-impl<T> Topological for BoundedPolygon<T> {
-    type Vertex = T;
+impl<G> Topological for BoundedPolygon<G> {
+    type Vertex = G;
 
-    fn try_from_slice<U>(vertices: U) -> Option<Self>
+    fn try_from_slice<I>(vertices: I) -> Option<Self>
     where
         Self::Vertex: Copy,
-        U: AsRef<[Self::Vertex]>,
+        I: AsRef<[Self::Vertex]>,
     {
         let vertices = vertices.as_ref();
         match vertices.len() {
@@ -1059,51 +1049,51 @@ impl<T> Topological for BoundedPolygon<T> {
 /// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
 /// [`NGon`]: crate::primitive::NGon
 #[derive(Clone, Debug, PartialEq)]
-pub struct UnboundedPolygon<T>(SmallVec<[T; 4]>);
+pub struct UnboundedPolygon<G>(SmallVec<[G; 4]>);
 
-impl<T> UnboundedPolygon<T> {
-    pub fn trigon(a: T, b: T, c: T) -> Self {
+impl<G> UnboundedPolygon<G> {
+    pub fn trigon(a: G, b: G, c: G) -> Self {
         UnboundedPolygon(smallvec![a, b, c])
     }
 
-    pub fn tetragon(a: T, b: T, c: T, d: T) -> Self {
+    pub fn tetragon(a: G, b: G, c: G, d: G) -> Self {
         UnboundedPolygon(smallvec![a, b, c, d])
     }
 
-    pub fn positions(&self) -> UnboundedPolygon<&Position<T>>
+    pub fn positions(&self) -> UnboundedPolygon<&Position<G>>
     where
-        T: AsPosition,
+        G: AsPosition,
     {
         UnboundedPolygon(self.0.iter().map(|vertex| vertex.as_position()).collect())
     }
 }
 
-impl<'a, T> UnboundedPolygon<&'a T>
+impl<'a, G> UnboundedPolygon<&'a G>
 where
-    T: Clone,
+    G: Clone,
 {
-    pub fn cloned(self) -> UnboundedPolygon<T> {
+    pub fn cloned(self) -> UnboundedPolygon<G> {
         self.map(|vertex| vertex.clone())
     }
 }
 
-impl<T> Adjunct for UnboundedPolygon<T> {
-    type Item = T;
+impl<G> Adjunct for UnboundedPolygon<G> {
+    type Item = G;
 }
 
-impl<T> AsRef<[T]> for UnboundedPolygon<T> {
-    fn as_ref(&self) -> &[T] {
+impl<G> AsRef<[G]> for UnboundedPolygon<G> {
+    fn as_ref(&self) -> &[G] {
         self.0.as_ref()
     }
 }
 
-impl<T> AsMut<[T]> for UnboundedPolygon<T> {
-    fn as_mut(&mut self) -> &mut [T] {
+impl<G> AsMut<[G]> for UnboundedPolygon<G> {
+    fn as_mut(&mut self) -> &mut [G] {
         self.0.as_mut()
     }
 }
 
-impl<T> DynamicArity for UnboundedPolygon<T> {
+impl<G> DynamicArity for UnboundedPolygon<G> {
     type Dynamic = usize;
 
     fn arity(&self) -> Self::Dynamic {
@@ -1111,52 +1101,60 @@ impl<T> DynamicArity for UnboundedPolygon<T> {
     }
 }
 
-impl<T> From<BoundedPolygon<T>> for UnboundedPolygon<T>
+impl<G> From<BoundedPolygon<G>> for UnboundedPolygon<G>
 where
-    T: Clone,
+    G: Clone,
 {
-    fn from(polygon: BoundedPolygon<T>) -> Self {
+    fn from(polygon: BoundedPolygon<G>) -> Self {
         UnboundedPolygon(SmallVec::from(polygon.as_ref()))
     }
 }
 
-impl<T> FromItems for UnboundedPolygon<T> {
+impl<G, const N: usize> From<NGon<G, N>> for UnboundedPolygon<G>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U2, Output = Greater>,
+    G: Clone,
+{
+    fn from(ngon: NGon<G, N>) -> Self {
+        UnboundedPolygon(SmallVec::from(ngon.as_ref()))
+    }
+}
+
+impl<G> FromItems for UnboundedPolygon<G> {
     fn from_items<I>(items: I) -> Option<Self>
     where
         I: IntoIterator<Item = Self::Item>,
     {
-        items
-            .into_iter()
-            .has_at_least(3)
-            .map(|items| UnboundedPolygon(items.collect()))
+        items.into_iter().try_collect().ok()
     }
 }
 
-impl<T> Index<usize> for UnboundedPolygon<T> {
-    type Output = T;
+impl<G> Index<usize> for UnboundedPolygon<G> {
+    type Output = G;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.0.index(index)
     }
 }
 
-impl<T> IndexMut<usize> for UnboundedPolygon<T> {
+impl<G> IndexMut<usize> for UnboundedPolygon<G> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.0.index_mut(index)
     }
 }
 
-impl<T> IntoItems for UnboundedPolygon<T> {
-    type Output = SmallVec<[T; 4]>;
+impl<G> IntoItems for UnboundedPolygon<G> {
+    type Output = SmallVec<[G; 4]>;
 
     fn into_items(self) -> Self::Output {
         self.0
     }
 }
 
-impl<T> IntoIterator for UnboundedPolygon<T> {
-    type IntoIter = <SmallVec<[T; 4]> as IntoIterator>::IntoIter;
-    type Item = T;
+impl<G> IntoIterator for UnboundedPolygon<G> {
+    type IntoIter = <SmallVec<[G; 4]> as IntoIterator>::IntoIter;
+    type Item = G;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -1174,21 +1172,21 @@ impl<T, U> Map<U> for UnboundedPolygon<T> {
     }
 }
 
-impl<T> Polygonal for UnboundedPolygon<T> {}
+impl<G> Polygonal for UnboundedPolygon<G> {}
 
-impl<T> StaticArity for UnboundedPolygon<T> {
+impl<G> StaticArity for UnboundedPolygon<G> {
     type Static = (usize, Option<usize>);
 
     const ARITY: Self::Static = (3, None);
 }
 
-impl<T> Topological for UnboundedPolygon<T> {
-    type Vertex = T;
+impl<G> Topological for UnboundedPolygon<G> {
+    type Vertex = G;
 
-    fn try_from_slice<U>(vertices: U) -> Option<Self>
+    fn try_from_slice<I>(vertices: I) -> Option<Self>
     where
         Self::Vertex: Copy,
-        U: AsRef<[Self::Vertex]>,
+        I: AsRef<[Self::Vertex]>,
     {
         let vertices = vertices.as_ref();
         if vertices.len() > 2 {
@@ -1200,22 +1198,19 @@ impl<T> Topological for UnboundedPolygon<T> {
     }
 }
 
-macro_rules! impl_unbounded_polygon {
-    (length => $n:expr) => (
-        impl<T> From<NGon<[T; $n]>> for UnboundedPolygon<T>
-        where
-            T: Clone,
-        {
-            fn from(ngon: NGon<[T; $n]>) -> Self {
-                UnboundedPolygon(SmallVec::from(ngon.as_ref()))
-            }
-        }
-    );
-    (lengths => $($n:expr),*$(,)?) => (
-        $(impl_unbounded_polygon!(length => $n);)*
-    );
+impl<G> TryFromIterator<G> for UnboundedPolygon<G> {
+    type Error = ();
+
+    fn try_from_iter<I>(vertices: I) -> Result<Self, Self::Error>
+    where
+        I: Iterator<Item = G>,
+    {
+        vertices
+            .has_at_least(3)
+            .map(|items| UnboundedPolygon(items.collect()))
+            .ok_or(())
+    }
 }
-impl_unbounded_polygon!(lengths => 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 
 /// Zips the vertices of [`Topological`] types from multiple iterators into a
 /// single iterator.
@@ -1281,7 +1276,7 @@ where
 /// the polygon.
 ///
 /// [`Polygonal`]: crate::primitive::Polygonal
-fn angles<'a, P>(polygon: &'a P) -> impl 'a + Clone + Iterator<Item = Scalar<Position<P::Vertex>>>
+fn angles<P>(polygon: &P) -> impl '_ + Clone + Iterator<Item = Scalar<Position<P::Vertex>>>
 where
     P: Polygonal,
     P::Vertex: AsPosition,

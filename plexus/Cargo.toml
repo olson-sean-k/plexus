@@ -50,7 +50,7 @@ unstable = []
 [dependencies]
 approx = "^0.3.0"
 ahash = "^0.6.0"
-arrayvec = "^0.5.0"
+arrayvec = "^0.6.0"
 decorum = "^0.3.1"
 derivative = "^2.1.1"
 itertools = "^0.9.0"
