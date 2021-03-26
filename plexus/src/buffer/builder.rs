@@ -1,9 +1,10 @@
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
-use typenum::{self, NonZero};
+use typenum::NonZero;
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::index::{Flat, Grouping, IndexBuffer};
 use crate::primitive::Topological;
@@ -46,11 +47,12 @@ where
     type Input = ();
 }
 
-impl<A, N, G> FacetBuilder<N> for BufferBuilder<Flat<A, N>, G>
+impl<K, G, const N: usize> FacetBuilder<K> for BufferBuilder<Flat<K, N>, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Hash + Integer + Unsigned,
-    Vec<N>: IndexBuffer<Flat<A, N>>,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
+    K: Copy + Hash + Integer + Unsigned,
+    Vec<K>: IndexBuffer<Flat<K, N>>,
 {
     type Facet = ();
     type Key = ();
@@ -58,16 +60,19 @@ where
     fn insert_facet<T, U>(&mut self, keys: T, _: U) -> Result<Self::Key, Self::Error>
     where
         Self::Facet: FromGeometry<U>,
-        T: AsRef<[N]>,
+        T: AsRef<[K]>,
     {
         let keys = keys.as_ref();
-        if keys.len() == A::USIZE {
+        if keys.len() == N {
             self.indices.extend(keys.iter());
             Ok(())
         }
         else {
+            // TODO: These numbers do not necessarily represent arity (i.e., the
+            //       number of edges of each topological structure). Use a
+            //       different error variant to express this.
             Err(BufferError::ArityConflict {
-                expected: A::USIZE,
+                expected: N,
                 actual: keys.len(),
             })
         }

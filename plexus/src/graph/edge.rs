@@ -118,9 +118,9 @@ impl From<(VertexKey, VertexKey)> for ArcKey {
     }
 }
 
-impl Into<(VertexKey, VertexKey)> for ArcKey {
-    fn into(self) -> (VertexKey, VertexKey) {
-        (self.0, self.1)
+impl From<ArcKey> for (VertexKey, VertexKey) {
+    fn from(key: ArcKey) -> Self {
+        (key.0, key.1)
     }
 }
 
@@ -1067,6 +1067,18 @@ where
     }
 }
 
+impl<B, M, G> From<ArcView<B>> for View<B, Arc<G>>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn from(arc: ArcView<B>) -> Self {
+        let ArcView { inner, .. } = arc;
+        inner
+    }
+}
+
 impl<B, M, G> Hash for ArcView<B>
 where
     B: Reborrow<Target = M>,
@@ -1078,18 +1090,6 @@ where
         H: Hasher,
     {
         self.inner.hash(state);
-    }
-}
-
-impl<B, M, G> Into<View<B, Arc<G>>> for ArcView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
-{
-    fn into(self) -> View<B, Arc<G>> {
-        let ArcView { inner, .. } = self;
-        inner
     }
 }
 
@@ -1483,6 +1483,18 @@ where
     }
 }
 
+impl<B, M, G> From<EdgeView<B>> for View<B, Edge<G>>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Edge<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn from(edge: EdgeView<B>) -> Self {
+        let EdgeView { inner, .. } = edge;
+        inner
+    }
+}
+
 impl<B, M, G> Hash for EdgeView<B>
 where
     B: Reborrow<Target = M>,
@@ -1494,18 +1506,6 @@ where
         H: Hasher,
     {
         self.inner.hash(state);
-    }
-}
-
-impl<B, M, G> Into<View<B, Edge<G>>> for EdgeView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Edge<G>> + Parametric<Data = G>,
-    G: GraphData,
-{
-    fn into(self) -> View<B, Edge<G>> {
-        let EdgeView { inner, .. } = self;
-        inner
     }
 }
 
@@ -1635,7 +1635,7 @@ where
     B::Target: AsStorage<Vertex<<B::Target as Parametric>::Data>> + Parametric,
 {
     storage: B,
-    inner: <ArrayVec<[VertexKey; 2]> as IntoIterator>::IntoIter,
+    inner: <ArrayVec<VertexKey, 2> as IntoIterator>::IntoIter,
 }
 
 impl<B, M, G> VertexCirculator<B>
@@ -1731,7 +1731,7 @@ where
     B::Target: AsStorage<Face<<B::Target as Parametric>::Data>> + Parametric,
 {
     storage: B,
-    inner: <ArrayVec<[FaceKey; 2]> as IntoIterator>::IntoIter,
+    inner: <ArrayVec<FaceKey, 2> as IntoIterator>::IntoIter,
 }
 
 impl<B, M, G> FaceCirculator<B>
@@ -1784,7 +1784,7 @@ where
                     .and_then(|opposite| opposite.face)
                     .into_iter(),
             )
-            .collect::<ArrayVec<_>>()
+            .collect::<ArrayVec<_, 2>>()
             .into_iter();
         let (storage, _) = arc.unbind();
         FaceCirculator { storage, inner }

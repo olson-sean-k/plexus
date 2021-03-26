@@ -689,6 +689,18 @@ where
     }
 }
 
+impl<B, M, G> From<VertexView<B>> for View<B, Vertex<G>>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn from(vertex: VertexView<B>) -> Self {
+        let VertexView { inner, .. } = vertex;
+        inner
+    }
+}
+
 impl<B, M, G> Hash for VertexView<B>
 where
     B: Reborrow<Target = M>,
@@ -700,18 +712,6 @@ where
         H: Hasher,
     {
         self.inner.hash(state);
-    }
-}
-
-impl<B, M, G> Into<View<B, Vertex<G>>> for VertexView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
-    G: GraphData,
-{
-    fn into(self) -> View<B, Vertex<G>> {
-        let VertexView { inner, .. } = self;
-        inner
     }
 }
 
