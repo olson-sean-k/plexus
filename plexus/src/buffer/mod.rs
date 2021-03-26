@@ -92,7 +92,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::vec;
-use theon::adjunct::{FromItems, Map};
+use theon::adjunct::Map;
 use thiserror::Error;
 use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
@@ -109,7 +109,7 @@ use crate::primitive::{
     BoundedPolygon, IntoIndexed, IntoPolygons, Polygonal, Tetragon, Topological, Trigon,
     UnboundedPolygon,
 };
-use crate::{Arity, DynamicArity, MeshArity, Monomorphic, StaticArity};
+use crate::{Arity, DynamicArity, MeshArity, Monomorphic, StaticArity, TryFromIterator};
 
 /// Errors concerning raw buffers and [`MeshBuffer`]s.
 ///
@@ -901,7 +901,7 @@ where
             .into_iter()
             .map(|chunk| {
                 // These conversions should never fail.
-                Trigon::from_items(chunk.map(|index| {
+                Trigon::try_from_iter(chunk.map(|index| {
                     let index = <usize as NumCast>::from(index).expect("index overflow");
                     vertices[index].clone()
                 }))
@@ -960,7 +960,7 @@ where
             .into_iter()
             .map(|chunk| {
                 // These conversions should never fail.
-                Tetragon::from_items(chunk.map(|index| {
+                Tetragon::try_from_iter(chunk.map(|index| {
                     let index = <usize as NumCast>::from(index).expect("index overflow");
                     vertices[index].clone()
                 }))
@@ -1086,8 +1086,8 @@ where
             .into_iter()
             .chunks(U3::USIZE)
             .into_iter()
-            .map(<Self::Item as Grouping>::Group::from_items)
-            .collect::<Option<Vec<_>>>()
+            .map(<Self::Item as Grouping>::Group::try_from_iter)
+            .collect::<Result<Vec<_>, _>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
     }
@@ -1134,8 +1134,8 @@ where
             .into_iter()
             .chunks(U4::USIZE)
             .into_iter()
-            .map(<Self::Item as Grouping>::Group::from_items)
-            .collect::<Option<Vec<_>>>()
+            .map(<Self::Item as Grouping>::Group::try_from_iter)
+            .collect::<Result<Vec<_>, _>>()
             .expect("inconsistent index buffer");
         MeshBuffer { indices, vertices }
     }

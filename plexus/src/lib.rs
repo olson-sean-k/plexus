@@ -27,6 +27,7 @@ pub mod integration;
 pub mod primitive;
 mod transact;
 
+use arrayvec::ArrayVec;
 use itertools::{self, Itertools, MinMaxResult, MultiPeek};
 use std::borrow::Borrow;
 use std::fmt::Debug;
@@ -238,6 +239,66 @@ impl Arity for MeshArity {
     }
 }
 
+pub trait TryFromIterator<T>: Sized {
+    type Error;
+
+    fn try_from_iter<I>(items: I) -> Result<Self, Self::Error>
+    where
+        I: Iterator<Item = T>;
+}
+
+impl<T, const N: usize> TryFromIterator<T> for [T; N] {
+    type Error = ();
+
+    fn try_from_iter<I>(items: I) -> Result<Self, Self::Error>
+    where
+        I: Iterator<Item = T>,
+    {
+        items
+            .has_exactly(N)
+            .and_then(|items| items.collect::<ArrayVec<T, N>>().into_inner().ok())
+            .ok_or(())
+    }
+}
+
+macro_rules! count {
+    ($x:tt $($xs:tt)*) => (1usize + count!($($xs)*));
+    () => (0usize);
+}
+macro_rules! substitute {
+    ($_t:tt, $with:ty) => {
+        $with
+    };
+}
+macro_rules! impl_try_from_iterator_tuple {
+    (tuples => ($($i:ident),+)) => (
+        #[allow(non_snake_case)]
+        impl<T> TryFromIterator<T> for ($(substitute!(($i), T),)+) {
+            type Error = ();
+
+            fn try_from_iter<I>(items: I) -> Result<Self, Self::Error>
+            where
+                I: Iterator<Item = T>,
+            {
+                use $crate::IteratorExt as _;
+
+                items
+                    .has_exactly(count!($($i)*))
+                    .map(|mut items| {
+                        $(let $i = items.next().unwrap();)*
+                        ($($i,)*)
+                    })
+                    .ok_or(())
+            }
+        }
+    );
+}
+impl_try_from_iterator_tuple!(tuples => (A, B));
+impl_try_from_iterator_tuple!(tuples => (A, B, C));
+impl_try_from_iterator_tuple!(tuples => (A, B, C, D));
+impl_try_from_iterator_tuple!(tuples => (A, B, C, D, E));
+impl_try_from_iterator_tuple!(tuples => (A, B, C, D, E, F));
+
 /// Extension methods for types implementing [`Iterator`].
 ///
 /// [`Iterator`]: std::iter::Iterator
@@ -329,12 +390,26 @@ pub trait IteratorExt: Iterator + Sized {
     /// }
     /// ```
     fn has_at_least(self, n: usize) -> Option<MultiPeek<Self>> {
-        let mut peekable = itertools::multipeek(self);
-        for _ in 0..n {
-            peekable.peek()?;
-        }
-        peekable.reset_peek();
-        Some(peekable)
+        peek_n(self, n).map(|mut peekable| {
+            peekable.reset_peek();
+            peekable
+        })
+    }
+
+    fn has_exactly(self, n: usize) -> Option<MultiPeek<Self>> {
+        peek_n(self, n).and_then(|mut peekable| {
+            peekable.peek().is_none().then(|| {
+                peekable.reset_peek();
+                peekable
+            })
+        })
+    }
+
+    fn try_collect<T>(self) -> Result<T, T::Error>
+    where
+        T: TryFromIterator<Self::Item>,
+    {
+        T::try_from_iter(self)
     }
 }
 
@@ -386,13 +461,13 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.input.next();
-        match (self.previous.clone(), next.or_else(|| self.first.take())) {
-            (Some(a), Some(b)) => {
+        self.previous
+            .clone()
+            .zip(next.or_else(|| self.first.take()))
+            .map(|(a, b)| {
                 self.previous = Some(b.clone());
-                Some((a, b))
-            }
-            _ => None,
-        }
+                (a, b)
+            })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -439,4 +514,15 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.input.size_hint()
     }
+}
+
+fn peek_n<I>(input: I, n: usize) -> Option<MultiPeek<I>>
+where
+    I: Iterator,
+{
+    let mut peekable = itertools::multipeek(input);
+    for _ in 0..n {
+        peekable.peek()?;
+    }
+    Some(peekable)
 }

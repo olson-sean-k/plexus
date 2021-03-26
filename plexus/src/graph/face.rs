@@ -993,6 +993,18 @@ where
     }
 }
 
+impl<B, M, G> From<FaceView<B>> for View<B, Face<G>>
+where
+    B: Reborrow<Target = M>,
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: GraphData,
+{
+    fn from(face: FaceView<B>) -> Self {
+        let FaceView { inner, .. } = face;
+        inner
+    }
+}
+
 impl<B, M, G> Hash for FaceView<B>
 where
     B: Reborrow<Target = M>,
@@ -1004,18 +1016,6 @@ where
         H: Hasher,
     {
         self.inner.hash(state);
-    }
-}
-
-impl<B, M, G> Into<View<B, Face<G>>> for FaceView<B>
-where
-    B: Reborrow<Target = M>,
-    M: AsStorage<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
-{
-    fn into(self) -> View<B, Face<G>> {
-        let FaceView { inner, .. } = self;
-        inner
     }
 }
 

@@ -70,11 +70,10 @@
 use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
-use theon::adjunct::IntoItems;
 use theon::ops::Interpolate;
 
 use crate::primitive::{
-    BoundedPolygon, Edge, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
+    BoundedPolygon, Edge, NGon, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
 };
 use crate::IteratorExt as _;
 
@@ -172,16 +171,15 @@ pub trait IntoVertices: Topological {
 
 impl<T> IntoVertices for T
 where
-    T: IntoItems + Topological,
+    T: Topological,
 {
-    type Output = <T as IntoItems>::Output;
+    type Output = <T as IntoIterator>::IntoIter;
 
     fn into_vertices(self) -> Self::Output {
-        self.into_items()
+        self.into_iter()
     }
 }
 
-// TODO: Use a macro to implement this for all `NGon`s.
 pub trait IntoEdges: Topological {
     type Output: IntoIterator<Item = Edge<Self::Vertex>>;
 
@@ -201,47 +199,26 @@ pub trait IntoSubdivisions: Polygonal {
 }
 
 pub trait IntoTetrahedrons: Polygonal {
-    fn into_tetrahedrons(self) -> ArrayVec<[Trigon<Self::Vertex>; 4]>;
+    fn into_tetrahedrons(self) -> ArrayVec<Trigon<Self::Vertex>, 4>;
 }
 
-impl<T> IntoEdges for Edge<T> {
-    type Output = Option<Edge<Self::Vertex>>;
-
-    fn into_edges(self) -> Self::Output {
-        Some(self)
-    }
-}
-
-impl<T> IntoEdges for Trigon<T>
+impl<G, const N: usize> IntoEdges for NGon<G, N>
 where
-    T: Clone,
+    G: Clone,
 {
-    type Output = ArrayVec<[Edge<Self::Vertex>; 3]>;
+    // TODO: As of Rust 1.51.1, it is not possible to constrain constant
+    //       generics nor use them in expressions. If and when this is possible,
+    //       do not implement this trait for degenerate `NGon`s and use use an
+    //       `ArrayVec<Edge<Self::Vertex>, {if N == 2 { 1 } else { N }}>` as
+    //       output. This implementation yields an empty `Vec` for degenerate
+    //       `NGon`s.
+    type Output = Vec<Edge<Self::Vertex>>;
 
     fn into_edges(self) -> Self::Output {
-        let [a, b, c] = self.into_array();
-        ArrayVec::from([
-            Edge::new(a.clone(), b.clone()),
-            Edge::new(b, c.clone()),
-            Edge::new(c, a),
-        ])
-    }
-}
-
-impl<T> IntoEdges for Tetragon<T>
-where
-    T: Clone,
-{
-    type Output = ArrayVec<[Edge<Self::Vertex>; 4]>;
-
-    fn into_edges(self) -> Self::Output {
-        let [a, b, c, d] = self.into_array();
-        ArrayVec::from([
-            Edge::new(a.clone(), b.clone()),
-            Edge::new(b, c.clone()),
-            Edge::new(c, d.clone()),
-            Edge::new(d, a),
-        ])
+        self.into_iter()
+            .perimeter()
+            .map(|(a, b)| Edge::new(a, b))
+            .collect()
     }
 }
 
@@ -274,7 +251,7 @@ where
 }
 
 impl<T> IntoTrigons for Trigon<T> {
-    type Output = ArrayVec<[Trigon<Self::Vertex>; 1]>;
+    type Output = ArrayVec<Trigon<Self::Vertex>, 1>;
 
     fn into_trigons(self) -> Self::Output {
         ArrayVec::from([self])
@@ -285,7 +262,7 @@ impl<T> IntoTrigons for Tetragon<T>
 where
     T: Clone,
 {
-    type Output = ArrayVec<[Trigon<Self::Vertex>; 2]>;
+    type Output = ArrayVec<Trigon<Self::Vertex>, 2>;
 
     fn into_trigons(self) -> Self::Output {
         let [a, b, c, d] = self.into_array();
@@ -311,7 +288,7 @@ impl<T> IntoSubdivisions for Trigon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    type Output = ArrayVec<[Trigon<Self::Vertex>; 2]>;
+    type Output = ArrayVec<Trigon<Self::Vertex>, 2>;
 
     fn into_subdivisions(self) -> Self::Output {
         let [a, b, c] = self.into_array();
@@ -324,7 +301,7 @@ impl<T> IntoSubdivisions for Tetragon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    type Output = ArrayVec<[Tetragon<Self::Vertex>; 4]>;
+    type Output = ArrayVec<Tetragon<Self::Vertex>, 4>;
 
     fn into_subdivisions(self) -> Self::Output {
         let [a, b, c, d] = self.into_array();
@@ -346,7 +323,7 @@ impl<T> IntoTetrahedrons for Tetragon<T>
 where
     T: Clone + Interpolate<Output = T>,
 {
-    fn into_tetrahedrons(self) -> ArrayVec<[Trigon<Self::Vertex>; 4]> {
+    fn into_tetrahedrons(self) -> ArrayVec<Trigon<Self::Vertex>, 4> {
         let [a, b, c, d] = self.into_array();
         let ac = a.clone().midpoint(c.clone()); // Diagonal.
         ArrayVec::from([
@@ -451,7 +428,7 @@ where
 
 pub trait Tetrahedrons<T>: Sized {
     #[allow(clippy::type_complexity)]
-    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>>;
+    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<Trigon<T>, 4>>;
 }
 
 impl<I, T> Tetrahedrons<T> for I
@@ -460,7 +437,7 @@ where
     T: Clone + Interpolate<Output = T>,
 {
     #[allow(clippy::type_complexity)]
-    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<[Trigon<T>; 4]>> {
+    fn tetrahedrons(self) -> Decompose<Self, Tetragon<T>, Trigon<T>, ArrayVec<Trigon<T>, 4>> {
         Decompose::new(self, Tetragon::into_tetrahedrons)
     }
 }

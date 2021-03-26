@@ -7,7 +7,6 @@
 // necessary, constraints are specified there so that they do not pollute user
 // code.
 
-use theon::adjunct::FromItems;
 use theon::ops::{Cross, Interpolate, Project};
 use theon::query::Plane;
 use theon::space::{EuclideanSpace, FiniteDimensional, InnerSpace, Vector, VectorSpace};
@@ -21,7 +20,8 @@ use crate::graph::edge::{Arc, ArcView, Edge, ToArc};
 use crate::graph::face::{Face, ToRing};
 use crate::graph::mutation::Consistent;
 use crate::graph::vertex::{Vertex, VertexView};
-use crate::graph::{GraphError, OptionExt as _};
+use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
+use crate::IteratorExt as _;
 
 pub type VertexPosition<G> = Position<<G as GraphData>::Vertex>;
 
@@ -120,9 +120,11 @@ where
         B::Target:
             AsStorage<Arc<Self>> + AsStorage<Vertex<Self>> + Consistent + Parametric<Data = Self>,
     {
-        let (a, b) =
-            FromItems::from_items(arc.adjacent_vertices().map(|vertex| *vertex.position()))
-                .expect_consistent();
+        let (a, b) = arc
+            .adjacent_vertices()
+            .map(|vertex| *vertex.position())
+            .try_collect()
+            .expect_consistent();
         let c = *arc.next_arc().destination_vertex().position();
         let ab = a - b;
         let cb = c - b;
@@ -163,9 +165,11 @@ where
         T: ToArc<B>,
     {
         let arc = edge.into_arc();
-        let (a, b) =
-            FromItems::from_items(arc.adjacent_vertices().map(|vertex| *vertex.position()))
-                .unwrap();
+        let (a, b) = arc
+            .adjacent_vertices()
+            .map(|vertex| *vertex.position())
+            .try_collect()
+            .expect_consistent();
         Ok(a.midpoint(b))
     }
 }
@@ -229,9 +233,12 @@ where
         T: ToRing<B>,
     {
         let ring = ring.into_ring();
-        let (a, b) =
-            FromItems::from_items(ring.vertices().take(2).map(|vertex| *vertex.position()))
-                .expect_consistent();
+        let (a, b) = ring
+            .vertices()
+            .take(2)
+            .map(|vertex| *vertex.position())
+            .try_collect()
+            .expect_consistent();
         let c = G::centroid(ring)?;
         let ab = a - b;
         let bc = b - c;

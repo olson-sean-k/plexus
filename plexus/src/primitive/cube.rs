@@ -33,12 +33,12 @@ use crate::primitive::Tetragon;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Plane {
-    XY,  // front
-    NXY, // back
-    YZ,  // right
-    NYZ, // left
-    XZ,  // bottom
-    NXZ, // top
+    Xy,  // front
+    Nxy, // back
+    Yz,  // right
+    Nyz, // left
+    Xz,  // bottom
+    Nxz, // top
 }
 
 impl Plane {
@@ -50,12 +50,12 @@ impl Plane {
         S: Basis + FiniteDimensional<N = U3> + InnerSpace,
     {
         match *self {
-            Plane::XY => Unit::<S>::z(),   // front
-            Plane::NXY => -Unit::<S>::z(), // back
-            Plane::YZ => Unit::<S>::x(),   // right
-            Plane::NYZ => -Unit::<S>::x(), // left
-            Plane::XZ => -Unit::<S>::y(),  // bottom
-            Plane::NXZ => Unit::<S>::y(),  // top
+            Plane::Xy => Unit::<S>::z(),   // front
+            Plane::Nxy => -Unit::<S>::z(), // back
+            Plane::Yz => Unit::<S>::x(),   // right
+            Plane::Nyz => -Unit::<S>::x(), // left
+            Plane::Xz => -Unit::<S>::y(),  // bottom
+            Plane::Nxz => Unit::<S>::y(),  // top
         }
     }
 }
@@ -249,12 +249,12 @@ impl AttributeVertexGenerator<Plane> for Cube {
 
     fn vertex_from(&self, _: &Self::State, index: usize) -> Self::Output {
         match index {
-            0 => Plane::XY,  // front
-            1 => Plane::YZ,  // right
-            2 => Plane::NXZ, // top
-            3 => Plane::NYZ, // left
-            4 => Plane::XZ,  // bottom
-            5 => Plane::NXY, // back
+            0 => Plane::Xy,  // front
+            1 => Plane::Yz,  // right
+            2 => Plane::Nxz, // top
+            3 => Plane::Nyz, // left
+            4 => Plane::Xz,  // bottom
+            5 => Plane::Nxy, // back
             _ => panic!(),
         }
     }

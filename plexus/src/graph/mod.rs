@@ -257,7 +257,6 @@ mod vertex;
 
 use decorum::cmp::IntrinsicOrd;
 use decorum::R64;
-use itertools::Itertools;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
 use std::borrow::Borrow;
@@ -267,7 +266,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::vec;
-use theon::adjunct::{FromItems, Map};
+use theon::adjunct::Map;
 use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use theon::{AsPosition, AsPositionMut};
@@ -1283,6 +1282,16 @@ where
     }
 }
 
+impl<G> From<MeshGraph<G>> for OwnedCore<G>
+where
+    G: GraphData,
+{
+    fn from(graph: MeshGraph<G>) -> Self {
+        let MeshGraph { core, .. } = graph;
+        core
+    }
+}
+
 impl<E, G> FromEncoding<E> for MeshGraph<G>
 where
     E: FaceDecoder + VertexDecoder,
@@ -1450,6 +1459,8 @@ where
         I: IntoIterator<Item = N>,
         J: IntoIterator<Item = H>,
     {
+        use itertools::Itertools;
+
         if arity < 3 {
             return Err(GraphError::ArityNonPolygonal);
         }
@@ -1482,23 +1493,6 @@ where
     }
 }
 
-impl<G> Parametric for MeshGraph<G>
-where
-    G: GraphData,
-{
-    type Data = G;
-}
-
-impl<G> Into<OwnedCore<G>> for MeshGraph<G>
-where
-    G: GraphData,
-{
-    fn into(self) -> OwnedCore<G> {
-        let MeshGraph { core, .. } = self;
-        core
-    }
-}
-
 impl<G> IntoPolygons for MeshGraph<G>
 where
     G: GraphData,
@@ -1507,16 +1501,27 @@ where
     type Polygon = UnboundedPolygon<G::Vertex>;
 
     fn into_polygons(self) -> Self::Output {
+        use crate::IteratorExt as _;
+
         self.faces()
             .map(|face| {
                 // The arity of a face in a graph must be polygonal (three or
                 // higher) so this should never fail.
-                let vertices = face.adjacent_vertices().map(|vertex| vertex.get().clone());
-                UnboundedPolygon::from_items(vertices).expect_consistent()
+                face.adjacent_vertices()
+                    .map(|vertex| vertex.get().clone())
+                    .try_collect()
+                    .expect_consistent()
             })
             .collect::<Vec<_>>()
             .into_iter()
     }
+}
+
+impl<G> Parametric for MeshGraph<G>
+where
+    G: GraphData,
+{
+    type Data = G;
 }
 
 impl<G> StaticArity for MeshGraph<G>
