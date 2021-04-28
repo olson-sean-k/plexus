@@ -270,7 +270,7 @@ macro_rules! substitute {
         $with
     };
 }
-macro_rules! impl_try_from_iterator_tuple {
+macro_rules! impl_try_from_iterator {
     (tuples => ($($i:ident),+)) => (
         #[allow(non_snake_case)]
         impl<T> TryFromIterator<T> for ($(substitute!(($i), T),)+) {
@@ -293,11 +293,11 @@ macro_rules! impl_try_from_iterator_tuple {
         }
     );
 }
-impl_try_from_iterator_tuple!(tuples => (A, B));
-impl_try_from_iterator_tuple!(tuples => (A, B, C));
-impl_try_from_iterator_tuple!(tuples => (A, B, C, D));
-impl_try_from_iterator_tuple!(tuples => (A, B, C, D, E));
-impl_try_from_iterator_tuple!(tuples => (A, B, C, D, E, F));
+impl_try_from_iterator!(tuples => (A, B));
+impl_try_from_iterator!(tuples => (A, B, C));
+impl_try_from_iterator!(tuples => (A, B, C, D));
+impl_try_from_iterator!(tuples => (A, B, C, D, E));
+impl_try_from_iterator!(tuples => (A, B, C, D, E, F));
 
 /// Extension methods for types implementing [`Iterator`].
 ///
