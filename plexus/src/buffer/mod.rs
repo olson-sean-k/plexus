@@ -98,6 +98,7 @@ use typenum::{self, NonZero, Unsigned as _, U3, U4};
 
 use crate::buffer::builder::BufferBuilder;
 use crate::builder::{Buildable, MeshBuilder};
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::index::{
@@ -223,13 +224,14 @@ pub trait FromRawBuffersWithArity<N, G>: Sized {
 
 // TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
 //       use such a trait to provide this API.
-pub trait IntoFlatIndex<A, G>
+pub trait IntoFlatIndex<G, const A: usize>
 where
-    A: NonZero + typenum::Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
 {
     type Item: Copy + Integer + Unsigned;
 
-    fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G>;
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, A>, G>;
 }
 
 // TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
@@ -419,15 +421,16 @@ where
     }
 }
 
-impl<A, N, G> DynamicArity for MeshBuffer<Flat<A, N>, G>
+impl<T, G, const A: usize> DynamicArity for MeshBuffer<Flat<T, A>, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
-    type Dynamic = <Flat<A, N> as StaticArity>::Static;
+    type Dynamic = <Flat<T, A> as StaticArity>::Static;
 
     fn arity(&self) -> Self::Dynamic {
-        Flat::<A, N>::ARITY
+        Flat::<T, A>::ARITY
     }
 }
 
@@ -476,10 +479,11 @@ where
     const ARITY: Self::Static = R::ARITY;
 }
 
-impl<A, N, G> MeshBuffer<Flat<A, N>, G>
+impl<T, G, const A: usize> MeshBuffer<Flat<T, A>, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + NumCast + Unsigned,
 {
     /// Appends the contents of a flat `MeshBuffer` into another `MeshBuffer`.
     /// The source buffer is drained.
@@ -491,9 +495,9 @@ where
     where
         G: FromGeometry<H>,
         R: Grouping,
-        R::Group: Into<<Flat<A, N> as Grouping>::Group>,
+        R::Group: Into<<Flat<T, A> as Grouping>::Group>,
     {
-        let offset = N::from(self.vertices.len()).ok_or(BufferError::IndexOverflow)?;
+        let offset = T::from(self.vertices.len()).ok_or(BufferError::IndexOverflow)?;
         self.vertices.extend(
             buffer
                 .vertices
@@ -637,11 +641,12 @@ where
     }
 }
 
-impl<A, N, M, G, H> FromRawBuffers<M, H> for MeshBuffer<Flat<A, N>, G>
+impl<T, U, G, H, const A: usize> FromRawBuffers<U, H> for MeshBuffer<Flat<T, A>, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
-    M: Copy + Integer + NumCast + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + NumCast + Unsigned,
+    U: Copy + Integer + NumCast + Unsigned,
     G: FromGeometry<H>,
 {
     type Error = BufferError;
@@ -686,14 +691,14 @@ where
     /// ```
     fn from_raw_buffers<I, J>(indices: I, vertices: J) -> Result<Self, BufferError>
     where
-        I: IntoIterator<Item = M>,
+        I: IntoIterator<Item = U>,
         J: IntoIterator<Item = H>,
     {
         let indices = indices
             .into_iter()
-            .map(|index| <N as NumCast>::from(index).ok_or(BufferError::IndexOverflow))
+            .map(|index| <T as NumCast>::from(index).ok_or(BufferError::IndexOverflow))
             .collect::<Result<Vec<_>, _>>()?;
-        if indices.len() % A::USIZE != 0 {
+        if indices.len() % A != 0 {
             Err(BufferError::IndexUnaligned)
         }
         else {
@@ -701,7 +706,7 @@ where
                 .into_iter()
                 .map(|vertex| vertex.into_geometry())
                 .collect();
-            let len = N::from(vertices.len()).unwrap();
+            let len = T::from(vertices.len()).unwrap();
             if indices.iter().any(|index| *index >= len) {
                 Err(BufferError::IndexOutOfBounds)
             }
@@ -774,19 +779,20 @@ where
     }
 }
 
-impl<A, N, G> IntoFlatIndex<A, G> for MeshBuffer<Flat<A, N>, G>
+impl<T, G, const A: usize> IntoFlatIndex<G, A> for MeshBuffer<Flat<T, A>, G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
-    type Item = N;
+    type Item = T;
 
-    fn into_flat_index(self) -> MeshBuffer<Flat<A, Self::Item>, G> {
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, A>, G> {
         self
     }
 }
 
-impl<N, G> IntoFlatIndex<U3, G> for MeshBuffer<Trigon<N>, G>
+impl<N, G> IntoFlatIndex<G, 3> for MeshBuffer<Trigon<N>, G>
 where
     N: Copy + Integer + Unsigned,
 {
@@ -821,7 +827,7 @@ where
     ///     // ...
     /// }
     /// ```
-    fn into_flat_index(self) -> MeshBuffer<Flat<U3, Self::Item>, G> {
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, 3>, G> {
         let MeshBuffer { indices, vertices } = self;
         MeshBuffer {
             indices: indices
@@ -833,7 +839,7 @@ where
     }
 }
 
-impl<N, G> IntoFlatIndex<U4, G> for MeshBuffer<Tetragon<N>, G>
+impl<N, G> IntoFlatIndex<G, 4> for MeshBuffer<Tetragon<N>, G>
 where
     N: Copy + Integer + Unsigned,
 {
@@ -868,7 +874,7 @@ where
     ///     // ...
     /// }
     /// ```
-    fn into_flat_index(self) -> MeshBuffer<Flat<U4, Self::Item>, G> {
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, 4>, G> {
         let MeshBuffer { indices, vertices } = self;
         MeshBuffer {
             indices: indices

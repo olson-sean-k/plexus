@@ -84,8 +84,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use theon::adjunct::Map;
-use typenum::{NonZero, U3, U4};
+use typenum::NonZero;
 
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Topological;
 use crate::{Monomorphic, StaticArity};
@@ -118,12 +119,13 @@ where
     type Index: Copy + Integer + Unsigned;
 }
 
-impl<A, N> IndexBuffer<Flat<A, N>> for Vec<N>
+impl<T, const A: usize> IndexBuffer<Flat<T, A>> for Vec<T>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
-    type Index = N;
+    type Index = T;
 }
 
 impl<P> IndexBuffer<P> for Vec<P>
@@ -143,11 +145,12 @@ where
     fn push(&mut self, index: P);
 }
 
-impl<A, N, P> Push<Flat<A, N>, P> for Vec<N>
+impl<T, P, const A: usize> Push<Flat<T, A>, P> for Vec<T>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
-    P: Monomorphic + IntoVertices + Topological<Vertex = N>,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
+    P: Monomorphic + IntoVertices + Topological<Vertex = T>,
 {
     fn push(&mut self, index: P) {
         for index in index.into_vertices() {
@@ -193,9 +196,8 @@ pub trait Grouping: StaticArity {
 /// use plexus::buffer::MeshBuffer;
 /// use plexus::index::Flat;
 /// use plexus::prelude::*;
-/// use plexus::U3;
 ///
-/// let mut buffer = MeshBuffer::<Flat<U3, usize>, (f64, f64, f64)>::default();
+/// let mut buffer = MeshBuffer::<Flat<usize, 3>, (f64, f64, f64)>::default();
 /// ```
 ///
 /// [`typenum`]: https://crates.io/crates/typenum
@@ -203,45 +205,49 @@ pub trait Grouping: StaticArity {
 /// [`MeshBuffer`]: crate::buffer::MeshBuffer
 /// [`index`]: crate::index
 #[derive(Debug)]
-pub struct Flat<A = U3, N = usize>
+pub struct Flat<T, const A: usize>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
-    phantom: PhantomData<(A, N)>,
+    phantom: PhantomData<T>,
 }
 
-impl<A, N> Grouping for Flat<A, N>
+impl<T, const A: usize> Grouping for Flat<T, A>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
     /// The elements of flat index buffers are indices. These indices are
     /// implicitly grouped by the arity of the buffer (`A`).
-    type Group = N;
+    type Group = T;
 }
 
-impl<A, N> Monomorphic for Flat<A, N>
+impl<T, const A: usize> Monomorphic for Flat<T, A>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
 }
 
-impl<A, N> StaticArity for Flat<A, N>
+impl<T, const A: usize> StaticArity for Flat<T, A>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + Unsigned,
 {
     type Static = usize;
 
-    const ARITY: Self::Static = A::USIZE;
+    const ARITY: Self::Static = A;
 }
 
 /// Alias for a flat and triangular index buffer.
-pub type Flat3<N = usize> = Flat<U3, N>;
+pub type Flat3<T = usize> = Flat<T, 3>;
 /// Alias for a flat and quadrilateral index buffer.
-pub type Flat4<N = usize> = Flat<U4, N>;
+pub type Flat4<T = usize> = Flat<T, 4>;
 
 /// Structured index buffer grouping.
 ///

@@ -35,8 +35,6 @@ use std::fmt::Debug;
 
 use crate::entity::view::ClosedView;
 
-pub use typenum::{U2, U3, U4};
-
 pub mod prelude {
     //! Re-exports of commonly used types and traits.
     //!

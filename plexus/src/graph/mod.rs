@@ -271,10 +271,11 @@ use theon::query::Aabb;
 use theon::space::{EuclideanSpace, Scalar};
 use theon::{AsPosition, AsPositionMut};
 use thiserror::Error;
-use typenum::{self, NonZero};
+use typenum::NonZero;
 
 use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBuffer};
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
 use crate::entity::storage::prelude::*;
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, StorageTarget};
@@ -1533,10 +1534,11 @@ where
     const ARITY: Self::Static = (3, None);
 }
 
-impl<A, N, H, G> TryFrom<MeshBuffer<Flat<A, N>, H>> for MeshGraph<G>
+impl<T, H, G, const A: usize> TryFrom<MeshBuffer<Flat<T, A>, H>> for MeshGraph<G>
 where
-    A: NonZero + typenum::Unsigned,
-    N: Copy + Integer + NumCast + Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
+    T: Copy + Integer + NumCast + Unsigned,
     H: Clone,
     G: GraphData,
     G::Vertex: FromGeometry<H>,
@@ -1576,7 +1578,7 @@ where
     ///
     /// [`MeshBuffer`]: crate::buffer::MeshBuffer
     /// [`MeshGraph`]: crate::graph::MeshGraph
-    fn try_from(buffer: MeshBuffer<Flat<A, N>, H>) -> Result<Self, Self::Error> {
+    fn try_from(buffer: MeshBuffer<Flat<T, A>, H>) -> Result<Self, Self::Error> {
         let arity = buffer.arity();
         let (indices, vertices) = buffer.into_raw_buffers();
         MeshGraph::from_raw_buffers_with_arity(indices, vertices, arity)

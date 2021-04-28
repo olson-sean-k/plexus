@@ -1,9 +1,10 @@
 use num::{Integer, NumCast, Unsigned};
 use std::hash::Hash;
-use typenum::{self, NonZero};
+use typenum::NonZero;
 
 use crate::buffer::{BufferError, MeshBuffer};
 use crate::builder::{FacetBuilder, MeshBuilder, SurfaceBuilder};
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::index::{Flat, Grouping, IndexBuffer};
 use crate::primitive::Topological;
@@ -46,11 +47,12 @@ where
     type Input = ();
 }
 
-impl<A, N, G> FacetBuilder<N> for BufferBuilder<Flat<A, N>, G>
+impl<N, G, const A: usize> FacetBuilder<N> for BufferBuilder<Flat<N, A>, G>
 where
-    A: NonZero + typenum::Unsigned,
+    Constant<A>: ToType,
+    TypeOf<A>: NonZero,
     N: Copy + Hash + Integer + Unsigned,
-    Vec<N>: IndexBuffer<Flat<A, N>>,
+    Vec<N>: IndexBuffer<Flat<N, A>>,
 {
     type Facet = ();
     type Key = ();
@@ -61,13 +63,13 @@ where
         T: AsRef<[N]>,
     {
         let keys = keys.as_ref();
-        if keys.len() == A::USIZE {
+        if keys.len() == A {
             self.indices.extend(keys.iter());
             Ok(())
         }
         else {
             Err(BufferError::ArityConflict {
-                expected: A::USIZE,
+                expected: A,
                 actual: keys.len(),
             })
         }
