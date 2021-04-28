@@ -105,6 +105,7 @@ use theon::{AsPosition, AsPositionMut, Position};
 use typenum::type_operators::Cmp;
 use typenum::{Greater, U2, U3};
 
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::geometry::partition::PointPartition;
 use crate::primitive::decompose::IntoVertices;
 use crate::{DynamicArity, IteratorExt as _, Monomorphic, StaticArity, TryFromIterator};
@@ -571,6 +572,13 @@ impl<G, H, const N: usize> Map<H> for NGon<G, N> {
 
 impl<G, const N: usize> Monomorphic for NGon<G, N> {}
 
+impl<G, const N: usize> Polygonal for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U2, Output = Greater>,
+{
+}
+
 impl<G, const N: usize> StaticArity for NGon<G, N> {
     type Static = usize;
 
@@ -616,34 +624,6 @@ impl<G, H, const N: usize> ZipMap<H> for NGon<G, N> {
             .unwrap()
     }
 }
-
-// NOTE: The `Polygonal` trait is sensitive to the parameter `N` (the number of
-//       vertices in the `NGon`). As of Rust 1.51.0, it is not possible to
-//       constrain `N`, so a macro is used instead.
-//
-//       In subsequent versions of Rust, this approach may be possible:
-//
-//           impl<G, const N: usize> Polygonal for NGon<G, N>
-//           where
-//               ConstantIf<{N >= 3}>: ConstantTrue,
-//           {}
-//
-//       This would not require language support for bounds on constant
-//       generics, only expressions.
-//
-//       See https://internals.rust-lang.org/t/const-generics-where-restrictions/12742/7
-macro_rules! impl_polygonal_ngon {
-    (length => $n:expr) => (
-        impl<G> Polygonal for NGon<G, $n> {}
-    );
-    (lengths => $($n:expr),*$(,)?) => (
-        $(impl_polygonal_ngon!(length => $n);)*
-    );
-}
-impl_polygonal_ngon!(lengths =>
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-    28, 29, 30, 31, 32,
-);
 
 macro_rules! impl_zip_ngon {
     (ngons => ($($i:ident),*)) => (
@@ -1098,6 +1078,17 @@ where
     }
 }
 
+impl<G, const N: usize> From<NGon<G, N>> for UnboundedPolygon<G>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U2, Output = Greater>,
+    G: Clone,
+{
+    fn from(ngon: NGon<G, N>) -> Self {
+        UnboundedPolygon(SmallVec::from(ngon.as_ref()))
+    }
+}
+
 impl<G> FromItems for UnboundedPolygon<G> {
     fn from_items<I>(items: I) -> Option<Self>
     where
@@ -1188,41 +1179,6 @@ impl<G> TryFromIterator<G> for UnboundedPolygon<G> {
             .ok_or(())
     }
 }
-
-// NOTE: `UnboundedPolygon` is sensitive to the parameter `N` of `NGon`.  As of
-//       Rust 1.51.0, it is not possible to constrain `N`, so a macro is used
-//       instead.
-//
-//       In subsequent versions of Rust, this approach may be possible:
-//
-//           impl<G, const N: usize> From<NGon<G, N>> for UnboundedPolygon
-//           where
-//               ConstantIf<{N >= 3}>: ConstantTrue,
-//           {}
-//
-//       This would not require language support for bounds on constant
-//       generics, only expressions.
-//
-//       See https://internals.rust-lang.org/t/const-generics-where-restrictions/12742/7
-macro_rules! impl_from_unbounded_polygon {
-    (length => $n:expr) => (
-        impl<G> From<NGon<G, $n>> for UnboundedPolygon<G>
-        where
-            G: Clone,
-        {
-            fn from(ngon: NGon<G, $n>) -> Self {
-                UnboundedPolygon(SmallVec::from(ngon.as_ref()))
-            }
-        }
-    );
-    (lengths => $($n:expr),*$(,)?) => (
-        $(impl_from_unbounded_polygon!(length => $n);)*
-    );
-}
-impl_from_unbounded_polygon!(lengths =>
-    3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-    28, 29, 30, 31, 32,
-);
 
 /// Zips the vertices of [`Topological`] types from multiple iterators into a
 /// single iterator.
