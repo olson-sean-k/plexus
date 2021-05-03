@@ -119,10 +119,10 @@ where
     type Index: Copy + Integer + Unsigned;
 }
 
-impl<T, const A: usize> IndexBuffer<Flat<T, A>> for Vec<T>
+impl<T, const N: usize> IndexBuffer<Flat<T, N>> for Vec<T>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
     type Index = T;
@@ -145,10 +145,10 @@ where
     fn push(&mut self, index: P);
 }
 
-impl<T, P, const A: usize> Push<Flat<T, A>, P> for Vec<T>
+impl<T, P, const N: usize> Push<Flat<T, N>, P> for Vec<T>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
     P: Monomorphic + IntoVertices + Topological<Vertex = T>,
 {
@@ -177,12 +177,15 @@ pub trait Grouping: StaticArity {
 
 /// Flat index buffer meta-grouping.
 ///
-/// Describes a flat index buffer with a constant arity. Arity is specified
-/// using a type constant from the [`typenum`] crate.
+/// Describes a flat index buffer with a constant arity. The number of vertices
+/// in the indexed topological structures is specified using a constant `N` and
+/// is the same as the number of grouped elements in the index buffer. Note that
+/// this constant may be distinct from the arity of the indexed topological
+/// structures (e.g., if `N` is two, then arity is **one**).
 ///
 /// Unlike structured groupings, this meta-grouping is needed to associate an
-/// index type with an arity. For example, `Vec<usize>` implements both
-/// `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
+/// index type with an implicit grouping and arity. For example, `Vec<usize>`
+/// implements both `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
 /// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer).
 ///
 /// See the [`index`] module documention for more information about index
@@ -200,48 +203,46 @@ pub trait Grouping: StaticArity {
 /// let mut buffer = MeshBuffer::<Flat<usize, 3>, (f64, f64, f64)>::default();
 /// ```
 ///
-/// [`typenum`]: https://crates.io/crates/typenum
-///
 /// [`MeshBuffer`]: crate::buffer::MeshBuffer
 /// [`index`]: crate::index
 #[derive(Debug)]
-pub struct Flat<T, const A: usize>
+pub struct Flat<T, const N: usize>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
     phantom: PhantomData<T>,
 }
 
-impl<T, const A: usize> Grouping for Flat<T, A>
+impl<T, const N: usize> Grouping for Flat<T, N>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
     /// The elements of flat index buffers are indices. These indices are
-    /// implicitly grouped by the arity of the buffer (`A`).
+    /// implicitly grouped by the arity of the buffer (`N`).
     type Group = T;
 }
 
-impl<T, const A: usize> Monomorphic for Flat<T, A>
+impl<T, const N: usize> Monomorphic for Flat<T, N>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
 }
 
-impl<T, const A: usize> StaticArity for Flat<T, A>
+impl<T, const N: usize> StaticArity for Flat<T, N>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
     type Static = usize;
 
-    const ARITY: Self::Static = A;
+    const ARITY: Self::Static = crate::n_arity(N);
 }
 
 /// Alias for a flat and triangular index buffer.

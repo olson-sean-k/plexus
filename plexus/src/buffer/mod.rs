@@ -224,14 +224,14 @@ pub trait FromRawBuffersWithArity<N, G>: Sized {
 
 // TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
 //       use such a trait to provide this API.
-pub trait IntoFlatIndex<G, const A: usize>
+pub trait IntoFlatIndex<G, const N: usize>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
 {
     type Item: Copy + Integer + Unsigned;
 
-    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, A>, G>;
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, N>, G>;
 }
 
 // TODO: Provide a similar trait for index buffers instead. `MeshBuffer` could
@@ -421,16 +421,16 @@ where
     }
 }
 
-impl<T, G, const A: usize> DynamicArity for MeshBuffer<Flat<T, A>, G>
+impl<T, G, const N: usize> DynamicArity for MeshBuffer<Flat<T, N>, G>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
-    type Dynamic = <Flat<T, A> as StaticArity>::Static;
+    type Dynamic = <Flat<T, N> as StaticArity>::Static;
 
     fn arity(&self) -> Self::Dynamic {
-        Flat::<T, A>::ARITY
+        Flat::<T, N>::ARITY
     }
 }
 
@@ -479,10 +479,10 @@ where
     const ARITY: Self::Static = R::ARITY;
 }
 
-impl<T, G, const A: usize> MeshBuffer<Flat<T, A>, G>
+impl<T, G, const N: usize> MeshBuffer<Flat<T, N>, G>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + NumCast + Unsigned,
 {
     /// Appends the contents of a flat `MeshBuffer` into another `MeshBuffer`.
@@ -495,7 +495,7 @@ where
     where
         G: FromGeometry<H>,
         R: Grouping,
-        R::Group: Into<<Flat<T, A> as Grouping>::Group>,
+        R::Group: Into<<Flat<T, N> as Grouping>::Group>,
     {
         let offset = T::from(self.vertices.len()).ok_or(BufferError::IndexOverflow)?;
         self.vertices.extend(
@@ -641,10 +641,10 @@ where
     }
 }
 
-impl<T, U, G, H, const A: usize> FromRawBuffers<U, H> for MeshBuffer<Flat<T, A>, G>
+impl<T, U, G, H, const N: usize> FromRawBuffers<U, H> for MeshBuffer<Flat<T, N>, G>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + NumCast + Unsigned,
     U: Copy + Integer + NumCast + Unsigned,
     G: FromGeometry<H>,
@@ -698,7 +698,7 @@ where
             .into_iter()
             .map(|index| <T as NumCast>::from(index).ok_or(BufferError::IndexOverflow))
             .collect::<Result<Vec<_>, _>>()?;
-        if indices.len() % A != 0 {
+        if indices.len() % N != 0 {
             Err(BufferError::IndexUnaligned)
         }
         else {
@@ -779,15 +779,15 @@ where
     }
 }
 
-impl<T, G, const A: usize> IntoFlatIndex<G, A> for MeshBuffer<Flat<T, A>, G>
+impl<T, G, const N: usize> IntoFlatIndex<G, N> for MeshBuffer<Flat<T, N>, G>
 where
-    Constant<A>: ToType,
-    TypeOf<A>: NonZero,
+    Constant<N>: ToType,
+    TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
     type Item = T;
 
-    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, A>, G> {
+    fn into_flat_index(self) -> MeshBuffer<Flat<Self::Item, N>, G> {
         self
     }
 }

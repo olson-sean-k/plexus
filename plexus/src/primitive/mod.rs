@@ -598,7 +598,7 @@ where
 {
     type Static = usize;
 
-    const ARITY: Self::Static = ngon_arity(N);
+    const ARITY: Self::Static = crate::n_arity(N);
 }
 
 impl<G, const N: usize> Topological for NGon<G, N>
@@ -1305,15 +1305,6 @@ where
     T: Copy + Integer,
 {
     ((n % m) + m) % m
-}
-
-const fn ngon_arity(n: usize) -> usize {
-    if n < 3 {
-        1
-    }
-    else {
-        n
-    }
 }
 
 #[cfg(test)]

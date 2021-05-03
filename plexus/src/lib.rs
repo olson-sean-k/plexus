@@ -525,3 +525,18 @@ where
     }
     Some(peekable)
 }
+
+/// Computes the arity of a polygon with `n` vertices.
+///
+/// For `n` greater than two, these values are the same and well-formed. For `n`
+/// less than three, the polygon is degenerate (a digon, monogon, or zerogon),
+/// all of which are assigned an arity of one. Note that some topological types
+/// do not allow `n` being one nor zero.
+const fn n_arity(n: usize) -> usize {
+    if n < 3 {
+        1
+    }
+    else {
+        n
+    }
+}
