@@ -71,7 +71,9 @@ use arrayvec::ArrayVec;
 use std::collections::VecDeque;
 use std::iter::IntoIterator;
 use theon::ops::Interpolate;
+use typenum::{Cmp, Greater, U1};
 
+use crate::constant::{Constant, ToType, TypeOf};
 use crate::primitive::{
     BoundedPolygon, Edge, NGon, Polygonal, Tetragon, Topological, Trigon, UnboundedPolygon,
 };
@@ -205,6 +207,8 @@ pub trait IntoTetrahedrons: Polygonal {
 impl<G, const N: usize> IntoEdges for NGon<G, N>
 where
     G: Clone,
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
 {
     // TODO: As of Rust 1.51.1, it is not possible to constrain constant
     //       generics nor use them in expressions. If and when this is possible,

@@ -102,8 +102,7 @@ use theon::ops::Cross;
 use theon::query::{Intersection, Line, LineLine, LinePlane, Plane, Unit};
 use theon::space::{EuclideanSpace, FiniteDimensional, Scalar, Vector, VectorSpace};
 use theon::{AsPosition, AsPositionMut, Position};
-use typenum::type_operators::Cmp;
-use typenum::{Greater, U2, U3};
+use typenum::{Cmp, Greater, U1, U2, U3};
 
 use crate::constant::{Constant, ToType, TypeOf};
 use crate::geometry::partition::PointPartition;
@@ -416,14 +415,15 @@ where
 /// represents vertex data in order with adjacent elements being connected by an
 /// implicit undirected edge. For example, an `NGon` with three vertices
 /// (`NGon<T, 3>`) would represent a trigon (triangle). Generally these elements
-/// are labeled $A$, $B$, $C$, etc.
+/// are labeled $A$, $B$, $C$, etc. Note that the constant parameter represents
+/// the number of the `NGon`'s vertices and **not** the number of its edges.
 ///
 /// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
 /// two vertices (`NGon<T, 2>`) is considered a _monogon_ despite common
 /// definitions specifying a single vertex. Such an `NGon` is not considered a
 /// _digon_, as it represents a single undirected edge rather than two distinct
-/// (but collapsed) edges. Single-vertex `NGon`s are unsupported. See the `Edge`
-/// type definition.
+/// (but collapsed) edges. `NGon`s with one or zero vertices are unsupported.
+/// See the `Edge` type definition.
 ///
 /// See the [module][`primitive`] documentation for more information.
 ///
@@ -489,7 +489,11 @@ where
     }
 }
 
-impl<G, const N: usize> DynamicArity for NGon<G, N> {
+impl<G, const N: usize> DynamicArity for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
     type Dynamic = usize;
 
     fn arity(&self) -> Self::Dynamic {
@@ -499,8 +503,7 @@ impl<G, const N: usize> DynamicArity for NGon<G, N> {
 
 impl<G, const N: usize> Fold for NGon<G, N>
 where
-    // TODO: `IntoItems`? Can these bounds be removed?
-    Self: Topological + IntoItems,
+    Self: Topological,
 {
     fn fold<U, F>(self, mut seed: U, mut f: F) -> U
     where
@@ -570,22 +573,39 @@ impl<G, H, const N: usize> Map<H> for NGon<G, N> {
     }
 }
 
-impl<G, const N: usize> Monomorphic for NGon<G, N> {}
+impl<G, const N: usize> Monomorphic for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
+}
 
 impl<G, const N: usize> Polygonal for NGon<G, N>
 where
+    // The compiler cannot deduce that the bounds on `TypeOf<N>` are a strict
+    // subset of the similar bounds on the `Topological` implementation, so an
+    // explicit bound on `Self` is required.
+    Self: Topological,
     Constant<N>: ToType,
     TypeOf<N>: Cmp<U2, Output = Greater>,
 {
 }
 
-impl<G, const N: usize> StaticArity for NGon<G, N> {
+impl<G, const N: usize> StaticArity for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
     type Static = usize;
 
-    const ARITY: Self::Static = N;
+    const ARITY: Self::Static = ngon_arity(N);
 }
 
-impl<G, const N: usize> Topological for NGon<G, N> {
+impl<G, const N: usize> Topological for NGon<G, N>
+where
+    Constant<N>: ToType,
+    TypeOf<N>: Cmp<U1, Output = Greater>,
+{
     type Vertex = G;
 
     fn try_from_slice<I>(vertices: I) -> Option<Self>
@@ -628,7 +648,11 @@ impl<G, H, const N: usize> ZipMap<H> for NGon<G, N> {
 macro_rules! impl_zip_ngon {
     (ngons => ($($i:ident),*)) => (
         #[allow(non_snake_case)]
-        impl<$($i),*, const N: usize> Zip for ($(NGon<$i, N>),*) {
+        impl<$($i),*, const N: usize> Zip for ($(NGon<$i, N>),*)
+        where
+            Constant<N>: ToType,
+            TypeOf<N>: Cmp<U1, Output = Greater>,
+        {
             type Output = NGon<($($i),*), N>;
 
             fn zip(self) -> Self::Output {
@@ -1281,6 +1305,15 @@ where
     T: Copy + Integer,
 {
     ((n % m) + m) % m
+}
+
+const fn ngon_arity(n: usize) -> usize {
+    if n < 3 {
+        1
+    }
+    else {
+        n
+    }
 }
 
 #[cfg(test)]
