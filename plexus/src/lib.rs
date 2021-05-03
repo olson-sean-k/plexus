@@ -18,7 +18,7 @@
 
 pub mod buffer;
 pub mod builder;
-mod constant;
+pub mod constant;
 pub mod encoding;
 mod entity;
 pub mod geometry;

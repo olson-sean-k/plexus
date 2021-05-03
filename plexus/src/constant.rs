@@ -3,9 +3,10 @@
 //! This module provides conversions between `typenum`'s unsigned integer types
 //! and `usize` constant generics. These conversions are necessary to perform
 //! static computations and comparisons, which cannot yet be done using constant
-//! generics alone (e.g., `{N >= 3}`).
+//! generics alone at the time of writing (e.g., `{N >= 3}`).
 //!
-//! See https://internals.rust-lang.org/t/const-generics-where-restrictions/12742/7
+//! See discussion on the [Rust internals
+//! forum](https://internals.rust-lang.org/t/const-generics-where-restrictions/12742/7).
 
 // TODO: Move this into the `theon` crate as part of its public API.
 
