@@ -178,15 +178,17 @@ pub trait Grouping: StaticArity {
 /// Flat index buffer meta-grouping.
 ///
 /// Describes a flat index buffer with a constant arity. The number of vertices
-/// in the indexed topological structures is specified using a constant `N` and
-/// is the same as the number of grouped elements in the index buffer. Note that
-/// this constant may be distinct from the arity of the indexed topological
-/// structures (e.g., if `N` is two, then arity is **one**).
+/// in the indexed topological structures is specified using a constant
+/// parameter `N`, which represents the number of grouped elements in the index
+/// buffer. For example, `Flat<_, 3>` describes an index buffer with indices in
+/// implicit and contiguous groups of three. Note that this constant may be
+/// distinct from the arity of the indexed topological structures (i.e., if `N`
+/// is less than three, then arity is `N - 1` and may be zero.).
 ///
 /// Unlike structured groupings, this meta-grouping is needed to associate an
 /// index type with an implicit grouping and arity. For example, `Vec<usize>`
-/// implements both `IndexBuffer<Flat3<usize>>` (a triangular buffer) and
-/// `IndexBuffer<Flat4<usize>>` (a quadrilateral buffer).
+/// implements both `IndexBuffer<Flat<usize, 3>>` (a triangular buffer) and
+/// `IndexBuffer<Flat<usize, 4>>` (a quadrilateral buffer).
 ///
 /// See the [`index`] module documention for more information about index
 /// buffers.
