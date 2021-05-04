@@ -25,7 +25,7 @@
 //!
 //! | Type               | Morphism    | Arity        | Map | Zip | Tessellate |
 //! |--------------------|-------------|--------------|-----|-----|------------|
-//! | `NGon`             | Monomorphic | $[2,12]$     | Yes | Yes | Yes        |
+//! | `NGon`             | Monomorphic | $1,[3,32]$   | Yes | Yes | Yes        |
 //! | `BoundedPolygon`   | Polymorphic | $[3,4]$      | Yes | No  | Yes        |
 //! | `UnboundedPolygon` | Polymorphic | $[3,\infin)$ | Yes | No  | No         |
 //!
@@ -414,20 +414,28 @@ where
 /// `NGon` represents a polygonal structure as an array. Each array element
 /// represents vertex data in order with adjacent elements being connected by an
 /// implicit undirected edge. For example, an `NGon` with three vertices
-/// (`NGon<T, 3>`) would represent a trigon (triangle). Generally these elements
-/// are labeled $A$, $B$, $C$, etc. Note that the constant parameter represents
-/// the number of the `NGon`'s vertices and **not** the number of its edges.
+/// (`NGon<_, 3>`) would represent a trigon (triangle). Generally these elements
+/// are labeled $A$, $B$, $C$, etc. Note that the constant parameter `N`
+/// represents the number of the `NGon`'s vertices and **not** the number of its
+/// edges (arity).
 ///
 /// `NGon`s with less than three vertices are a degenerate case. An `NGon` with
-/// two vertices (`NGon<T, 2>`) is considered a _monogon_ despite common
-/// definitions specifying a single vertex. Such an `NGon` is not considered a
-/// _digon_, as it represents a single undirected edge rather than two distinct
-/// (but collapsed) edges. `NGon`s with one or zero vertices are unsupported.
-/// See the `Edge` type definition.
+/// two vertices (`NGon<_, 2>`) is considered a _monogon_ and is used to
+/// represent edges. Such an `NGon` is not considered a _digon_, as it
+/// represents a single undirected edge rather than two distinct (but collapsed)
+/// edges. Note that the polygonal types [`BoundedPolygon`] and
+/// [`UnboundedPolygon`] never represent edges. See the [`Edge`] type
+/// definition.
+///
+/// `NGon`s with one or zero vertices are unsupported and lack various trait
+/// implementations.
 ///
 /// See the [module][`primitive`] documentation for more information.
 ///
+/// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
+/// [`Edge`]: crate::primitive::Edge
 /// [`primitive`]: crate::primitive
+/// [`UnboundedPolygon`]: crate::primitive::UnboundedPolygon
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct NGon<G, const N: usize>(pub [G; N]);
 

@@ -214,15 +214,22 @@ where
     //       generics nor use them in expressions. If and when this is possible,
     //       do not implement this trait for degenerate `NGon`s and use use an
     //       `ArrayVec<Edge<Self::Vertex>, {if N == 2 { 1 } else { N }}>` as
-    //       output. This implementation yields an empty `Vec` for degenerate
-    //       `NGon`s.
+    //       output.
     type Output = Vec<Edge<Self::Vertex>>;
 
     fn into_edges(self) -> Self::Output {
-        self.into_iter()
-            .perimeter()
-            .map(|(a, b)| Edge::new(a, b))
-            .collect()
+        if N == 2 {
+            // At the time of writing, it is not possible to specialize this
+            // case for `NGon<G, 2>` nor prove to the compiler that `Self` is of
+            // type `Edge<G>` when the condition `N == 2` is `true`.
+            vec![self.into_iter().try_collect().unwrap()]
+        }
+        else {
+            self.into_iter()
+                .perimeter()
+                .map(|(a, b)| Edge::new(a, b))
+                .collect()
+        }
     }
 }
 

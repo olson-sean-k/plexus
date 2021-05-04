@@ -260,7 +260,7 @@ where
 /// The `R` type parameter specifies the [`Grouping`] of the index buffer. See
 /// the [`index`] module documention for more information.
 ///
-/// [`Grouping`]: crate::buffer::Grouping
+/// [`Grouping`]: crate::index::Grouping
 /// [`index`]: crate::index
 #[derive(Debug)]
 pub struct MeshBuffer<R, G>
