@@ -32,8 +32,8 @@ use crate::IteratorExt as _;
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Vertex entity.
-#[derivative(Debug, Hash)]
 #[derive(Derivative)]
+#[derivative(Debug, Hash)]
 pub struct Vertex<G>
 where
     G: GraphData,

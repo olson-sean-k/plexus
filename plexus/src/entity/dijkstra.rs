@@ -12,8 +12,8 @@ use crate::geometry::Metric;
 
 pub type MetricTree<K, Q> = HashMap<K, (Option<K>, Q)>;
 
-#[derivative(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 #[derive(Derivative)]
+#[derivative(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 struct KeyedMetric<K, Q>(
     #[derivative(Ord = "ignore", PartialEq = "ignore", PartialOrd = "ignore")] K,
     Q,

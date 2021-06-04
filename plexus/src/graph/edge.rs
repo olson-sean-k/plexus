@@ -44,8 +44,8 @@ where
 // reason, `Arc` has no fields representing its source and destination vertices
 // nor its opposite arc; such fields would be redundant.
 /// Arc entity.
-#[derivative(Debug, Hash)]
 #[derive(Derivative)]
+#[derivative(Debug, Hash)]
 pub struct Arc<G>
 where
     G: GraphData,
@@ -1214,8 +1214,8 @@ where
 }
 
 /// Edge entity.
-#[derivative(Debug, Hash)]
 #[derive(Derivative)]
+#[derivative(Debug, Hash)]
 pub struct Edge<G>
 where
     G: GraphData,

@@ -47,8 +47,8 @@ where
 }
 
 /// Face entity.
-#[derivative(Debug, Hash)]
 #[derive(Derivative)]
+#[derivative(Debug, Hash)]
 pub struct Face<G>
 where
     G: GraphData,
