@@ -82,7 +82,7 @@ where
         I::Item: Borrow<ArcKey>,
     {
         let keys = Cow::Owned(keys.into_iter().map(|key| *key.borrow()).collect());
-        Path { storage, keys }
+        Path { keys, storage }
     }
 }
 
