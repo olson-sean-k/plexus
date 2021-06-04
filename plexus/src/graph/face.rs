@@ -1219,7 +1219,7 @@ where
     /// like a ring, there are two sub-paths between any two vertices. This
     /// function computes the metric of the shortest sub-path. This may be the
     /// null path with a zero metric.
-    pub fn shortest_metric(
+    pub fn shortest_logical_metric(
         &self,
         from: Selector<VertexKey>,
         to: Selector<VertexKey>,
@@ -1945,17 +1945,17 @@ mod tests {
         let ring = face.into_ring();
         assert_eq!(
             2,
-            ring.shortest_metric(keys[0].into(), keys[2].into())
+            ring.shortest_logical_metric(keys[0].into(), keys[2].into())
                 .unwrap()
         );
         assert_eq!(
             1,
-            ring.shortest_metric(keys[0].into(), keys[3].into())
+            ring.shortest_logical_metric(keys[0].into(), keys[3].into())
                 .unwrap()
         );
         assert_eq!(
             0,
-            ring.shortest_metric(keys[0].into(), keys[0].into())
+            ring.shortest_logical_metric(keys[0].into(), keys[0].into())
                 .unwrap()
         );
     }

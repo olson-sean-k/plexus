@@ -262,13 +262,13 @@ where
 
     /// Gets the vertex at the back of the path.
     pub fn back(&self) -> VertexView<&M> {
-        let (key, _) = self.endpoints();
+        let (key, _) = self.terminals();
         View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
     }
 
     /// Gets the vertex at the front of the path.
     pub fn front(&self) -> VertexView<&M> {
-        let (_, key) = self.endpoints();
+        let (_, key) = self.terminals();
         View::<_, Vertex<_>>::bind_unchecked(self.storage.reborrow(), key).into()
     }
 
@@ -282,9 +282,9 @@ where
         Q: Metric,
         F: Fn(VertexView<&M>, VertexView<&M>) -> Q,
     {
-        self.shortest_subpath_endpoints(from, to).map(|(from, to)| {
+        self.shortest_subpath_terminals(from, to).map(|(from, to)| {
             // A cycle is needed for closed paths. Note that if the path is
-            // open, then the vertex keys must not wrap over the endpoints here.
+            // open, then the vertex keys must not wrap over the terminals here.
             truncate(self.arcs().cycle(), from, to).fold(Q::zero(), |metric, arc| {
                 metric + f(arc.source_vertex(), arc.destination_vertex())
             })
@@ -303,17 +303,17 @@ where
     /// A _closed path_ is a path that forms a loop by starting and ending at
     /// the same vertex.
     pub fn is_closed(&self) -> bool {
-        let (a, b) = self.endpoints();
+        let (a, b) = self.terminals();
         a == b
     }
 
-    fn endpoints(&self) -> (VertexKey, VertexKey) {
+    fn terminals(&self) -> (VertexKey, VertexKey) {
         let (a, _) = self.keys.back().cloned().expect("empty path").into();
         let (_, b) = self.keys.front().cloned().expect("empty path").into();
         (a, b)
     }
 
-    fn shortest_subpath_endpoints(
+    fn shortest_subpath_terminals(
         &self,
         from: Selector<VertexKey>,
         to: Selector<VertexKey>,
@@ -426,7 +426,7 @@ where
 {
     /// Gets an iterator over the vertices in the path.
     pub fn vertices(&self) -> impl Clone + Iterator<Item = VertexView<&B::Target>> {
-        let (key, _) = self.endpoints();
+        let (key, _) = self.terminals();
         Some(key)
             .into_iter()
             .chain(self.keys.iter().cloned().rev().map(|key| {
