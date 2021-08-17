@@ -12,7 +12,7 @@ bytemuck = "^1.4.0"
 decorum = "^0.3.1"
 lazy_static = "^1.4.0"
 num = "^0.3.0"
-rand = "^0.7.0"
+rand = "^0.8.4"
 winit = "^0.23.0"
 
 [dependencies.futures]
