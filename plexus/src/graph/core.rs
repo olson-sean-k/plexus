@@ -45,7 +45,7 @@ where
     pub(in crate::graph) arcs: A,
     pub(in crate::graph) edges: E,
     pub(in crate::graph) faces: F,
-    phantom: PhantomData<G>,
+    phantom: PhantomData<fn() -> G>,
 }
 
 impl<G> Core<G>

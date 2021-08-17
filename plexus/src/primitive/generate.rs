@@ -92,7 +92,7 @@ pub trait Attribute {}
 /// [`EuclideanSpace`]: theon::space::EuclideanSpace
 /// [`UvSphere`]: crate::primitive::sphere::UvSphere
 pub struct Normal<S = ()> {
-    phantom: PhantomData<S>,
+    phantom: PhantomData<fn() -> S>,
 }
 
 impl<S> Attribute for Normal<S> {}
@@ -130,7 +130,7 @@ impl<S> Attribute for Normal<S> {}
 /// [`Cube`]: crate::primitive::cube::Cube
 /// [`UvSphere`]: crate::primitive::sphere::UvSphere
 pub struct Position<S = ()> {
-    phantom: PhantomData<S>,
+    phantom: PhantomData<fn() -> S>,
 }
 
 impl<S> Attribute for Position<S> {}

@@ -214,7 +214,7 @@ where
     TypeOf<N>: NonZero,
     T: Copy + Integer + Unsigned,
 {
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<T, const N: usize> Grouping for Flat<T, N>
@@ -341,7 +341,7 @@ where
 {
     hash: HashMap<K, usize>,
     n: usize,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<T, K> HashIndexer<T, K>
@@ -429,7 +429,7 @@ where
     lru: Vec<(K, usize)>,
     capacity: usize,
     n: usize,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<T, K> LruIndexer<T, K>

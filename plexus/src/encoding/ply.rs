@@ -299,7 +299,7 @@ where
 }
 
 pub struct PositionEncoding<T> {
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<T> Default for PositionEncoding<T> {

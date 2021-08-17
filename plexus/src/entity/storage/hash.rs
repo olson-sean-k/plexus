@@ -25,7 +25,7 @@ where
 {
     inner: AHashMap<InnerKey<<E as Entity>::Key>, E>,
     keyer: R,
-    phantom: PhantomData<P>,
+    phantom: PhantomData<fn() -> P>,
 }
 
 impl<E, R, P> HashStorage<E, R, P>

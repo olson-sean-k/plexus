@@ -59,7 +59,7 @@ pub struct Immediate<M>
 where
     M: Parametric,
 {
-    phantom: PhantomData<M>,
+    phantom: PhantomData<fn() -> M>,
 }
 
 impl<M> Mode for Immediate<M>

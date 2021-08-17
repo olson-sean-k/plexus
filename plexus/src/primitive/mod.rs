@@ -377,7 +377,7 @@ where
 pub struct InteriorMap<I, T, F> {
     input: I,
     f: F,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<I, T, F> InteriorMap<I, T, F> {

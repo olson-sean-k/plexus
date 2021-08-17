@@ -78,7 +78,7 @@ where
     storage: B,
     breadcrumbs: HashSet<T::Key>,
     buffer: R::Buffer,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<B, T, R> Clone for Traversal<B, T, R>
