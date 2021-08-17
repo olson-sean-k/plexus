@@ -1,6 +1,5 @@
 use arrayvec::ArrayVec;
 use derivative::Derivative;
-use fool::BoolExt as _;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -306,7 +305,7 @@ where
         }
         else {
             self.into_reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().then_some_ext(opposite))
+                .and_then(|opposite| opposite.is_boundary_arc().then(|| opposite))
         }
     }
 

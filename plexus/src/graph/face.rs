@@ -1,5 +1,4 @@
 use derivative::Derivative;
-use fool::BoolExt as _;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::cmp;
@@ -1573,7 +1572,7 @@ where
 {
     fn next(&mut self) -> Option<ArcKey> {
         self.arc
-            .and_then(|arc| self.trace.insert(arc).then_some_ext(arc))
+            .and_then(|arc| self.trace.insert(arc).then(|| arc))
             .map(|arc| {
                 self.arc = self
                     .storage

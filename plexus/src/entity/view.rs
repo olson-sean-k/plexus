@@ -1,4 +1,3 @@
-use fool::BoolExt as _;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
@@ -92,7 +91,7 @@ where
             .reborrow()
             .as_storage()
             .contains_key(&key)
-            .then_some_ext(View::bind_unchecked(storage, key))
+            .then(|| View::bind_unchecked(storage, key))
     }
 
     pub fn bind_unchecked(storage: B, key: E::Key) -> Self {

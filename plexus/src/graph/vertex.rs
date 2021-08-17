@@ -1,5 +1,4 @@
 use derivative::Derivative;
-use fool::BoolExt as _;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
@@ -933,7 +932,7 @@ where
 {
     fn next(&mut self) -> Option<ArcKey> {
         self.outgoing
-            .and_then(|outgoing| self.trace.insert(outgoing).then_some_ext(outgoing))
+            .and_then(|outgoing| self.trace.insert(outgoing).then(|| outgoing))
             .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage

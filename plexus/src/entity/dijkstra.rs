@@ -1,5 +1,4 @@
 use derivative::Derivative;
-use fool::BoolExt as _;
 use std::cmp::Reverse;
 use std::collections::hash_map::Entry;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -34,10 +33,9 @@ where
 {
     let (storage, from) = from.unbind();
     let capacity = if let Some(key) = to {
-        storage
-            .as_storage()
-            .contains_key(&key)
-            .ok_or(EntityError::EntityNotFound)?;
+        if !storage.as_storage().contains_key(&key) {
+            return Err(EntityError::EntityNotFound);
+        }
         0
     }
     else {

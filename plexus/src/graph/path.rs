@@ -1,4 +1,3 @@
-use fool::BoolExt as _;
 use itertools::Itertools;
 use std::borrow::{Borrow, Cow};
 use std::cmp;
@@ -130,7 +129,9 @@ where
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the back of the path.
     pub fn push_back(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
-        self.is_open().ok_or(GraphError::TopologyMalformed)?;
+        if self.is_closed() {
+            return Err(GraphError::TopologyMalformed);
+        }
         let back = self.back();
         let xa = match destination {
             Selector::ByKey(key) => back
@@ -203,7 +204,9 @@ where
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the front of the path.
     pub fn push_front(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
-        self.is_open().ok_or(GraphError::TopologyMalformed)?;
+        if self.is_closed() {
+            return Err(GraphError::TopologyMalformed);
+        }
         let front = self.front();
         let bx = match destination {
             Selector::ByKey(key) => front

@@ -1,4 +1,3 @@
-use fool::and;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity::borrow::Reborrow;
@@ -201,7 +200,7 @@ where
         // In a consistent graph, all arcs must have adjacent arcs and an
         // associated edge.
         for (_, arc) in arcs.as_storage().iter() {
-            if !(and!(&arc.next, &arc.previous, &arc.edge)) {
+            if arc.next.is_none() || arc.previous.is_none() || arc.edge.is_none() {
                 return Err(((), GraphError::TopologyMalformed));
             }
         }

@@ -10,7 +10,6 @@ publish = false
 [dependencies]
 bytemuck = "^1.4.0"
 decorum = "^0.3.1"
-fool = "=0.0.4" # Unstable.
 lazy_static = "^1.4.0"
 num = "^0.3.0"
 rand = "^0.7.0"

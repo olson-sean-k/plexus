@@ -4,7 +4,6 @@ use plexus::integration::theon;
 use bytemuck::{self, Pod, Zeroable};
 use decorum::cmp::FloatEq;
 use decorum::hash::FloatHash;
-use fool::and;
 use futures::task::LocalSpawn;
 use nalgebra::{Point3, Scalar, Vector3, Vector4};
 use num::{self, One};
@@ -127,11 +126,9 @@ impl Hash for Vertex {
 
 impl PartialEq for Vertex {
     fn eq(&self, other: &Self) -> bool {
-        and!(
-            self.position.float_eq(&other.position),
-            self.normal.float_eq(&other.normal),
-            self.color.float_eq(&other.color),
-        )
+        self.position.float_eq(&other.position)
+            && self.normal.float_eq(&other.normal)
+            && self.color.float_eq(&other.color)
     }
 }
 

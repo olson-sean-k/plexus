@@ -87,7 +87,6 @@ pub mod sphere;
 
 use arrayvec::ArrayVec;
 use decorum::Real;
-use fool::BoolExt as _;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
 use num::{Integer, One, Signed, Unsigned, Zero};
@@ -769,9 +768,9 @@ where
         self.line()
             .zip(other.line())
             .and_then(|(left, right)| match left.intersection(&right) {
-                Some(LineLine::Point(point)) => self
-                    .is_bisected(other)
-                    .then_some_ext(EdgeEdge::Point(point)),
+                Some(LineLine::Point(point)) => {
+                    self.is_bisected(other).then(|| EdgeEdge::Point(point))
+                }
                 Some(LineLine::Line(_)) => todo!(),
                 _ => None,
             })
