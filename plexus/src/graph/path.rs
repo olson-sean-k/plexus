@@ -533,7 +533,7 @@ where
     T: Borrow<ArcKey> + Copy,
 {
     arcs.into_iter()
-        .map(|arc| (arc, arc.borrow().clone().into()))
+        .map(|arc| (arc, (*arc.borrow()).into()))
         .skip_while(move |(_, (a, _))| *a != from)
         .take_while(move |(_, (a, _))| *a != to)
         .map(|(arc, _)| arc)
