@@ -13,7 +13,7 @@ decorum = "^0.3.1"
 lazy_static = "^1.4.0"
 num = "^0.3.0"
 rand = "^0.7.0"
-winit = "^0.23.0"
+winit = "^0.26.0"
 
 [dependencies.futures]
 version = "=0.3"
