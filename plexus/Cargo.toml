@@ -48,7 +48,7 @@ geometry-ultraviolet = ["theon/geometry-ultraviolet"]
 unstable = []
 
 [dependencies]
-approx = "^0.3.0"
+approx = "^0.5.1"
 ahash = "^0.6.0"
 arrayvec = "^0.6.0"
 decorum = "^0.3.1"
