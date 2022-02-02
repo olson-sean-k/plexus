@@ -567,9 +567,7 @@ where
     ///
     /// type E3 = Point3<R64>;
     ///
-    /// let mut graph: MeshGraph<E3> = Cube::new()
-    ///     .polygons::<Position<E3>>()
-    ///     .collect();
+    /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let key = graph.vertices().nth(0).unwrap().key();
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```

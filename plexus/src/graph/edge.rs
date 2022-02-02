@@ -782,7 +782,7 @@ where
     /// #
     /// use nalgebra::Point2;
     /// use plexus::geometry::FromGeometry;
-    /// use plexus::graph::{GraphData, MeshGraph, VertexKey, VertexView};
+    /// use plexus::graph::{ArcKey, GraphData, MeshGraph, VertexKey, VertexView};
     /// use plexus::prelude::*;
     /// use plexus::primitive::NGon;
     ///
@@ -818,13 +818,16 @@ where
     /// let c = find(graph.vertices(), (1.0, 0.0)).unwrap();
     /// let d = find(graph.vertices(), (1.0, 1.0)).unwrap();
     /// let face = graph
-    ///     .arc_mut((a, b).into())
+    ///     .arc_mut(ArcKey::from((a, b)))
     ///     .unwrap()
-    ///     .bridge(ByKey((c, d).into()))
+    ///     .bridge(ArcKey::from((c, d)))
     ///     .unwrap();
     /// ```
-    pub fn bridge(self, destination: Selector<ArcKey>) -> Result<FaceView<&'a mut M>, GraphError> {
-        let destination = destination.key_or_else(|index| {
+    pub fn bridge(
+        self,
+        destination: impl Into<Selector<ArcKey>>,
+    ) -> Result<FaceView<&'a mut M>, GraphError> {
+        let destination = destination.into().key_or_else(|index| {
             self.ring()
                 .arcs()
                 .nth(index)
@@ -1903,11 +1906,7 @@ mod tests {
         .unwrap();
         let source = find_arc(&graph, ((-1.0, 1.0, 0.0), (-1.0, 0.0, 0.0))).unwrap();
         let destination = find_arc(&graph, ((1.0, 0.0, 0.0), (1.0, 1.0, 0.0))).unwrap();
-        graph
-            .arc_mut(source)
-            .unwrap()
-            .bridge(ByKey(destination))
-            .unwrap();
+        graph.arc_mut(source).unwrap().bridge(destination).unwrap();
 
         assert_eq!(20, graph.arc_count());
         assert_eq!(3, graph.face_count());

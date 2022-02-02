@@ -202,7 +202,7 @@ pub trait Topological:
     ///     Trigon::from([
     ///         E2::from_xy(-1.0, 0.0),
     ///         E2::from_xy(0.0, 1.0),
-    ///         E2::from_xy(1.0, 0.0)
+    ///         E2::from_xy(1.0, 0.0),
     ///     ]),
     ///     Plane::<E3> {
     ///         origin: EuclideanSpace::origin(),

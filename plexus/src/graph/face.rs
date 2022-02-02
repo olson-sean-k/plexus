@@ -31,8 +31,6 @@ use crate::graph::{GraphError, MeshGraph, OptionExt as _, ResultExt as _, Select
 use crate::transact::{BypassOrCommit, Mutate};
 use crate::{DynamicArity, IteratorExt as _, StaticArity};
 
-use Selector::ByIndex;
-
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 pub trait ToRing<B>: DynamicArity<Dynamic = usize> + Sized
@@ -553,8 +551,8 @@ where
     /// ```
     pub fn split(
         self,
-        source: Selector<VertexKey>,
-        destination: Selector<VertexKey>,
+        source: impl Into<Selector<VertexKey>>,
+        destination: impl Into<Selector<VertexKey>>,
     ) -> Result<ArcView<&'a mut M>, GraphError> {
         let key_at_index = |index| {
             self.adjacent_vertices()
@@ -562,8 +560,8 @@ where
                 .ok_or(GraphError::TopologyNotFound)
                 .map(|vertex| vertex.key())
         };
-        let source = source.key_or_else(key_at_index)?;
-        let destination = destination.key_or_else(key_at_index)?;
+        let source = source.into().key_or_else(key_at_index)?;
+        let destination = destination.into().key_or_else(key_at_index)?;
         let cache = FaceSplitCache::from_face(self.to_ref(), source, destination)?;
         let (storage, _) = self.unbind();
         Ok(Mutation::take(storage)
@@ -619,8 +617,8 @@ where
     ///     .unwrap()
     ///     .into_ref();
     /// ```
-    pub fn merge(self, destination: Selector<FaceKey>) -> Result<Self, GraphError> {
-        let destination = destination.key_or_else(|index| {
+    pub fn merge(self, destination: impl Into<Selector<FaceKey>>) -> Result<Self, GraphError> {
+        let destination = destination.into().key_or_else(|index| {
             self.adjacent_faces()
                 .nth(index)
                 .ok_or(GraphError::TopologyNotFound)
@@ -683,7 +681,7 @@ where
         let mut face = self;
         while face.arity() > 3 {
             face = face
-                .split(ByIndex(0), ByIndex(2))
+                .split(0, 2)
                 .expect_consistent() // TODO: This may panic!
                 .into_face()
                 .expect_consistent();
@@ -1220,8 +1218,8 @@ where
     /// null path with a zero metric.
     pub fn shortest_logical_metric(
         &self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
+        from: impl Into<Selector<VertexKey>>,
+        to: impl Into<Selector<VertexKey>>,
     ) -> Result<usize, GraphError> {
         let arity = self.arity();
         let index = |selector: Selector<_>| match selector {
@@ -1241,8 +1239,8 @@ where
                 }
             }
         };
-        let from = index(from)?;
-        let to = index(to)?;
+        let from = index(from.into())?;
+        let to = index(to.into())?;
         let metric = cmp::max(from, to) - cmp::min(from, to);
         Ok(cmp::min(metric, arity - metric))
     }
@@ -1883,7 +1881,7 @@ mod tests {
         // Get the keys for the two faces and join them.
         let abc = graph.faces().nth(0).unwrap().key();
         let def = graph.faces().nth(1).unwrap().key();
-        graph.face_mut(abc).unwrap().merge(ByKey(def)).unwrap();
+        graph.face_mut(abc).unwrap().merge(def).unwrap();
 
         // After the removal, the graph should have 1 face.
         assert_eq!(1, graph.face_count());
@@ -1942,20 +1940,8 @@ mod tests {
             .map(|vertex| vertex.key())
             .collect::<Vec<_>>();
         let ring = face.into_ring();
-        assert_eq!(
-            2,
-            ring.shortest_logical_metric(keys[0].into(), keys[2].into())
-                .unwrap()
-        );
-        assert_eq!(
-            1,
-            ring.shortest_logical_metric(keys[0].into(), keys[3].into())
-                .unwrap()
-        );
-        assert_eq!(
-            0,
-            ring.shortest_logical_metric(keys[0].into(), keys[0].into())
-                .unwrap()
-        );
+        assert_eq!(2, ring.shortest_logical_metric(keys[0], keys[2]).unwrap());
+        assert_eq!(1, ring.shortest_logical_metric(keys[0], keys[3]).unwrap());
+        assert_eq!(0, ring.shortest_logical_metric(keys[0], keys[0]).unwrap());
     }
 }

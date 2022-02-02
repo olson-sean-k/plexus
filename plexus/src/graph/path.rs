@@ -17,8 +17,6 @@ use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
 use crate::transact::{BypassOrCommit, Mutate};
 use crate::IteratorExt as _;
 
-use Selector::ByKey;
-
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
 
 /// Non-intersecting path.
@@ -70,7 +68,7 @@ where
             storage,
         };
         for key in keys {
-            path.push_front(Selector::ByKey(key))?;
+            path.push_front(key)?;
         }
         Ok(path)
     }
@@ -128,12 +126,15 @@ where
     ///
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the back of the path.
-    pub fn push_back(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
+    pub fn push_back(
+        &mut self,
+        destination: impl Into<Selector<VertexKey>>,
+    ) -> Result<ArcKey, GraphError> {
         if self.is_closed() {
             return Err(GraphError::TopologyMalformed);
         }
         let back = self.back();
-        let xa = match destination {
+        let xa = match destination.into() {
             Selector::ByKey(key) => back
                 .incoming_arcs()
                 .find(|arc| arc.into_source_vertex().key() == key)
@@ -173,7 +174,7 @@ where
             .into_previous_arc()
             .into_source_vertex()
             .key();
-        self.push_back(ByKey(key))
+        self.push_back(key)
     }
 
     /// Pops a vertex from the back of the path.
@@ -203,12 +204,15 @@ where
     ///
     /// Returns an error if the path is closed, the given vertex is not found,
     /// or the given vertex does not form an arc with the front of the path.
-    pub fn push_front(&mut self, destination: Selector<VertexKey>) -> Result<ArcKey, GraphError> {
+    pub fn push_front(
+        &mut self,
+        destination: impl Into<Selector<VertexKey>>,
+    ) -> Result<ArcKey, GraphError> {
         if self.is_closed() {
             return Err(GraphError::TopologyMalformed);
         }
         let front = self.front();
-        let bx = match destination {
+        let bx = match destination.into() {
             Selector::ByKey(key) => front
                 .outgoing_arcs()
                 .find(|arc| arc.into_destination_vertex().key() == key)
@@ -249,7 +253,7 @@ where
             .into_next_arc()
             .into_destination_vertex()
             .key();
-        self.push_front(ByKey(key))
+        self.push_front(key)
     }
 
     /// Pops a vertex from the front of the path.
@@ -277,8 +281,8 @@ where
 
     pub fn shortest_metric_with<Q, F>(
         &self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
+        from: impl Into<Selector<VertexKey>>,
+        to: impl Into<Selector<VertexKey>>,
         f: F,
     ) -> Result<Q, GraphError>
     where
@@ -318,8 +322,8 @@ where
 
     fn shortest_subpath_terminals(
         &self,
-        from: Selector<VertexKey>,
-        to: Selector<VertexKey>,
+        from: impl Into<Selector<VertexKey>>,
+        to: impl Into<Selector<VertexKey>>,
     ) -> Result<(VertexKey, VertexKey), GraphError> {
         let index_key = |selector| {
             match selector {
@@ -334,8 +338,8 @@ where
             }
             .ok_or(GraphError::TopologyNotFound)
         };
-        let (i, from) = index_key(from)?;
-        let (j, to) = index_key(to)?;
+        let (i, from) = index_key(from.into())?;
+        let (j, to) = index_key(to.into())?;
         if self.is_open() {
             // Reorder the vertex keys if they oppose the direction of the open
             // path.
@@ -392,9 +396,9 @@ where
     /// [`MeshGraph::split_at_path`]: crate::graph::MeshGraph::split_at_path
     pub fn split(
         self,
-        at: Selector<VertexKey>,
+        at: impl Into<Selector<VertexKey>>,
     ) -> Result<(Path<'static, &'a M>, Path<'static, &'a M>), GraphError> {
-        let index = at.index_or_else(|key| {
+        let index = at.into().index_or_else(|key| {
             self.vertices()
                 .keys()
                 .enumerate()
@@ -543,12 +547,10 @@ where
 mod tests {
     use nalgebra::Point2;
 
-    use crate::graph::{ClosedView, MeshGraph, Selector};
+    use crate::graph::{ClosedView, MeshGraph};
     use crate::prelude::*;
     use crate::primitive::{Tetragon, Trigon};
     use crate::IteratorExt;
-
-    use Selector::ByKey;
 
     type E2 = Point2<f64>;
 
@@ -573,7 +575,7 @@ mod tests {
         // TODO: Move this assertion to a distinct test.
         assert_eq!(path.vertices().keys().collect::<Vec<_>>(), keys.to_vec());
 
-        path.push_front(ByKey(keys[0])).unwrap();
+        path.push_front(keys[0]).unwrap();
         assert!(path.is_closed());
         assert_eq!(path.front().key(), path.back().key());
     }
@@ -591,24 +593,16 @@ mod tests {
         };
         let keys: Vec<_> = path.vertices().keys().collect();
 
+        assert_eq!(0, path.shortest_metric_with(0, 0, |_, _| 1usize).unwrap());
         assert_eq!(
             0,
-            path.shortest_metric_with(ByIndex(0), ByIndex(0), |_, _| 1usize)
+            path.shortest_metric_with(keys[0], keys[0], |_, _| 1usize)
                 .unwrap()
         );
-        assert_eq!(
-            0,
-            path.shortest_metric_with(ByKey(keys[0]), ByKey(keys[0]), |_, _| 1usize)
-                .unwrap()
-        );
-        assert_eq!(
-            1,
-            path.shortest_metric_with(ByIndex(0), ByIndex(3), |_, _| 1usize)
-                .unwrap()
-        );
+        assert_eq!(1, path.shortest_metric_with(0, 3, |_, _| 1usize).unwrap());
         assert_eq!(
             2,
-            path.shortest_metric_with(ByKey(keys[3]), ByKey(keys[1]), |_, _| 1usize)
+            path.shortest_metric_with(keys[3], keys[1], |_, _| 1usize)
                 .unwrap()
         );
     }
@@ -627,7 +621,7 @@ mod tests {
         let path = source.shortest_path(destination.key()).unwrap();
         assert_eq!(path.arcs().count(), 2);
 
-        let (left, right) = path.split(ByIndex(1)).unwrap();
+        let (left, right) = path.split(1).unwrap();
         assert_eq!(left.front().key(), right.back().key());
         assert_eq!(left.arcs().count(), 1);
         assert_eq!(right.arcs().count(), 1);

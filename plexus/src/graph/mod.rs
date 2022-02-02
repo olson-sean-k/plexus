@@ -146,7 +146,7 @@
 //!     }
 //!     let mut face = arc.into_face().unwrap();
 //!     for (a, b) in splits.into_iter().perimeter() {
-//!         face = face.split(ByKey(a), ByKey(b)).unwrap().into_face().unwrap();
+//!         face = face.split(a, b).unwrap().into_face().unwrap();
 //!     }
 //!     face
 //! }
@@ -835,12 +835,7 @@ where
     /// // Create a graph from two triangles.
     /// let mut graph = MeshGraph::<E2>::from_raw_buffers(
     ///     vec![Trigon::new(0usize, 1, 2), Trigon::new(2, 1, 3)],
-    ///     vec![
-    ///         (-1.0, 0.0),
-    ///         (0.0, -1.0),
-    ///         (0.0, 1.0),
-    ///         (1.0, 0.0),
-    ///     ],
+    ///     vec![(-1.0, 0.0), (0.0, -1.0), (0.0, 1.0), (1.0, 0.0)],
     /// )
     /// .unwrap();
     ///
