@@ -238,6 +238,7 @@ pub trait Topological:
     ///
     /// The positions in each vertex of the $n$-gon are translated along the
     /// normal of the plane.
+    #[must_use]
     fn project_into_plane(mut self, plane: Plane<Position<Self::Vertex>>) -> Self
     where
         Self::Vertex: AsPositionMut,
@@ -345,6 +346,7 @@ pub trait IntoPolygons: Sized {
 }
 
 pub trait Rotate {
+    #[must_use]
     fn rotate(self, n: isize) -> Self;
 }
 
@@ -565,7 +567,7 @@ impl<G, const N: usize> IntoIterator for NGon<G, N> {
     type IntoIter = array::IntoIter<G, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        array::IntoIter::new(self.into_array())
+        self.into_array().into_iter()
     }
 }
 

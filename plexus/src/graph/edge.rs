@@ -342,16 +342,22 @@ where
     }
 
     /// Converts the arc into its opposite arc.
+    // Arcs are unique in that they have one-to-one traversals over themselves.
+    #[must_use]
     pub fn into_opposite_arc(self) -> Self {
         self.into_reachable_opposite_arc().expect_consistent()
     }
 
     /// Converts the arc into its next arc.
+    // Arcs are unique in that they have one-to-one traversals over themselves.
+    #[must_use]
     pub fn into_next_arc(self) -> Self {
         self.into_reachable_next_arc().expect_consistent()
     }
 
     /// Converts the arc into its previous arc.
+    // Arcs are unique in that they have one-to-one traversals over themselves.
+    #[must_use]
     pub fn into_previous_arc(self) -> Self {
         self.into_reachable_previous_arc().expect_consistent()
     }
@@ -888,7 +894,7 @@ where
     ///     .extrude_with_offset(1.0)
     ///     .unwrap();
     /// ```
-    pub fn extrude_with_offset<T>(self, offset: T) -> Result<ArcView<&'a mut M>, GraphError>
+    pub fn extrude_with_offset<T>(self, offset: T) -> Result<Self, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: ArcNormal,
@@ -913,7 +919,7 @@ where
     pub fn extrude_with_translation(
         self,
         translation: Vector<VertexPosition<G>>,
-    ) -> Result<ArcView<&'a mut M>, GraphError>
+    ) -> Result<Self, GraphError>
     where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
@@ -933,7 +939,7 @@ where
     /// # Errors
     ///
     /// Returns an error if the arc is not a boundary arc.
-    pub fn extrude_with<F>(self, f: F) -> Result<ArcView<&'a mut M>, GraphError>
+    pub fn extrude_with<F>(self, f: F) -> Result<Self, GraphError>
     where
         F: Fn(G::Vertex) -> G::Vertex,
     {

@@ -1,7 +1,8 @@
 [package]
 name = "pictor"
 version = "0.0.0"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56.0"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 description = "Support library for Plexus examples."
@@ -20,15 +21,13 @@ version = "=0.3"
 default-features = false
 features = [
     "std",
-    "executor",
+    "executor"
 ]
 
 [dependencies.plexus]
 path = "../plexus"
 default-features = false
-features = [
-    "geometry-nalgebra",
-]
+features = ["geometry-nalgebra"]
 
 [dependencies.wgpu]
 #version = "^0.6.0"

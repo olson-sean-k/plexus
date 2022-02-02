@@ -131,7 +131,7 @@
 //! use smallvec::SmallVec;
 //!
 //! // Requires `EdgeMidpoint` for `split_at_midpoint`.
-//! pub fn circumscribe<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
+//! pub fn ambo<G>(face: FaceView<&mut MeshGraph<G>>) -> FaceView<&mut MeshGraph<G>>
 //! where
 //!     G: EdgeMidpoint + GraphData,
 //!     G::Vertex: AsPositionMut,

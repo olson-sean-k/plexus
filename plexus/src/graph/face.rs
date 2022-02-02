@@ -670,6 +670,7 @@ where
     /// triangular.
     ///
     /// Returns the terminating face of the decomposition.
+    #[allow(clippy::return_self_not_must_use)]
     pub fn triangulate(self) -> Self {
         // TODO: This naive approach exhibits bad behaviors when faces are
         //       concave, linear, collapsed, or are otherwise degenerate.
@@ -810,7 +811,7 @@ where
     /// # Errors
     ///
     /// Returns an error if the geometry could not be computed.
-    pub fn extrude_with_offset<T>(self, offset: T) -> Result<FaceView<&'a mut M>, GraphError>
+    pub fn extrude_with_offset<T>(self, offset: T) -> Result<Self, GraphError>
     where
         T: Into<Scalar<VertexPosition<G>>>,
         G: FaceNormal,
@@ -824,10 +825,8 @@ where
     /// Extrudes the face along a translation.
     ///
     /// Returns the extruded face.
-    pub fn extrude_with_translation(
-        self,
-        translation: Vector<VertexPosition<G>>,
-    ) -> FaceView<&'a mut M>
+    #[allow(clippy::return_self_not_must_use)]
+    pub fn extrude_with_translation(self, translation: Vector<VertexPosition<G>>) -> Self
     where
         G::Vertex: AsPositionMut,
         VertexPosition<G>: EuclideanSpace,
@@ -841,7 +840,8 @@ where
     /// Extrudes a face using the given vertex data.
     ///
     /// Returns the extruded face.
-    pub fn extrude_with<F>(self, f: F) -> FaceView<&'a mut M>
+    #[allow(clippy::return_self_not_must_use)]
+    pub fn extrude_with<F>(self, f: F) -> Self
     where
         F: Fn(&G::Vertex) -> G::Vertex,
     {

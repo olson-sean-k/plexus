@@ -88,19 +88,19 @@ where
 }
 
 pub trait Mutate<T>: Transact<T, Commit = T> {
-    fn replace(target: &mut T, replacement: T) -> Replace<T, Self>
+    fn replace(target: &mut T, replacement: T) -> Swapped<T, Self>
     where
         Self: From<T> + Transact<T>,
     {
-        Replace::replace(target, replacement)
+        Swapped::replace(target, replacement)
     }
 
-    fn take(target: &mut T) -> Replace<T, Self>
+    fn take(target: &mut T) -> Swapped<T, Self>
     where
         Self: From<T> + Transact<T>,
         T: Default,
     {
-        Replace::take(target)
+        Swapped::take(target)
     }
 }
 
@@ -144,20 +144,20 @@ trait Drain<T> {
     }
 }
 
-pub struct Replace<'a, T, M>
+pub struct Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
     inner: Option<(&'a mut T, M)>,
 }
 
-impl<'a, T, M> Replace<'a, T, M>
+impl<'a, T, M> Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
     pub fn replace(target: &'a mut T, replacement: T) -> Self {
         let mutant = mem::replace(target, replacement);
-        Replace {
+        Swapped {
             inner: Some((target, M::from(mutant))),
         }
     }
@@ -166,7 +166,7 @@ where
     where
         T: Default,
     {
-        Self::replace(target, T::default())
+        Swapped::replace(target, T::default())
     }
 
     fn drain_and_commit(
@@ -189,7 +189,7 @@ where
     }
 }
 
-impl<'a, T, M> Replace<'a, T, M>
+impl<'a, T, M> Swapped<'a, T, M>
 where
     M: Bypass<T> + From<T> + Mutate<T>,
 {
@@ -200,7 +200,7 @@ where
     }
 }
 
-impl<'a, T, M> AsRef<M> for Replace<'a, T, M>
+impl<'a, T, M> AsRef<M> for Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -209,7 +209,7 @@ where
     }
 }
 
-impl<'a, T, M> AsMut<M> for Replace<'a, T, M>
+impl<'a, T, M> AsMut<M> for Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -218,7 +218,7 @@ where
     }
 }
 
-impl<'a, T, M> Bypass<&'a mut T> for Replace<'a, T, M>
+impl<'a, T, M> Bypass<&'a mut T> for Swapped<'a, T, M>
 where
     M: Bypass<T> + From<T> + Mutate<T>,
 {
@@ -229,7 +229,7 @@ where
     }
 }
 
-impl<'a, T, M> Drain<(&'a mut T, M)> for Replace<'a, T, M>
+impl<'a, T, M> Drain<(&'a mut T, M)> for Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -238,7 +238,7 @@ where
     }
 }
 
-impl<'a, T, M> Drop for Replace<'a, T, M>
+impl<'a, T, M> Drop for Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -247,7 +247,7 @@ where
     }
 }
 
-impl<'a, T, M> From<&'a mut T> for Replace<'a, T, M>
+impl<'a, T, M> From<&'a mut T> for Swapped<'a, T, M>
 where
     T: Default,
     M: From<T> + Mutate<T>,
@@ -257,7 +257,7 @@ where
     }
 }
 
-impl<'a, T, M> Transact<&'a mut T> for Replace<'a, T, M>
+impl<'a, T, M> Transact<&'a mut T> for Swapped<'a, T, M>
 where
     M: From<T> + Mutate<T>,
 {

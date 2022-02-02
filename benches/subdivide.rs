@@ -14,6 +14,7 @@ const DEPTH: usize = 8;
 type E3 = Point3<R64>;
 
 pub trait Ambo<G> {
+    #[must_use]
     fn ambo(self) -> Self;
 }
 

@@ -1,7 +1,8 @@
 [package]
 name = "plexus"
 version = "0.0.11"
-edition = "2018"
+edition = "2021"
+rust-version = "1.56.0"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "../README.md"
@@ -59,7 +60,9 @@ smallvec = "^1.0.0"
 thiserror = "^1.0.3"
 typenum = "^1.10.0"
 
-ply-rs = { version = "^0.1.2", optional = true }
+[dependencies.ply-rs]
+version = "^0.1.2"
+optional = true
 
 # TODO: Re-enable the `lapack` feature. Some geometry features (the `FacePlane`
 #       trait) use this feature, but have been temporarily removed. See
@@ -85,6 +88,4 @@ nalgebra = "^0.22.0"
 git = "https://github.com/olson-sean-k/theon.git"
 rev = "789eb62"
 default-features = false
-features = [
-    "geometry-nalgebra"
-]
+features = ["geometry-nalgebra"]

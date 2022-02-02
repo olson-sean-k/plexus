@@ -6,7 +6,7 @@ use plexus::integration::theon;
 use nalgebra::Point3;
 use pictor::pipeline::{self, Vertex};
 use plexus::geometry::AsPositionMut;
-use plexus::graph::{EdgeMidpoint, FaceView, GraphData, MeshGraph};
+use plexus::graph::{ClosedView, EdgeMidpoint, FaceView, GraphData, MeshGraph};
 use plexus::prelude::*;
 use plexus::primitive::Tetragon;
 use smallvec::SmallVec;
@@ -14,7 +14,8 @@ use theon::space::{EuclideanSpace, VectorSpace};
 
 type E3 = Point3<f32>;
 
-pub trait Ambo<G> {
+pub trait Ambo<G>: ClosedView {
+    #[must_use]
     fn ambo(self) -> Self;
 }
 
