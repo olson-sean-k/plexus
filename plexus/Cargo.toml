@@ -82,7 +82,7 @@ criterion = "^0.3.0"
 # dependency on `nalgebra`. This approach requires that the version
 # specification is compatible with `theon`. Other crates use re-exported types
 # and do not take a direct dependency on `nalgebra`.
-nalgebra = "^0.22.0"
+nalgebra = "^0.31.1"
 
 [dev-dependencies.theon] # Unstable.
 git = "https://github.com/olson-sean-k/theon.git"
