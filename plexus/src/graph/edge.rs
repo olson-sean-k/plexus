@@ -2,13 +2,11 @@ use arrayvec::ArrayVec;
 use derivative::Derivative;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
-use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::{EuclideanSpace, Scalar, Vector};
 use theon::{AsPosition, AsPositionMut};
 
 use crate::entity::borrow::{Reborrow, ReborrowInto, ReborrowMut};
-use crate::entity::storage::prelude::*;
 use crate::entity::storage::{AsStorage, AsStorageMut, HashStorage, IncrementalKeyer, Key};
 use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
@@ -21,7 +19,10 @@ use crate::graph::mutation::edge::{
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
 use crate::graph::vertex::{Vertex, VertexKey, VertexOrphan, VertexView};
-use crate::graph::{GraphError, OptionExt as _, ResultExt as _, Selector};
+use crate::graph::{
+    Circulator, GraphError, OptionExt as _, OrphanCirculator, ResultExt as _, Selector,
+    ViewCirculator,
+};
 use crate::transact::{BypassOrCommit, Mutate};
 
 type Mutation<M> = mutation::Mutation<Immediate<M>>;
@@ -1640,19 +1641,21 @@ where
 pub struct VertexCirculator<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Vertex<<B::Target as Parametric>::Data>> + Parametric,
+    B::Target: AsStorage<Vertex<Data<B>>> + Parametric,
 {
     storage: B,
     inner: <ArrayVec<VertexKey, 2> as IntoIterator>::IntoIter,
 }
 
-impl<B, M, G> VertexCirculator<B>
+impl<B, M, G> Circulator<B> for VertexCirculator<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Vertex<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    fn next(&mut self) -> Option<VertexKey> {
+    type Entity = Vertex<G>;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.inner.next()
     }
 }
@@ -1704,7 +1707,7 @@ where
     type Item = VertexView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| Bind::bind(self.storage, key))
+        self.bind_next_view()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1720,12 +1723,7 @@ where
     type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).map(|key| {
-            let vertex = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let data = &mut vertex.data;
-            let data = unsafe { mem::transmute::<&'_ mut G::Vertex, &'a mut G::Vertex>(data) };
-            Orphan::bind_unchecked(data, key).into()
-        })
+        unsafe { self.bind_next_orphan() }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1733,22 +1731,44 @@ where
     }
 }
 
+impl<'a, M, G> OrphanCirculator<'a, M> for VertexCirculator<&'a mut M>
+where
+    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&mut self) -> &mut M {
+        self.storage
+    }
+}
+
+impl<'a, M, G> ViewCirculator<'a, M> for VertexCirculator<&'a M>
+where
+    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&self) -> &'a M {
+        self.storage
+    }
+}
+
 pub struct FaceCirculator<B>
 where
     B: Reborrow,
-    B::Target: AsStorage<Face<<B::Target as Parametric>::Data>> + Parametric,
+    B::Target: AsStorage<Face<Data<B>>> + Parametric,
 {
     storage: B,
     inner: <ArrayVec<FaceKey, 2> as IntoIterator>::IntoIter,
 }
 
-impl<B, M, G> FaceCirculator<B>
+impl<B, M, G> Circulator<B> for FaceCirculator<B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Face<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    fn next(&mut self) -> Option<FaceKey> {
+    type Entity = Face<G>;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.inner.next()
     }
 }
@@ -1807,7 +1827,7 @@ where
     type Item = FaceView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| Bind::bind(self.storage, key))
+        self.bind_next_view()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1823,16 +1843,31 @@ where
     type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).map(|key| {
-            let face = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let data = &mut face.data;
-            let data = unsafe { mem::transmute::<&'_ mut G::Face, &'a mut G::Face>(data) };
-            Orphan::bind_unchecked(data, key).into()
-        })
+        unsafe { self.bind_next_orphan() }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(self.inner.len()))
+    }
+}
+
+impl<'a, M, G> OrphanCirculator<'a, M> for FaceCirculator<&'a mut M>
+where
+    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&mut self) -> &mut M {
+        self.storage
+    }
+}
+
+impl<'a, M, G> ViewCirculator<'a, M> for FaceCirculator<&'a M>
+where
+    M: AsStorage<Face<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&self) -> &'a M {
+        self.storage
     }
 }
 

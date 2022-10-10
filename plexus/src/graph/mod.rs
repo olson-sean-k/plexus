@@ -265,6 +265,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::FromIterator;
+use std::mem;
 use std::vec;
 use theon::adjunct::Map;
 use theon::query::Aabb;
@@ -277,10 +278,11 @@ use crate::buffer::{BufferError, FromRawBuffers, FromRawBuffersWithArity, MeshBu
 use crate::builder::{Buildable, FacetBuilder, MeshBuilder, SurfaceBuilder};
 use crate::constant::{Constant, ToType, TypeOf};
 use crate::encoding::{FaceDecoder, FromEncoding, VertexDecoder};
+use crate::entity::borrow::Reborrow;
 use crate::entity::storage::prelude::*;
 use crate::entity::storage::{AsStorage, AsStorageMut, AsStorageOf, Key, StorageTarget};
 use crate::entity::view::{Bind, Orphan, View};
-use crate::entity::EntityError;
+use crate::entity::{Entity, EntityError, Payload};
 use crate::geometry::{FromGeometry, IntoGeometry};
 use crate::graph::builder::GraphBuilder;
 use crate::graph::core::{Core, OwnedCore};
@@ -396,6 +398,70 @@ impl<T, E> ResultExt<T, E> for Result<T, E> {
         E: Debug,
     {
         self.expect("internal error: graph consistency violated")
+    }
+}
+
+trait Circulator<B>
+where
+    B: Reborrow,
+    B::Target: AsStorage<Self::Entity>,
+{
+    type Entity: Payload;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key>;
+}
+
+trait ViewCirculator<'a, M>: Circulator<&'a M>
+where
+    M: 'a + AsStorage<Self::Entity>,
+{
+    fn target(&self) -> &'a M;
+
+    fn bind_next_view<T>(&mut self) -> Option<T>
+    where
+        T: From<View<&'a M, Self::Entity>>,
+    {
+        self.next()
+            .and_then(|key| View::bind(self.target(), key).map(T::from))
+    }
+}
+
+trait OrphanCirculator<'a, M>: Circulator<&'a mut M>
+where
+    M: 'a + AsStorageMut<Self::Entity>,
+{
+    fn target(&mut self) -> &mut M;
+
+    /// Advances the circulator and binds the next key into an orphan view.
+    ///
+    /// # Safety
+    ///
+    /// For the lifetime of the circulator `Self`, this function **must not**
+    /// access a particular key in the target storage more than once. Such an
+    /// access may mutably alias, which is undefined behavior. Note that the
+    /// uniqueness of keys depends on the correctness of the graph
+    /// implementation, graph consistency, and the implementation of
+    /// [`Circulator::next`]. For example, this function is safe if the `next`
+    /// implementation uses [`TraceAny`] to detect and reject keys seen over the
+    /// lifetime of the circulator.
+    ///
+    /// [`Circulator::next`]: crate::graph::Circulator::next
+    /// [`TraceAny`]: crate::entity::traverse::TraceAny
+    unsafe fn bind_next_orphan<T>(&mut self) -> Option<T>
+    where
+        T: 'a + From<Orphan<'a, Self::Entity>>,
+    {
+        self.next().and_then(|key| {
+            let entity = self.target().as_storage_mut().get_mut(&key);
+            entity.map(|entity| {
+                let data = entity.get_mut();
+                let data = mem::transmute::<
+                    &'_ mut <Self::Entity as Payload>::Data,
+                    &'a mut <Self::Entity as Payload>::Data,
+                >(data);
+                Orphan::bind_unchecked(data, key).into()
+            })
+        })
     }
 }
 

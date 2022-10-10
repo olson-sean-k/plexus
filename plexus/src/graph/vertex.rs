@@ -2,7 +2,6 @@ use derivative::Derivative;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
-use std::mem;
 use std::ops::{Deref, DerefMut};
 use theon::space::Vector;
 use theon::AsPosition;
@@ -14,17 +13,19 @@ use crate::entity::storage::{
     AsStorage, AsStorageMut, AsStorageOf, HashStorage, IncrementalKeyer, Key,
 };
 use crate::entity::traverse::{Adjacency, Breadth, Depth, Trace, TraceAny, TraceFirst, Traversal};
-use crate::entity::view::{Bind, ClosedView, Orphan, Rebind, Unbind, View};
+use crate::entity::view::{ClosedView, Orphan, Rebind, Unbind, View};
 use crate::entity::{Entity, Payload};
 use crate::geometry::Metric;
 use crate::graph::data::{Data, GraphData, Parametric};
 use crate::graph::edge::{Arc, ArcKey, ArcOrphan, ArcView, Edge};
-use crate::graph::face::{Face, FaceKey, FaceOrphan, FaceView};
+use crate::graph::face::{Face, FaceOrphan, FaceView};
 use crate::graph::geometry::{VertexCentroid, VertexNormal, VertexPosition};
 use crate::graph::mutation::vertex::{self, VertexRemoveCache};
 use crate::graph::mutation::{self, Consistent, Immediate, Mutable};
 use crate::graph::path::Path;
-use crate::graph::{GraphError, OptionExt as _, ResultExt as _};
+use crate::graph::{
+    Circulator, GraphError, OptionExt as _, OrphanCirculator, ResultExt as _, ViewCirculator,
+};
 use crate::transact::{BypassOrCommit, Mutate};
 use crate::IteratorExt as _;
 
@@ -838,14 +839,16 @@ where
     inner: ArcCirculator<P, B>,
 }
 
-impl<P, B, M, G> VertexCirculator<P, B>
+impl<P, B, M, G> Circulator<B> for VertexCirculator<P, B>
 where
     P: Trace<ArcKey>,
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    fn next(&mut self) -> Option<VertexKey> {
+    type Entity = Vertex<G>;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.inner.next().map(|arc| {
             let (source, _) = arc.into();
             source
@@ -888,25 +891,53 @@ where
     type Item = VertexView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
+        self.bind_next_view()
     }
 }
 
-impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a mut M>
+impl<'a, M, G> Iterator for VertexCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    P: Trace<ArcKey>,
     M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Parametric<Data = G>,
     G: 'a + GraphData,
 {
     type Item = VertexOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        VertexCirculator::next(self).map(|key| {
-            let vertex = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let data = &mut vertex.data;
-            let data = unsafe { mem::transmute::<&'_ mut G::Vertex, &'a mut G::Vertex>(data) };
-            Orphan::bind_unchecked(data, key).into()
-        })
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, M, G> Iterator for VertexCirculator<TraceFirst<ArcKey>, &'a mut M>
+where
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    type Item = VertexOrphan<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, P, M, G> OrphanCirculator<'a, M> for VertexCirculator<P, &'a mut M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&mut self) -> &mut M {
+        self.inner.storage
+    }
+}
+
+impl<'a, P, M, G> ViewCirculator<'a, M> for VertexCirculator<P, &'a M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&self) -> &'a M {
+        self.inner.storage
     }
 }
 
@@ -921,14 +952,16 @@ where
     trace: P,
 }
 
-impl<P, B, M, G> ArcCirculator<P, B>
+impl<P, B, M, G> Circulator<B> for ArcCirculator<P, B>
 where
     P: Trace<ArcKey>,
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    fn next(&mut self) -> Option<ArcKey> {
+    type Entity = Arc<G>;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.outgoing
             .and_then(|outgoing| self.trace.insert(outgoing).then(|| outgoing))
             .map(|outgoing| outgoing.into_opposite())
@@ -990,25 +1023,53 @@ where
     type Item = ArcView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        ArcCirculator::next(self).and_then(|key| Bind::bind(self.storage, key))
+        self.bind_next_view()
     }
 }
 
-impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a mut M>
+impl<'a, M, G> Iterator for ArcCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    P: Trace<ArcKey>,
     M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
     G: 'a + GraphData,
 {
     type Item = ArcOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        ArcCirculator::next(self).map(|key| {
-            let arc = self.storage.as_storage_mut().get_mut(&key).unwrap();
-            let data = &mut arc.data;
-            let data = unsafe { mem::transmute::<&'_ mut G::Arc, &'a mut G::Arc>(data) };
-            Orphan::bind_unchecked(data, key).into()
-        })
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, M, G> Iterator for ArcCirculator<TraceFirst<ArcKey>, &'a mut M>
+where
+    M: AsStorageMut<Arc<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    type Item = ArcOrphan<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, P, M, G> OrphanCirculator<'a, M> for ArcCirculator<P, &'a mut M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&mut self) -> &mut M {
+        self.storage
+    }
+}
+
+impl<'a, P, M, G> ViewCirculator<'a, M> for ArcCirculator<P, &'a M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorage<Arc<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&self) -> &'a M {
+        self.storage
     }
 }
 
@@ -1021,14 +1082,16 @@ where
     inner: ArcCirculator<P, B>,
 }
 
-impl<P, B, M, G> FaceCirculator<P, B>
+impl<P, B, M, G> Circulator<B> for FaceCirculator<P, B>
 where
     P: Trace<ArcKey>,
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Parametric<Data = G>,
     G: GraphData,
 {
-    fn next(&mut self) -> Option<FaceKey> {
+    type Entity = Face<G>;
+
+    fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         while let Some(arc) = self.inner.next() {
             if let Some(face) = self
                 .inner
@@ -1085,25 +1148,53 @@ where
     type Item = FaceView<&'a M>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).and_then(|key| Bind::bind(self.inner.storage, key))
+        self.bind_next_view()
     }
 }
 
-impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a mut M>
+impl<'a, M, G> Iterator for FaceCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    P: Trace<ArcKey>,
     M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Parametric<Data = G>,
     G: 'a + GraphData,
 {
     type Item = FaceOrphan<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        FaceCirculator::next(self).map(|key| {
-            let face = self.inner.storage.as_storage_mut().get_mut(&key).unwrap();
-            let data = &mut face.data;
-            let data = unsafe { mem::transmute::<&'_ mut G::Face, &'a mut G::Face>(data) };
-            Orphan::bind_unchecked(data, key).into()
-        })
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, M, G> Iterator for FaceCirculator<TraceFirst<ArcKey>, &'a mut M>
+where
+    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    type Item = FaceOrphan<'a, G>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe { self.bind_next_orphan() }
+    }
+}
+
+impl<'a, P, M, G> OrphanCirculator<'a, M> for FaceCirculator<P, &'a mut M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&mut self) -> &mut M {
+        self.inner.storage
+    }
+}
+
+impl<'a, P, M, G> ViewCirculator<'a, M> for FaceCirculator<P, &'a M>
+where
+    P: Trace<ArcKey>,
+    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Parametric<Data = G>,
+    G: 'a + GraphData,
+{
+    fn target(&self) -> &'a M {
+        self.inner.storage
     }
 }
 
