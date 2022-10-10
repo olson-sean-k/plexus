@@ -52,9 +52,9 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub(in crate) data: G::Face,
+    pub(crate) data: G::Face,
     /// Required key into the leading arc.
-    pub(in crate) arc: ArcKey,
+    pub(crate) arc: ArcKey,
 }
 
 impl<G> Face<G>

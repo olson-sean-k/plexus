@@ -91,8 +91,8 @@ use crate::primitive::decompose::IntoVertices;
 use crate::primitive::Topological;
 use crate::{Monomorphic, StaticArity};
 
-pub(in crate) type BufferOf<R> = Vec<<R as Grouping>::Group>;
-pub(in crate) type IndexOf<R> = <BufferOf<R> as IndexBuffer<R>>::Index;
+pub(crate) type BufferOf<R> = Vec<<R as Grouping>::Group>;
+pub(crate) type IndexOf<R> = <BufferOf<R> as IndexBuffer<R>>::Index;
 
 // Note that it isn't possible for `IndexBuffer` types to implement
 // `DynamicArity`, because they are typically parameterized by `R` (see

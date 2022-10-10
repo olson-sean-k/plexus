@@ -39,9 +39,9 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub(in crate) data: G::Vertex,
+    pub(crate) data: G::Vertex,
     /// Required key into the leading arc.
-    pub(in crate) arc: Option<ArcKey>,
+    pub(crate) arc: Option<ArcKey>,
 }
 
 impl<G> Vertex<G>

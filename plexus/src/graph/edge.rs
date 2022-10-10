@@ -51,15 +51,15 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub(in crate) data: G::Arc,
+    pub(crate) data: G::Arc,
     /// Required key into the next arc.
-    pub(in crate) next: Option<ArcKey>,
+    pub(crate) next: Option<ArcKey>,
     /// Required key into the previous arc.
-    pub(in crate) previous: Option<ArcKey>,
+    pub(crate) previous: Option<ArcKey>,
     /// Required key into the edge.
-    pub(in crate) edge: Option<EdgeKey>,
+    pub(crate) edge: Option<EdgeKey>,
     /// Optional key into the face.
-    pub(in crate) face: Option<FaceKey>,
+    pub(crate) face: Option<FaceKey>,
 }
 
 impl<G> Arc<G>
@@ -1230,9 +1230,9 @@ where
 {
     /// User data.
     #[derivative(Debug = "ignore", Hash = "ignore")]
-    pub(in crate) data: G::Edge,
+    pub(crate) data: G::Edge,
     /// Required key into the leading arc.
-    pub(in crate) arc: ArcKey,
+    pub(crate) arc: ArcKey,
 }
 
 impl<G> Edge<G>
