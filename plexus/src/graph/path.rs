@@ -64,7 +64,7 @@ where
         let ab = (a, b).into();
         ArcView::bind(storage.reborrow(), ab).ok_or(GraphError::TopologyNotFound)?;
         let mut path = Path {
-            keys: Cow::Owned((&[ab]).iter().cloned().collect()),
+            keys: Cow::Owned([ab].into_iter().collect()),
             storage,
         };
         for key in keys {
