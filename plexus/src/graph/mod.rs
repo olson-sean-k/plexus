@@ -317,7 +317,7 @@ type Mutation<M> = mutation::Mutation<Immediate<M>>;
 /// Errors concerning [`MeshGraph`]s.
 ///
 /// [`MeshGraph`]: crate::graph::MeshGraph
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Eq, Error, PartialEq)]
 pub enum GraphError {
     #[error("required topology not found")]
     TopologyNotFound,

@@ -115,7 +115,7 @@ use crate::{Arity, DynamicArity, MeshArity, Monomorphic, StaticArity, TryFromIte
 /// Errors concerning raw buffers and [`MeshBuffer`]s.
 ///
 /// [`MeshBuffer`]: crate::buffer::MeshBuffer
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Eq, Error, PartialEq)]
 pub enum BufferError {
     /// An index into vertex data is out of bounds.
     ///

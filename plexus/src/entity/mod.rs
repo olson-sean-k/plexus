@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::entity::storage::{Dispatch, Key, Storage};
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Eq, Error, PartialEq)]
 pub enum EntityError {
     #[error("required entity not found")]
     EntityNotFound,

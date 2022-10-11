@@ -437,7 +437,7 @@ where
 /// [`Edge`]: crate::primitive::Edge
 /// [`primitive`]: crate::primitive
 /// [`UnboundedPolygon`]: crate::primitive::UnboundedPolygon
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct NGon<G, const N: usize>(pub [G; N]);
 
 impl<G, const N: usize> NGon<G, N> {
@@ -715,7 +715,7 @@ impl<G> Edge<G> {
 }
 
 /// Intersection of edges.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum EdgeEdge<S>
 where
     S: EuclideanSpace,
@@ -873,7 +873,7 @@ impl<G> Rotate for Tetragon<G> {
 ///
 /// [`primitive`]: crate::primitive
 /// [`NGon`]: crate::primitive::NGon
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BoundedPolygon<G> {
     N3(Trigon<G>),
     N4(Tetragon<G>),
@@ -1049,7 +1049,7 @@ impl<G> Topological for BoundedPolygon<G> {
 /// [`primitive`]: crate::primitive
 /// [`BoundedPolygon`]: crate::primitive::BoundedPolygon
 /// [`NGon`]: crate::primitive::NGon
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnboundedPolygon<G>(SmallVec<[G; 4]>);
 
 impl<G> UnboundedPolygon<G> {

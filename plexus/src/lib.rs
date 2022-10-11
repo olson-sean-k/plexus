@@ -191,7 +191,7 @@ pub trait Monomorphic: StaticArity<Static = usize> {}
 ///
 /// [`MeshBuffer`]: crate::buffer::MeshBuffer
 /// [`MeshGraph`]: crate::graph::MeshGraph
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MeshArity {
     /// A compound structure has _uniform_ arity if all of its components have
     /// the same arity, such as a [`MeshBuffer`] composed entirely of trigons.
