@@ -1795,30 +1795,72 @@ mod tests {
         assert_eq!(graph.err().unwrap(), GraphError::TopologyConflict);
     }
 
-    // This test is a sanity check for iterators over orphan views and the
-    // unsafe transmutations used to coerce lifetimes.
+    // This test is a sanity check for circulators over orphan views and the
+    // unsafe transmutations used to coerce lifetimes. It is a good target for
+    // Miri, which can detect certain memory safety issues.
     #[test]
-    fn read_write_geometry_ref() {
-        struct Weight;
+    fn read_write_mutable_circulator() {
+        const WEIGHT: u64 = 123_456_789;
 
-        impl GraphData for Weight {
-            type Vertex = Point3<f64>;
+        enum FaceWeight {}
+
+        impl GraphData for FaceWeight {
+            type Vertex = [i32; 2];
             type Arc = ();
             type Edge = ();
             type Face = u64;
         }
 
-        // Create a graph with a floating-point weight in each face. Use an
-        // iterator over orphan views to write data to each face.
-        let mut graph: MeshGraph<Weight> = UvSphere::new(4, 4).polygons::<Position<E3>>().collect();
-        let value = 123_456_789;
-        for mut face in graph.face_orphans() {
-            *face.get_mut() = value;
+        // Construct a graph resembling the following diagram.
+        //
+        //   0---1---2
+        //   |\ B|C /|
+        //   | \ | / |
+        //   |A \|/ D|
+        //   3---4---5
+        //   |E /|\ H|
+        //   | / | \ |
+        //   |/ F|G \|
+        //   6---7---8
+        let mut graph = MeshGraph::<FaceWeight>::from_raw_buffers(
+            [
+                NGon([0usize, 3, 4]),
+                NGon([4, 1, 0]),
+                NGon([1, 4, 2]),
+                NGon([2, 4, 5]),
+                NGon([4, 3, 6]),
+                NGon([6, 7, 4]),
+                NGon([4, 7, 8]),
+                NGon([8, 5, 4]),
+            ],
+            [
+                [0i32, 0],
+                [1, 0],
+                [2, 0],
+                [0, 1],
+                [1, 1],
+                [2, 1],
+                [0, 2],
+                [1, 2],
+                [2, 2],
+            ],
+        )
+        .unwrap();
+        // Get the center vertex (4).
+        let mut vertex = {
+            let key = graph
+                .vertices()
+                .find(|vertex| vertex.valence() == 8)
+                .map(|vertex| vertex.key())
+                .unwrap();
+            graph.vertex_mut(key).unwrap()
+        };
+        // Write and then read each face via circulators.
+        for mut face in vertex.adjacent_face_orphans() {
+            *face.get_mut() = WEIGHT;
         }
-
-        // Read the data of each face to ensure it is what we expect.
-        for face in graph.faces() {
-            assert_eq!(value, *face.get());
+        for face in vertex.adjacent_faces() {
+            assert_eq!(WEIGHT, *face.get());
         }
     }
 }
