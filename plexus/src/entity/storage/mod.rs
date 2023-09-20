@@ -10,9 +10,6 @@ pub mod prelude {
     pub use crate::entity::storage::{Enumerate, Get, Insert, InsertWithKey, Remove};
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-pub type StorageTarget<E> = <<E as Entity>::Storage as Dispatch<E>>::Target;
-#[cfg(all(nightly, feature = "unstable"))]
 pub type StorageTarget<'a, E> = <<E as Entity>::Storage as Dispatch<E>>::Target<'a>;
 
 pub type InnerKey<K> = <K as Key>::Inner;
@@ -48,15 +45,6 @@ where
     }
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-pub trait Dispatch<E>
-where
-    E: Entity,
-{
-    type Target: ?Sized + Storage<E>;
-}
-
-#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 pub trait Dispatch<E>
 where

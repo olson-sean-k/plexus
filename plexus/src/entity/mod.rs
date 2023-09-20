@@ -16,19 +16,7 @@ pub enum EntityError {
     Data,
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-pub trait Lifetime: 'static {}
-
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<T> Lifetime for T where T: 'static {}
-
-#[cfg(all(nightly, feature = "unstable"))]
-pub trait Lifetime {}
-
-#[cfg(all(nightly, feature = "unstable"))]
-impl<T> Lifetime for T {}
-
-pub trait Entity: Lifetime + Sized {
+pub trait Entity: Sized {
     type Key: Key;
     type Storage: Default + Dispatch<Self> + Storage<Self>;
 }

@@ -592,14 +592,13 @@ where
     }
 }
 
-impl<'a, M, G> ArcView<&'a mut M>
+impl<'a, M> ArcView<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Vertex<M::Data>> + Consistent + Parametric,
 {
     pub fn into_adjacent_vertex_orphans(
         self,
-    ) -> impl ExactSizeIterator<Item = VertexOrphan<'a, G>> {
+    ) -> impl ExactSizeIterator<Item = VertexOrphan<'a, M::Data>> {
         VertexCirculator::from(self)
     }
 }
@@ -617,12 +616,13 @@ where
     }
 }
 
-impl<'a, M, G> ArcView<&'a mut M>
+impl<'a, M> ArcView<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Face<M::Data>> + Consistent + Parametric,
 {
-    pub fn into_adjacent_face_orphans(self) -> impl ExactSizeIterator<Item = FaceOrphan<'a, G>> {
+    pub fn into_adjacent_face_orphans(
+        self,
+    ) -> impl ExactSizeIterator<Item = FaceOrphan<'a, M::Data>> {
         FaceCirculator::from(self)
     }
 }
@@ -1138,7 +1138,7 @@ where
 
 impl<'a, G> ArcOrphan<'a, G>
 where
-    G: 'a + GraphData,
+    G: GraphData,
 {
     pub fn get(&self) -> &G::Arc {
         self.inner.get()
@@ -1172,10 +1172,9 @@ where
 
 impl<'a, G> Eq for ArcOrphan<'a, G> where G: GraphData {}
 
-impl<'a, M, G> From<ArcView<&'a mut M>> for ArcOrphan<'a, G>
+impl<'a, M> From<ArcView<&'a mut M>> for ArcOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + Parametric,
 {
     fn from(arc: ArcView<&'a mut M>) -> Self {
         Orphan::from(arc.inner).into()
@@ -1191,12 +1190,11 @@ where
     }
 }
 
-impl<'a, M, G> From<View<&'a mut M, Arc<G>>> for ArcOrphan<'a, G>
+impl<'a, M> From<View<&'a mut M, Arc<M::Data>>> for ArcOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + Parametric,
 {
-    fn from(view: View<&'a mut M, Arc<G>>) -> Self {
+    fn from(view: View<&'a mut M, Arc<M::Data>>) -> Self {
         ArcOrphan { inner: view.into() }
     }
 }
@@ -1554,7 +1552,7 @@ where
 
 impl<'a, G> EdgeOrphan<'a, G>
 where
-    G: 'a + GraphData,
+    G: GraphData,
 {
     pub fn get(&self) -> &G::Edge {
         self.inner.get()
@@ -1588,10 +1586,9 @@ where
 
 impl<'a, G> Eq for EdgeOrphan<'a, G> where G: GraphData {}
 
-impl<'a, M, G> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, G>
+impl<'a, M> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Edge<M::Data>> + Parametric,
 {
     fn from(edge: EdgeView<&'a mut M>) -> Self {
         Orphan::from(edge.inner).into()
@@ -1607,12 +1604,11 @@ where
     }
 }
 
-impl<'a, M, G> From<View<&'a mut M, Edge<G>>> for EdgeOrphan<'a, G>
+impl<'a, M> From<View<&'a mut M, Edge<M::Data>>> for EdgeOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Edge<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Edge<M::Data>> + Parametric,
 {
-    fn from(view: View<&'a mut M, Edge<G>>) -> Self {
+    fn from(view: View<&'a mut M, Edge<M::Data>>) -> Self {
         EdgeOrphan { inner: view.into() }
     }
 }
@@ -1715,12 +1711,11 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<&'a mut M>
+impl<'a, M> Iterator for VertexCirculator<&'a mut M>
 where
-    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Vertex<M::Data>> + Parametric,
 {
-    type Item = VertexOrphan<'a, G>;
+    type Item = VertexOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
@@ -1731,20 +1726,18 @@ where
     }
 }
 
-impl<'a, M, G> OrphanCirculator<'a, M> for VertexCirculator<&'a mut M>
+impl<'a, M> OrphanCirculator<'a, M> for VertexCirculator<&'a mut M>
 where
-    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Vertex<M::Data>> + Parametric,
 {
     fn target(&mut self) -> &mut M {
         self.storage
     }
 }
 
-impl<'a, M, G> ViewCirculator<'a, M> for VertexCirculator<&'a M>
+impl<'a, M> ViewCirculator<'a, M> for VertexCirculator<&'a M>
 where
-    M: AsStorage<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Vertex<M::Data>> + Parametric,
 {
     fn target(&self) -> &'a M {
         self.storage
@@ -1834,12 +1827,11 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<&'a mut M>
+impl<'a, M> Iterator for FaceCirculator<&'a mut M>
 where
-    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Face<M::Data>> + Parametric,
 {
-    type Item = FaceOrphan<'a, G>;
+    type Item = FaceOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
@@ -1850,20 +1842,18 @@ where
     }
 }
 
-impl<'a, M, G> OrphanCirculator<'a, M> for FaceCirculator<&'a mut M>
+impl<'a, M> OrphanCirculator<'a, M> for FaceCirculator<&'a mut M>
 where
-    M: AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Face<M::Data>> + Parametric,
 {
     fn target(&mut self) -> &mut M {
         self.storage
     }
 }
 
-impl<'a, M, G> ViewCirculator<'a, M> for FaceCirculator<&'a M>
+impl<'a, M> ViewCirculator<'a, M> for FaceCirculator<&'a M>
 where
-    M: AsStorage<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Face<M::Data>> + Parametric,
 {
     fn target(&self) -> &'a M {
         self.storage

@@ -437,18 +437,24 @@ where
     /// # Safety
     ///
     /// For the lifetime of the circulator `Self`, this function **must not**
-    /// access a particular key in the target storage more than once. Such an
-    /// access may mutably alias, which is undefined behavior. Note that the
-    /// uniqueness of keys depends on the correctness of the graph
+    /// access a particular key in the target storage more than **once**. Such
+    /// an access may mutably alias, which is undefined behavior. Moreover, the
+    /// storage implementation must only expose disjoint data between distinct
+    /// keys. Put another way, distinct keys must not allow mutable access to
+    /// the same data.
+    ///
+    /// Note that the uniqueness of keys depends on the correctness of the graph
     /// implementation, graph consistency, and the implementation of
-    /// [`Circulator::next`]. For example, this function is safe if the `next`
-    /// implementation uses [`TraceAny`] to detect and reject keys seen over the
-    /// lifetime of the circulator.
+    /// [`Circulator::next`]. For example, assuming that the graph
+    /// implementation is correct, this function is safe if the `next`
+    /// implementation uses [`TraceAny`] to detect and reject keys previously
+    /// seen over the lifetime of the circulator.
     ///
     /// [`Circulator::next`]: crate::graph::Circulator::next
     /// [`TraceAny`]: crate::entity::traverse::TraceAny
     unsafe fn bind_next_orphan<T>(&mut self) -> Option<T>
     where
+        <Self::Entity as Payload>::Data: 'a,
         T: 'a + From<Orphan<'a, Self::Entity>>,
     {
         self.next().and_then(|key| {

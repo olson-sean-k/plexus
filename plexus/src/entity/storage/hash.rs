@@ -117,55 +117,24 @@ where
     }
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<E> Dispatch<E> for HashStorage<E, (), Dynamic>
-where
-    E: Entity<Storage = Self>,
-    InnerKey<E::Key>: Eq + Hash,
-{
-    type Target = dyn 'static + DependentStorage<E>;
-}
-
-#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 impl<E> Dispatch<E> for HashStorage<E, (), Dynamic>
 where
     E: Entity<Storage = Self>,
     InnerKey<E::Key>: Eq + Hash,
 {
-    type Target<'a> where E: 'a = dyn 'a + DependentStorage<E>;
+    type Target<'a> = dyn 'a + DependentStorage<E> where E: 'a;
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<E> Dispatch<E> for HashStorage<E, IncrementalKeyer, Dynamic>
-where
-    E: Entity<Storage = Self>,
-    E::Key: Key<Inner = u64>,
-{
-    type Target = dyn 'static + IndependentStorage<E>;
-}
-
-#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 impl<E> Dispatch<E> for HashStorage<E, IncrementalKeyer, Dynamic>
 where
     E: Entity<Storage = Self>,
     E::Key: Key<Inner = u64>,
 {
-    type Target<'a> where E: 'a = dyn 'a + IndependentStorage<E>;
+    type Target<'a> = dyn 'a + IndependentStorage<E> where E: 'a;
 }
 
-#[cfg(not(all(nightly, feature = "unstable")))]
-impl<E, R> Dispatch<E> for HashStorage<E, R, Static>
-where
-    E: Entity<Storage = Self>,
-    InnerKey<E::Key>: Eq + Hash,
-    R: 'static + Default,
-{
-    type Target = Self;
-}
-
-#[cfg(all(nightly, feature = "unstable"))]
 #[rustfmt::skip]
 impl<E, R> Dispatch<E> for HashStorage<E, R, Static>
 where
@@ -173,7 +142,7 @@ where
     InnerKey<E::Key>: Eq + Hash,
     R: 'static + Default,
 {
-    type Target<'a> where E: 'a = Self;
+    type Target<'a> = Self where E: 'a;
 }
 
 impl<E, R, P> Enumerate<E> for HashStorage<E, R, P>

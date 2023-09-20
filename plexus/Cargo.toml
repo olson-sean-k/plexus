@@ -46,7 +46,6 @@ geometry-glam = ["theon/geometry-glam"]
 geometry-mint = ["theon/geometry-mint"]
 geometry-nalgebra = ["theon/geometry-nalgebra"]
 geometry-ultraviolet = ["theon/geometry-ultraviolet"]
-unstable = []
 
 [dependencies]
 approx = "^0.3.0"

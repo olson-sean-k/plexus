@@ -11,9 +11,6 @@ use crate::graph::GraphError;
 use crate::transact::{Bypass, Transact};
 
 type ModalCore<P> = Core<Data<<P as Mode>::Graph>, <P as Mode>::VertexStorage, (), (), ()>;
-#[cfg(not(all(nightly, feature = "unstable")))]
-type RefCore<'a, G> = Core<G, &'a StorageTarget<Vertex<G>>, (), (), ()>;
-#[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<G, &'a StorageTarget<'a, Vertex<G>>, (), (), ()>;
 
 pub struct VertexMutation<P>

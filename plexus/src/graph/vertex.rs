@@ -453,12 +453,11 @@ where
     }
 }
 
-impl<'a, M, G> VertexView<&'a mut M>
+impl<'a, M> VertexView<&'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Vertex<M::Data>> + Consistent + Parametric,
 {
-    pub fn into_adjacent_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, G>> {
+    pub fn into_adjacent_vertex_orphans(self) -> impl Iterator<Item = VertexOrphan<'a, M::Data>> {
         VertexCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self))
     }
 }
@@ -473,12 +472,11 @@ where
     }
 }
 
-impl<'a, M, G> VertexView<&'a mut M>
+impl<'a, M> VertexView<&'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + AsStorage<Vertex<M::Data>> + Consistent + Parametric,
 {
-    pub fn into_incoming_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, G>> {
+    pub fn into_incoming_arc_orphans(self) -> impl Iterator<Item = ArcOrphan<'a, M::Data>> {
         ArcCirculator::<TraceFirst<_>, _>::from(self)
     }
 }
@@ -497,16 +495,15 @@ where
     }
 }
 
-impl<'a, M, G> VertexView<&'a mut M>
+impl<'a, M> VertexView<&'a mut M>
 where
-    M: AsStorage<Arc<G>>
-        + AsStorageMut<Face<G>>
-        + AsStorage<Vertex<G>>
+    M: AsStorage<Arc<M::Data>>
+        + AsStorageMut<Face<M::Data>>
+        + AsStorage<Vertex<M::Data>>
         + Consistent
-        + Parametric<Data = G>,
-    G: 'a + GraphData,
+        + Parametric,
 {
-    pub fn into_adjacent_face_orphans(self) -> impl Iterator<Item = FaceOrphan<'a, G>> {
+    pub fn into_adjacent_face_orphans(self) -> impl Iterator<Item = FaceOrphan<'a, M::Data>> {
         FaceCirculator::from(ArcCirculator::<TraceFirst<_>, _>::from(self))
     }
 }
@@ -746,7 +743,7 @@ where
 
 impl<'a, G> VertexOrphan<'a, G>
 where
-    G: 'a + GraphData,
+    G: GraphData,
 {
     pub fn get(&self) -> &G::Vertex {
         self.inner.get()
@@ -789,20 +786,18 @@ where
     }
 }
 
-impl<'a, M, G> From<View<&'a mut M, Vertex<G>>> for VertexOrphan<'a, G>
+impl<'a, M> From<View<&'a mut M, Vertex<M::Data>>> for VertexOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Vertex<M::Data>> + Parametric,
 {
-    fn from(view: View<&'a mut M, Vertex<G>>) -> Self {
+    fn from(view: View<&'a mut M, Vertex<M::Data>>) -> Self {
         VertexOrphan { inner: view.into() }
     }
 }
 
-impl<'a, M, G> From<VertexView<&'a mut M>> for VertexOrphan<'a, G>
+impl<'a, M> From<VertexView<&'a mut M>> for VertexOrphan<'a, M::Data>
 where
-    M: AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Vertex<M::Data>> + Parametric,
 {
     fn from(vertex: VertexView<&'a mut M>) -> Self {
         Orphan::from(vertex.inner).into()
@@ -882,11 +877,10 @@ where
     }
 }
 
-impl<'a, P, M, G> Iterator for VertexCirculator<P, &'a M>
+impl<'a, P, M> Iterator for VertexCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Parametric<Data = G>,
-    G: GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorage<Vertex<M::Data>> + Parametric,
 {
     type Item = VertexView<&'a M>;
 
@@ -895,46 +889,42 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<TraceAny<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for VertexCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Vertex<M::Data>> + Parametric,
 {
-    type Item = VertexOrphan<'a, G>;
+    type Item = VertexOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, M, G> Iterator for VertexCirculator<TraceFirst<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for VertexCirculator<TraceFirst<ArcKey>, &'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Vertex<M::Data>> + Consistent + Parametric,
 {
-    type Item = VertexOrphan<'a, G>;
+    type Item = VertexOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, P, M, G> OrphanCirculator<'a, M> for VertexCirculator<P, &'a mut M>
+impl<'a, P, M> OrphanCirculator<'a, M> for VertexCirculator<P, &'a mut M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorageMut<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Vertex<M::Data>> + Parametric,
 {
     fn target(&mut self) -> &mut M {
         self.inner.storage
     }
 }
 
-impl<'a, P, M, G> ViewCirculator<'a, M> for VertexCirculator<P, &'a M>
+impl<'a, P, M> ViewCirculator<'a, M> for VertexCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorage<Vertex<M::Data>> + Parametric,
 {
     fn target(&self) -> &'a M {
         self.inner.storage
@@ -1014,11 +1004,10 @@ where
     }
 }
 
-impl<'a, P, M, G> Iterator for ArcCirculator<P, &'a M>
+impl<'a, P, M> Iterator for ArcCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + Parametric<Data = G>,
-    G: GraphData,
+    M: AsStorage<Arc<M::Data>> + Parametric,
 {
     type Item = ArcView<&'a M>;
 
@@ -1027,46 +1016,42 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<TraceAny<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for ArcCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + Parametric,
 {
-    type Item = ArcOrphan<'a, G>;
+    type Item = ArcOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, M, G> Iterator for ArcCirculator<TraceFirst<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for ArcCirculator<TraceFirst<ArcKey>, &'a mut M>
 where
-    M: AsStorageMut<Arc<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + Consistent + Parametric,
 {
-    type Item = ArcOrphan<'a, G>;
+    type Item = ArcOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, P, M, G> OrphanCirculator<'a, M> for ArcCirculator<P, &'a mut M>
+impl<'a, P, M> OrphanCirculator<'a, M> for ArcCirculator<P, &'a mut M>
 where
     P: Trace<ArcKey>,
-    M: AsStorageMut<Arc<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorageMut<Arc<M::Data>> + Parametric,
 {
     fn target(&mut self) -> &mut M {
         self.storage
     }
 }
 
-impl<'a, P, M, G> ViewCirculator<'a, M> for ArcCirculator<P, &'a M>
+impl<'a, P, M> ViewCirculator<'a, M> for ArcCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + Parametric,
 {
     fn target(&self) -> &'a M {
         self.storage
@@ -1139,11 +1124,10 @@ where
     }
 }
 
-impl<'a, P, M, G> Iterator for FaceCirculator<P, &'a M>
+impl<'a, P, M> Iterator for FaceCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Parametric<Data = G>,
-    G: GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorage<Face<M::Data>> + Parametric,
 {
     type Item = FaceView<&'a M>;
 
@@ -1152,46 +1136,42 @@ where
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<TraceAny<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for FaceCirculator<TraceAny<ArcKey>, &'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Face<M::Data>> + Parametric,
 {
-    type Item = FaceOrphan<'a, G>;
+    type Item = FaceOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, M, G> Iterator for FaceCirculator<TraceFirst<ArcKey>, &'a mut M>
+impl<'a, M> Iterator for FaceCirculator<TraceFirst<ArcKey>, &'a mut M>
 where
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Consistent + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Face<M::Data>> + Consistent + Parametric,
 {
-    type Item = FaceOrphan<'a, G>;
+    type Item = FaceOrphan<'a, M::Data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe { self.bind_next_orphan() }
     }
 }
 
-impl<'a, P, M, G> OrphanCirculator<'a, M> for FaceCirculator<P, &'a mut M>
+impl<'a, P, M> OrphanCirculator<'a, M> for FaceCirculator<P, &'a mut M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorageMut<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorageMut<Face<M::Data>> + Parametric,
 {
     fn target(&mut self) -> &mut M {
         self.inner.storage
     }
 }
 
-impl<'a, P, M, G> ViewCirculator<'a, M> for FaceCirculator<P, &'a M>
+impl<'a, P, M> ViewCirculator<'a, M> for FaceCirculator<P, &'a M>
 where
     P: Trace<ArcKey>,
-    M: AsStorage<Arc<G>> + AsStorage<Face<G>> + Parametric<Data = G>,
-    G: 'a + GraphData,
+    M: AsStorage<Arc<M::Data>> + AsStorage<Face<M::Data>> + Parametric,
 {
     fn target(&self) -> &'a M {
         self.inner.storage

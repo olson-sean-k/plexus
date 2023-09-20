@@ -1,5 +1,4 @@
 use crate::entity::borrow::Reborrow;
-use crate::entity::Lifetime;
 
 pub type Data<M> = <M as Parametric>::Data;
 
@@ -64,11 +63,11 @@ pub type Data<M> = <M as Parametric>::Data;
 ///
 /// [`AsPosition`]: crate::geometry::AsPosition
 /// [`MeshGraph`]: crate::graph::MeshGraph
-pub trait GraphData: Lifetime + Sized {
-    type Vertex: Clone + Lifetime;
-    type Arc: Clone + Default + Lifetime;
-    type Edge: Clone + Default + Lifetime;
-    type Face: Clone + Default + Lifetime;
+pub trait GraphData: Sized {
+    type Vertex: Clone;
+    type Arc: Clone + Default;
+    type Edge: Clone + Default;
+    type Face: Clone + Default;
 }
 
 impl GraphData for () {
@@ -80,7 +79,7 @@ impl GraphData for () {
 
 impl<T> GraphData for (T, T)
 where
-    T: Clone + Lifetime,
+    T: Clone,
 {
     type Vertex = Self;
     type Arc = ();
@@ -90,7 +89,7 @@ where
 
 impl<T> GraphData for (T, T, T)
 where
-    T: Clone + Lifetime,
+    T: Clone,
 {
     type Vertex = Self;
     type Arc = ();
@@ -100,7 +99,7 @@ where
 
 impl<T> GraphData for [T; 2]
 where
-    T: Clone + Lifetime,
+    T: Clone,
 {
     type Vertex = Self;
     type Arc = ();
@@ -110,7 +109,7 @@ where
 
 impl<T> GraphData for [T; 3]
 where
-    T: Clone + Lifetime,
+    T: Clone,
 {
     type Vertex = Self;
     type Arc = ();

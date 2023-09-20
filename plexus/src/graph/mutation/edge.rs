@@ -30,15 +30,6 @@ type ModalCore<P> = Core<
     <P as Mode>::EdgeStorage,
     (),
 >;
-#[cfg(not(all(nightly, feature = "unstable")))]
-type RefCore<'a, G> = Core<
-    G,
-    &'a StorageTarget<Vertex<G>>,
-    &'a StorageTarget<Arc<G>>,
-    &'a StorageTarget<Edge<G>>,
-    (),
->;
-#[cfg(all(nightly, feature = "unstable"))]
 type RefCore<'a, G> = Core<
     G,
     &'a StorageTarget<'a, Vertex<G>>,

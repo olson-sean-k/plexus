@@ -321,10 +321,12 @@ where
 
 impl<'a, E> Orphan<'a, E>
 where
-    E: 'a + Payload,
+    E: Payload,
+    E::Data: 'a,
 {
     pub fn bind<M>(storage: &'a mut M, key: E::Key) -> Option<Self>
     where
+        E: 'a,
         M: AsStorageMut<E>,
     {
         View::bind(storage, key).map(Orphan::from)
@@ -336,6 +338,7 @@ where
 
     pub fn bind_into<T, M>(storage: &'a mut M, key: E::Key) -> Option<T>
     where
+        E: 'a,
         T: From<Self>,
         M: AsStorageMut<E>,
     {
@@ -357,7 +360,8 @@ where
 
 impl<'a, E> AsRef<E::Key> for Orphan<'a, E>
 where
-    E: 'a + Payload,
+    E: Payload,
+    E::Data: 'a,
 {
     fn as_ref(&self) -> &E::Key {
         &self.key
@@ -366,7 +370,8 @@ where
 
 impl<'a, E> ClosedView for Orphan<'a, E>
 where
-    E: 'a + Payload,
+    E: Payload,
+    E::Data: 'a,
 {
     type Key = E::Key;
     type Entity = E;
@@ -379,6 +384,7 @@ where
 impl<'a, E, M> From<View<&'a mut M, E>> for Orphan<'a, E>
 where
     E: 'a + Payload,
+    E::Data: 'a,
     M: AsStorageMut<E>,
 {
     fn from(view: View<&'a mut M, E>) -> Self {
@@ -391,11 +397,17 @@ where
     }
 }
 
-impl<'a, E> Eq for Orphan<'a, E> where E: 'a + Payload {}
+impl<'a, E> Eq for Orphan<'a, E>
+where
+    E: Payload,
+    E::Data: 'a,
+{
+}
 
 impl<'a, E> Hash for Orphan<'a, E>
 where
-    E: 'a + Payload,
+    E: Payload,
+    E::Data: 'a,
 {
     fn hash<H>(&self, state: &mut H)
     where
@@ -407,7 +419,8 @@ where
 
 impl<'a, E> PartialEq for Orphan<'a, E>
 where
-    E: 'a + Payload,
+    E: Payload,
+    E::Data: 'a,
 {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
