@@ -416,7 +416,7 @@ where
     pub fn into_path(self) -> Path<'static, B> {
         let (storage, ab) = self.unbind();
         let (a, b) = ab.into();
-        Path::bind(storage, &[a, b]).unwrap()
+        Path::bind(storage, [a, b]).unwrap()
     }
 
     pub fn path(&self) -> Path<&M> {
@@ -1809,8 +1809,7 @@ where
             .chain(
                 arc.to_ref()
                     .into_reachable_opposite_arc()
-                    .and_then(|opposite| opposite.face)
-                    .into_iter(),
+                    .and_then(|opposite| opposite.face),
             )
             .collect::<ArrayVec<_, 2>>()
             .into_iter();

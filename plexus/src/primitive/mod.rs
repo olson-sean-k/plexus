@@ -973,8 +973,8 @@ impl<G> IntoItems for BoundedPolygon<G> {
 
     fn into_items(self) -> Self::Output {
         match self {
-            BoundedPolygon::N3(trigon) => trigon.into_items().into_iter().collect(),
-            BoundedPolygon::N4(tetragon) => tetragon.into_items().into_iter().collect(),
+            BoundedPolygon::N3(trigon) => trigon.into_items().collect(),
+            BoundedPolygon::N4(tetragon) => tetragon.into_items().collect(),
         }
     }
 }
