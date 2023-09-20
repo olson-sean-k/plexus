@@ -771,7 +771,7 @@ where
             .zip(other.line())
             .and_then(|(left, right)| match left.intersection(&right) {
                 Some(LineLine::Point(point)) => {
-                    self.is_bisected(other).then(|| EdgeEdge::Point(point))
+                    self.is_bisected(other).then_some(EdgeEdge::Point(point))
                 }
                 Some(LineLine::Line(_)) => todo!(),
                 _ => None,

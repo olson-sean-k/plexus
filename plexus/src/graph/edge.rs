@@ -306,7 +306,7 @@ where
         }
         else {
             self.into_reachable_opposite_arc()
-                .and_then(|opposite| opposite.is_boundary_arc().then(|| opposite))
+                .and_then(|opposite| opposite.is_boundary_arc().then_some(opposite))
         }
     }
 

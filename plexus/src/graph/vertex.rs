@@ -963,7 +963,7 @@ where
 
     fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.outgoing
-            .and_then(|outgoing| self.trace.insert(outgoing).then(|| outgoing))
+            .and_then(|outgoing| self.trace.insert(outgoing).then_some(outgoing))
             .map(|outgoing| outgoing.into_opposite())
             .and_then(|incoming| {
                 self.storage

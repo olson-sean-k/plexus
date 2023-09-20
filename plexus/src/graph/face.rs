@@ -1593,7 +1593,7 @@ where
 
     fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.arc
-            .and_then(|arc| self.trace.insert(arc).then(|| arc))
+            .and_then(|arc| self.trace.insert(arc).then_some(arc))
             .map(|arc| {
                 self.arc = self
                     .storage
