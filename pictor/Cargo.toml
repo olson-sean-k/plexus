@@ -19,7 +19,10 @@ winit = "^0.24.0"
 [dependencies.futures]
 version = "=0.3"
 default-features = false
-features = ["std", "executor"]
+features = [
+    "std", 
+    "executor"
+]
 
 [dependencies.plexus]
 path = "../plexus"
