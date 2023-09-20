@@ -33,16 +33,11 @@ impl Executor {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub enum Reaction {
+    #[default]
     Continue,
     Abort,
-}
-
-impl Default for Reaction {
-    fn default() -> Self {
-        Reaction::Continue
-    }
 }
 
 pub trait ConfigureStage {
