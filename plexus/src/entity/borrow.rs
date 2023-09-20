@@ -16,7 +16,7 @@ impl<'a, T> Reborrow for &'a T {
     type Target = T;
 
     fn reborrow(&self) -> &Self::Target {
-        *self
+        self
     }
 }
 
@@ -24,13 +24,13 @@ impl<'a, T> Reborrow for &'a mut T {
     type Target = T;
 
     fn reborrow(&self) -> &Self::Target {
-        &**self
+        self
     }
 }
 
 impl<'a, T> ReborrowMut for &'a mut T {
     fn reborrow_mut(&mut self) -> &mut Self::Target {
-        *self
+        self
     }
 }
 
