@@ -14,23 +14,22 @@ keywords = [
     "mesh",
     "topology",
     "geometry",
-    "half-edge"
+    "half-edge",
 ]
 categories = [
     "algorithms",
     "data-structures",
     "graphics",
-    "rendering::data-formats"
+    "rendering::data-formats",
 ]
 
 [package.metadata.docs.rs]
-# Enable integration featues so that trait implementations for types from
-# commonly used linear algebra crates are shown.
+# Enable all features for API documentation.
 all-features = true
-# Enable KaTeX support.
+# Enable KaTeX support by injecting a header into the documentation.
 rustdoc-args = [
     "--html-in-header",
-    "../doc/katex-header.html"
+    "../doc/katex-header.html",
 ]
 
 [[bench]]
@@ -40,7 +39,7 @@ path = "../benches/subdivide.rs"
 
 [features]
 default = []
-encoding-ply = ["ply-rs"]
+encoding-ply = ["dep:ply-rs"]
 geometry-cgmath = ["theon/geometry-cgmath"]
 geometry-glam = ["theon/geometry-glam"]
 geometry-mint = ["theon/geometry-mint"]

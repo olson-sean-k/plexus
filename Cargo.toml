@@ -4,5 +4,6 @@ members = [
     "examples/subdivide",
     "examples/teapot",
     "pictor",
-    "plexus"
+    "plexus",
 ]
+resolver = "2"

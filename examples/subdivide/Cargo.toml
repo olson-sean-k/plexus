@@ -15,6 +15,4 @@ path = "../../pictor"
 [dependencies.plexus]
 path = "../../plexus"
 default-features = false
-features = [
-    "geometry-nalgebra"
-]
+features = ["geometry-nalgebra"]

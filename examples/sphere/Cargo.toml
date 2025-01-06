@@ -16,5 +16,5 @@ path = "../../plexus"
 default-features = false
 features = [
     "encoding-ply",
-    "geometry-nalgebra"
+    "geometry-nalgebra",
 ]
