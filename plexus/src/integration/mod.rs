@@ -27,19 +27,11 @@
 //!
 //! [`nalgebra`]: https://crates.io/crates/nalgebra
 
-pub mod decorum {
-    #[doc(hidden)]
-    pub use ::decorum::*;
-}
+// TODO: Do not implement geometric traits and conversions over tuples of scalars. Prefer array
+//       types instead.
 
-pub mod theon {
-    #[doc(hidden)]
-    pub use ::theon::*;
-}
-
-// Feature modules. These are empty unless Cargo features are enabled.
-pub mod cgmath;
-pub mod glam;
-pub mod mint;
-pub mod nalgebra;
-pub mod ultraviolet;
+mod cgmath;
+mod glam;
+mod mint;
+mod nalgebra;
+mod ultraviolet;

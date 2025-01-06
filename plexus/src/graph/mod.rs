@@ -255,7 +255,7 @@ mod mutation;
 mod path;
 mod vertex;
 
-use decorum::cmp::IntrinsicOrd;
+use decorum::cmp::EmptyOrd;
 use decorum::R64;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -805,7 +805,7 @@ where
     where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
-        Scalar<VertexPosition<G>>: IntrinsicOrd,
+        Scalar<VertexPosition<G>>: EmptyOrd,
     {
         Aabb::from_points(self.vertices().map(|vertex| *vertex.position()))
     }

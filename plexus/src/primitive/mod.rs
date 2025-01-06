@@ -86,10 +86,11 @@ pub mod generate;
 pub mod sphere;
 
 use arrayvec::ArrayVec;
-use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
-use num::{Integer, One, Signed, Unsigned, Zero};
+use num::traits::real::Real;
+use num::traits::FloatConst;
+use num::{Integer, One, Unsigned, Zero};
 use smallvec::{smallvec, SmallVec};
 use std::array;
 use std::convert::TryInto;
@@ -297,8 +298,9 @@ pub trait Polygonal: Topological {
     where
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+        Scalar<Position<Self::Vertex>>: FloatConst,
     {
-        let pi = <Scalar<Position<Self::Vertex>> as Real>::PI;
+        let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
         let mut sum = <Scalar<Position<Self::Vertex>> as Zero>::zero();
         for (t1, t2) in angles(self).perimeter() {
             if (t1 * t2) <= Zero::zero() {
@@ -1282,6 +1284,7 @@ where
     P: Polygonal,
     P::Vertex: AsPosition,
     Position<P::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+    Scalar<Position<P::Vertex>>: FloatConst,
 {
     polygon
         .as_ref()
@@ -1296,7 +1299,7 @@ where
         .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
         .map(|t| {
             // Wrap the angle into the interval `(-pi, pi]`.
-            let pi = <Scalar<Position<P::Vertex>> as Real>::PI;
+            let pi = <Scalar<Position<P::Vertex>> as FloatConst>::PI();
             if t <= -pi {
                 t + (pi + pi)
             }

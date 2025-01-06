@@ -1,18 +1,14 @@
 #![cfg(feature = "geometry-nalgebra")]
 
-use theon::integration::nalgebra;
-
-use self::nalgebra::base::allocator::Allocator;
-use self::nalgebra::base::default_allocator::DefaultAllocator;
-use self::nalgebra::base::dimension::DimName;
-use decorum::{Finite, Float, NotNan, Primitive, Total};
+use decorum::{ExtendedReal, Primitive, Real, Total};
+use nalgebra::base::allocator::Allocator;
+use nalgebra::{
+    DefaultAllocator, DimName, OMatrix, OPoint, Point2, Point3, Scalar, Vector2, Vector3,
+};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
-
-#[doc(hidden)]
-pub use self::nalgebra::*;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -114,11 +110,11 @@ where
     }
 }
 
-impl<T, D> GraphData for Point<T, D>
+impl<T, D> GraphData for OPoint<T, D>
 where
     T: Scalar,
     D: DimName,
-    DefaultAllocator: Allocator<T, D>,
+    DefaultAllocator: Allocator<D>,
     Self: Copy,
 {
     type Vertex = Self;
@@ -127,63 +123,72 @@ where
     type Face = ();
 }
 
-impl<T, D> UnitGeometry for Point<T, D>
+impl<T, D> UnitGeometry for OPoint<T, D>
 where
     T: Scalar,
     D: DimName,
-    DefaultAllocator: Allocator<T, D>,
+    DefaultAllocator: Allocator<D>,
 {
 }
 
-macro_rules! impl_from_geometry_ordered {
+macro_rules! with_constrained_scalars {
+    ($f:ident) => {
+        $f!(proxy => Real);
+        $f!(proxy => ExtendedReal);
+        $f!(proxy => Total);
+    };
+}
+
+macro_rules! impl_from_geometry_for_constrained_scalar_structures {
+    () => {
+        with_constrained_scalars!(impl_from_geometry_for_constrained_scalar_structures);
+    };
     (proxy => $p:ident) => {
-        impl<T, R, C> FromGeometry<MatrixMN<$p<T>, R, C>> for MatrixMN<T, R, C>
+        impl<T, R, C> FromGeometry<OMatrix<$p<T>, R, C>> for OMatrix<T, R, C>
         where
-            T: Float + Primitive + Scalar,
+            T: Primitive + Scalar,
             R: DimName,
             C: DimName,
-            DefaultAllocator: Allocator<T, R, C> + Allocator<$p<T>, R, C>,
+            DefaultAllocator: Allocator<R, C>,
         {
-            fn from_geometry(other: MatrixMN<$p<T>, R, C>) -> Self {
+            fn from_geometry(other: OMatrix<$p<T>, R, C>) -> Self {
                 other.map(|value| value.into_inner())
             }
         }
 
-        impl<T, R, C> FromGeometry<MatrixMN<T, R, C>> for MatrixMN<$p<T>, R, C>
+        impl<T, R, C> FromGeometry<OMatrix<T, R, C>> for OMatrix<$p<T>, R, C>
         where
-            T: Float + Primitive + Scalar,
+            T: Primitive + Scalar,
             R: DimName,
             C: DimName,
-            DefaultAllocator: Allocator<$p<T>, R, C> + Allocator<T, R, C>,
+            DefaultAllocator: Allocator<R, C>,
         {
-            fn from_geometry(other: MatrixMN<T, R, C>) -> Self {
-                other.map($p::<T>::from_inner)
+            fn from_geometry(other: OMatrix<T, R, C>) -> Self {
+                other.map($p::<T>::assert)
             }
         }
 
-        impl<T, D> FromGeometry<Point<$p<T>, D>> for Point<T, D>
+        impl<T, D> FromGeometry<OPoint<$p<T>, D>> for OPoint<T, D>
         where
-            T: Float + Primitive + Scalar,
+            T: Primitive + Scalar,
             D: DimName,
-            DefaultAllocator: Allocator<T, D> + Allocator<$p<T>, D>,
+            DefaultAllocator: Allocator<D>,
         {
-            fn from_geometry(other: Point<$p<T>, D>) -> Self {
-                Point::from(other.coords.map(|value| value.into_inner()))
+            fn from_geometry(other: OPoint<$p<T>, D>) -> Self {
+                OPoint::from(other.coords.map(|value| value.into_inner()))
             }
         }
 
-        impl<T, D> FromGeometry<Point<T, D>> for Point<$p<T>, D>
+        impl<T, D> FromGeometry<OPoint<T, D>> for OPoint<$p<T>, D>
         where
-            T: Float + Primitive + Scalar,
+            T: Primitive + Scalar,
             D: DimName,
-            DefaultAllocator: Allocator<$p<T>, D> + Allocator<T, D>,
+            DefaultAllocator: Allocator<D>,
         {
-            fn from_geometry(other: Point<T, D>) -> Self {
-                Point::from(other.coords.map($p::<T>::from_inner))
+            fn from_geometry(other: OPoint<T, D>) -> Self {
+                OPoint::from(other.coords.map($p::<T>::assert))
             }
         }
     };
 }
-impl_from_geometry_ordered!(proxy => Finite);
-impl_from_geometry_ordered!(proxy => NotNan);
-impl_from_geometry_ordered!(proxy => Total);
+impl_from_geometry_for_constrained_scalar_structures!();

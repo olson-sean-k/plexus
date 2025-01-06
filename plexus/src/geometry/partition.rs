@@ -1,5 +1,6 @@
 use approx::abs_diff_eq;
-use num::{Signed, Zero};
+use num::traits::real::Real;
+use num::Zero;
 use std::cmp::Ordering;
 use theon::query::{Line, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional};
@@ -54,7 +55,7 @@ where
             None
         }
         else {
-            Some(if determinant.is_positive() {
+            Some(if determinant.is_sign_positive() {
                 BinaryPartition::Left
             }
             else {

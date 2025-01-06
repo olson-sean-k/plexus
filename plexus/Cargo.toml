@@ -2,7 +2,7 @@
 name = "plexus"
 version = "0.0.11"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.70.0"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 readme = "../README.md"
@@ -40,50 +40,90 @@ path = "../benches/subdivide.rs"
 [features]
 default = []
 encoding-ply = ["dep:ply-rs"]
-geometry-cgmath = ["theon/geometry-cgmath"]
-geometry-glam = ["theon/geometry-glam"]
-geometry-mint = ["theon/geometry-mint"]
-geometry-nalgebra = ["theon/geometry-nalgebra"]
-geometry-ultraviolet = ["theon/geometry-ultraviolet"]
+geometry-cgmath = [
+    "dep:cgmath",
+    "theon/cgmath",
+]
+geometry-glam = [
+    "dep:glam",
+    "theon/glam",
+]
+geometry-mint = [
+    "dep:mint",
+    "theon/mint",
+]
+geometry-nalgebra = [
+    "dep:nalgebra",
+    "theon/nalgebra",
+]
+geometry-ultraviolet = [
+    "dep:ultraviolet",
+    "theon/ultraviolet",
+]
 
 [dependencies]
-approx = "^0.3.0"
+approx = "^0.5.0"
 ahash = "^0.8.11"
 arrayvec = "^0.6.0"
-decorum = "^0.3.1"
 derivative = "^2.1.1"
 itertools = "^0.9.0"
-num = "^0.3.0"
+num = "^0.4.3"
 smallvec = "^1.0.0"
 thiserror = "^1.0.3"
-typenum = "^1.10.0"
+typenum = "^1.17.0"
+
+[dependencies.cgmath]
+version = "^0.18.0"
+optional = true
+
+[dependencies.decorum]
+version = "^0.4.0"
+default-features = false
+features = [
+    "approx",
+    "serde",
+    "std",
+]
+
+[dependencies.glam]
+version = "^0.29.0"
+optional = true
+
+[dependencies.mint]
+version = "^0.5.0"
+optional = true
+
+[dependencies.nalgebra]
+version = "^0.33.0"
+optional = true
 
 [dependencies.ply-rs]
 version = "^0.1.2"
 optional = true
 
-# TODO: Re-enable the `lapack` feature. Some geometry features (the `FacePlane`
-#       trait) use this feature, but have been temporarily removed. See
-#       https://github.com/olson-sean-k/plexus/issues/58 and
-#       https://github.com/rust-ndarray/ndarray-linalg/issues/229
-[dependencies.theon] # Unstable.
-git = "https://github.com/olson-sean-k/theon.git"
-rev = "789eb62"
+[dependencies.theon]
+version = "^0.1.0"
 default-features = false
+features = ["lapack"]
+
+[dependencies.ultraviolet]
+version = "^0.9.0"
+optional = true
 
 [build-dependencies]
 rustversion = "^1.0.3"
 
 [dev-dependencies]
 criterion = "^0.3.0"
-# For brevity and simplicity, tests (and documentation comments) use a direct
+# For brevity and simplicity, tests and API documentation use a direct
 # dependency on `nalgebra`. This approach requires that the version
-# specification is compatible with `theon`. Other crates use re-exported types
-# and do not take a direct dependency on `nalgebra`.
-nalgebra = "^0.22.0"
+# specification is compatible with `theon`.
+nalgebra = "^0.33.0"
 
-[dev-dependencies.theon] # Unstable.
-git = "https://github.com/olson-sean-k/theon.git"
-rev = "789eb62"
+[dev-dependencies.theon]
+version = "^0.1.0"
 default-features = false
-features = ["geometry-nalgebra"]
+features = [
+    "lapack",
+    "nalgebra",
+]

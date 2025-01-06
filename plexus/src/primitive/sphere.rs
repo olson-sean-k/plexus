@@ -25,7 +25,8 @@
 //!     .unwrap();
 //! ```
 
-use decorum::Real;
+use num::traits::real::Real;
+use num::traits::FloatConst;
 use num::{NumCast, One, ToPrimitive};
 use std::cmp;
 use theon::adjunct::Map;
@@ -100,9 +101,10 @@ impl UvSphere {
     where
         Self: AttributeGenerator<Position<S>, State = Bounds<S>>,
         S: EuclideanSpace + FiniteDimensional<N = U3>,
+        Scalar<S>: FloatConst,
     {
         let one = Scalar::<S>::one();
-        let pi = Real::PI;
+        let pi = FloatConst::PI();
         let u = (into_scalar::<_, S>(u) / into_scalar::<_, S>(self.nu)) * pi * (one + one);
         let v = (into_scalar::<_, S>(v) / into_scalar::<_, S>(self.nv)) * pi;
         S::from_xyz(
@@ -151,6 +153,7 @@ where
 impl<S> AttributeVertexGenerator<Normal<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
 {
     type Output = Unit<Vector<S>>;
 
@@ -168,6 +171,7 @@ where
 impl<S> AttributePolygonGenerator<Normal<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
 {
     type Output = BoundedPolygon<Unit<Vector<S>>>;
 
@@ -197,6 +201,7 @@ where
 impl<S> AttributeVertexGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
 {
     type Output = S;
 
@@ -222,6 +227,7 @@ where
 impl<S> AttributePolygonGenerator<Position<S>> for UvSphere
 where
     S: EuclideanSpace + FiniteDimensional<N = U3>,
+    Scalar<S>: FloatConst,
 {
     type Output = BoundedPolygon<S>;
 

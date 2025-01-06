@@ -1,12 +1,9 @@
 #![cfg(feature = "geometry-glam")]
 
-use theon::integration::glam;
+use glam::{Vec2, Vec3, Vec3A};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
-
-#[doc(hidden)]
-pub use self::glam::*;
 
 impl FromGeometry<(f32, f32)> for Vec2 {
     fn from_geometry(other: (f32, f32)) -> Self {
