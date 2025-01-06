@@ -1,7 +1,6 @@
 #![allow(clippy::iter_nth_zero)]
 
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
-use decorum::R64;
 use nalgebra::Point3;
 use plexus::geometry::AsPositionMut;
 use plexus::graph::{EdgeMidpoint, FaceView, GraphData, MeshGraph};
@@ -11,7 +10,7 @@ use smallvec::SmallVec;
 
 const DEPTH: usize = 8;
 
-type E3 = Point3<R64>;
+type E3 = Point3<f64>;
 
 pub trait Ambo<G> {
     #[must_use]

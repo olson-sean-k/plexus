@@ -1,18 +1,16 @@
-use plexus::integration::nalgebra;
-
-use lazy_static::lazy_static;
 use nalgebra::{Isometry3, Matrix4, Orthographic3, Perspective3, Point3, Vector3};
-use wgpu::SwapChainDescriptor;
+use std::sync::LazyLock;
+use wgpu::SurfaceConfiguration;
 
-lazy_static! {
-    #[rustfmt::skip]
-    static ref OPENGL_TO_WGPU_TRANSFORM: Matrix4<f32> = Matrix4::new(
+#[rustfmt::skip]
+static OPENGL_TO_WGPU_TRANSFORM: LazyLock<Matrix4<f32>> = LazyLock::new(|| {
+    Matrix4::new(
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
         0.0, 0.0, 0.5, 0.0,
         0.0, 0.0, 0.5, 1.0,
-    );
-}
+    )
+});
 
 pub enum Projection {
     Perspective(Perspective3<f32>),
@@ -48,13 +46,13 @@ impl Camera {
         self.view = Isometry3::look_at_rh(from, to, &Vector3::y());
     }
 
-    pub fn reproject(&mut self, descriptor: &SwapChainDescriptor) {
+    pub fn reproject(&mut self, surface: &SurfaceConfiguration) {
         match self.projection {
             Projection::Perspective(ref mut perspective) => {
-                perspective.set_aspect(descriptor.width as f32 / descriptor.height as f32);
+                perspective.set_aspect(surface.width as f32 / surface.height as f32);
             }
             Projection::Orthographic(ref mut orthographic) => {
-                let inverse = descriptor.height as f32 / descriptor.width as f32;
+                let inverse = surface.height as f32 / surface.width as f32;
                 let radius = (orthographic.right() - orthographic.left()) * inverse * 0.5;
                 orthographic.set_bottom_and_top(-radius, radius);
             }

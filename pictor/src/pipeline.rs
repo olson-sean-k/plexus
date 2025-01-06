@@ -1,9 +1,6 @@
-use plexus::integration::nalgebra;
-use plexus::integration::theon;
-
 use bytemuck::{self, Pod, Zeroable};
-use decorum::cmp::FloatEq;
-use decorum::hash::FloatHash;
+use decorum::cmp::CanonicalEq;
+use decorum::hash::CanonicalHash;
 use futures::task::LocalSpawn;
 use nalgebra::{Point3, Scalar, Vector3, Vector4};
 use num::{self, One};
@@ -16,21 +13,11 @@ use std::f32::consts::FRAC_PI_4;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use theon::adjunct::Extend;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{
-    include_spirv, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BlendDescriptor, Buffer, BufferAddress, BufferSize,
-    BufferUsage, Color, ColorStateDescriptor, ColorWrite, CommandEncoderDescriptor,
-    CompareFunction, CullMode, DepthStencilStateDescriptor, Extent3d, FrontFace, IndexFormat,
-    InputStepMode, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveTopology,
-    ProgrammableStageDescriptor, RasterizationStateDescriptor, RenderPassColorAttachmentDescriptor,
-    RenderPassDepthStencilAttachmentDescriptor, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, ShaderStage, SwapChainTexture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsage, TextureView, VertexAttributeDescriptor, VertexBufferDescriptor,
-    VertexFormat, VertexStateDescriptor,
-};
-use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
-use winit::window::WindowBuilder;
+use wgpu::include_spirv_raw;
+use wgpu::util::DeviceExt as _;
+use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::keyboard::{Key, NamedKey};
+use winit::window::Window;
 
 use crate::camera::{Camera, Projection};
 use crate::harness::{self, Application, ConfigureStage, Reaction, RenderStage};
@@ -118,17 +105,17 @@ impl Hash for Vertex {
     where
         H: Hasher,
     {
-        self.position.float_hash(state);
-        self.normal.float_hash(state);
-        self.color.float_hash(state);
+        self.position.hash_canonical(state);
+        self.normal.hash_canonical(state);
+        self.color.hash_canonical(state);
     }
 }
 
 impl PartialEq for Vertex {
     fn eq(&self, other: &Self) -> bool {
-        self.position.float_eq(&other.position)
-            && self.normal.float_eq(&other.normal)
-            && self.color.float_eq(&other.color)
+        self.position.eq_canonical(&other.position)
+            && self.normal.eq_canonical(&other.normal)
+            && self.color.eq_canonical(&other.color)
     }
 }
 
@@ -144,32 +131,33 @@ struct RenderConfiguration {
 
 struct RenderApplication {
     camera: Camera,
-    _viewpoint: Buffer,
-    transform: Buffer,
-    vertices: Buffer,
-    indices: Buffer,
-    depth: TextureView,
+    _viewpoint: wgpu::Buffer,
+    transform: wgpu::Buffer,
+    vertices: wgpu::Buffer,
+    indices: wgpu::Buffer,
+    depth: wgpu::TextureView,
     n: u32,
-    bind_group: BindGroup,
-    pipeline: RenderPipeline,
+    bind_group: wgpu::BindGroup,
+    pipeline: wgpu::RenderPipeline,
 }
 
 impl RenderApplication {
-    fn configure_depth_buffer(stage: &impl ConfigureStage) -> TextureView {
+    fn configure_depth_buffer(stage: &impl ConfigureStage) -> wgpu::TextureView {
         stage
             .device()
-            .create_texture(&TextureDescriptor {
+            .create_texture(&wgpu::TextureDescriptor {
                 label: None,
-                size: Extent3d {
-                    width: stage.swap_chain_descriptor().width,
-                    height: stage.swap_chain_descriptor().height,
-                    depth: 1,
+                view_formats: stage.surface_configuration().view_formats.as_slice(),
+                size: wgpu::Extent3d {
+                    width: stage.surface_configuration().width,
+                    height: stage.surface_configuration().height,
+                    depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Depth32Float,
-                usage: TextureUsage::COPY_DST | TextureUsage::OUTPUT_ATTACHMENT,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Depth32Float,
+                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
             })
             .create_view(&Default::default())
     }
@@ -188,140 +176,157 @@ impl Application for RenderApplication {
             from,
             buffer,
         } = configuration;
-        camera.reproject(stage.swap_chain_descriptor());
-        let vertices = stage.device().create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(buffer.as_vertex_slice()),
-            usage: BufferUsage::VERTEX,
-        });
-        let indices = stage.device().create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(buffer.as_index_slice()),
-            usage: BufferUsage::INDEX,
-        });
-        let transform = stage.device().create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(camera.transform().as_slice()),
-            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
-        });
-        let viewpoint = stage.device().create_buffer_init(&BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(from.coords.as_slice()),
-            usage: BufferUsage::COPY_DST | BufferUsage::UNIFORM,
-        });
+        camera.reproject(stage.surface_configuration());
+        let vertices = stage
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(buffer.as_vertex_slice()),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let indices = stage
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(buffer.as_index_slice()),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+        let transform = stage
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(camera.transform().as_slice()),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            });
+        let viewpoint = stage
+            .device()
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(from.coords.as_slice()),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            });
         let depth = Self::configure_depth_buffer(stage);
         let bind_group_layout =
             stage
                 .device()
-                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: None,
                     entries: &[
-                        BindGroupLayoutEntry {
+                        wgpu::BindGroupLayoutEntry {
                             binding: 0,
-                            visibility: ShaderStage::VERTEX,
-                            ty: BindingType::UniformBuffer {
-                                dynamic: false,
-                                min_binding_size: BufferSize::new(64),
+                            visibility: wgpu::ShaderStages::VERTEX,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(64),
                             },
                             count: None,
                         },
-                        BindGroupLayoutEntry {
+                        wgpu::BindGroupLayoutEntry {
                             binding: 1,
-                            visibility: ShaderStage::VERTEX,
-                            ty: BindingType::UniformBuffer {
-                                dynamic: false,
-                                min_binding_size: BufferSize::new(12),
+                            visibility: wgpu::ShaderStages::VERTEX,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(12),
                             },
                             count: None,
                         },
                     ],
                 });
-        let bind_group = stage.device().create_bind_group(&BindGroupDescriptor {
-            label: None,
-            layout: &bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: transform.as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: viewpoint.as_entire_binding(),
-                },
-            ],
-        });
-        let pipeline =
-            stage
-                .device()
-                .create_render_pipeline(&RenderPipelineDescriptor {
-                    label: None,
-                    layout: Some(&stage.device().create_pipeline_layout(
-                        &PipelineLayoutDescriptor {
-                            label: None,
-                            bind_group_layouts: &[&bind_group_layout],
-                            push_constant_ranges: &[],
-                        },
-                    )),
-                    vertex_stage: ProgrammableStageDescriptor {
-                        module: &stage
-                            .device()
-                            .create_shader_module(include_spirv!("shader.spv.vert")),
-                        entry_point: "main",
+        let bind_group = stage
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: transform.as_entire_binding(),
                     },
-                    fragment_stage: Some(ProgrammableStageDescriptor {
-                        module: &stage
-                            .device()
-                            .create_shader_module(include_spirv!("shader.spv.frag")),
-                        entry_point: "main",
-                    }),
-                    vertex_state: VertexStateDescriptor {
-                        index_format: IndexFormat::Uint32,
-                        vertex_buffers: &[VertexBufferDescriptor {
-                            stride: mem::size_of::<Vertex>() as BufferAddress,
-                            step_mode: InputStepMode::Vertex,
-                            attributes: &[
-                                #[allow(clippy::erasing_op)]
-                                VertexAttributeDescriptor {
-                                    format: VertexFormat::Float4,
-                                    offset: 0 * 4 * 4,
-                                    shader_location: 0,
-                                },
-                                #[allow(clippy::identity_op)]
-                                VertexAttributeDescriptor {
-                                    format: VertexFormat::Float4,
-                                    offset: 1 * 4 * 4,
-                                    shader_location: 1,
-                                },
-                                VertexAttributeDescriptor {
-                                    format: VertexFormat::Float4,
-                                    offset: 2 * 4 * 4,
-                                    shader_location: 2,
-                                },
-                            ],
-                        }],
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: viewpoint.as_entire_binding(),
                     },
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                    rasterization_state: Some(RasterizationStateDescriptor {
-                        front_face: FrontFace::Ccw,
-                        cull_mode: CullMode::Back,
-                        ..Default::default()
-                    }),
-                    color_states: &[ColorStateDescriptor {
-                        format: stage.swap_chain_descriptor().format,
-                        color_blend: BlendDescriptor::REPLACE,
-                        alpha_blend: BlendDescriptor::REPLACE,
-                        write_mask: ColorWrite::ALL,
+                ],
+            });
+        let pipeline = stage
+            .device()
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: None,
+                layout: Some(&stage.device().create_pipeline_layout(
+                    &wgpu::PipelineLayoutDescriptor {
+                        label: None,
+                        bind_group_layouts: &[&bind_group_layout],
+                        push_constant_ranges: &[],
+                    },
+                )),
+                vertex: wgpu::VertexState {
+                    module: unsafe {
+                        &stage
+                            .device()
+                            .create_shader_module_spirv(&include_spirv_raw!("shader.spv.vert"))
+                    },
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[
+                            #[allow(clippy::erasing_op)]
+                            wgpu::VertexAttribute {
+                                format: wgpu::VertexFormat::Float32x4,
+                                offset: 0 * 4 * 4,
+                                shader_location: 0,
+                            },
+                            #[allow(clippy::identity_op)]
+                            wgpu::VertexAttribute {
+                                format: wgpu::VertexFormat::Float32x4,
+                                offset: 1 * 4 * 4,
+                                shader_location: 1,
+                            },
+                            wgpu::VertexAttribute {
+                                format: wgpu::VertexFormat::Float32x4,
+                                offset: 2 * 4 * 4,
+                                shader_location: 2,
+                            },
+                        ],
                     }],
-                    depth_stencil_state: Some(DepthStencilStateDescriptor {
-                        format: TextureFormat::Depth32Float,
-                        depth_write_enabled: true,
-                        depth_compare: CompareFunction::Less,
-                        stencil: Default::default(),
-                    }),
-                    alpha_to_coverage_enabled: false,
-                    sample_count: 1,
-                    sample_mask: !0,
-                });
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: unsafe {
+                        &stage
+                            .device()
+                            .create_shader_module_spirv(&include_spirv_raw!("shader.spv.frag"))
+                    },
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: stage.surface_configuration().format,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent::REPLACE,
+                            alpha: wgpu::BlendComponent::REPLACE,
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::Less,
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..Default::default()
+                },
+                multisample: Default::default(),
+                multiview: None,
+                cache: None,
+            });
         Ok(RenderApplication {
             camera,
             _viewpoint: viewpoint,
@@ -338,9 +343,9 @@ impl Application for RenderApplication {
     fn react(&mut self, event: WindowEvent) -> Reaction {
         match event {
             WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                event:
+                    KeyEvent {
+                        logical_key: Key::Named(NamedKey::Escape),
                         state: ElementState::Pressed,
                         ..
                     },
@@ -351,7 +356,7 @@ impl Application for RenderApplication {
     }
 
     fn resize(&mut self, stage: &impl ConfigureStage) {
-        self.camera.reproject(stage.swap_chain_descriptor());
+        self.camera.reproject(stage.surface_configuration());
         stage.queue().write_buffer(
             &self.transform,
             0,
@@ -360,38 +365,40 @@ impl Application for RenderApplication {
         self.depth = Self::configure_depth_buffer(stage);
     }
 
-    fn render(&mut self, stage: &impl RenderStage, frame: &SwapChainTexture, _: &impl LocalSpawn) {
+    fn render(&mut self, stage: &impl RenderStage, view: &wgpu::TextureView, _: &impl LocalSpawn) {
         let mut encoder = stage
             .device()
-            .create_command_encoder(&CommandEncoderDescriptor { label: None });
-        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            color_attachments: &[RenderPassColorAttachmentDescriptor {
-                attachment: &frame.view,
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
                 resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Clear(Color {
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
                         r: 0.1,
                         g: 0.2,
                         b: 0.3,
                         a: 1.0,
                     }),
-                    store: true,
+                    store: wgpu::StoreOp::Store,
                 },
-            }],
-            depth_stencil_attachment: Some(RenderPassDepthStencilAttachmentDescriptor {
-                attachment: &self.depth,
-                depth_ops: Some(Operations {
-                    load: LoadOp::Clear(1.0),
-                    store: true,
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
                 }),
                 stencil_ops: None,
             }),
+            ..Default::default()
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind_group, &[]);
-        pass.set_index_buffer(self.indices.slice(..));
+        pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
         pass.set_vertex_buffer(0, self.vertices.slice(..));
         pass.draw_indexed(0..self.n, 0, 0..1);
+
         drop(pass); // Release `encoder`.
         stage.queue().submit(Some(encoder.finish()));
     }
@@ -415,9 +422,8 @@ where
             buffer,
         },
         |reactor| {
-            WindowBuilder::default()
-                .with_title("Plexus")
-                .build(reactor)
+            reactor
+                .create_window(Window::default_attributes().with_title("Plexus"))
                 .unwrap()
         },
     );

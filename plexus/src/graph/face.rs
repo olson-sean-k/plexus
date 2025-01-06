@@ -178,7 +178,7 @@ where
     /// let face = graph
     ///     .face_mut(key)
     ///     .unwrap()
-    ///     .extrude_with_offset(1.0)
+    ///     .extrude_with_offset(R64::assert(1.0))
     ///     .unwrap()
     ///     .into_ref();
     ///
@@ -788,7 +788,11 @@ where
     /// let mut graph: MeshGraph<E3> = UvSphere::new(16, 8).polygons::<Position<E3>>().collect();
     /// let keys = graph.faces().map(|face| face.key()).collect::<Vec<_>>();
     /// for key in keys {
-    ///     graph.face_mut(key).unwrap().poke_with_offset(0.5).unwrap();
+    ///     graph
+    ///         .face_mut(key)
+    ///         .unwrap()
+    ///         .poke_with_offset(R64::assert(0.5))
+    ///         .unwrap();
     /// }
     /// ```
     pub fn poke_with_offset<T>(self, offset: T) -> Result<VertexView<&'a mut M>, GraphError>
@@ -1881,7 +1885,7 @@ mod tests {
             let face = graph
                 .face_mut(key)
                 .unwrap()
-                .extrude_with_offset(1.0)
+                .extrude_with_offset(R64::assert(1.0))
                 .unwrap()
                 .into_ref();
 

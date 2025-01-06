@@ -55,7 +55,7 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::index::{Flat3, HashIndexer};
 //! use plexus::prelude::*;
@@ -63,7 +63,7 @@
 //! use plexus::primitive::generate::Position;
 //!
 //! let (indices, positions) = Cube::new()
-//!     .polygons::<Position<Point3<N64>>>()
+//!     .polygons::<Position<Point3<R32>>>()
 //!     .triangulate()
 //!     .index_vertices::<Flat3, _>(HashIndexer::default());
 //! ```
@@ -86,10 +86,11 @@ pub mod generate;
 pub mod sphere;
 
 use arrayvec::ArrayVec;
-use decorum::Real;
 use itertools::izip;
 use itertools::structs::Zip as OuterZip; // Avoid collision with `Zip`.
-use num::{Integer, One, Signed, Unsigned, Zero};
+use num::traits::real::Real;
+use num::traits::FloatConst;
+use num::{Integer, One, Unsigned, Zero};
 use smallvec::{smallvec, SmallVec};
 use std::array;
 use std::convert::TryInto;
@@ -297,8 +298,9 @@ pub trait Polygonal: Topological {
     where
         Self::Vertex: AsPosition,
         Position<Self::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+        Scalar<Position<Self::Vertex>>: FloatConst,
     {
-        let pi = <Scalar<Position<Self::Vertex>> as Real>::PI;
+        let pi = <Scalar<Position<Self::Vertex>> as FloatConst>::PI();
         let mut sum = <Scalar<Position<Self::Vertex>> as Zero>::zero();
         for (t1, t2) in angles(self).perimeter() {
             if (t1 * t2) <= Zero::zero() {
@@ -1229,14 +1231,14 @@ impl<G> TryFromIterator<G> for UnboundedPolygon<G> {
 /// # extern crate nalgebra;
 /// # extern crate plexus;
 /// #
-/// use decorum::N64;
+/// use decorum::R32;
 /// use nalgebra::Point3;
 /// use plexus::prelude::*;
 /// use plexus::primitive;
 /// use plexus::primitive::cube::{Cube, Plane};
 /// use plexus::primitive::generate::{Normal, Position};
 ///
-/// type E3 = Point3<N64>;
+/// type E3 = Point3<R32>;
 ///
 /// let cube = Cube::new();
 /// // Zip positions and texture coordinates into each vertex.
@@ -1282,6 +1284,7 @@ where
     P: Polygonal,
     P::Vertex: AsPosition,
     Position<P::Vertex>: EuclideanSpace + FiniteDimensional<N = U2>,
+    Scalar<Position<P::Vertex>>: FloatConst,
 {
     polygon
         .as_ref()
@@ -1296,7 +1299,7 @@ where
         .map(|(t1, t2)| t2 - t1) // Relative angle (between segments).
         .map(|t| {
             // Wrap the angle into the interval `(-pi, pi]`.
-            let pi = <Scalar<Position<P::Vertex>> as Real>::PI;
+            let pi = <Scalar<Position<P::Vertex>> as FloatConst>::PI();
             if t <= -pi {
                 t + (pi + pi)
             }

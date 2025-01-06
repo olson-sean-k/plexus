@@ -29,7 +29,7 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N32;
+//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::buffer::MeshBuffer3;
 //! use plexus::prelude::*;
@@ -37,7 +37,7 @@
 //! use plexus::primitive::sphere::UvSphere;
 //!
 //! let buffer: MeshBuffer3<u32, Point3<f32>> = UvSphere::new(16, 16)
-//!     .polygons::<Position<Point3<N32>>>()
+//!     .polygons::<Position<Point3<R32>>>()
 //!     .triangulate()
 //!     .collect();
 //! let indices = buffer.as_index_slice();
@@ -319,7 +319,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::R64;
     /// use nalgebra::{Point3, Vector3};
     /// use plexus::buffer::MeshBuffer3;
     /// use plexus::prelude::*;
@@ -327,7 +327,7 @@ where
     /// use plexus::primitive::sphere::UvSphere;
     ///
     /// let buffer: MeshBuffer3<usize, Point3<f64>> = UvSphere::new(16, 8)
-    ///     .polygons::<Position<Point3<N64>>>()
+    ///     .polygons::<Position<Point3<R64>>>()
     ///     .triangulate()
     ///     .collect();
     /// // Translate the positions.
@@ -953,7 +953,7 @@ where
     /// let buffer: MeshBuffer<Flat4, E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let graph: MeshGraph<E3> = buffer
     ///     .into_polygons()
-    ///     .map_vertices(|position| position * 2.0.into())
+    ///     .map_vertices(|position| position * R64::assert(2.0))
     ///     .collect();
     /// ```
     ///
@@ -1016,7 +1016,7 @@ where
     ///     UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
     /// let graph: MeshGraph<E3> = buffer
     ///     .into_polygons()
-    ///     .map_vertices(|position| position * 2.0.into())
+    ///     .map_vertices(|position| position * R64::assert(2.0))
     ///     .triangulate()
     ///     .collect();
     /// ```
@@ -1149,7 +1149,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::Point3;
 
     use crate::buffer::{MeshBuffer, MeshBuffer4, MeshBufferN};
@@ -1161,7 +1161,7 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
     use crate::primitive::{BoundedPolygon, UnboundedPolygon};
 
-    type E3 = Point3<N64>;
+    type E3 = Point3<R64>;
 
     #[test]
     fn collect_into_flat_buffer() {

@@ -195,7 +195,7 @@
 //! let face = graph
 //!     .face_mut(key)
 //!     .unwrap()
-//!     .extrude_with_offset(1.0)
+//!     .extrude_with_offset(R64::assert(1.0))
 //!     .unwrap();
 //! ```
 //!
@@ -255,7 +255,7 @@ mod mutation;
 mod path;
 mod vertex;
 
-use decorum::cmp::IntrinsicOrd;
+use decorum::cmp::EmptyOrd;
 use decorum::R64;
 use num::{Integer, NumCast, ToPrimitive, Unsigned};
 use smallvec::SmallVec;
@@ -805,7 +805,7 @@ where
     where
         G::Vertex: AsPosition,
         VertexPosition<G>: EuclideanSpace,
-        Scalar<VertexPosition<G>>: IntrinsicOrd,
+        Scalar<VertexPosition<G>>: EmptyOrd,
     {
         Aabb::from_points(self.vertices().map(|vertex| *vertex.position()))
     }
@@ -1009,7 +1009,7 @@ where
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::N64;
+    /// use decorum::Total;
     /// use nalgebra::Point3;
     /// use plexus::buffer::MeshBufferN;
     /// use plexus::graph::MeshGraph;
@@ -1017,7 +1017,7 @@ where
     /// use plexus::primitive::cube::Cube;
     /// use plexus::primitive::generate::Position;
     ///
-    /// type E3 = Point3<N64>;
+    /// type E3 = Point3<Total<f32>>;
     ///
     /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
     /// let key = graph.faces().nth(0).unwrap().key();

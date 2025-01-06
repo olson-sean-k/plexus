@@ -2,22 +2,24 @@
 name = "pictor"
 version = "0.0.0"
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.80.0"
 authors = ["Sean Olson <olson.sean.k@gmail.com>"]
 license = "MIT"
 description = "Renderer and support library for Plexus examples."
 publish = false
 
 [dependencies]
-bytemuck = "^1.4.0"
-decorum = "^0.3.1"
-lazy_static = "^1.4.0"
-num = "^0.3.0"
-rand = "^0.7.0"
-winit = "^0.24.0"
+bytemuck = "^1.13.0"
+decorum = "^0.4.0"
+naga = "^23.0.0"
+nalgebra = "^0.33.0"
+num = "^0.4.3"
+rand = "^0.8.5"
+theon = "^0.1.0"
+winit = "^0.30.8"
 
 [dependencies.futures]
-version = "=0.3"
+version = "^0.3.31"
 default-features = false
 features = [
     "std",
@@ -29,8 +31,6 @@ path = "../plexus"
 default-features = false
 features = ["geometry-nalgebra"]
 
-# TODO: Migrate to a published release of `wgpu`.
 [dependencies.wgpu]
-#version = "^0.6.0"
-git = "https://github.com/gfx-rs/wgpu-rs.git"
-rev = "e798278"
+version = "^23.0.1"
+features = ["glsl"]

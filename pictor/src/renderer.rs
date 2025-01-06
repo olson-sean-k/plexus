@@ -1,28 +1,23 @@
-use wgpu::{
-    Adapter, BackendBit, Device, DeviceDescriptor, Instance, PresentMode, Queue,
-    RequestAdapterOptions, Surface, SwapChain, SwapChainDescriptor, TextureFormat, TextureUsage,
-};
 use winit::window::Window;
 
 use crate::harness::{ConfigureStage, RenderStage};
 
-pub struct Renderer {
-    pub window: Window,
-    _instance: Instance,
-    _adapter: Adapter,
-    pub surface: Surface,
-    pub device: Device,
-    queue: Queue,
-    pub swap_chain_descriptor: SwapChainDescriptor,
-    pub swap_chain: SwapChain,
+pub struct Renderer<'window> {
+    //pub window: Window,
+    _instance: wgpu::Instance,
+    _adapter: wgpu::Adapter,
+    pub surface: wgpu::Surface<'window>,
+    pub surface_configuration: wgpu::SurfaceConfiguration,
+    pub device: wgpu::Device,
+    queue: wgpu::Queue,
 }
 
-impl Renderer {
-    pub async fn try_from_window(window: Window) -> Result<Self, ()> {
-        let instance = Instance::new(BackendBit::PRIMARY);
-        let surface = unsafe { instance.create_surface(&window) };
+impl<'window> Renderer<'window> {
+    pub async fn try_from_window(window: &'window Window) -> Result<Self, ()> {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
+        let surface = instance.create_surface(window).unwrap();
         let adapter = instance
-            .request_adapter(&RequestAdapterOptions {
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 compatible_surface: Some(&surface),
                 ..Default::default()
             })
@@ -30,8 +25,10 @@ impl Renderer {
             .ok_or(())?;
         let (device, queue) = adapter
             .request_device(
-                &DeviceDescriptor {
-                    shader_validation: true,
+                &wgpu::DeviceDescriptor {
+                    required_limits: wgpu::Limits::downlevel_webgl2_defaults()
+                        .using_resolution(adapter.limits()),
+                    memory_hints: wgpu::MemoryHints::MemoryUsage,
                     ..Default::default()
                 },
                 None,
@@ -39,47 +36,49 @@ impl Renderer {
             .await
             .map_err(|_| ())?;
         let dimensions = window.inner_size();
-        let swap_chain_descriptor = SwapChainDescriptor {
-            usage: TextureUsage::OUTPUT_ATTACHMENT,
-            format: TextureFormat::Bgra8UnormSrgb,
-            present_mode: PresentMode::Mailbox,
-            width: dimensions.width,
-            height: dimensions.height,
-        };
-        let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+        let surface_configuration = surface
+            .get_default_config(&adapter, dimensions.width, dimensions.height)
+            .unwrap();
+        //let swap_chain_descriptor = wgpu::SwapChainDescriptor {
+        //    usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        //    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        //    present_mode: wgpu::PresentMode::Mailbox,
+        //    width: dimensions.width,
+        //    height: dimensions.height,
+        //};
+        //let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
         Ok(Renderer {
-            window,
+            //window,
             _instance: instance,
             _adapter: adapter,
             surface,
+            surface_configuration,
             device,
             queue,
-            swap_chain_descriptor,
-            swap_chain,
         })
     }
 }
 
-impl ConfigureStage for Renderer {
-    fn device(&self) -> &Device {
+impl<'window> ConfigureStage for Renderer<'window> {
+    fn device(&self) -> &wgpu::Device {
         &self.device
     }
 
-    fn queue(&self) -> &Queue {
+    fn queue(&self) -> &wgpu::Queue {
         &self.queue
     }
 
-    fn swap_chain_descriptor(&self) -> &SwapChainDescriptor {
-        &self.swap_chain_descriptor
+    fn surface_configuration(&self) -> &wgpu::SurfaceConfiguration {
+        &self.surface_configuration
     }
 }
 
-impl RenderStage for Renderer {
-    fn device(&self) -> &Device {
+impl<'window> RenderStage for Renderer<'window> {
+    fn device(&self) -> &wgpu::Device {
         &self.device
     }
 
-    fn queue(&self) -> &Queue {
+    fn queue(&self) -> &wgpu::Queue {
         &self.queue
     }
 }

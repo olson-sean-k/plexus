@@ -1,15 +1,11 @@
 #![cfg(feature = "geometry-cgmath")]
 
-use theon::integration::cgmath;
-
-use decorum::{Finite, Float, NotNan, Primitive, Total};
+use cgmath::{Point2, Point3, Vector2, Vector3};
+use decorum::{ExtendedReal, Primitive, Real, Total};
 use num::{NumCast, ToPrimitive};
 
 use crate::geometry::{FromGeometry, UnitGeometry};
 use crate::graph::GraphData;
-
-#[doc(hidden)]
-pub use self::cgmath::*;
 
 impl<T, U> FromGeometry<(U, U)> for Vector2<T>
 where
@@ -131,36 +127,53 @@ where
 
 impl<T> UnitGeometry for Point3<T> {}
 
-macro_rules! impl_from_geometry_ordered {
-    (geometry => $g:ident,proxy => $p:ident) => {
-        impl<T> FromGeometry<$g<$p<T>>> for $g<T>
-        where
-            T: Float + Primitive,
-        {
-            fn from_geometry(other: $g<$p<T>>) -> Self {
-                other.map(|value| value.into_inner())
-            }
-        }
-
-        impl<T> FromGeometry<$g<T>> for $g<$p<T>>
-        where
-            T: Float + Primitive,
-        {
-            fn from_geometry(other: $g<T>) -> Self {
-                other.map($p::<T>::from_inner)
-            }
-        }
+macro_rules! with_constrained_scalars {
+    ($f:ident) => {
+        $f!(proxy => Real);
+        $f!(proxy => ExtendedReal);
+        $f!(proxy => Total);
     };
 }
-impl_from_geometry_ordered!(geometry => Vector2, proxy => Finite);
-impl_from_geometry_ordered!(geometry => Vector2, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Vector2, proxy => Total);
-impl_from_geometry_ordered!(geometry => Vector3, proxy => Finite);
-impl_from_geometry_ordered!(geometry => Vector3, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Vector3, proxy => Total);
-impl_from_geometry_ordered!(geometry => Point2, proxy => Finite);
-impl_from_geometry_ordered!(geometry => Point2, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Point2, proxy => Total);
-impl_from_geometry_ordered!(geometry => Point3, proxy => Finite);
-impl_from_geometry_ordered!(geometry => Point3, proxy => NotNan);
-impl_from_geometry_ordered!(geometry => Point3, proxy => Total);
+
+macro_rules! with_geometric_structures {
+    ($f:ident) => {
+        $f!(geometry => Vector2);
+        $f!(geometry => Vector3);
+        $f!(geometry => Point2);
+        $f!(geometry => Point3);
+    };
+}
+
+macro_rules! impl_from_geometry_for_constrained_scalar_structures {
+    () => {
+        with_constrained_scalars!(impl_from_geometry_for_constrained_scalar_structures);
+    };
+    (proxy => $p:ident) => {
+        macro_rules! impl_from_geometry_for_scalar_structure {
+            () => {
+                with_geometric_structures!(impl_from_geometry_for_scalar_structure);
+            };
+            (geometry => $g:ident) => {
+                impl<T> FromGeometry<$g<$p<T>>> for $g<T>
+                where
+                    T: Primitive,
+                {
+                    fn from_geometry(other: $g<$p<T>>) -> Self {
+                        other.map(|value| value.into_inner())
+                    }
+                }
+
+                impl<T> FromGeometry<$g<T>> for $g<$p<T>>
+                where
+                    T: Primitive,
+                {
+                    fn from_geometry(other: $g<T>) -> Self {
+                        other.map($p::<T>::assert)
+                    }
+                }
+            };
+        }
+        impl_from_geometry_for_scalar_structure!();
+    };
+}
+impl_from_geometry_for_constrained_scalar_structures!();

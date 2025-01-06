@@ -87,7 +87,8 @@ mod tests {
     use nalgebra::Point2;
     use theon::space::InnerSpace;
 
-    use crate::entity::{dijkstra, EntityError};
+    use crate::entity::dijkstra::{self, MetricTree};
+    use crate::entity::EntityError;
     use crate::graph::MeshGraph;
     use crate::prelude::*;
     use crate::primitive::{Tetragon, Trigon};
@@ -133,8 +134,8 @@ mod tests {
         )
         .unwrap();
         let vertex = graph.vertices().nth(0).unwrap();
-        let metrics = dijkstra::metrics_with(vertex, None, |from, to| {
-            R64::from((to.position() - from.position()).magnitude())
+        let metrics: MetricTree<_, R64> = dijkstra::metrics_with(vertex, None, |from, to| {
+            R64::assert((to.position() - from.position()).magnitude())
         })
         .unwrap();
         let a = vertex.key();
@@ -151,9 +152,9 @@ mod tests {
         let cq = *metrics.get(&c).unwrap();
         let dq = *metrics.get(&d).unwrap();
 
-        assert_eq!(aq, (None, 0.0.into()));
-        assert_eq!(bq, (Some(a), 2.0.into()));
-        assert_eq!(cq, (Some(b), 4.0.into()));
-        assert_eq!(dq, (Some(a), 2.0.into()));
+        assert_eq!(aq, (None, R64::assert(0.0)));
+        assert_eq!(bq, (Some(a), R64::assert(2.0)));
+        assert_eq!(cq, (Some(b), R64::assert(4.0)));
+        assert_eq!(dq, (Some(a), R64::assert(2.0)));
     }
 }

@@ -1,5 +1,6 @@
 use approx::abs_diff_eq;
-use num::{Signed, Zero};
+use num::traits::real::Real;
+use num::Zero;
 use std::cmp::Ordering;
 use theon::query::{Line, Plane};
 use theon::space::{EuclideanSpace, FiniteDimensional};
@@ -25,7 +26,7 @@ impl<S> PointPartition<S> for S
 where
     S: EuclideanSpace + FiniteDimensional<N = U1>,
 {
-    // TODO: Should `IntrinsicOrd` be used here?
+    // TODO: Should `EmptyOrd` be used here?
     fn partition(&self, point: S) -> Option<BinaryPartition> {
         let ax = self.into_x();
         let px = point.into_x();
@@ -54,7 +55,7 @@ where
             None
         }
         else {
-            Some(if determinant.is_positive() {
+            Some(if determinant.is_sign_positive() {
                 BinaryPartition::Left
             }
             else {

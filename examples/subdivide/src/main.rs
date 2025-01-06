@@ -1,8 +1,5 @@
 #![allow(clippy::iter_nth_zero)]
 
-use plexus::integration::nalgebra;
-use plexus::integration::theon;
-
 use nalgebra::Point3;
 use pictor::pipeline::{self, Vertex};
 use plexus::geometry::AsPositionMut;

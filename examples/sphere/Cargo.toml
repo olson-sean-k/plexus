@@ -7,6 +7,8 @@ license = "MIT"
 publish = false
 
 [dependencies]
+nalgebra = "^0.33.0"
+theon = "^0.1.0"
 
 [dependencies.pictor]
 path = "../../pictor"
