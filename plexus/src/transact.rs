@@ -200,7 +200,7 @@ where
     }
 }
 
-impl<'a, T, M> AsRef<M> for Swapped<'a, T, M>
+impl<T, M> AsRef<M> for Swapped<'_, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -209,7 +209,7 @@ where
     }
 }
 
-impl<'a, T, M> AsMut<M> for Swapped<'a, T, M>
+impl<T, M> AsMut<M> for Swapped<'_, T, M>
 where
     M: From<T> + Mutate<T>,
 {
@@ -238,7 +238,7 @@ where
     }
 }
 
-impl<'a, T, M> Drop for Swapped<'a, T, M>
+impl<T, M> Drop for Swapped<'_, T, M>
 where
     M: From<T> + Mutate<T>,
 {

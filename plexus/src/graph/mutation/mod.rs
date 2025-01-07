@@ -43,9 +43,9 @@ use crate::transact::{Bypass, Transact};
 /// topologies are present and therefore unwraps values.
 pub trait Consistent {}
 
-impl<'a, T> Consistent for &'a T where T: Consistent {}
+impl<T> Consistent for &'_ T where T: Consistent {}
 
-impl<'a, T> Consistent for &'a mut T where T: Consistent {}
+impl<T> Consistent for &'_ mut T where T: Consistent {}
 
 pub trait Mode {
     type Graph: Parametric;

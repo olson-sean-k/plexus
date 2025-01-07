@@ -526,7 +526,7 @@ where
     }
 }
 
-impl<'a, M, G> VertexView<&'a mut M>
+impl<M, G> VertexView<&'_ mut M>
 where
     M: AsStorage<Arc<G>>
         + AsStorage<Edge<G>>
@@ -729,7 +729,7 @@ where
     inner: Orphan<'a, Vertex<G>>,
 }
 
-impl<'a, G> VertexOrphan<'a, G>
+impl<G> VertexOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -741,7 +741,7 @@ where
     }
 }
 
-impl<'a, G> VertexOrphan<'a, G>
+impl<G> VertexOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -754,7 +754,7 @@ where
     }
 }
 
-impl<'a, G> Borrow<VertexKey> for VertexOrphan<'a, G>
+impl<G> Borrow<VertexKey> for VertexOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -763,7 +763,7 @@ where
     }
 }
 
-impl<'a, G> ClosedView for VertexOrphan<'a, G>
+impl<G> ClosedView for VertexOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -775,7 +775,7 @@ where
     }
 }
 
-impl<'a, G> Eq for VertexOrphan<'a, G> where G: GraphData {}
+impl<G> Eq for VertexOrphan<'_, G> where G: GraphData {}
 
 impl<'a, G> From<Orphan<'a, Vertex<G>>> for VertexOrphan<'a, G>
 where
@@ -804,7 +804,7 @@ where
     }
 }
 
-impl<'a, G> Hash for VertexOrphan<'a, G>
+impl<G> Hash for VertexOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -816,7 +816,7 @@ where
     }
 }
 
-impl<'a, G> PartialEq for VertexOrphan<'a, G>
+impl<G> PartialEq for VertexOrphan<'_, G>
 where
     G: GraphData,
 {

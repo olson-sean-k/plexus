@@ -1067,7 +1067,7 @@ where
     inner: Orphan<'a, Face<G>>,
 }
 
-impl<'a, G> FaceOrphan<'a, G>
+impl<G> FaceOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1080,7 +1080,7 @@ where
     }
 }
 
-impl<'a, G> ClosedView for FaceOrphan<'a, G>
+impl<G> ClosedView for FaceOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1092,7 +1092,7 @@ where
     }
 }
 
-impl<'a, G> Eq for FaceOrphan<'a, G> where G: GraphData {}
+impl<G> Eq for FaceOrphan<'_, G> where G: GraphData {}
 
 impl<'a, M> From<FaceView<&'a mut M>> for FaceOrphan<'a, M::Data>
 where
@@ -1121,7 +1121,7 @@ where
     }
 }
 
-impl<'a, G> PartialEq for FaceOrphan<'a, G>
+impl<G> PartialEq for FaceOrphan<'_, G>
 where
     G: GraphData,
 {

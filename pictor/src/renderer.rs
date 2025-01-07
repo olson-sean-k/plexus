@@ -55,7 +55,7 @@ impl<'window> Renderer<'window> {
     }
 }
 
-impl<'window> ConfigureStage for Renderer<'window> {
+impl ConfigureStage for Renderer<'_> {
     fn device(&self) -> &wgpu::Device {
         &self.device
     }
@@ -69,7 +69,7 @@ impl<'window> ConfigureStage for Renderer<'window> {
     }
 }
 
-impl<'window> RenderStage for Renderer<'window> {
+impl RenderStage for Renderer<'_> {
     fn device(&self) -> &wgpu::Device {
         &self.device
     }

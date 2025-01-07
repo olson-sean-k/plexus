@@ -466,7 +466,7 @@ impl<G, const N: usize> NGon<G, N> {
     }
 }
 
-impl<'a, G, const N: usize> NGon<&'a G, N> {
+impl<G, const N: usize> NGon<&'_ G, N> {
     pub fn cloned(self) -> NGon<G, N>
     where
         G: Clone,
@@ -1071,7 +1071,7 @@ impl<G> UnboundedPolygon<G> {
     }
 }
 
-impl<'a, G> UnboundedPolygon<&'a G>
+impl<G> UnboundedPolygon<&'_ G>
 where
     G: Clone,
 {

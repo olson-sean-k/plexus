@@ -12,7 +12,7 @@ pub trait ReborrowInto<'a>: Reborrow {
     fn reborrow_into(self) -> &'a Self::Target;
 }
 
-impl<'a, T> Reborrow for &'a T {
+impl<T> Reborrow for &'_ T {
     type Target = T;
 
     fn reborrow(&self) -> &Self::Target {
@@ -20,7 +20,7 @@ impl<'a, T> Reborrow for &'a T {
     }
 }
 
-impl<'a, T> Reborrow for &'a mut T {
+impl<T> Reborrow for &'_ mut T {
     type Target = T;
 
     fn reborrow(&self) -> &Self::Target {
@@ -28,7 +28,7 @@ impl<'a, T> Reborrow for &'a mut T {
     }
 }
 
-impl<'a, T> ReborrowMut for &'a mut T {
+impl<T> ReborrowMut for &'_ mut T {
     fn reborrow_mut(&mut self) -> &mut Self::Target {
         self
     }

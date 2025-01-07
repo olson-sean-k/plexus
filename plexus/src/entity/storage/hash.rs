@@ -156,7 +156,7 @@ where
         self.inner.len()
     }
 
-    fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>> {
+    fn iter(&self) -> Box<dyn '_ + Iterator<Item = (E::Key, &'_ E)>> {
         Box::new(
             self.inner
                 .iter()
@@ -164,7 +164,7 @@ where
         )
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
+    fn iter_mut(&mut self) -> Box<dyn '_ + Iterator<Item = (E::Key, &'_ mut E::Data)>>
     where
         E: Payload,
     {
