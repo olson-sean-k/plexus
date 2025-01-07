@@ -9,7 +9,7 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R64;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::index::HashIndexer;
@@ -17,7 +17,7 @@
 //! use plexus::primitive::generate::Position;
 //! use plexus::primitive::sphere::UvSphere;
 //!
-//! type E3 = Point3<N64>;
+//! type E3 = Point3<R64>;
 //!
 //! let mut graph = UvSphere::new(16, 8)
 //!     .polygons::<Position<E3>>()

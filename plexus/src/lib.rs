@@ -327,14 +327,14 @@ pub trait IteratorExt: Iterator + Sized {
     /// # extern crate nalgebra;
     /// # extern crate plexus;
     /// #
-    /// use decorum::R64;
+    /// use decorum::Total;
     /// use nalgebra::Point3;
     /// use plexus::graph::MeshGraph;
     /// use plexus::prelude::*;
     /// use plexus::primitive::generate::Position;
     /// use plexus::primitive::sphere::UvSphere;
     ///
-    /// type E3 = Point3<R64>;
+    /// type E3 = Point3<Total<f64>>;
     ///
     /// let mut graph = UvSphere::new(6, 6)
     ///     .polygons::<Position<E3>>()

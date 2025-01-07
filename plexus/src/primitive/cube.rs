@@ -7,7 +7,7 @@
 //! # extern crate nalgebra;
 //! # extern crate plexus;
 //! #
-//! use decorum::N64;
+//! use decorum::R32;
 //! use nalgebra::Point3;
 //! use plexus::graph::MeshGraph;
 //! use plexus::prelude::*;
@@ -15,8 +15,8 @@
 //! use plexus::primitive::generate::Position;
 //!
 //! let mut graph = Cube::new()
-//!     .polygons::<Position<Point3<N64>>>()
-//!     .collect::<MeshGraph<Point3<N64>>>();
+//!     .polygons::<Position<Point3<R32>>>()
+//!     .collect::<MeshGraph<Point3<R32>>>();
 //! ```
 
 use num::One;
