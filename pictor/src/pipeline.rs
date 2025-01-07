@@ -90,7 +90,7 @@ where
 
 impl<T> UnitGeometry for Color4<T> where T: One + Scalar {}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Vertex {
     pub position: [f32; 4],
@@ -119,16 +119,21 @@ impl PartialEq for Vertex {
     }
 }
 
+// SAFETY: This type is inhabited, is `repr(C)`, has no padding, has no illegal bit patterns,
+//         contains no pointers, and has only fields that are also `Pod`.
 unsafe impl Pod for Vertex {}
 
+// SAFETY: This type has a zeroed inhabitant.
 unsafe impl Zeroable for Vertex {}
 
+#[derive(Debug)]
 struct RenderConfiguration {
     camera: Camera,
     from: Point3<f32>,
     buffer: MeshBuffer<Flat3<u32>, Vertex>,
 }
 
+#[derive(Debug)]
 struct RenderApplication {
     camera: Camera,
     _viewpoint: wgpu::Buffer,
@@ -404,9 +409,9 @@ impl Application for RenderApplication {
     }
 }
 
-pub fn render_mesh_buffer_with<F>(from: Point3<f32>, to: Point3<f32>, f: F)
+pub fn render_mesh_buffer_with<F>(from: Point3<f32>, to: Point3<f32>, mut f: F)
 where
-    F: FnOnce() -> MeshBuffer<Flat3<u32>, Vertex>,
+    F: FnMut() -> MeshBuffer<Flat3<u32>, Vertex>,
 {
     let camera = {
         let mut camera = Camera::from(Projection::perspective(1.0, FRAC_PI_4, 0.1, 8.0));
@@ -414,17 +419,14 @@ where
         camera.look_at(&from, &to);
         camera
     };
-    let buffer = f();
-    harness::run::<RenderApplication, _>(
-        RenderConfiguration {
-            camera,
-            from,
-            buffer,
-        },
-        |reactor| {
-            reactor
-                .create_window(Window::default_attributes().with_title("Plexus"))
-                .unwrap()
-        },
-    );
+    harness::run::<RenderApplication, _>(move || {
+        (
+            Window::default_attributes().with_title("Plexus"),
+            RenderConfiguration {
+                camera: camera.clone(),
+                from,
+                buffer: f(),
+            },
+        )
+    })
 }

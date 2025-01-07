@@ -12,6 +12,7 @@ static OPENGL_TO_WGPU_TRANSFORM: LazyLock<Matrix4<f32>> = LazyLock::new(|| {
     )
 });
 
+#[derive(Clone, Debug)]
 pub enum Projection {
     Perspective(Perspective3<f32>),
     Orthographic(Orthographic3<f32>),
@@ -36,6 +37,7 @@ impl AsRef<Matrix4<f32>> for Projection {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Camera {
     pub projection: Projection,
     view: Isometry3<f32>,

@@ -2,13 +2,16 @@ use futures::executor::{self, LocalPool, LocalSpawner};
 use futures::task::LocalSpawn;
 use std::cmp;
 use std::fmt::Debug;
+use std::sync::Arc;
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::renderer::Renderer;
 
+#[derive(Debug)]
 struct Executor {
     pool: LocalPool,
     spawner: LocalSpawner,
@@ -30,7 +33,108 @@ impl Executor {
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug)]
+struct Activity<T> {
+    window: Arc<Window>,
+    renderer: Renderer<'static>,
+    application: T,
+}
+
+impl<T> Activity<T>
+where
+    T: Application,
+{
+    pub fn bind_and_configure(window: Window, configuration: T::Configuration) -> Self {
+        let window = Arc::new(window);
+        let renderer = executor::block_on(Renderer::try_from_window(window.clone())).unwrap();
+        let application = T::configure(configuration, &renderer).unwrap();
+        Activity {
+            window,
+            renderer,
+            application,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Harness<T, F> {
+    executor: Executor,
+    f: F,
+    activity: Option<Activity<T>>,
+}
+
+impl<T, F> Harness<T, F>
+where
+    T: Application,
+{
+    fn redraw(&mut self) {
+        if let Some(activity) = self.activity.as_mut() {
+            let frame = activity.renderer.surface.get_current_texture().unwrap();
+            let view = frame
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+            activity
+                .application
+                .render(&activity.renderer, &view, self.executor.spawner());
+            frame.present();
+        }
+    }
+
+    fn resize(&mut self, dimensions: PhysicalSize<u32>) {
+        if let Some(activity) = self.activity.as_mut() {
+            activity.renderer.surface_configuration.width = cmp::max(1, dimensions.width);
+            activity.renderer.surface_configuration.height = cmp::max(1, dimensions.height);
+            activity.application.resize(&activity.renderer);
+            activity.renderer.surface.configure(
+                &activity.renderer.device,
+                &activity.renderer.surface_configuration,
+            );
+            activity.window.request_redraw();
+        }
+    }
+}
+
+impl<T, F> ApplicationHandler<()> for Harness<T, F>
+where
+    T: Application,
+    F: FnMut() -> (WindowAttributes, T::Configuration),
+{
+    fn resumed(&mut self, reactor: &ActiveEventLoop) {
+        let (window, configuration) = (self.f)();
+        self.activity.replace(Activity::bind_and_configure(
+            reactor.create_window(window).unwrap(),
+            configuration,
+        ));
+    }
+
+    fn suspended(&mut self, _reactor: &ActiveEventLoop) {
+        self.activity.take();
+    }
+
+    fn window_event(&mut self, reactor: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::RedrawRequested => {
+                self.redraw();
+            }
+            WindowEvent::CloseRequested => {
+                reactor.exit();
+            }
+            WindowEvent::Resized(dimensions) => {
+                self.resize(dimensions);
+            }
+            _ => {
+                if let Some(activity) = self.activity.as_mut() {
+                    if let Reaction::Abort = activity.application.react(event) {
+                        reactor.exit();
+                    }
+                }
+            }
+        }
+        self.executor.flush();
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Reaction {
     #[default]
     Continue,
@@ -75,70 +179,19 @@ pub trait Application: 'static + Sized {
     );
 }
 
-pub fn run<T, F>(configuration: T::Configuration, f: F)
+pub fn run<T, F>(f: F)
 where
     T: Application,
-    F: FnOnce(&EventLoop<()>) -> Window,
+    F: FnMut() -> (WindowAttributes, T::Configuration),
 {
-    struct Run<'window, T> {
-        executor: Executor,
-        application: T,
-        window: &'window Window,
-        renderer: Renderer<'window>,
-    }
-
-    impl<'window, T> ApplicationHandler<()> for Run<'window, T>
-    where
-        T: Application,
-    {
-        fn resumed(&mut self, _reactor: &ActiveEventLoop) {}
-
-        fn window_event(&mut self, reactor: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-            match event {
-                WindowEvent::RedrawRequested => {
-                    let frame = self.renderer.surface.get_current_texture().unwrap();
-                    let view = frame
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
-                    self.application
-                        .render(&self.renderer, &view, self.executor.spawner());
-                    frame.present();
-                }
-                WindowEvent::CloseRequested => {
-                    reactor.exit();
-                }
-                WindowEvent::Resized(dimensions) => {
-                    self.renderer.surface_configuration.width = cmp::max(1, dimensions.width);
-                    self.renderer.surface_configuration.height = cmp::max(1, dimensions.height);
-                    self.application.resize(&self.renderer);
-                    self.renderer
-                        .surface
-                        .configure(&self.renderer.device, &self.renderer.surface_configuration);
-                    self.window.request_redraw();
-                }
-                _ => {
-                    if let Reaction::Abort = self.application.react(event) {
-                        reactor.exit();
-                    }
-                }
-            }
-            // TODO: This should probably be done in reaction to much more specific events.
-            self.executor.flush();
-        }
-    }
-
     let executor = Executor::new();
     let reactor = EventLoop::new().unwrap();
     reactor.set_control_flow(ControlFlow::Poll);
-    let window = f(&reactor);
-    let renderer = executor::block_on(Renderer::try_from_window(&window)).unwrap();
-    let application = T::configure(configuration, &renderer).unwrap();
     reactor
-        .run_app(&mut Run {
+        .run_app(&mut Harness::<T, _> {
             executor,
-            application,
-            window: &window,
-            renderer,
+            f,
+            activity: None,
         })
         .unwrap();
 }
