@@ -75,9 +75,9 @@ where
 {
     fn len(&self) -> usize;
 
-    fn iter<'a>(&'a self) -> Box<dyn 'a + Iterator<Item = (E::Key, &E)>>;
+    fn iter(&self) -> Box<dyn '_ + Iterator<Item = (E::Key, &'_ E)>>;
 
-    fn iter_mut<'a>(&'a mut self) -> Box<dyn 'a + Iterator<Item = (E::Key, &mut E::Data)>>
+    fn iter_mut(&mut self) -> Box<dyn '_ + Iterator<Item = (E::Key, &'_ mut E::Data)>>
     where
         E: Payload;
 }
@@ -177,7 +177,7 @@ where
     fn as_storage(&self) -> &StorageTarget<E>;
 }
 
-impl<'a, E, T> AsStorage<E> for &'a T
+impl<E, T> AsStorage<E> for &'_ T
 where
     E: Entity,
     T: AsStorage<E> + ?Sized,
@@ -187,7 +187,7 @@ where
     }
 }
 
-impl<'a, E, T> AsStorage<E> for &'a mut T
+impl<E, T> AsStorage<E> for &'_ mut T
 where
     E: Entity,
     T: AsStorage<E> + ?Sized,
@@ -204,7 +204,7 @@ where
     fn as_storage_mut(&mut self) -> &mut StorageTarget<E>;
 }
 
-impl<'a, E, T> AsStorageMut<E> for &'a mut T
+impl<E, T> AsStorageMut<E> for &'_ mut T
 where
     E: Entity,
     T: AsStorageMut<E> + ?Sized,

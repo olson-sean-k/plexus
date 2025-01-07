@@ -1136,7 +1136,7 @@ where
     inner: Orphan<'a, Arc<G>>,
 }
 
-impl<'a, G> ArcOrphan<'a, G>
+impl<G> ArcOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1149,7 +1149,7 @@ where
     }
 }
 
-impl<'a, G> Borrow<ArcKey> for ArcOrphan<'a, G>
+impl<G> Borrow<ArcKey> for ArcOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1158,7 +1158,7 @@ where
     }
 }
 
-impl<'a, G> ClosedView for ArcOrphan<'a, G>
+impl<G> ClosedView for ArcOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1170,7 +1170,7 @@ where
     }
 }
 
-impl<'a, G> Eq for ArcOrphan<'a, G> where G: GraphData {}
+impl<G> Eq for ArcOrphan<'_, G> where G: GraphData {}
 
 impl<'a, M> From<ArcView<&'a mut M>> for ArcOrphan<'a, M::Data>
 where
@@ -1199,7 +1199,7 @@ where
     }
 }
 
-impl<'a, G> Hash for ArcOrphan<'a, G>
+impl<G> Hash for ArcOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1211,7 +1211,7 @@ where
     }
 }
 
-impl<'a, G> PartialEq for ArcOrphan<'a, G>
+impl<G> PartialEq for ArcOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1550,7 +1550,7 @@ where
     inner: Orphan<'a, Edge<G>>,
 }
 
-impl<'a, G> EdgeOrphan<'a, G>
+impl<G> EdgeOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1563,7 +1563,7 @@ where
     }
 }
 
-impl<'a, G> Borrow<EdgeKey> for EdgeOrphan<'a, G>
+impl<G> Borrow<EdgeKey> for EdgeOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1572,7 +1572,7 @@ where
     }
 }
 
-impl<'a, G> ClosedView for EdgeOrphan<'a, G>
+impl<G> ClosedView for EdgeOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1584,7 +1584,7 @@ where
     }
 }
 
-impl<'a, G> Eq for EdgeOrphan<'a, G> where G: GraphData {}
+impl<G> Eq for EdgeOrphan<'_, G> where G: GraphData {}
 
 impl<'a, M> From<EdgeView<&'a mut M>> for EdgeOrphan<'a, M::Data>
 where
@@ -1613,7 +1613,7 @@ where
     }
 }
 
-impl<'a, G> Hash for EdgeOrphan<'a, G>
+impl<G> Hash for EdgeOrphan<'_, G>
 where
     G: GraphData,
 {
@@ -1625,7 +1625,7 @@ where
     }
 }
 
-impl<'a, G> PartialEq for EdgeOrphan<'a, G>
+impl<G> PartialEq for EdgeOrphan<'_, G>
 where
     G: GraphData,
 {

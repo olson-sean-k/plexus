@@ -83,7 +83,7 @@ where
     }
 }
 
-impl<'k, B, M, G> Path<'k, B>
+impl<B, M, G> Path<'_, B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
@@ -425,7 +425,7 @@ where
     }
 }
 
-impl<'k, B, G> Path<'k, B>
+impl<B, G> Path<'_, B>
 where
     B: Reborrow,
     B::Target: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,
@@ -455,7 +455,7 @@ where
     }
 }
 
-impl<'k, 'a, M, G> Path<'k, &'a mut M>
+impl<'a, M, G> Path<'_, &'a mut M>
 where
     M: AsStorage<Arc<G>>
         + AsStorage<Edge<G>>
@@ -516,7 +516,7 @@ where
     }
 }
 
-impl<'k, B, M, G> PartialEq for Path<'k, B>
+impl<B, M, G> PartialEq for Path<'_, B>
 where
     B: Reborrow<Target = M>,
     M: AsStorage<Arc<G>> + AsStorage<Vertex<G>> + Consistent + Parametric<Data = G>,

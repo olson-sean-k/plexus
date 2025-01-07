@@ -16,7 +16,7 @@ pub trait Ambo<G>: ClosedView {
     fn ambo(self) -> Self;
 }
 
-impl<'a, G> Ambo<G> for FaceView<&'a mut MeshGraph<G>>
+impl<G> Ambo<G> for FaceView<&'_ mut MeshGraph<G>>
 where
     G: EdgeMidpoint + GraphData,
     G::Vertex: AsPositionMut,
