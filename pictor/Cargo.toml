@@ -33,4 +33,4 @@ features = ["geometry-nalgebra"]
 
 [dependencies.wgpu]
 version = "^23.0.1"
-features = ["glsl"]
+features = ["spirv"]
