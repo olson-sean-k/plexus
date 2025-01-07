@@ -1881,7 +1881,7 @@ mod tests {
             let face = graph
                 .face_mut(key)
                 .unwrap()
-                .extrude_with_offset(1.0)
+                .extrude_with_offset(R64::assert(1.0))
                 .unwrap()
                 .into_ref();
 

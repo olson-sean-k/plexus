@@ -1149,7 +1149,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use decorum::N64;
+    use decorum::R64;
     use nalgebra::Point3;
 
     use crate::buffer::{MeshBuffer, MeshBuffer4, MeshBufferN};
@@ -1161,7 +1161,7 @@ mod tests {
     use crate::primitive::sphere::UvSphere;
     use crate::primitive::{BoundedPolygon, UnboundedPolygon};
 
-    type E3 = Point3<N64>;
+    type E3 = Point3<R64>;
 
     #[test]
     fn collect_into_flat_buffer() {

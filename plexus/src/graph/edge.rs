@@ -1909,7 +1909,7 @@ mod tests {
         graph
             .arc_mut(source)
             .unwrap()
-            .extrude_with_offset(1.0)
+            .extrude_with_offset(R64::assert(1.0))
             .unwrap();
 
         assert_eq!(14, graph.arc_count());
