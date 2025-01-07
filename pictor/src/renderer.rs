@@ -1,9 +1,10 @@
+use std::borrow::Borrow;
 use winit::window::Window;
 
 use crate::harness::{ConfigureStage, RenderStage};
 
+#[derive(Debug)]
 pub struct Renderer<'window> {
-    //pub window: Window,
     _instance: wgpu::Instance,
     _adapter: wgpu::Adapter,
     pub surface: wgpu::Surface<'window>,
@@ -13,7 +14,11 @@ pub struct Renderer<'window> {
 }
 
 impl<'window> Renderer<'window> {
-    pub async fn try_from_window(window: &'window Window) -> Result<Self, ()> {
+    pub async fn try_from_window<T>(window: T) -> Result<Self, ()>
+    where
+        T: Borrow<Window> + Into<wgpu::SurfaceTarget<'window>>,
+    {
+        let dimensions = window.borrow().inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
         let surface = instance.create_surface(window).unwrap();
         let adapter = instance
@@ -36,20 +41,10 @@ impl<'window> Renderer<'window> {
             )
             .await
             .map_err(|_| ())?;
-        let dimensions = window.inner_size();
         let surface_configuration = surface
             .get_default_config(&adapter, dimensions.width, dimensions.height)
             .unwrap();
-        //let swap_chain_descriptor = wgpu::SwapChainDescriptor {
-        //    usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-        //    format: wgpu::TextureFormat::Bgra8UnormSrgb,
-        //    present_mode: wgpu::PresentMode::Mailbox,
-        //    width: dimensions.width,
-        //    height: dimensions.height,
-        //};
-        //let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
         Ok(Renderer {
-            //window,
             _instance: instance,
             _adapter: adapter,
             surface,
