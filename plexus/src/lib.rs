@@ -13,17 +13,18 @@
 #![doc(html_favicon_url = "https://plexus.rs/img/favicon.ico")]
 #![doc(html_logo_url = "https://plexus.rs/img/plexus.svg")]
 
+mod entity;
+mod integration;
+mod transact;
+
 pub mod buffer;
 pub mod builder;
 pub mod constant;
 pub mod encoding;
-mod entity;
 pub mod geometry;
 pub mod graph;
 pub mod index;
-pub mod integration;
 pub mod primitive;
-mod transact;
 
 use arrayvec::ArrayVec;
 use itertools::{self, Itertools, MinMaxResult, MultiPeek};
