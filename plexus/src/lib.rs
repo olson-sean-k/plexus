@@ -6,12 +6,12 @@
 //!
 //! [website]: https://plexus.rs
 
-// This lint is a bit subjective. Using `next` is equivalent, but the Plexus
-// authors find `nth(0)` more clear, especially as part of a non-trivial
-// iterator expression. This may be revisited though.
-#![allow(clippy::iter_nth_zero)]
 #![doc(html_favicon_url = "https://plexus.rs/img/favicon.ico")]
 #![doc(html_logo_url = "https://plexus.rs/img/plexus.svg")]
+// LINT: This lint is a bit subjective. Using `next` is equivalent, but the Plexus authors find
+//       `nth(0)` more clear, especially as part of a non-trivial iterator expression. This may be
+//       revisited though.
+#![allow(clippy::iter_nth_zero)]
 
 mod entity;
 mod integration;
@@ -269,10 +269,13 @@ macro_rules! substitute {
 }
 macro_rules! impl_try_from_iterator {
     (tuples => ($($i:ident),+)) => (
-        #[allow(non_snake_case)]
         impl<T> TryFromIterator<T> for ($(substitute!(($i), T),)+) {
             type Error = ();
 
+            // LINT: The `i` metavariable items are conventionally uppercase and represent type
+            //       names. Here, these names are substituted, but uppercase is used for
+            //       consistency.
+            #[expect(non_snake_case)]
             fn try_from_iter<I>(items: I) -> Result<Self, Self::Error>
             where
                 I: Iterator<Item = T>,

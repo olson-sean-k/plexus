@@ -656,10 +656,8 @@ where
     face::insert_with(mutation.as_mut(), cache, Default::default)
 }
 
-// The identifiers `a`, `b`, `c`, and `d` are probably well understood in this
-// context and `f` is used in a manner that is consistent with the standard
-// library.
-#[allow(clippy::many_single_char_names)]
+// LINT: These names follow a convention, mainly concerning vertices.
+#[expect(clippy::many_single_char_names)]
 pub fn extrude_with<N, P, F>(
     mut mutation: N,
     cache: ArcExtrudeCache,

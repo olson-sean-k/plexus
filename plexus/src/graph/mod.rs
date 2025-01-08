@@ -1401,10 +1401,6 @@ where
 {
     type Error = GraphError;
 
-    // TODO: This appears to be a false positive. The `collect` is necessary,
-    //       because the data is transformed and read randomly by index. See
-    //       https://github.com/rust-lang/rust-clippy/issues/5991
-    #[allow(clippy::needless_collect)]
     fn from_indexer<I, N>(input: I, indexer: N) -> Result<Self, Self::Error>
     where
         I: IntoIterator<Item = P>,

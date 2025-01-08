@@ -1,4 +1,6 @@
-#![allow(clippy::iter_nth_zero)]
+// LINT: This lint is a bit subjective. Using `next` is equivalent, but the Plexus authors find
+//       `nth(0)` more clear, especially as part of a non-trivial iterator expression.
+#![expect(clippy::iter_nth_zero)]
 
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use nalgebra::Point3;
@@ -65,7 +67,6 @@ fn subdivide(mut graph: MeshGraph<E3>) {
     }
 }
 
-#[allow(unused)]
 fn benchmark(criterion: &mut Criterion) {
     criterion.bench_function("subdivide", move |bencher| {
         bencher.iter_batched(tetragon, subdivide, BatchSize::SmallInput)

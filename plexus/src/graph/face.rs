@@ -144,7 +144,9 @@ where
     B: ReborrowMut<Target = M>,
     M: AsStorage<Face<Data<B>>> + Parametric,
 {
-    #[allow(clippy::wrong_self_convention)]
+    // LINT: This convention is specifically used for interior reborrows and is consistent with
+    //       `to_ref`.
+    #[expect(clippy::wrong_self_convention)]
     fn to_mut_unchecked(&mut self) -> FaceView<&mut M> {
         self.inner.to_mut_unchecked().into()
     }
@@ -672,7 +674,9 @@ where
     /// triangular.
     ///
     /// Returns the terminating face of the decomposition.
-    #[allow(clippy::return_self_not_must_use)]
+    // LINT: This function has significant side effects and can be meaningfully called for those
+    //       side effects alone.
+    #[expect(clippy::return_self_not_must_use)]
     pub fn triangulate(self) -> Self {
         // TODO: This naive approach exhibits bad behaviors when faces are
         //       concave, linear, collapsed, or are otherwise degenerate.
@@ -831,7 +835,9 @@ where
     /// Extrudes the face along a translation.
     ///
     /// Returns the extruded face.
-    #[allow(clippy::return_self_not_must_use)]
+    // LINT: This function has significant side effects and can be meaningfully called for those
+    //       side effects alone.
+    #[expect(clippy::return_self_not_must_use)]
     pub fn extrude_with_translation(self, translation: Vector<VertexPosition<G>>) -> Self
     where
         G::Vertex: AsPositionMut,
@@ -846,7 +852,9 @@ where
     /// Extrudes a face using the given vertex data.
     ///
     /// Returns the extruded face.
-    #[allow(clippy::return_self_not_must_use)]
+    // LINT: This function has significant side effects and can be meaningfully called for those
+    //       side effects alone.
+    #[expect(clippy::return_self_not_must_use)]
     pub fn extrude_with<F>(self, f: F) -> Self
     where
         F: Fn(&G::Vertex) -> G::Vertex,
@@ -1165,7 +1173,9 @@ where
     M: AsStorage<Arc<G>> + Consistent + Parametric<Data = G>,
     G: GraphData,
 {
-    #[allow(clippy::wrong_self_convention)]
+    // LINT: This convention is specifically used for interior reborrows and is consistent with
+    //       `to_ref`.
+    #[expect(clippy::wrong_self_convention)]
     fn to_mut_unchecked(&mut self) -> Ring<&mut M> {
         self.arc.to_mut_unchecked().into_ring()
     }

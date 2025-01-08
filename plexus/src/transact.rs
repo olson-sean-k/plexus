@@ -8,10 +8,9 @@ pub trait Transact<T = ()>: Sized {
 
     fn commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)>;
 
-    // NOTE: This is indeed a complex type, but refactoring into a type
-    //       definition cannot be done trivially (and may not reduce
-    //       complexity).
-    #[allow(clippy::type_complexity)]
+    // LINT: This is indeed a complex type, but refactoring into a type definition cannot be done
+    //       trivially (and may not reduce complexity).
+    #[expect(clippy::type_complexity)]
     fn commit_with<F, U, E>(mut self, f: F) -> Result<(Self::Commit, U), (Self::Abort, Self::Error)>
     where
         F: FnOnce(&mut Self) -> Result<U, E>,
@@ -33,7 +32,9 @@ pub trait Bypass<T>: Transact<T> {
 pub trait BypassOrCommit<T>: Bypass<T> {
     fn bypass_or_commit(self) -> Result<Self::Commit, (Self::Abort, Self::Error)>;
 
-    #[allow(clippy::type_complexity)]
+    // LINT: This is indeed a complex type, but refactoring into a type definition cannot be done
+    //       trivially (and may not reduce complexity).
+    #[expect(clippy::type_complexity)]
     fn bypass_or_commit_with<F, X, E>(
         self,
         f: F,
@@ -52,7 +53,6 @@ where
         self.commit()
     }
 
-    #[allow(clippy::type_complexity)]
     fn bypass_or_commit_with<F, X, E>(self, f: F) -> Result<(T::Commit, X), (T::Abort, T::Error)>
     where
         F: FnOnce(&mut T) -> Result<X, E>,
@@ -71,7 +71,6 @@ where
         Ok(self.bypass())
     }
 
-    #[allow(clippy::type_complexity)]
     fn bypass_or_commit_with<F, X, E>(
         mut self,
         f: F,

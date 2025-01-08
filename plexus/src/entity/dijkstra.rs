@@ -125,7 +125,7 @@ mod tests {
         assert_eq!(cq, (Some(a), 1));
     }
 
-    #[allow(clippy::float_cmp)]
+    // TODO: Use approximated comparisons in assertions.
     #[test]
     fn euclidean_distance_metrics() {
         let graph = MeshGraph::<Point2<f64>>::from_raw_buffers(

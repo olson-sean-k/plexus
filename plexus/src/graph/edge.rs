@@ -215,7 +215,9 @@ where
     M: AsStorage<Arc<Data<B>>> + Parametric,
 {
     // This function is also used to implement `Ring::to_mut_unchecked`.
-    #[allow(clippy::wrong_self_convention)]
+    // LINT: This convention is specifically used for interior reborrows and is consistent with
+    //       `to_ref`.
+    #[expect(clippy::wrong_self_convention)]
     pub(in crate::graph) fn to_mut_unchecked(&mut self) -> ArcView<&mut M> {
         self.inner.to_mut_unchecked().into()
     }

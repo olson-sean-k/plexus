@@ -277,14 +277,16 @@ impl Application for RenderApplication {
                     buffers: &[wgpu::VertexBufferLayout {
                         array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
                         step_mode: wgpu::VertexStepMode::Vertex,
+                        // LINT: The constants in these trivial expressions illustrate the sizing
+                        //       and layout of the data more clearly than the evaluation alone.
                         attributes: &[
-                            #[allow(clippy::erasing_op)]
+                            #[expect(clippy::erasing_op)]
                             wgpu::VertexAttribute {
                                 format: wgpu::VertexFormat::Float32x4,
                                 offset: 0 * 4 * 4,
                                 shader_location: 0,
                             },
-                            #[allow(clippy::identity_op)]
+                            #[expect(clippy::identity_op)]
                             wgpu::VertexAttribute {
                                 format: wgpu::VertexFormat::Float32x4,
                                 offset: 1 * 4 * 4,

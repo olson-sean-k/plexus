@@ -32,8 +32,6 @@ where
         self.with_vertex_mut(a, |vertex| vertex.arc = Some(ab))
     }
 
-    // TODO: See `edge::split_with_cache`.
-    #[allow(dead_code)]
     pub fn disconnect_outgoing_arc(&mut self, a: VertexKey) -> Result<Option<ArcKey>, GraphError> {
         self.with_vertex_mut(a, |vertex| vertex.arc.take())
     }
