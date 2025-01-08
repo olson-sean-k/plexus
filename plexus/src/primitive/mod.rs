@@ -25,8 +25,8 @@
 //!
 //! | Type               | Morphism    | Arity        | Map | Zip | Tessellate |
 //! |--------------------|-------------|--------------|-----|-----|------------|
-//! | `NGon`             | Monomorphic | $1,[3,32]$   | Yes | Yes | Yes        |
-//! | `BoundedPolygon`   | Polymorphic | $[3,4]$      | Yes | No  | Yes        |
+//! | `NGon`             | Monomorphic | $1,\[3,32\]$ | Yes | Yes | Yes        |
+//! | `BoundedPolygon`   | Polymorphic | $\[3,4\]$    | Yes | No  | Yes        |
 //! | `UnboundedPolygon` | Polymorphic | $[3,\infin)$ | Yes | No  | No         |
 //!
 //! [`NGon`] is [monomorphic][`Monomorphic`] and supports the broadest set of
