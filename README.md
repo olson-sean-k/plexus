@@ -67,7 +67,7 @@ let mut graph = MeshGraph::<E3>::from(Tetragon::from([
     (1.0, -1.0, 0.0),
 ]));
 // Extrude the face of the tetragon.
-let key = graph.faces().nth(0).unwrap().key();
+let key = graph.faces().next().unwrap().key();
 let face = graph.face_mut(key).unwrap().extrude_with_offset(1.0).unwrap();
 ```
 

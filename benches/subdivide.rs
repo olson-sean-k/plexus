@@ -1,7 +1,3 @@
-// LINT: This lint is a bit subjective. Using `next` is equivalent, but the Plexus authors find
-//       `nth(0)` more clear, especially as part of a non-trivial iterator expression.
-#![expect(clippy::iter_nth_zero)]
-
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use nalgebra::Point3;
 use plexus::geometry::AsPositionMut;
@@ -58,7 +54,7 @@ fn tetragon() -> MeshGraph<E3> {
 
 fn subdivide(mut graph: MeshGraph<E3>) {
     // Get the face of the tetragon.
-    let key = graph.faces().nth(0).unwrap().key();
+    let key = graph.faces().next().unwrap().key();
     let mut face = graph.face_mut(key).unwrap();
 
     // Subdivide and extrude the face repeatedly.

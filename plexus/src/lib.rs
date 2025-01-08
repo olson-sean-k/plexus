@@ -8,10 +8,6 @@
 
 #![doc(html_favicon_url = "https://plexus.rs/img/favicon.ico")]
 #![doc(html_logo_url = "https://plexus.rs/img/plexus.svg")]
-// LINT: This lint is a bit subjective. Using `next` is equivalent, but the Plexus authors find
-//       `nth(0)` more clear, especially as part of a non-trivial iterator expression. This may be
-//       revisited though.
-#![allow(clippy::iter_nth_zero)]
 
 mod entity;
 mod integration;
