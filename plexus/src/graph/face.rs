@@ -1599,14 +1599,13 @@ where
     fn next(&mut self) -> Option<<Self::Entity as Entity>::Key> {
         self.arc
             .and_then(|arc| self.trace.insert(arc).then_some(arc))
-            .map(|arc| {
+            .inspect(|arc| {
                 self.arc = self
                     .storage
                     .reborrow()
                     .as_storage()
-                    .get(&arc)
+                    .get(arc)
                     .and_then(|arc| arc.next);
-                arc
             })
     }
 }
