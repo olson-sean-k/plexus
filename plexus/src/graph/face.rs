@@ -176,7 +176,7 @@ where
     /// type E3 = Point3<R64>;
     ///
     /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let key = graph.faces().next().unwrap().key();
     /// let face = graph
     ///     .face_mut(key)
     ///     .unwrap()
@@ -545,7 +545,7 @@ where
     ///     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let key = graph.faces().next().unwrap().key();
     /// let arc = graph
     ///     .face_mut(key)
     ///     .unwrap()
@@ -613,7 +613,7 @@ where
     /// )
     /// .unwrap();
     ///
-    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let key = graph.faces().next().unwrap().key();
     /// let face = graph
     ///     .face_mut(key)
     ///     .unwrap()
@@ -722,7 +722,7 @@ where
     ///     vec![(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 2.0, 0.0)],
     /// )
     /// .unwrap();
-    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let key = graph.faces().next().unwrap().key();
     /// let mut face = graph.face_mut(key).unwrap();
     ///
     /// // See also `poke_with_offset`, which provides this functionality.
@@ -1821,7 +1821,7 @@ mod tests {
         let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect();
-        let face = graph.faces().nth(0).unwrap();
+        let face = graph.faces().next().unwrap();
 
         // All faces should be triangles and should have three edges.
         assert_eq!(3, face.adjacent_arcs().count());
@@ -1832,7 +1832,7 @@ mod tests {
         let graph: MeshGraph<E3> = UvSphere::new(3, 2)
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect();
-        let face = graph.faces().nth(0).unwrap();
+        let face = graph.faces().next().unwrap();
 
         // No matter which face is selected, it should have three adjacent
         // faces.
@@ -1849,7 +1849,7 @@ mod tests {
         assert_eq!(6, graph.face_count());
 
         // Remove a face from the graph.
-        let abc = graph.faces().nth(0).unwrap().key();
+        let abc = graph.faces().next().unwrap().key();
         {
             let face = graph.face_mut(abc).unwrap();
             assert_eq!(3, face.arity()); // The face should be triangular.
@@ -1870,7 +1870,7 @@ mod tests {
             4,
         )
         .unwrap();
-        let abc = graph.faces().nth(0).unwrap().key();
+        let abc = graph.faces().next().unwrap().key();
         let arc = graph
             .face_mut(abc)
             .unwrap()
@@ -1891,7 +1891,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 triangles, 18 vertices.
             .collect();
         {
-            let key = graph.faces().nth(0).unwrap().key();
+            let key = graph.faces().next().unwrap().key();
             let face = graph
                 .face_mut(key)
                 .unwrap()
@@ -1914,6 +1914,9 @@ mod tests {
         assert_eq!(9, graph.face_count());
     }
 
+    // LINT: In this test, adjacent `nth` calls are used over `0` and `1` and are arguably more
+    //       consistent and therefore a bit easier to read.
+    #[expect(clippy::iter_nth_zero)]
     #[test]
     fn merge_faces() {
         // Construct a graph with two connected quadrilaterals.
@@ -1941,7 +1944,7 @@ mod tests {
 
         // After the removal, the graph should have 1 face.
         assert_eq!(1, graph.face_count());
-        assert_eq!(6, graph.faces().nth(0).unwrap().arity());
+        assert_eq!(6, graph.faces().next().unwrap().arity());
     }
 
     #[test]
@@ -1949,7 +1952,7 @@ mod tests {
         let mut graph: MeshGraph<E3> = Cube::new()
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .collect();
-        let key = graph.faces().nth(0).unwrap().key();
+        let key = graph.faces().next().unwrap().key();
         let vertex = graph.face_mut(key).unwrap().poke_at_centroid();
 
         // Diverging a quadrilateral yields a tetrahedron.
@@ -1990,7 +1993,7 @@ mod tests {
             4,
         )
         .unwrap();
-        let face = graph.faces().nth(0).unwrap();
+        let face = graph.faces().next().unwrap();
         let keys = face
             .adjacent_vertices()
             .map(|vertex| vertex.key())

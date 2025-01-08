@@ -171,7 +171,7 @@ impl Key for ArcKey {
 ///     .collect_with_indexer(HashIndexer::default())
 ///     .unwrap();
 ///
-/// let face = graph.faces().nth(0).unwrap();
+/// let face = graph.faces().next().unwrap();
 /// let opposite = face
 ///     .into_arc()
 ///     .into_opposite_arc()
@@ -682,7 +682,7 @@ where
     /// let mut graph =
     ///     MeshGraph::<Weight>::from_raw_buffers(vec![NGon([0usize, 1, 2])], vec![1.0, 2.0, 0.5])
     ///         .unwrap();
-    /// let key = graph.arcs().nth(0).unwrap().key();
+    /// let key = graph.arcs().next().unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_with(|| 0.1);
     /// ```
     ///
@@ -737,7 +737,7 @@ where
     ///     vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)],
     /// )
     /// .unwrap();
-    /// let key = graph.arcs().nth(0).unwrap().key();
+    /// let key = graph.arcs().next().unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint();
     /// ```
     ///
@@ -1950,7 +1950,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .index_vertices::<Tetragon<usize>, _>(HashIndexer::default());
         let mut graph = MeshGraph::<E3>::from_raw_buffers(indices, vertices).unwrap();
-        let key = graph.arcs().nth(0).unwrap().key();
+        let key = graph.arcs().next().unwrap().key();
         let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
 
         assert_eq!(5, vertex.into_outgoing_arc().into_face().unwrap().arity());

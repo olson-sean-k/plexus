@@ -563,7 +563,7 @@ mod tests {
         .unwrap();
         let keys = graph
             .faces()
-            .nth(0)
+            .next()
             .unwrap()
             .adjacent_arcs()
             .map(|arc| arc.into_source_vertex())
@@ -588,7 +588,7 @@ mod tests {
         )
         .unwrap();
         let path = {
-            let key = graph.faces().nth(0).unwrap().key();
+            let key = graph.faces().next().unwrap().key();
             graph.face(key).unwrap().into_ring().into_path()
         };
         let keys: Vec<_> = path.vertices().keys().collect();
@@ -612,7 +612,7 @@ mod tests {
         let graph =
             MeshGraph::<()>::from_raw_buffers(vec![Tetragon::from([0usize, 1, 2, 3])], vec![(); 4])
                 .unwrap();
-        let source = graph.vertices().nth(0).unwrap();
+        let source = graph.vertices().next().unwrap();
         let destination = source
             .into_outgoing_arc()
             .into_next_arc()

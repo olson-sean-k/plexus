@@ -100,7 +100,7 @@ mod tests {
             vec![(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)],
         )
         .unwrap();
-        let vertex = graph.vertices().nth(0).unwrap();
+        let vertex = graph.vertices().next().unwrap();
         assert_eq!(
             Err(EntityError::Data),
             dijkstra::metrics_with(vertex, None, |_, _| -1isize)
@@ -111,7 +111,7 @@ mod tests {
     fn logical_metrics() {
         let graph = MeshGraph::<()>::from_raw_buffers(vec![Trigon::new(0usize, 1, 2)], vec![(); 3])
             .unwrap();
-        let vertex = graph.vertices().nth(0).unwrap();
+        let vertex = graph.vertices().next().unwrap();
         let metrics = dijkstra::metrics_with(vertex, None, |_, _| 1usize).unwrap();
         let a = vertex.key();
         let b = vertex.outgoing_arc().destination_vertex().key();
@@ -133,7 +133,7 @@ mod tests {
             vec![(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)],
         )
         .unwrap();
-        let vertex = graph.vertices().nth(0).unwrap();
+        let vertex = graph.vertices().next().unwrap();
         let metrics: MetricTree<_, R64> = dijkstra::metrics_with(vertex, None, |from, to| {
             R64::assert((to.position() - from.position()).magnitude())
         })

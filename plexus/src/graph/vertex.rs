@@ -153,7 +153,7 @@ where
     /// type E3 = Point3<R64>;
     ///
     /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-    /// let key = graph.arcs().nth(0).unwrap().key();
+    /// let key = graph.arcs().next().unwrap().key();
     /// let vertex = graph.arc_mut(key).unwrap().split_at_midpoint().into_ref();
     ///
     /// // This would not be possible without conversion into an immutable view.
@@ -568,7 +568,7 @@ where
     /// type E3 = Point3<R64>;
     ///
     /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-    /// let key = graph.vertices().nth(0).unwrap().key();
+    /// let key = graph.vertices().next().unwrap().key();
     /// graph.vertex_mut(key).unwrap().remove();
     /// ```
     pub fn remove(self) {
@@ -1214,7 +1214,7 @@ mod tests {
             vec![(-1.0, 0.0), (0.0, 1.0), (1.0, 0.0)],
         )
         .unwrap();
-        let from = graph.vertices().nth(0).unwrap();
+        let from = graph.vertices().next().unwrap();
         let to = from.outgoing_arc().destination_vertex().key();
         let path = from.shortest_path(to).unwrap();
 
@@ -1254,7 +1254,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .collect();
 
-        let vertex = graph.vertices().nth(0).unwrap();
+        let vertex = graph.vertices().next().unwrap();
         assert_eq!(graph.vertex_count(), vertex.traverse_by_breadth().count());
     }
 
@@ -1264,7 +1264,7 @@ mod tests {
             .polygons::<Position<E3>>() // 6 quadrilaterals, 24 vertices.
             .collect();
 
-        let vertex = graph.vertices().nth(0).unwrap();
+        let vertex = graph.vertices().next().unwrap();
         assert_eq!(graph.vertex_count(), vertex.traverse_by_depth().count());
     }
 }

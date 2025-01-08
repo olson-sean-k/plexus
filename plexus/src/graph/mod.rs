@@ -191,7 +191,7 @@
 //!
 //! let mut graph: MeshGraph<E3> = UvSphere::new(8, 8).polygons::<Position<E3>>().collect();
 //! // Get the key of the first face and then extrude it.
-//! let key = graph.faces().nth(0).unwrap().key();
+//! let key = graph.faces().next().unwrap().key();
 //! let face = graph
 //!     .face_mut(key)
 //!     .unwrap()
@@ -218,7 +218,7 @@
 //! graph.triangulate();
 //!
 //! // Traverse an arc and use a circulator to get the faces of a nearby vertex.
-//! let key = graph.arcs().nth(0).unwrap().key();
+//! let key = graph.arcs().next().unwrap().key();
 //! let mut vertex = graph
 //!     .arc_mut(key)
 //!     .unwrap()
@@ -501,7 +501,7 @@ where
 /// type E3 = Point3<R64>;
 ///
 /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-/// let key = graph.faces().nth(0).unwrap().key();
+/// let key = graph.faces().next().unwrap().key();
 /// graph
 ///     .face_mut(key)
 ///     .unwrap()
@@ -973,7 +973,7 @@ where
             .collect::<HashSet<_>>();
         let mut subkeys = HashSet::with_capacity(self.vertex_count());
         let mut vertices = SmallVec::<[VertexView<_>; 4]>::new();
-        while let Some(key) = keys.difference(&subkeys).nth(0) {
+        while let Some(key) = keys.difference(&subkeys).next() {
             let vertex = VertexView::from(View::bind_unchecked(self, *key));
             vertices.push(vertex);
             subkeys.extend(vertex.traverse_by_depth().map(|vertex| vertex.key()));
@@ -1020,7 +1020,7 @@ where
     /// type E3 = Point3<Total<f32>>;
     ///
     /// let mut graph: MeshGraph<E3> = Cube::new().polygons::<Position<E3>>().collect();
-    /// let key = graph.faces().nth(0).unwrap().key();
+    /// let key = graph.faces().next().unwrap().key();
     /// graph
     ///     .face_mut(key)
     ///     .unwrap()
