@@ -26,7 +26,7 @@ impl<S> PointPartition<S> for S
 where
     S: EuclideanSpace + FiniteDimensional<N = U1>,
 {
-    // TODO: Should `IntrinsicOrd` be used here?
+    // TODO: Should `EmptyOrd` be used here?
     fn partition(&self, point: S) -> Option<BinaryPartition> {
         let ax = self.into_x();
         let px = point.into_x();
