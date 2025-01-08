@@ -1,13 +1,10 @@
 //! Geometric traits and computational geometry.
 //!
-//! Plexus uses the [`theon`] crate to abstract over types that represent
-//! Euclidean spaces and implement linear algebra. Types and traits are
-//! re-exported from [`theon`] in this module, but it may be necessary to import
-//! additional types from [`theon`]. See the [`integration`] module.
+//! Plexus uses the [`theon`] crate to abstract over types that represent Euclidean spaces and
+//! implement linear algebra. Types and traits are re-exported from [`theon`] in this module, but
+//! it may be necessary to import additional types from [`theon`].
 //!
 //! [`theon`]: https://crates.io/crates/theon
-//!
-//! [`integration`]: crate::integration
 
 use num::{One, Zero};
 
