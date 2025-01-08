@@ -1,4 +1,6 @@
-#![allow(clippy::iter_nth_zero)]
+// LINT: This lint is a bit subjective. Using `next` is equivalent, but the Plexus authors find
+//       `nth(0)` more clear, especially as part of a non-trivial iterator expression.
+#![expect(clippy::iter_nth_zero)]
 
 use nalgebra::Point3;
 use pictor::pipeline::{self, Vertex};

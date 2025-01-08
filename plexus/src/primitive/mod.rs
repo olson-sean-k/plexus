@@ -658,7 +658,6 @@ impl<G, H, const N: usize> ZipMap<H> for NGon<G, N> {
 
 macro_rules! impl_zip_ngon {
     (ngons => ($($i:ident),*)) => (
-        #[allow(non_snake_case)]
         impl<$($i),*, const N: usize> Zip for ($(NGon<$i, N>),*)
         where
             Constant<N>: ToType,
@@ -666,6 +665,9 @@ macro_rules! impl_zip_ngon {
         {
             type Output = NGon<($($i),*), N>;
 
+            // LINT: The `i` metavariable items are conventionally uppercase and represent both
+            //       type names and local binding identifiers.
+            #[expect(non_snake_case)]
             fn zip(self) -> Self::Output {
                 let ($($i,)*) = self;
                 (izip!($($i.into_iter()),*)).try_collect().unwrap()
@@ -801,7 +803,6 @@ impl<G> Trigon<G> {
         NGon([a, b, c])
     }
 
-    #[allow(clippy::many_single_char_names)]
     pub fn plane(&self) -> Option<Plane<Position<G>>>
     where
         G: AsPosition,
@@ -809,9 +810,9 @@ impl<G> Trigon<G> {
         Vector<Position<G>>: Cross<Output = Vector<Position<G>>>,
     {
         let [a, b, c] = self.positions().cloned().into_array();
-        let v = a - b;
-        let u = a - c;
-        Unit::try_from_inner(v.cross(u))
+        let ab = a - b;
+        let ac = a - c;
+        Unit::try_from_inner(ab.cross(ac))
             .map(move |normal| Plane::<Position<G>> { origin: a, normal })
     }
 }
@@ -843,7 +844,8 @@ impl<G> Tetragon<G> {
 }
 
 impl<G> Rotate for Tetragon<G> {
-    #[allow(clippy::many_single_char_names)]
+    // LINT: These names follow a convention, mainly concerning vertices.
+    #[expect(clippy::many_single_char_names)]
     fn rotate(self, n: isize) -> Self {
         let n = umod(n, Self::ARITY as isize);
         if n == 1 {
